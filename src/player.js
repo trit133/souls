@@ -185,6 +185,7 @@ export class Player extends Actor {
     this.stepT = 0;
     this.fatigue = 0; // 0..1, builds with consecutive attacks
     this.atkRate = 1;
+    this.rollRate = 1; this.rollDist = 1;
     this.fatigueT = 0;
     this.setState('move');
   }
@@ -298,10 +299,13 @@ export class Player extends Actor {
       }
       case 'roll': {
         const R = this.c.roll;
-        const u = this.t / R.dur;
+        // animation/movement run on scaled time (slow when exhausted); i-frames stay real-time
+        const rt = this.t * this.rollRate, rdt = dt * this.rollRate;
+        const u = rt / R.dur;
+        const dist = R.dist * this.rollDist;
         const e = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 2.2);
-        const prev = e((this.t - dt) / (R.dur * 0.88)), now = e(this.t / (R.dur * 0.88));
-        this.move(this.rollDir.x * R.dist * (now - prev), this.rollDir.z * R.dist * (now - prev));
+        const prev = e((rt - rdt) / (R.dur * 0.88)), now = e(rt / (R.dur * 0.88));
+        this.move(this.rollDir.x * dist * (now - prev), this.rollDir.z * dist * (now - prev));
         pose = { ...locomotion(style, 0, 0, false, 0), ...P.roll(clamp(u * 1.08, 0, 1)) };
         rate = 30;
         if (u > 0.7 && this.buf && this.tryAct(dir, mag, true)) break;
@@ -309,9 +313,10 @@ export class Player extends Actor {
         break;
       }
       case 'backstep': {
-        const dur = 0.42, u = this.t / dur;
-        const prev = Math.sin(clamp((this.t - dt) / (dur * 0.7), 0, 1) * Math.PI / 2), now = Math.sin(clamp(u / 0.7, 0, 1) * Math.PI / 2);
-        this.move(this.rollDir.x * 2.6 * (now - prev), this.rollDir.z * 2.6 * (now - prev));
+        const rt = this.t * this.rollRate, rdt = dt * this.rollRate;
+        const dur = 0.42, u = rt / dur, dist = 2.6 * this.rollDist;
+        const prev = Math.sin(clamp((rt - rdt) / (dur * 0.7), 0, 1) * Math.PI / 2), now = Math.sin(clamp(u / 0.7, 0, 1) * Math.PI / 2);
+        this.move(this.rollDir.x * dist * (now - prev), this.rollDir.z * dist * (now - prev));
         pose = { ...locomotion(style, 0, 0, false, 0), ...P.backstep };
         rate = 24;
         if (u > 0.65 && this.buf && this.tryAct(dir, mag, true)) break;
@@ -492,8 +497,16 @@ export class Player extends Actor {
     this.vel.set(0, 0, 0);
   }
 
+  // after paying for a dodge, an empty bar makes it ~3x slower and much shorter
+  setDodgeRate() {
+    const low = Math.min(1, this.st / (this.maxSt * 0.3));
+    this.rollRate = 0.33 + 0.67 * low;
+    this.rollDist = 0.55 + 0.45 * low;
+  }
+
   startRoll(dir) {
     this.spend(this.c.roll.cost);
+    this.setDodgeRate();
     this.rollDir.copy(dir).setY(0).normalize();
     this.yaw = Math.atan2(this.rollDir.x, this.rollDir.z);
     this.setState('roll');
@@ -504,6 +517,7 @@ export class Player extends Actor {
 
   startBackstep() {
     this.spend(this.c.roll.cost * 0.6);
+    this.setDodgeRate();
     this.fwd(this.rollDir).multiplyScalar(-1);
     this.setState('backstep');
     this.game.audio.play('roll', 0.6);
