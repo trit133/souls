@@ -1,0 +1,10 @@
+{
+  "name": "Ashen Vigil",
+  "short_name": "Ashen Vigil",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0a09",
+  "theme_color": "#0b0a09",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

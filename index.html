@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Ashen Vigil" />
+  <meta name="theme-color" content="#0b0a09" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <title>Ashen Vigil</title>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="bars">
+      <div class="bar hp"><div class="chip"></div><div class="fill"></div></div>
+      <div class="bar st"><div class="fill"></div></div>
+      <div id="flasks"><span class="flask-icon"></span><span id="flask-count">3</span></div>
+    </div>
+    <div id="boss" class="hidden">
+      <div id="boss-name">Varek, the Ashen Warden</div>
+      <div class="bar bosshp"><div class="chip"></div><div class="fill"></div></div>
+    </div>
+    <div id="prompt" class="hidden"></div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div id="stick-zone"><div id="stick-base"><div id="stick-knob"></div></div></div>
+    <div id="buttons">
+      <button class="btn" id="b-attack" data-act="attack">R1</button>
+      <button class="btn" id="b-heavy" data-act="heavy">R2</button>
+      <button class="btn" id="b-roll" data-act="roll">ROLL</button>
+      <button class="btn" id="b-special" data-act="special">L1</button>
+      <button class="btn small" id="b-heal" data-act="heal">HEAL</button>
+      <button class="btn small" id="b-lock" data-act="lock">LOCK</button>
+    </div>
+    <button id="b-pause" data-act="pause">II</button>
+  </div>
+
+  <div id="menu" class="screen">
+    <h1>ASHEN VIGIL</h1>
+    <p class="sub">a souls-like tester</p>
+    <div id="chars">
+      <button class="char" data-char="knight">
+        <div class="cname">The Knight</div>
+        <div class="cdesc">Longsword &amp; kite shield. Sturdy, heavy hits.<br><b>L1: Block</b> (hold) — absorbs most damage, drains stamina.</div>
+        <div class="cstats">HP ███████ &nbsp; STA █████ &nbsp; SPD ████</div>
+      </button>
+      <button class="char" data-char="rogue">
+        <div class="cname">The Rogue</div>
+        <div class="cdesc">Twin daggers. Fast combos, long i-frames.<br><b>L1: Parry</b> — tight window; success opens a riposte.</div>
+        <div class="cstats">HP ████ &nbsp; STA ███████ &nbsp; SPD ███████</div>
+      </button>
+    </div>
+    <div id="controls-help">
+      <div><b>Keyboard:</b> WASD move · Shift sprint · Space/K roll · J/LMB attack · L/RMB heavy · Q/Ctrl block-parry · E heal · Tab/MMB lock-on · F interact · Esc pause</div>
+      <div><b>Touch:</b> left side = move stick · R1 light · R2 heavy · tap ROLL to dodge (no direction = backstep), hold it to sprint · tap the prompt to rest</div>
+    </div>
+  </div>
+
+  <div id="pause" class="screen hidden">
+    <h2>Paused</h2>
+    <button class="menu-btn" id="resume">Resume</button>
+    <button class="menu-btn" id="restart">Quit to Title</button>
+  </div>
+
+  <div id="death" class="screen hidden"><div class="banner red">YOU DIED</div></div>
+  <div id="victory" class="screen hidden">
+    <div class="banner gold">HEIR OF ASH FELLED</div>
+    <div id="victory-stats"></div>
+    <button class="menu-btn" id="again">Play Again</button>
+  </div>
+
+  <div id="rotate" class="screen"><div>Rotate your phone to landscape</div></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
