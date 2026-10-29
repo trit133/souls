@@ -497,10 +497,10 @@ export class Player extends Actor {
     this.vel.set(0, 0, 0);
   }
 
-  // after paying for a dodge, an empty bar makes it ~3x slower and much shorter
+  // after paying for a dodge, an empty bar makes it ~2.2x slower and much shorter
   setDodgeRate() {
     const low = Math.min(1, this.st / (this.maxSt * 0.3));
-    this.rollRate = 0.33 + 0.67 * low;
+    this.rollRate = 0.46 + 0.54 * low;
     this.rollDist = 0.55 + 0.45 * low;
   }
 
