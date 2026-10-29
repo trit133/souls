@@ -175,6 +175,7 @@ export class Enemy extends Actor {
     this.trail = new Trail(game.scene, type === 'brute' ? 0xffb080 : 0xffe0c0, 12, 0.4);
     this.hpShow = 0;
     this.lastMove = null;
+    this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
     this.setState(this.sitting ? 'sit' : 'idle');
   }
 
@@ -258,11 +259,16 @@ export class Enemy extends Actor {
         if (Math.hypot(this.pos.x - this.home.x, this.pos.z - this.home.z) > 30 && dist > 8) { this.setState('return'); break; }
         this.cd -= dt;
         const behind = Math.abs(angDiff(this.yaw, toP)) > 1.4;
-        if (this.cd <= 0 && (T.ranged || this.game.tokens < this.game.maxTokens || this.token)) {
+        if (this.urgent && (this.urgentT -= dt) <= 0) this.urgent = false;
+        // `urgent` = counterattack after being hit: ignores the 2-attacker limit and swings faster
+        if (this.cd <= 0 && (T.ranged || this.urgent || this.game.tokens < this.game.maxTokens || this.token)) {
           const m = this.chooseMove(dist, behind);
-          if (m && (T.ranged && m === 'shoot' ? true : (this.token || (this.game.tokens++, this.token = true)))) {
+          if (m) {
+            if (!(T.ranged && m === 'shoot') && !this.token && !this.urgent) { this.game.tokens++; this.token = true; }
+            this.atkSpeed = this.urgent ? 1.3 : 1;
+            this.urgent = false;
             this.lastMove = m;
-            this.trackMul = 1;
+            this.trackMul = this.atkSpeed;
             this.startAttack(T.moves[m]);
             break;
           }
@@ -297,7 +303,7 @@ export class Enemy extends Actor {
       }
       case 'attack': {
         const d = this.atk.def;
-        const going = this.runAttack(dt, [p], p.alive ? toP : null);
+        const going = this.runAttack(dt * (this.atkSpeed || 1), [p], p.alive ? toP : null);
         if (this.state !== 'attack') { pose = locomotion(T.style, 0, 0, false, 0); break; }
         pose = this.attackPose(locomotion(T.style, this.phase, 0, false, 0));
         rate = 22;
@@ -320,7 +326,7 @@ export class Enemy extends Actor {
       case 'hurt': {
         pose = { ...locomotion(T.style, 0, 0, false, 0), ...P.hurt };
         rate = 20;
-        if (this.t > (this.hurtDur || 0.4)) this.setState('chase');
+        if (this.t > (this.hurtDur || 0.4)) { this.setState('chase'); this.counter(); }
         break;
       }
       case 'parried': {
@@ -356,6 +362,10 @@ export class Enemy extends Actor {
       }
     }
     if (this.state !== 'attack') this.trailOn = false;
+    if (this.armorT > 0) {
+      this.armorT -= dt;
+      if (Math.random() < dt * 25) this.game.fx.ember({ x: this.pos.x, y: 0.3 + Math.random() * 1.6 * this.T.scale, z: this.pos.z }, 0.8, 1.2);
+    }
     if (this.state !== 'dead') this.regenPoise(dt);
     this.applyKnockback(dt);
     if (pose && this.state !== 'dead') this.syncRig(dt, pose, rate);
@@ -373,8 +383,22 @@ export class Enemy extends Actor {
     if (this.hp <= 0) { this.die(); return 'kill'; }
     this.poise -= info.poise || 0;
     this.poiseT = 2.0;
-    const armored = this.state === 'attack' && (this.atk.def.armor || this.T.superArmor);
+    const armored = this.armorT > 0 || (this.state === 'attack' && (this.atk.def.armor || this.T.superArmor));
+    const now = this.game.time;
+    this.flinches = this.flinches.filter((t) => now - t < 3);
+    if (this.poise <= 0 && (this.armorT > 0 || this.flinches.length >= 2)) {
+      // stun-lock breaker: third flinch in 3s -> shrug it off, armor up and counter fast
+      this.poise = this.maxPoise;
+      if (!(this.armorT > 0)) {
+        this.armorT = 1.6;
+        this.game.fx.burst({ x: this.pos.x, y: 1.2 * this.T.scale, z: this.pos.z }, 18, [1, 0.5, 0.15], 4, 0.5, 0.3);
+        this.game.audio.play('clang', 0.5);
+      }
+      if (this.state !== 'attack') { if (this.state === 'hurt') this.setState('chase'); this.counter(0); }
+      return 'hit';
+    }
     if (this.poise <= 0) {
+      this.flinches.push(now);
       this.poise = this.maxPoise;
       if (this.state === 'attack') { this.releaseToken(); if (this.tele) { this.tele.dead = true; this.tele = null; } }
       this.atk = null;
@@ -384,12 +408,20 @@ export class Enemy extends Actor {
       this.kb.copy(away).multiplyScalar(this.type === 'brute' ? 3 : 5);
       return 'stagger';
     }
+    if (this.state === 'chase' || this.state === 'recover') this.counter(0.15);
     if (!armored && this.state !== 'attack') {
       // small flinch without full stagger
       const away = new THREE.Vector3(this.pos.x - info.srcPos.x, 0, this.pos.z - info.srcPos.z).normalize();
       this.kb.copy(away).multiplyScalar(2);
     }
     return 'hit';
+  }
+
+  // queue a quick retaliation (used after flinching / being hit)
+  counter(delay = 0) {
+    this.urgent = true; this.urgentT = 2;
+    this.cd = Math.min(this.cd, delay);
+    if (this.state === 'recover') this.setState('chase');
   }
 
   onParried() {
@@ -418,6 +450,7 @@ export class Enemy extends Actor {
     this.kb.set(0, 0, 0); this.atk = null; this.token = false; this.cd = 0.5; this.hpShow = 0;
     this.rig.root.visible = true; this.rig.root.position.y = 0;
     this.alertDelay = undefined; this.patrolIdx = false;
+    this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
     this.setState(this.sitting ? 'sit' : 'idle');
   }
 }

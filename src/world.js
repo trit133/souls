@@ -56,10 +56,7 @@ export class World {
     if (restricted) return false; // camp enemies never leave the camp side of the fog
     if (!this.arenaLocked && x >= FOG_RECT.x0 + r && x <= FOG_RECT.x1 - r && z >= FOG_RECT.z0 + r && z <= FOG_RECT.z1 - r) return true;
     const dx = x - ARENA.x, dz = z - ARENA.z;
-    if (Math.hypot(dx, dz) <= ARENA.r - r) {
-      if (this.arenaLocked) return z < FOG_Z - 1.5 - r || Math.hypot(dx, dz) <= ARENA.r - 2 - r;
-      return true;
-    }
+    if (Math.hypot(dx, dz) <= ARENA.r - r) return true;
     return false;
   }
 

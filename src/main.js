@@ -409,7 +409,13 @@ class Game {
         this.ui.prompt(this.input.lastDevice === 'touch' ? (near.lit ? 'Tap to rest' : 'Tap to light bonfire') : (near.lit ? 'F: Rest at bonfire' : 'F: Light bonfire'));
         if (presses.has('interact')) this.rest(near);
       } else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
-      if (!this.bossActive && !this.bossDefeated && p.alive && p.pos.z < FOG_Z - 2.2) this.startBossFight();
+      // trigger only once the player is fully inside the arena circle, so locking the
+      // fog never leaves them standing on ground that just stopped being walkable
+      if (!this.bossActive && !this.bossDefeated && p.alive && Math.hypot(p.pos.x - ARENA.x, p.pos.z - ARENA.z) < ARENA.r - 2) this.startBossFight();
+      // safety net: never let the player end up on non-walkable ground
+      if (this.world.walkable(p.pos.x, p.pos.z, p.radius)) { (this.lastGood ||= p.pos.clone()).copy(p.pos); }
+      else if (this.lastGood && this.world.walkable(this.lastGood.x, this.lastGood.z, p.radius)) p.pos.copy(this.lastGood);
+      else if (this.bossActive) { p.pos.x += (ARENA.x - p.pos.x) * 0.2; p.pos.z += (ARENA.z - p.pos.z) * 0.2; }
 
       this.ui.update(rdt, p);
       if (this.bossActive) this.ui.boss.set(this.boss.hp / this.boss.maxHp, rdt);

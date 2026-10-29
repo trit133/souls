@@ -31,7 +31,7 @@ await page.evaluate(() => {
     },
     toward(p, x, z) { const dx = x - p.pos.x, dz = z - p.pos.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, y: -dz / d }; },
     enterArena() {
-      const p = game.player; p.pos.set(0, 0, -97); game.step(1 / 60, 1 / 60);
+      const p = game.player; p.pos.set(0, 0, -100); game.step(1 / 60, 1 / 60);
       H.run(2.6); // boss rises
     },
   };
@@ -146,7 +146,7 @@ for (const kind of ['knight', 'rogue']) {
       if (p.hp < p.maxHp * 0.4 && p.flasks > 0 && d > 5 && p.state === 'move') { H.press('heal'); heals++; return; }
       if (b.critable() && p.state === 'move') { H.stick = H.toward(p, b.pos.x, b.pos.z); H.press('attack'); return; }
       const opening = b.state !== 'attack' || (a && a.t > Math.max(...(a.def.hits || [{ t1: 0 }]).map((h) => h.t1)) + 0.15);
-      if (d < 1.6 && opening && p.st > 25 && p.state === 'move') { H.stick = { x: 0, y: 0 }; H.press('attack'); return; }
+      if (d < 1.6 && opening && p.st > 25 && p.fatigue < 0.5 && p.state === 'move') { H.stick = { x: 0, y: 0 }; H.press('attack'); return; }
       if (!opening && d < 6) { H.stick = { x: -H.toward(p, b.pos.x, b.pos.z).x, y: -H.toward(p, b.pos.x, b.pos.z).y }; return; }
       H.stick = d > 1.2 ? H.toward(p, b.pos.x, b.pos.z) : { x: 0, y: 0 };
     });
@@ -177,7 +177,7 @@ for (const kind of ['knight', 'rogue']) {
       if (p.hp < p.maxHp * 0.45 && p.flasks > 0 && p.state === 'move') { if (bd > 4.5) { H.press('heal'); return; } if (tg) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } }
       if (tg && bd < 14) {
         if (bd > 1.8) { H.stick = H.toward(p, tg.pos.x, tg.pos.z); return; }
-        H.stick = { x: 0, y: 0 }; if (p.state === 'move' && p.st > 20) H.press('attack'); return;
+        if (p.fatigue > 0.5) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } H.stick = { x: 0, y: 0 }; if (p.state === 'move' && p.st > 20) H.press('attack'); return;
       }
       const [x, z] = path[wi];
       if (Math.hypot(p.pos.x - x, p.pos.z - z) < 1.5) { wi++; if (wi >= path.length) return 'stop'; }

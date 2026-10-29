@@ -40,6 +40,7 @@ export class UI {
   update(dt, p) {
     this.hp.set(p.hp / p.maxHp, dt);
     this.st.set(p.st / p.maxSt, dt);
+    this.st.fill.parentElement.classList.toggle('tired', p.fatigue > 0.45);
     this.flaskEl.textContent = p.flasks;
   }
 

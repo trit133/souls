@@ -227,6 +227,7 @@ export class Boss extends Actor {
             this.lastMove = m;
             if (m === 'leap') this.leapCd = 7;
             if (m === 'ember') this.emberCd = 9;
+            this.counterAtk = this.counter; this.counter = false;
             this.startAttack(BOSS_MOVES[m]);
             break;
           }
@@ -250,7 +251,7 @@ export class Boss extends Actor {
       }
       case 'attack': {
         const d = this.atk.def;
-        const adt = dt * this.atkSpeed;
+        const adt = dt * this.atkSpeed * (this.counterAtk ? 1.15 : 1);
         const going = this.runAttack(adt, [p], p.alive ? toP : null);
         if (this.state !== 'attack') { pose = loco(0); break; }
         const t = this.atk.t;
@@ -337,6 +338,8 @@ export class Boss extends Actor {
       return 'kill';
     }
     if (this.state === 'broken' || this.state === 'parried' || this.state === 'riposted') return 'hit';
+    // being hit makes him retaliate sooner and a bit faster
+    if (this.state === 'neutral') { this.gap = Math.min(this.gap, 0.3); this.counter = true; }
     this.poise -= info.poise || 0;
     this.poiseT = 4;
     if (this.poise <= 0) {

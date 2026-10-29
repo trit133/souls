@@ -183,6 +183,8 @@ export class Player extends Actor {
     if (kind === 'rogue') this.trailL = new Trail(game.scene, c.trail);
     this.healDone = false;
     this.stepT = 0;
+    this.fatigue = 0; // 0..1, builds with consecutive attacks
+    this.fatigueT = 0;
     this.setState('move');
   }
 
@@ -231,6 +233,8 @@ export class Player extends Actor {
     if (this.lock && (!this.lock.alive || this.distTo(this.lock) > 22)) this.lock = null;
 
     this.stDelay -= dt;
+    this.fatigueT -= dt;
+    if (this.fatigueT <= 0) this.fatigue = Math.max(0, this.fatigue - dt * 0.5);
     this.blockHitT -= dt;
     let pose = null, rate = 16;
     const style = this.c.style;
@@ -245,6 +249,7 @@ export class Player extends Actor {
         this.sprinting = wantSprint;
         let sp = (this.sprinting ? this.c.sprint : this.c.walk) * mag;
         if (this.blocking) sp *= 0.5;
+        sp *= 1 - 0.35 * this.fatigue;
         if (this.sprinting) { this.st -= 14 * dt; this.stDelay = 0.4; }
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.01 ? sp : 0);
         this.vel.lerp(tv, 1 - Math.exp(-14 * dt));
@@ -271,7 +276,8 @@ export class Player extends Actor {
           if (this.lock) this.turnToward(this.yawTo(this.lock.pos), 20, dt);
           else if (mag > 0.2) this.turnToward(Math.atan2(dir.x, dir.z), 9, dt);
         }
-        const going = this.runAttack(dt, this.game.enemiesAll());
+        // fatigue makes each swing in a long string slower (down to ~70% speed)
+        const going = this.runAttack(dt * (1 - 0.3 * this.fatigue), this.game.enemiesAll());
         if (this.state !== 'attack' || !this.atk) { pose = this.basePose(); break; }
         const t = this.atk.t;
         pose = this.attackPose(this.basePose());
@@ -402,6 +408,7 @@ export class Player extends Actor {
   basePose() { return locomotion(this.c.style, this.phase, 0, false, this.game.time); }
 
   regen(dt, rate) {
+    rate *= 1 - 0.6 * this.fatigue;
     if (this.stDelay <= 0) this.st = Math.min(this.maxSt, this.st + rate * dt);
   }
 
@@ -464,7 +471,11 @@ export class Player extends Actor {
 
   doAttack(name, dir, mag) {
     const def = this.c.attacks[name];
-    this.spend(def.cost);
+    // repeated attacks cost more and push stamina regen further out
+    this.spend(def.cost * (1 + 0.9 * this.fatigue));
+    this.stDelay = 0.6 + 0.7 * this.fatigue;
+    this.fatigue = Math.min(1, this.fatigue + (name === 'heavy' ? 0.3 : 0.2));
+    this.fatigueT = 1.0;
     // initial facing: lock target > stick > aim-assist toward a nearby enemy
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else {
@@ -549,6 +560,7 @@ export class Player extends Actor {
     this.hp = this.maxHp; this.st = this.maxSt; this.flasks = this.maxFlasks;
     this.pos.set(x, 0, z); this.yaw = Math.PI; this.kb.set(0, 0, 0); this.vel.set(0, 0, 0);
     this.lock = null; this.buf = null; this.atk = null;
+    this.fatigue = 0;
     this.setState('move');
   }
 }
