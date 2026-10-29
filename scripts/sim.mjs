@@ -177,7 +177,7 @@ for (const kind of ['knight', 'rogue']) {
       if (p.hp < p.maxHp * 0.45 && p.flasks > 0 && p.state === 'move') { if (bd > 4.5) { H.press('heal'); return; } if (tg) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } }
       if (tg && bd < 14) {
         if (bd > 1.8) { H.stick = H.toward(p, tg.pos.x, tg.pos.z); return; }
-        if (p.fatigue > 0.5) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } H.stick = { x: 0, y: 0 }; if (p.state === 'move' && p.st > 20) H.press('attack'); return;
+        if (p.fatigue > 0.5 || p.st < p.maxSt * 0.4) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } H.stick = { x: 0, y: 0 }; if (p.state === 'move' && p.st > 20) H.press('attack'); return;
       }
       const [x, z] = path[wi];
       if (Math.hypot(p.pos.x - x, p.pos.z - z) < 1.5) { wi++; if (wi >= path.length) return 'stop'; }

@@ -127,13 +127,13 @@ const ROGUE_ATTACKS = {
 
 const CHARS = {
   knight: {
-    hp: 150, st: 100, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
+    hp: 150, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
     roll: { dur: 0.6, dist: 4.6, iframes: [0.03, 0.4], cost: 22 },
     attacks: KNIGHT_ATTACKS, light: 'k1', critDmg: 150, trail: 0xdfe8ff,
     model: { cloth: 0x2c3e66, armor: 0x8d939c, accent: 0x2d4a7a, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08 },
   },
   rogue: {
-    hp: 105, st: 115, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',
+    hp: 105, st: 85, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',
     roll: { dur: 0.5, dist: 4.9, iframes: [0.02, 0.4], cost: 16 },
     attacks: ROGUE_ATTACKS, light: 'r1', critDmg: 170, trail: 0xffd0a0,
     model: { cloth: 0x4e3e30, armor: 0x6a5440, accent: 0x9a2a22, skin: 0xc49a7a, head: 'hood', weapon: 'daggers', bulk: 0.95 },
@@ -184,6 +184,7 @@ export class Player extends Actor {
     this.healDone = false;
     this.stepT = 0;
     this.fatigue = 0; // 0..1, builds with consecutive attacks
+    this.atkRate = 1;
     this.fatigueT = 0;
     this.setState('move');
   }
@@ -277,7 +278,7 @@ export class Player extends Actor {
           else if (mag > 0.2) this.turnToward(Math.atan2(dir.x, dir.z), 9, dt);
         }
         // fatigue makes each swing in a long string slower (down to ~70% speed)
-        const going = this.runAttack(dt * (1 - 0.3 * this.fatigue), this.game.enemiesAll());
+        const going = this.runAttack(dt * this.atkRate, this.game.enemiesAll());
         if (this.state !== 'attack' || !this.atk) { pose = this.basePose(); break; }
         const t = this.atk.t;
         pose = this.attackPose(this.basePose());
@@ -476,6 +477,10 @@ export class Player extends Actor {
     this.stDelay = 0.6 + 0.7 * this.fatigue;
     this.fatigue = Math.min(1, this.fatigue + (name === 'heavy' ? 0.3 : 0.2));
     this.fatigueT = 1.0;
+    // swing speed is locked in when the attack starts: fatigue slows it a bit, and
+    // swinging with an empty bar is very slow (down to ~0.3x at zero stamina)
+    const low = Math.min(1, this.st / (this.maxSt * 0.3));
+    this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low);
     // initial facing: lock target > stick > aim-assist toward a nearby enemy
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else {

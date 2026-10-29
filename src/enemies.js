@@ -133,12 +133,12 @@ const BRUTE_MOVES = {
 
 export const TYPES = {
   grunt: {
-    hp: 72, poise: 15, scale: 1, radius: 0.45, run: 3.7, walk: 1.7, aggro: 11, prefer: 1.7, style: 'sword', turn: 7,
+    hp: 140, poise: 15, scale: 1, radius: 0.45, run: 3.7, walk: 1.7, aggro: 11, prefer: 1.7, style: 'sword', turn: 7,
     cd: [0.6, 1.6], moves: GRUNT_MOVES, weights: { slash: 3, double: 2, leap: 1.5 },
     model: { cloth: 0x4a3c2c, armor: 0x5a5046, skin: 0x8a8576, head: 'bare', weapon: 'rusty', eyes: 0xff7a2a },
   },
   spear: {
-    hp: 62, poise: 15, scale: 1, radius: 0.45, run: 3.5, walk: 1.8, aggro: 11, prefer: 2.9, style: 'spear', turn: 6,
+    hp: 120, poise: 15, scale: 1, radius: 0.45, run: 3.5, walk: 1.8, aggro: 11, prefer: 2.9, style: 'spear', turn: 6,
     cd: [0.8, 1.8], moves: SPEAR_MOVES, weights: { thrust: 3, double: 2, sweep: 2 }, backoff: 1.7,
     model: { cloth: 0x3c3a30, armor: 0x6a6052, skin: 0x8a8576, head: 'cap', weapon: 'spear', eyes: 0xff7a2a },
   },
