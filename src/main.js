@@ -12,7 +12,7 @@ import { UI } from './ui.js';
 import { angDiff } from './actor.js';
 
 const $ = (id) => document.getElementById(id);
-const PARRY_EARLY = 0.5, PARRY_LATE = 0; // seconds before impact
+const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
 
 
 class Game {
