@@ -13,7 +13,9 @@ A pseudo-3D souls-like built with Three.js + Vite. Each run is assembled from mo
   - The Sunken Mire: bog pools that slow you.
   - The Warden's Gate: brute courtyard plus archers past the gate.
 - The layout is rolled per new game and stays fixed for that run. Until the bonfire is lit, death sends you back to the start.
-- Module code lives in `src/modules.js`. Add a module by adding an entry to `MODULES`. It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
+- Module code lives in `src/modules.js`. Add a module by adding an entry to `MODULES`.
+
+It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
 ## Run
 
