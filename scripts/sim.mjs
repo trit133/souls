@@ -31,7 +31,7 @@ await page.evaluate(() => {
     },
     toward(p, x, z) { const dx = x - p.pos.x, dz = z - p.pos.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, y: -dz / d }; },
     enterArena() {
-      const enc = game.encounters.find((e) => e.kind === (H.encKind || 'boss'));
+      const enc = game.encounters.find((e) => (H.encKind === 'mini' ? e.bossId === 'hask' : e.kind === 'boss'));
       game.boss = enc.boss;
       const p = game.player; for (const e of game.enemies) e.die();
       p.pos.set(enc.arena.x, 0, enc.arena.z + enc.arena.r - 3); game.step(1 / 60, 1 / 60);
@@ -163,9 +163,9 @@ for (const [kind, enc] of [['knight', 'mini'], ['rogue', 'mini'], ['knight', 'bo
 for (const [kind, layout] of [['knight', ['camp', 'ruins']], ['rogue', ['camp', 'ruins']], ['knight', ['village', 'bog']], ['rogue', ['crypt', 'gate']], ['knight', ['bridge', 'crypt']]]) {
   log(`G run ${layout.join('+')} (${kind}):`, JSON.stringify(await R(([kind, layout]) => {
     H.setup(kind);
-    game.buildRun([...layout, 'mini', 'ruins', 'camp', 'bog', 'boss']);
+    game.buildRun([...layout, 'mini:hask', 'ruins', 'camp', 'mini:vael', 'bog', 'gate', 'mini:gorrath', 'village', 'boss']);
     const p = game.player; p.respawn(0, -2.5);
-    const w = game.world, A = game.encounters.find((e) => e.kind === 'mini').arena;
+    const w = game.world, A = game.encounters.find((e) => e.bossId === 'hask').arena;
     const goal = { x: 0, z: A.z + A.r + 3 };
     const path = () => {
       const st = 0.5, k = (x, z) => x + ',' + z, sx = Math.round(p.pos.x / st) * st, sz = Math.round(p.pos.z / st) * st;

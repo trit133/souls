@@ -186,6 +186,10 @@ export class Player extends Actor {
     this.fatigue = 0; // 0..1, builds with consecutive attacks
     this.atkRate = 1;
     this.rollRate = 1; this.rollDist = 1;
+    // run power-ups (see boons.js)
+    this.dmgMul = 1; this.rollMul = 1; this.aspdMul = 1;
+    this.statusLv = {};
+    this.boonList = [];
     this.fatigueT = 0;
     this.setState('move');
   }
@@ -302,7 +306,7 @@ export class Player extends Actor {
         // animation/movement run on scaled time (slow when exhausted); i-frames stay real-time
         const rt = this.t * this.rollRate, rdt = dt * this.rollRate;
         const u = rt / R.dur;
-        const dist = R.dist * this.rollDist;
+        const dist = R.dist * this.rollDist * this.rollMul;
         const e = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 2.2);
         const prev = e((rt - rdt) / (R.dur * 0.88)), now = e(rt / (R.dur * 0.88));
         this.move(this.rollDir.x * dist * (now - prev), this.rollDir.z * dist * (now - prev));
@@ -314,7 +318,7 @@ export class Player extends Actor {
       }
       case 'backstep': {
         const rt = this.t * this.rollRate, rdt = dt * this.rollRate;
-        const dur = 0.42, u = rt / dur, dist = 2.6 * this.rollDist;
+        const dur = 0.42, u = rt / dur, dist = 2.6 * this.rollDist * this.rollMul;
         const prev = Math.sin(clamp((rt - rdt) / (dur * 0.7), 0, 1) * Math.PI / 2), now = Math.sin(clamp(u / 0.7, 0, 1) * Math.PI / 2);
         this.move(this.rollDir.x * dist * (now - prev), this.rollDir.z * dist * (now - prev));
         pose = { ...locomotion(style, 0, 0, false, 0), ...P.backstep };
@@ -497,7 +501,7 @@ export class Player extends Actor {
     // swing speed is locked in when the attack starts: fatigue slows it a bit, and
     // swinging with an empty bar is very slow (down to ~0.3x at zero stamina)
     const low = Math.min(1, this.st / (this.maxSt * 0.3));
-    this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low);
+    this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low) * this.aspdMul;
     // initial facing: lock target > stick > aim-assist toward a nearby enemy
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else {

@@ -64,6 +64,41 @@ export class UI {
     this.promptEl.classList.remove('hidden');
   }
 
+  // run progress + acquired power-up tags
+  setProgress(i, n) { document.getElementById('progress').textContent = `AREA ${i}/${n}`; }
+  setBoons(list) {
+    document.getElementById('boon-tags').innerHTML = list.map((b) => `<span class="boon-tag" style="color:${b.color}">${b.tag}${b.n > 1 ? ' ×' + b.n : ''}</span>`).join('');
+  }
+  bossStatus(bars) {
+    const el = document.getElementById('boss-status');
+    el.innerHTML = bars.map((b) => `<div class="smeter"><div style="background:${b.color};transform:scaleX(${b.v})"></div></div>`).join('');
+  }
+  popup(x, y, text, color) {
+    const d = document.createElement('div');
+    d.className = 'popup'; d.textContent = text; d.style.color = color;
+    d.style.left = x + 'px'; d.style.top = y + 'px';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1200);
+  }
+
+  // reward picker: cards = [{ key, name, desc, rest? }]; resolves with the chosen key
+  showReward(cards, onPick) {
+    const wrap = document.getElementById('reward-cards');
+    wrap.innerHTML = '';
+    let done = false;
+    const pick = (k) => { if (done) return; done = true; removeEventListener('keydown', onKey); this.show('reward', false); onPick(k); };
+    cards.forEach((c, i) => {
+      const b = document.createElement('button');
+      b.className = 'rcard' + (c.rest ? ' rest' : '');
+      b.innerHTML = `<div class="rname" style="color:${c.color || ''}">${c.name}</div><div class="rdesc">${c.desc}</div><div class="rkey">[${i + 1}]</div>`;
+      b.addEventListener('click', () => pick(c.key));
+      wrap.appendChild(b);
+    });
+    const onKey = (e) => { const n = parseInt(e.key, 10); if (n >= 1 && n <= cards.length) pick(cards[n - 1].key); };
+    addEventListener('keydown', onKey);
+    this.show('reward');
+  }
+
   // floating health bars above damaged enemies
   enemyBars(list) {
     while (this.bars.length < list.length) {
@@ -71,8 +106,10 @@ export class UI {
       d.style.cssText = 'position:absolute;width:64px;height:5px;margin-left:-32px;background:rgba(0,0,0,.6);border:1px solid #4a4030;';
       const f = document.createElement('div');
       f.style.cssText = 'height:100%;background:#a8302a;transform-origin:left;';
-      d.appendChild(f); this.barLayer.appendChild(d);
-      this.bars.push({ d, f });
+      const st = document.createElement('div');
+      st.style.cssText = 'position:absolute;left:0;right:0;top:6px;';
+      d.appendChild(f); d.appendChild(st); this.barLayer.appendChild(d);
+      this.bars.push({ d, f, s: st });
     }
     this.bars.forEach((b, i) => {
       const e = list[i];
@@ -80,6 +117,8 @@ export class UI {
       b.d.style.display = 'block';
       b.d.style.transform = `translate(${e.x}px, ${e.y}px)`;
       b.f.style.transform = `scaleX(${e.v})`;
+      const sm = (e.status || []).map((s) => `<div style="height:3px;margin-top:2px;background:rgba(0,0,0,.6)"><div style="height:100%;background:${s.color};width:${(s.v * 100).toFixed(0)}%"></div></div>`).join('');
+      if (b.sm !== sm) { b.sm = sm; b.s.innerHTML = sm; }
     });
   }
 }

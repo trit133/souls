@@ -3,6 +3,7 @@ import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
+import { StatusState } from './status.js';
 
 let UID = 1;
 
@@ -161,6 +162,7 @@ export class Enemy extends Actor {
     super(game, rig, { x, z, yaw, hp: T.hp, radius: T.radius, poise: T.poise });
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
+    this.status = new StatusState(this, type === 'brute' ? 180 : 100);
     this.type = type;
     this.T = T;
     this.home = { x, z, yaw };
@@ -183,7 +185,7 @@ export class Enemy extends Actor {
   get target() { return this.game.player; }
 
   critable() { return this.state === 'parried'; }
-  attackRate() { return this.atkSpeed || 1; }
+  attackRate() { return (this.atkSpeed || 1) * this.status.slow(); }
 
   alert() {
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;
@@ -218,6 +220,7 @@ export class Enemy extends Actor {
 
   update(dt) {
     this.t += dt;
+    this.status.update(dt, this.game);
     const p = this.game.player;
     const dist = this.distTo(p);
     const toP = this.yawTo(p.pos);
@@ -296,6 +299,7 @@ export class Enemy extends Actor {
           if (od < 2.2 && od > 0.01) { mx += ox / od * (2.2 - od) * 0.8; mz += oz / od * (2.2 - od) * 0.8; }
         }
         const ml = Math.hypot(mx, mz);
+        sp *= this.status.slow();
         if (ml > 0.01) this.move(mx / ml * sp * dt, mz / ml * sp * dt);
         this.speed += (sp - this.speed) * Math.min(1, dt * 8);
         this.turnToward(toP, T.turn, dt);
@@ -305,7 +309,7 @@ export class Enemy extends Actor {
       }
       case 'attack': {
         const d = this.atk.def;
-        const going = this.runAttack(dt * (this.atkSpeed || 1), [p], p.alive ? toP : null);
+        const going = this.runAttack(dt * this.attackRate(), [p], p.alive ? toP : null);
         if (this.state !== 'attack') { pose = locomotion(T.style, 0, 0, false, 0); break; }
         pose = this.attackPose(locomotion(T.style, this.phase, 0, false, 0));
         rate = 22;
@@ -453,6 +457,7 @@ export class Enemy extends Actor {
     this.rig.root.visible = true; this.rig.root.position.y = 0;
     this.alertDelay = undefined; this.patrolIdx = false;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
+    this.status.reset();
     this.setState(this.sitting ? 'sit' : 'idle');
   }
 }

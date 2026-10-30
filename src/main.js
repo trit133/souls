@@ -10,6 +10,8 @@ import { Enemy } from './enemies.js';
 import { Boss, BOSS_MOVES, BOSSES } from './boss.js';
 import { UI } from './ui.js';
 import { angDiff } from './actor.js';
+import { BOONS, rollBoons } from './boons.js';
+import { STATUS } from './status.js';
 
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
@@ -85,7 +87,7 @@ class Game {
     this.enemies = this.world.spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod }));
     this.encounters = this.world.encounters;
     this.bosses = this.encounters.map((enc) => {
-      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES.hask : BOSSES.varek, enc.arena, enc.mod);
+      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod);
       enc.boss.enc = enc;
       return enc.boss;
     });
@@ -114,6 +116,8 @@ class Game {
     $('resume').addEventListener('click', () => this.setPaused(false));
     $('restart').addEventListener('click', () => this.toTitle());
     $('again').addEventListener('click', () => this.toTitle());
+    $('retry').addEventListener('click', () => { this.audio.unlock(); this.start(this.kind); });
+    $('go-title').addEventListener('click', () => this.toTitle());
     const pr = $('prompt');
     const tapPrompt = (e) => { e.preventDefault(); this.input.pressed.add('interact'); };
     pr.addEventListener('touchstart', tapPrompt, { passive: false });
@@ -129,6 +133,9 @@ class Game {
     this.buildRun();
     this.respawnAt = { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z);
+    this.ui.setBoons([]);
+    this.ui.setProgress(1, this.world.mods.length);
+    this.ui.show('gameover', false); this.ui.show('reward', false);
     this.lastGood = null;
     this.seenMod = 0;
     this.deaths = 0;
@@ -148,6 +155,7 @@ class Game {
     this.mode = 'title';
     this.audio.stopMusic();
     this.ui.show('pause', false); this.ui.show('victory', false); this.ui.show('death', false);
+    this.ui.show('gameover', false); this.ui.show('reward', false);
     this.ui.show('hud', false); this.ui.show('touch', false); this.ui.show('menu');
     this.ui.prompt(null);
     this.ui.enemyBars([]);
@@ -193,38 +201,56 @@ class Game {
     setTimeout(() => enc.active && this.audio.play('roar', enc.kind === 'mini' ? 0.5 : 0.8), 1200);
   }
 
-  rest(b) {
-    const p = this.player;
-    p.setState('rest');
-    p.hp = p.maxHp; p.st = p.maxSt; p.flasks = p.maxFlasks;
-    p.yaw = Math.atan2(b.x - p.pos.x, b.z - p.pos.z);
-    p.lock = null;
-    if (!b.lit) { b.lit = true; this.ui.toast('BONFIRE LIT', 2.5); this.audio.play('bonfire'); }
-    else this.audio.play('heal');
-    this.lastGood = null;
-    this.respawnAt = b;
-    for (const e of this.enemies) e.reset();
-    this.tokens = 0;
-  }
-
+  // No checkpoints: death ends the run.
   onPlayerDeath() {
     this.deaths++;
     this.audio.play('death');
     this.audio.stopMusic(2);
     this.ui.show('death');
+    const s = Math.round(this.time - this.startTime);
+    const felled = this.encounters.filter((e) => e.defeated).map((e) => e.boss.name.split(',')[0]);
     setTimeout(() => {
+      if (this.mode !== 'play') return;
       this.ui.show('death', false);
-      const b = this.respawnAt;
-      this.player.respawn(b.x, b.z - 1.6);
-      for (const e of this.enemies) e.reset();
-      this.tokens = 0;
-      this.resetEncounters();
-      this.lastGood = null;
-      this.fx.clear();
-      this.camPos.set(b.x, 14, b.z + 12);
-      this.player.setState('rest');
-      this.player.t = 0.6;
-    }, 3800);
+      this.mode = 'over';
+      $('gameover-stats').innerHTML = [
+        `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
+        `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
+        `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
+        `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
+      ].join('<br>');
+      this.ui.show('hud', false); this.ui.show('touch', false);
+      this.ui.show('gameover');
+    }, 3400);
+  }
+
+  // After a mini boss: pick one of three power-ups, or rest (full HP + flasks).
+  offerReward() {
+    const p = this.player;
+    this.mode = 'reward';
+    this.input.reset();
+    const cards = rollBoons().map((k) => ({ key: k, name: BOONS[k].name, color: BOONS[k].color, desc: BOONS[k].desc(p) }));
+    cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all health (${Math.round(p.hp)}/${p.maxHp}) and refill your flasks (${p.flasks}/${p.maxFlasks}).` });
+    this.ui.showReward(cards, (k) => this.claimReward(k));
+  }
+
+  claimReward(k) {
+    const p = this.player;
+    if (k === 'rest') {
+      p.hp = p.maxHp; p.st = p.maxSt; p.flasks = p.maxFlasks;
+      this.audio.play('bonfire');
+      this.fx.burst({ x: p.pos.x, y: 1, z: p.pos.z }, 30, [1, 0.75, 0.35], 3, 0.9, 0.22);
+    } else {
+      BOONS[k].apply(p);
+      const e = p.boonList.find((x) => x.key === k);
+      if (e) e.n++; else p.boonList.push({ key: k, n: 1 });
+      this.ui.setMaxHp(p.maxHp, p.maxSt);
+      this.ui.setBoons(p.boonList.map((x) => ({ tag: BOONS[x.key].tag, color: BOONS[x.key].color, n: x.n })));
+      this.audio.play('heal');
+      this.fx.burst({ x: p.pos.x, y: 1, z: p.pos.z }, 30, [1, 0.9, 0.6], 3, 0.9, 0.22);
+    }
+    this.mode = 'play';
+    this.last = performance.now();
   }
 
   onBossDeath(boss) {
@@ -235,20 +261,22 @@ class Game {
     this.fx.addShake(0.8);
     this.slow = 1.6;
     if (enc.kind === 'mini') {
-      // the way on (and the bonfire behind it) opens right away; fanfare follows
+      // the way on opens right away; fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
       this.world.setGate(enc.gateOut, true, false);
       setTimeout(() => {
+        if (this.mode !== 'play' || !this.player.alive) return;
         this.audio.play('victory');
-        this.ui.toast('GREAT FOE FELLED', 3);
+        this.ui.toast('GREAT FOE FELLED', 2);
         this.ui.show('boss', false);
-      }, 2200);
+        setTimeout(() => this.mode === 'play' && this.player.alive && this.offerReward(), 1300);
+      }, 2000);
       return;
     }
     setTimeout(() => {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
-      $('victory-stats').textContent = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  Deaths ${this.deaths}  ·  ${this.kind === 'knight' ? 'Knight' : 'Rogue'}`;
+      $('victory-stats').innerHTML = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${this.kind === 'knight' ? 'Knight' : 'Rogue'}<br>Boons: ${this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') || 'none'}`;
       this.ui.show('victory');
       this.ui.show('boss', false);
       this.world.setGate(enc.gateIn, true, false);
@@ -287,9 +315,11 @@ class Game {
       if (h.knockback && (r === 'hit' || r === 'block')) tg.kb.copy(dir).multiplyScalar(h.knockback);
       return;
     }
+    if (att === this.player) info.dmg *= att.dmgMul;
     const r = tg.receive(info);
     if (r === 'none') return;
     const heavy = def.heavyHit;
+    if (att === this.player && tg.alive) this.applyStatus(att, tg, heavy ? 1.5 : 1);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
     this.fx.blood(hp, dir, heavy ? 16 : 9);
     this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]);
@@ -297,7 +327,31 @@ class Game {
     this.fx.addShake(def.onHitShake || (r === 'kill' ? 0.35 : 0.15));
   }
 
+  // status buildup from infusion boons (knight swings slower, so builds more per hit)
+  applyStatus(p, tg, mul = 1) {
+    if (!tg.status) return;
+    const base = p.kind === 'knight' ? 34 : 26;
+    for (const [k, lv] of Object.entries(p.statusLv)) tg.status.add(k, base * (1 + 0.5 * (lv - 1)) * mul, this);
+  }
+
+  // damage dealt by status effects (bleed/frost bursts, poison/fire ticks)
+  statusDamage(a, dmg, dot = false) {
+    if (!a.alive) return;
+    a.hp -= dmg;
+    if (!dot) a.rig.flash(1, 0.4, 0.4);
+    if (a.hpShow !== undefined) a.hpShow = 4;
+    if (a.hp <= 0) { a.hp = 0; if (a.state !== 'riposted') a.die(); }
+  }
+
+  statusPopup(a, text, color) {
+    const v = new THREE.Vector3(a.pos.x, 2.6 * a.rig.root.scale.y + a.y, a.pos.z).project(this.camera);
+    if (v.z > 1) return;
+    this.ui.popup((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight, text, color);
+  }
+
   riposteHit(p, tg, dmg) {
+    dmg *= p.dmgMul;
+    if (tg.alive) this.applyStatus(p, tg, 2);
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
     tg.hp -= dmg;
     tg.rig.flash(1, 0.3, 0.2);
@@ -391,6 +445,19 @@ class Game {
     this.audio.play('fire');
   }
 
+  // Gorrath's thrown boulder: arcs down toward where the player stands
+  spawnRock(b) {
+    const p = this.player;
+    const f = b.fwd();
+    const from = new THREE.Vector3(b.pos.x + f.x * 1.2, 4.2, b.pos.z + f.z * 1.2);
+    const to = new THREE.Vector3(p.pos.x, 0.6, p.pos.z);
+    const dir = to.clone().sub(from).normalize();
+    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
+    mesh.position.copy(from); this.scene.add(mesh);
+    this.projectiles.push({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26, knock: 'heavy' });
+    this.audio.play('heavySwing', 1);
+  }
+
   spawnFireRing(x, z, maxR, dur, dmg) {
     this.rings.push({ x, z, maxR, dur, dmg, t: 0, hit: false });
     this.audio.play('fire');
@@ -406,10 +473,12 @@ class Game {
         for (let i = 0; i < 3; i++) this.fx.flame({ x: q.pos.x, y: 0.1, z: q.pos.z }, 1.1);
         if (Math.random() < dt * 20) this.fx.scorch(q.pos.x, q.pos.z, 0.7);
       }
-      let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5);
+      if (q.kind === 'rock') { q.mesh.rotation.x += dt * 8; q.mesh.rotation.z += dt * 5; }
+      let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < 0.25;
+      if (dead && q.kind === 'rock') this.impact(q.pos.x, q.pos.z, 1.6, 0.35);
       if (!dead && p.alive && Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < q.r + p.radius) {
         const src = q.pos.clone().addScaledVector(q.vel, -0.1);
-        const r = p.receive({ dmg: q.dmg, poise: 20, knock: 'light', srcPos: src, parryable: false });
+        const r = p.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
         if (r === 'hit') { this.audio.play('hurt'); this.fx.blood(new THREE.Vector3(p.pos.x, 1.1, p.pos.z), q.vel.clone().normalize(), 8); this.hitstop(0.05); this.fx.addShake(0.3); }
         if (r === 'block') { this.audio.play('clang', 0.6); this.fx.sparks(new THREE.Vector3(p.pos.x, 1.1, p.pos.z), null, 8); }
         if (r !== 'dodge') dead = true;
@@ -486,14 +555,7 @@ class Game {
         for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') p.push(a);
       }
 
-      // bonfire / fog interaction
-      let near = null;
-      for (const b of this.world.bonfires) if (Math.hypot(b.x - p.pos.x, b.z - p.pos.z) < 2.4) near = b;
-      const threatened = this.enemies.some((e) => e.alive && (e.state === 'chase' || e.state === 'attack') && e.distTo(p) < 14) || this.bossActive;
-      if (near && p.alive && p.state === 'move' && !threatened) {
-        this.ui.prompt(this.input.lastDevice === 'touch' ? (near.lit ? 'Tap to rest' : 'Tap to light bonfire') : (near.lit ? 'F: Rest at bonfire' : 'F: Light bonfire'));
-        if (presses.has('interact')) this.rest(near);
-      } else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
+      if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
       // trigger only once the player is fully inside the arena circle, so locking the
       // fog never leaves them standing on ground that just stopped being walkable
       if (!this.bossActive && p.alive) for (const enc of this.encounters) {
@@ -507,10 +569,13 @@ class Game {
       else if (enc) { p.pos.x += (enc.arena.x - p.pos.x) * 0.2; p.pos.z += (enc.arena.z - p.pos.z) * 0.2; }
       // area title when reaching a new module
       const m = this.world.moduleAt(p.pos.z);
-      if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); }
+      if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
 
       this.ui.update(rdt, p);
-      if (enc) this.ui.boss.set(enc.boss.hp / enc.boss.maxHp, rdt);
+      if (enc) {
+        this.ui.boss.set(enc.boss.hp / enc.boss.maxHp, rdt);
+        this.ui.bossStatus(enc.boss.status.bars().map((b) => ({ v: b.v, color: STATUS[b.k].color })));
+      }
       this.updateEnemyBars();
     }
 
@@ -560,10 +625,10 @@ class Game {
     const v = new THREE.Vector3();
     const w = window.innerWidth, h = window.innerHeight;
     for (const e of this.enemies) {
-      if (!e.alive || (e.hpShow <= 0 && this.player.lock !== e)) continue;
+      if (!e.alive || (e.hpShow <= 0 && this.player.lock !== e && !e.status.bars().length)) continue;
       v.set(e.pos.x, 2.25 * e.rig.root.scale.y, e.pos.z).project(this.camera);
       if (v.z > 1) continue;
-      list.push({ x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, v: e.hp / e.maxHp });
+      list.push({ x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, v: e.hp / e.maxHp, status: e.status.bars().map((b) => ({ v: b.v, color: STATUS[b.k].color })) });
     }
     this.ui.enemyBars(list);
   }

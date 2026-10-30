@@ -221,6 +221,14 @@ function attachWeapon(r, kind, o) {
     g.add(box(0.07, 0.12, 0.5, head, 0, -0.05, 1.28));
     g.add(box(0.08, 0.08, 0.1, gold, 0, 0, 1.52));
     put(1.6, 0.9);
+  } else if (kind === 'maul') {
+    // great stone maul
+    g.add(box(0.08, 0.08, 1.7, grip, 0, 0, 0.5));
+    const stone = r.m(0x6a665e);
+    r.bladeMat = stone;
+    g.add(box(0.5, 0.42, 0.5, stone, 0, 0, 1.38));
+    g.add(box(0.56, 0.08, 0.56, r.m(0x3a3a3a), 0, 0, 1.12));
+    put(1.65, 0.9);
   } else if (kind === 'daggers') {
     g.add(box(0.04, 0.04, 0.14, grip, 0, 0, 0));
     g.add(box(0.12, 0.04, 0.04, gold, 0, 0, 0.08));

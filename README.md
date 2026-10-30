@@ -1,9 +1,9 @@
 # Ashen Vigil
 
-A pseudo-3D souls-like built with Three.js + Vite. Each run is assembled from modular areas. You fight through two areas, then a mini boss guarding the only bonfire, three more areas, and finally a two-phase boss.
+A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 areas assembled from modules. Every third area is a mini boss that rewards you with a power-up or a full rest, and the last is a two-phase boss. There are no bonfires: death ends the run.
 
-## Level structure
-- **7 slots:** 1, 2, 4, 5 and 6 are drawn (without repeats) from a pool of 7 regular modules. Slot 3 is **The Executioner's Pit**: mini boss Brother Hask, with the run's only bonfire behind him. Slot 7 is **The Throne of Ash**: Varek.
+## Run structure
+- **11 slots:** 1, 2, 4, 5, 7, 8 and 10 use all 7 regular modules in random order. Slots 3, 6 and 9 are the three mini bosses (shuffled). Slot 11 is **Varek** in the Throne of Ash.
 - **Regular modules:**
   - The Broken Road: winding ruins.
   - The Ashen Camp: palisade war camp.
@@ -12,8 +12,24 @@ A pseudo-3D souls-like built with Three.js + Vite. Each run is assembled from mo
   - The Ossuary Hall: pillared crypt with blue torches.
   - The Sunken Mire: bog pools that slow you.
   - The Warden's Gate: brute courtyard plus archers past the gate.
-- The layout is rolled per new game and stays fixed for that run. Until the bonfire is lit, death sends you back to the start.
-- Module code lives in `src/modules.js`. Add a module by adding an entry to `MODULES`.
+- **Mini bosses:**
+  - **Brother Hask** (Executioner's Pit): axe; flurry, delayed chop, charge, hop slam.
+  - **Sister Vael** (Moonlit Cloister): twin daggers; sidesteps your swings, lunges and dives.
+  - **Gorrath** (Slag Forge): giant maul; slams, sweeps, rear stomp, thrown boulders.
+- **After each mini boss:** pick 1 of 3 random power-ups, or **Rest** (full HP and flasks refilled). Power-ups stack:
+  - +25 max HP
+  - +15 max stamina
+  - +15% damage
+  - +15% roll distance
+  - +10% attack speed
+  - Bleed, Poison, Frost or Fire infusion
+- **Status effects** (Elden Ring-style buildup): each hit fills the enemy's meter. When it's full the effect procs and the meter resets. Bosses resist ×1.3 more after each proc.
+  - Bleed: a burst of 15% max HP + 45.
+  - Frost: a burst of 10% + 25, and the enemy is slowed for 6 seconds.
+  - Poison: 20% + 60 over 10 seconds.
+  - Fire: 25% + 50 over 3.5 seconds.
+  - Bosses take roughly half the percentage.
+- Module code lives in `src/modules.js`, power-ups in `src/boons.js`, and status effects in `src/status.js`.
 
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
@@ -56,4 +72,4 @@ npm run build    # static build in dist/ — deployable to any static host
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors) and `scripts/sim.mjs` (deterministic mechanics checks + bot fights) run against `npx vite preview --port 4173`.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over) and `scripts/parry.mjs` run against `npx vite preview --port 4173`.

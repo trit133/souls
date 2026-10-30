@@ -23,7 +23,7 @@ const res = await page.evaluate(() => {
       e.cd = 99; e.setState('chase'); e.atk = null; e.yaw = e.yawTo(p.pos);
       def = e.T.moves[move]; e.atkSpeed = 1; e.startAttack(def);
     } else {
-      const enc = game.encounters.find((x) => x.kind === 'mini');
+      const enc = game.encounters.find((x) => x.bossId === 'hask');
       for (const o of game.enemies) o.die();
       p.pos.set(enc.arena.x, 0, enc.arena.z + enc.arena.r - 3); step();
       for (let i = 0; i < 160; i++) step();

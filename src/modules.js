@@ -166,30 +166,49 @@ function arenaRing(w, Z, cx, cd, r, gapS, gapN) {
   }
 }
 
-export const MINI_ARENA = {
-  name: "The Executioner's Pit", len: 58, ground: 'arena',
-  build(w, Z, mod) {
-    w.rect(-3, 3, -1.5, 6);
-    w.rect(-3, 3, 4, 12, { gate: 'mini_in' });
-    w.circle(0, 24, 13);
-    w.rect(-3, 3, 35, 42, { gate: 'mini_out' });
-    w.rect(-6, 6, 41, 54);
-    w.rect(-2.5, 2.5, 52, 59.5);
-    w.gate('mini_in', 7.5, 6, true);
-    w.gate('mini_out', 38.5, 6, false);
-    arenaRing(w, Z, 0, 24, 13, true, true);
-    const enc = { id: 'mini', kind: 'mini', arena: { x: 0, z: Z(24), r: 13 }, gateIn: 'mini_in', gateOut: 'mini_out', mod: mod.i, active: false, defeated: false };
-    w.encounters.push(enc);
-    for (const [x, d] of [[-9, 16], [9, 16], [-9, 32], [9, 32]]) w.brazier(x, Z(d), { cond: () => enc.active, power: 14 });
-    // chopping block + stakes
-    w.box(1.6, 0.8, 1.0, w.mats.wood, 0, 0.4, Z(31.5)); w.ob(0, Z(31.5), 0.8);
-    for (const [x, d] of [[-6, 33], [6, 33.5], [-11, 24], [11, 24]]) {
-      w.cyl(0.08, 0.1, 2.4, w.mats.logDark, x, 1.2, Z(d), 5);
-      w.box(0.28, 0.28, 0.28, w.mats.bone, x, 2.5, Z(d));
-    }
-    w.bonfire(0, Z(47.5));
-    w.rock(-5, Z(44), 0.7); w.rock(5, Z(51), 0.6);
-  },
+// Mini boss arena: fog in, fight, fog out, then a short alcove. `theme` picks decor.
+function miniArena(bossId, name, ground, theme) {
+  return {
+    name, len: 54, ground,
+    build(w, Z, mod) {
+      w.rect(-3, 3, -1.5, 6);
+      w.rect(-3, 3, 4, 12, { gate: 'in' + mod.i });
+      w.circle(0, 24, 13);
+      w.rect(-3, 3, 35, 42, { gate: 'out' + mod.i });
+      w.rect(-6, 6, 41, 50);
+      w.rect(-2.5, 2.5, 48.5, 55.5);
+      w.gate('in' + mod.i, 7.5, 6, true);
+      w.gate('out' + mod.i, 38.5, 6, false);
+      arenaRing(w, Z, 0, 24, 13, true, true);
+      const enc = { id: 'mini' + mod.i, kind: 'mini', bossId, arena: { x: 0, z: Z(24), r: 13 }, gateIn: 'in' + mod.i, gateOut: 'out' + mod.i, mod: mod.i, active: false, defeated: false };
+      w.encounters.push(enc);
+      const fire = theme === 'cloister' ? { color: 0x8ab4ff, cold: true } : {};
+      for (const [x, d] of [[-9, 16], [9, 16], [-9, 32], [9, 32]]) w.brazier(x, Z(d), { cond: () => enc.active, power: 14, ...fire });
+      if (theme === 'pit') {
+        w.box(1.6, 0.8, 1.0, w.mats.wood, 0, 0.4, Z(31.5)); w.ob(0, Z(31.5), 0.8);
+        for (const [x, d] of [[-6, 33], [6, 33.5], [-11, 24], [11, 24]]) {
+          w.cyl(0.08, 0.1, 2.4, w.mats.logDark, x, 1.2, Z(d), 5);
+          w.box(0.28, 0.28, 0.28, w.mats.bone, x, 2.5, Z(d));
+        }
+      } else if (theme === 'cloister') {
+        // moonlit garden ring: low hedges and a dry fountain
+        w.cyl(1.6, 1.8, 0.6, w.mats.stone, 0, 0.3, Z(30)); w.ob(0, Z(30), 1.8);
+        w.cyl(0.25, 0.3, 1.6, w.mats.stone, 0, 0.8, Z(30));
+        for (const [x, d] of [[-10.5, 20], [10.5, 20], [-10.5, 28], [10.5, 28]]) w.box(0.9, 0.8, 3, w.mats.leaf, x, 0.4, Z(d));
+      } else {
+        // forge: anvils, slag heaps, glowing coals
+        for (const [x, d] of [[-6, 31], [6, 17]]) { w.box(1.2, 0.7, 0.6, w.mats.metal, x, 0.35, Z(d)); w.ob(x, Z(d), 0.7); }
+        for (const [x, d] of [[-10.5, 22], [10.5, 27], [5, 33]]) { w.rock(x, Z(d), 0.9, true, true); w.fires.push({ x, z: Z(d), y: 0.4, scale: 0.5 }); }
+      }
+      w.rock(-5, Z(44), 0.7); w.rock(5, Z(48), 0.6);
+    },
+  };
+}
+
+export const MINI_ARENAS = {
+  hask: miniArena('hask', "The Executioner's Pit", 'arena', 'pit'),
+  vael: miniArena('vael', 'The Moonlit Cloister', 'crypt', 'cloister'),
+  gorrath: miniArena('gorrath', 'The Slag Forge', 'ash', 'forge'),
 };
 
 export const BOSS_ARENA = {
@@ -214,9 +233,15 @@ export const BOSS_ARENA = {
 
 export const REGULAR = Object.keys(MODULES);
 
-// slots 1,2,4,5,6 draw distinct regular modules; slot 3 is the mini boss + bonfire, slot 7 the boss
+function shuffle(a, rand) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+// 11 slots: every 3rd is a mini boss (3, 6, 9 — each a different one), slot 11 is Varek,
+// and the other 7 slots use all 7 regular modules in random order.
 export function pickLayout(rand = Math.random) {
-  const pool = [...REGULAR];
-  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  return [pool[0], pool[1], 'mini', pool[2], pool[3], pool[4], 'boss'];
+  const r = shuffle([...REGULAR], rand);
+  const m = shuffle(Object.keys(MINI_ARENAS), rand).map((k) => 'mini:' + k);
+  return [r[0], r[1], m[0], r[2], r[3], m[1], r[4], r[5], m[2], r[6], 'boss'];
 }

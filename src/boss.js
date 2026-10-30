@@ -3,6 +3,7 @@ import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
+import { StatusState } from './status.js';
 
 // Varek, the Ashen Warden. Two phases. Every move has a readable windup and a
 // punish window afterwards; heavy/AoE moves are unparryable and telegraphed.
@@ -130,19 +131,21 @@ export class Boss extends Actor {
     this.isBoss = true;
     this.name = cfg.name;
     this.trail = new Trail(game.scene, 0xd8d8e8, 18, 0.5);
+    this.status = new StatusState(this, 260);
     this.sfxVol = 1.2;
     this.reset();
   }
 
   get target() { return this.game.player; }
   critable() { return this.state === 'parried' || this.state === 'broken'; }
-  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1); }
+  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow(); }
 
   reset() {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
     this.pos.set(this.arena.x, 0, this.arena.z - 3); this.yaw = 0; this.y = 0;
     this.phase2 = false; this.ignited = false; this.atkSpeed = 1; this.trackMul = 1;
-    this.leapCd = 4; this.emberCd = 0; this.gap = 1; this.lastMove = null; this.phase = 0; this.speed = 0;
+    this.leapCd = 4; this.emberCd = 0; this.gap = 1; this.evadeCd = 0; this.seenAtk = null;
+    this.status.reset(this.cfg.id === 'varek' ? 340 : 260); this.lastMove = null; this.phase = 0; this.speed = 0;
     this.atk = null; this.kb.set(0, 0, 0); this.strafe = 1; this.strafeT = 0;
     this.rig.root.visible = true; this.rig.root.position.y = 0;
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0, 0, 0);
@@ -196,7 +199,8 @@ export class Boss extends Actor {
     const dist = this.distTo(p) - this.radius - p.radius;
     const toP = this.yawTo(p.pos);
     let pose = null, rate = 10;
-    this.leapCd -= dt; this.emberCd -= dt;
+    this.leapCd -= dt; this.emberCd -= dt; this.evadeCd -= dt;
+    this.status.update(dt, this.game);
     const loco = (s) => locomotion('greatsword', this.phase, s, false, this.game.time);
 
     switch (this.state) {
@@ -223,6 +227,15 @@ export class Boss extends Actor {
         }
         this.gap -= dt;
         const behind = Math.abs(angDiff(this.yaw, toP)) > 1.5;
+        // duelists roll the dice once per player swing to sidestep it
+        if (this.cfg.evade && p.state === 'attack' && p.atk !== this.seenAtk) {
+          this.seenAtk = p.atk;
+          if (this.evadeCd <= 0 && dist < 3 && p.atk.t < 0.25 && Math.random() < 0.5) {
+            this.evadeCd = 2.2; this.lastMove = 'evade'; this.counterAtk = false;
+            this.startAttack(this.moves.evade);
+            break;
+          }
+        }
         // punish healing at mid range
         const punish = p.state === 'heal' && dist < 9 && this.gap < 0.6;
         if (this.gap <= 0 || punish || (behind && dist < 3 && this.gap < 0.5)) {
@@ -246,6 +259,7 @@ export class Boss extends Actor {
           if (this.strafeT <= 0) { this.strafeT = 1.5 + Math.random() * 1.5; this.strafe = -this.strafe; }
           mx = -dz * this.strafe; mz = dx * this.strafe; sp = walk * 0.5;
         }
+        sp *= this.status.slow();
         this.move(mx * sp * dt, mz * sp * dt);
         this.speed += (sp - this.speed) * Math.min(1, dt * 6);
         this.turnToward(toP, 3.2, dt);
@@ -255,7 +269,7 @@ export class Boss extends Actor {
       }
       case 'attack': {
         const d = this.atk.def;
-        const adt = dt * this.atkSpeed * (this.counterAtk ? 1.15 : 1);
+        const adt = dt * this.attackRate();
         const going = this.runAttack(adt, [p], p.alive ? toP : null);
         if (this.state !== 'attack') { pose = loco(0); break; }
         const t = this.atk.t;
@@ -282,7 +296,7 @@ export class Boss extends Actor {
           if (this.tele) { this.tele.dead = true; this.tele = null; }
           this.setState('neutral');
           const g = this.phase2 ? [0.25, 0.8] : this.cfg.gap;
-          this.gap = g[0] + Math.random() * (g[1] - g[0]);
+          this.gap = d.evade ? 0.05 : g[0] + Math.random() * (g[1] - g[0]);
         }
         break;
       }
@@ -334,6 +348,7 @@ export class Boss extends Actor {
 
   receive(info) {
     if (!this.alive || this.state === 'dormant') return 'none';
+    if (this.state === 'attack' && this.atk.def.evade && this.atk.t < 0.4) return 'none'; // sidestepped
     this.hp -= info.dmg;
     this.rig.flash(1, 0.85, 0.7);
     if (this.hp <= 0) {
@@ -452,3 +467,129 @@ export const BOSSES = {
     model: { scale: 1.55, cloth: 0x2a221c, armor: 0x4a3a30, accent: 0x161210, skin: 0x7a6a5a, head: 'hood', weapon: 'axe', eyes: 0xff4a2a, bulk: 1.3 },
   },
 };
+
+// ---------- Sister Vael, the Twin Fang (mini boss) ----------
+// Fast duelist: sidesteps some of your attacks, then punishes with lunges and dives.
+const BACKSTEP = { torso: [-0.2, 0, 0], legL: [-0.6, 0, 0], legR: [0.4, 0, 0], shinL: [0.4, 0, 0], shinR: [0.7, 0, 0], armL: [0.3, 0, 0.5], armR: [0.3, 0, -0.5], by: -0.15 };
+export const VAEL_MOVES = {
+  slash2: {
+    parry: true, dur: 1.05, track: [0.32, 6], tracks: [[0.46, 0.6, 6]], sfx: [0.32, 'swing'], trail: [0.34, 0.74],
+    keys: [[0.32, SW_WIND], [0.44, SW_STRIKE], [0.6, BH_WIND], [0.7, BH_STRIKE], [0.9, BH_STRIKE]],
+    hits: [{ t0: 0.36, t1: 0.46, range: 2.4, arc: 2.4, dmg: 14, poise: 18 }, { t0: 0.62, t1: 0.72, range: 2.4, arc: 2.4, dmg: 14, poise: 18 }],
+    move: [[0.28, 0.44, 0.9], [0.55, 0.7, 0.8]], stopAt: 0.9,
+    onTime: [{ t: 0.6, fn: (b, g) => g.audio.play('swing', 1) }],
+  },
+  flurry: {
+    parry: true, dur: 1.75, track: [0.38, 6], tracks: [[0.5, 0.6, 6], [0.72, 0.82, 6], [0.94, 1.05, 6]], sfx: [0.38, 'swing'], trail: [0.38, 1.25],
+    keys: [[0.38, SW_WIND], [0.48, SW_STRIKE], [0.6, BH_WIND], [0.7, BH_STRIKE], [0.82, SW_WIND], [0.92, SW_STRIKE], [1.02, { ...SW_WIND, torso: [0.2, 1.3, 0] }], [1.18, { ...SW_STRIKE, torso: [0.3, -0.4, 0], armR: [-1.45, 0, -1.4] }], [1.45, SW_STRIKE]],
+    hits: [
+      { t0: 0.4, t1: 0.5, range: 2.4, arc: 2.4, dmg: 11, poise: 14 },
+      { t0: 0.62, t1: 0.72, range: 2.4, arc: 2.4, dmg: 11, poise: 14 },
+      { t0: 0.84, t1: 0.94, range: 2.4, arc: 2.4, dmg: 11, poise: 14 },
+      { t0: 1.1, t1: 1.2, shape: 'circle', offset: 0, radius: 2.7, dmg: 18, poise: 30, parry: false },
+    ],
+    move: [[0.35, 0.95, 1.8]], stopAt: 0.9,
+    onTime: [0.6, 0.82, 1.08].map((t) => ({ t, fn: (b, g) => g.audio.play('swing', 0.9) })),
+  },
+  lunge: {
+    dur: 1.3, unparryable: true, track: [0.42, 6], trail: [0.45, 0.62], sfx: [0.44, 'swing'],
+    keys: [[0.42, TH_WIND], [0.58, TH_STRIKE], [0.95, TH_STRIKE]],
+    hits: [{ t0: 0.45, t1: 0.62, shape: 'circle', offset: 0.8, radius: 1.05, dmg: 20, poise: 30 }],
+    move: [[0.42, 0.62, 7]], stopAt: 0.8,
+    onTime: [{ t: 0.05, fn: (b) => b.glint(true) }, { t: 0.44, fn: (b, g) => g.fx.dust(b.pos, 6, 0.8) }],
+  },
+  leap: {
+    dur: 1.8, unparryable: true, track: [0.35, 7], trail: [0.75, 0.95], leap: [0.35, 0.85],
+    keys: [[0.32, CROUCH], [0.5, AIR], [0.8, AIR], [0.9, OH_STRIKE], [1.35, OH_STRIKE]],
+    hits: [{ t0: 0.85, t1: 0.93, shape: 'circle', offset: 0.5, radius: 2.2, dmg: 24, poise: 50, knock: 'heavy' }],
+    onTime: [{ t: 0.35, fn: (b) => b.beginLeap() }, { t: 0.86, fn: (b, g) => g.impact(b.pos.x, b.pos.z, 2.6, 0.4) }],
+  },
+  spin: {
+    dur: 1.2, unparryable: true, sfx: [0.4, 'swing'], trail: [0.4, 0.7], spin: [0.4, 0.7, -Math.PI * 2],
+    keys: [[0.35, { ...SW_WIND, torso: [0.2, 1.2, 0] }], [0.45, { ...SW_STRIKE, torso: [0.2, 0, 0], armR: [-1.45, 0, -1.4], armL: [-1.45, 0, 1.4] }], [0.72, { ...SW_STRIKE, torso: [0.2, 0, 0], armR: [-1.45, 0, -1.4], armL: [-1.45, 0, 1.4] }], [0.95, SW_STRIKE]],
+    hits: [{ t0: 0.42, t1: 0.7, shape: 'circle', offset: 0, radius: 2.8, dmg: 14, poise: 30, knockback: 9 }],
+    onTime: [{ t: 0.05, fn: (b) => b.glint(true) }],
+  },
+  // sidestep away from an incoming swing (brief invulnerability), then counter
+  evade: {
+    dur: 0.55, evade: true,
+    keys: [[0.1, BACKSTEP], [0.4, BACKSTEP]],
+    move: [[0.02, 0.32, -3.6]],
+    onTime: [{ t: 0.02, fn: (b, g) => { g.fx.dust(b.pos, 6, 0.8); g.audio.play('roll', 0.8); } }],
+  },
+};
+const VAEL_WEIGHTS = (b, d, behind) => {
+  const w = [];
+  if (behind && d < 2.6) w.push(['spin', b.lastMove === 'spin' ? 2 : 6]);
+  if (d < 2.2) { w.push(['slash2', 3]); w.push(['flurry', 2.5]); }
+  if (d >= 1.8 && d < 7) w.push(['lunge', b.lastMove === 'evade' ? 6 : 3]);
+  if (d > 5 && b.leapCd <= 0) w.push(['leap', d > 8 ? 5 : 2.5]);
+  return w.map(([n, x]) => [n, n === b.lastMove ? x * 0.3 : x]);
+};
+
+// ---------- Gorrath, the Slag Colossus (mini boss) ----------
+// Slow giant: huge unparryable slams and sweeps, a rear stomp, and thrown boulders at range.
+// His quick backhand swat is the one parryable move.
+export const GORRATH_MOVES = {
+  swat: {
+    parry: true, dur: 1.4, track: [0.42, 3.2], sfx: [0.42, 'heavySwing'], trail: [0.44, 0.6],
+    keys: [[0.42, BH_WIND], [0.56, BH_STRIKE], [0.95, BH_STRIKE]],
+    hits: [{ t0: 0.46, t1: 0.58, range: 3.9, arc: 2.4, dmg: 22, poise: 35, knockback: 8 }],
+    move: [[0.4, 0.56, 0.6]], stopAt: 1.8,
+  },
+  slam: {
+    dur: 2.35, unparryable: true, track: [1.0, 2.2], sfx: [1.04, 'heavySwing'], trail: [1.06, 1.24],
+    keys: [[0.8, OH_RAISE], [1.05, OH_HOLD], [1.18, OH_STRIKE], [1.8, OH_STRIKE]],
+    hits: [{ t0: 1.15, t1: 1.25, shape: 'circle', offset: 3.0, radius: 2.2, dmg: 40, poise: 70, knock: 'heavy' }],
+    move: [[1.0, 1.16, 0.6]],
+    onTime: [{ t: 0.1, fn: (b) => b.glint(true) }, { t: 1.18, fn: (b, g) => { const f = b.fwd(); g.impact(b.pos.x + f.x * 3, b.pos.z + f.z * 3, 4, 0.8); } }],
+  },
+  sweep: {
+    dur: 2.05, unparryable: true, track: [0.8, 2.4], sfx: [0.86, 'heavySwing'], trail: [0.88, 1.08],
+    keys: [[0.85, SW_WIND], [1.05, SW_STRIKE], [1.5, SW_STRIKE]],
+    hits: [{ t0: 0.9, t1: 1.06, range: 4.3, arc: 3.0, dmg: 30, poise: 50, knockback: 12 }],
+    move: [[0.8, 1.05, 0.8]],
+    onTime: [{ t: 0.1, fn: (b) => b.glint(true) }],
+  },
+  stomp: {
+    dur: 1.45, unparryable: true, track: [0.1, 1], sfx: [0.66, 'slam'],
+    keys: [[0.55, { legL: [-1.3, 0, 0.1], shinL: [1.2, 0, 0], torso: [-0.25, 0, 0], armL: [-0.5, 0, 0.8], armR: [-0.3, 0, -0.8], by: 0.12 }],
+      [0.68, { legL: [-0.3, 0, 0.1], shinL: [0.2, 0, 0], torso: [0.3, 0, 0], armL: [-0.2, 0, 0.5], armR: [-0.2, 0, -0.5], by: -0.25 }]],
+    hits: [{ t0: 0.66, t1: 0.74, shape: 'circle', offset: 0, radius: 3.3, dmg: 18, poise: 50, knock: 'heavy' }],
+    onTime: [
+      { t: 0.1, fn: (b, g) => { b.tele = g.fx.telegraph(b.pos.x, b.pos.z, 3.3, 0.56); } },
+      { t: 0.68, fn: (b, g) => g.impact(b.pos.x, b.pos.z, 3.6, 0.5) },
+    ],
+  },
+  hurl: {
+    dur: 2.0, unparryable: true, track: [0.95, 3],
+    keys: [[0.8, { ...OH_RAISE, armL: [-3.0, 0, 0.3] }], [1.02, { ...TH_STRIKE, armL: [-1.5, 0, 0.2], armR: [-1.5, 0, -0.2] }], [1.5, TH_STRIKE]],
+    onTime: [
+      { t: 0.3, fn: (b, g) => g.audio.play('roar', 0.3) },
+      { t: 1.0, fn: (b, g) => g.spawnRock(b) },
+    ],
+  },
+};
+const GORRATH_WEIGHTS = (b, d, behind) => {
+  const w = [];
+  if (behind && d < 3.6) w.push(['stomp', b.lastMove === 'stomp' ? 2 : 7]);
+  if (d < 3.2) { w.push(['swat', 3]); w.push(['slam', 2.2]); w.push(['sweep', 2.2]); }
+  if (d >= 3.2 && d < 6) w.push(['slam', 1.2]);
+  if (d >= 4.5) w.push(['hurl', b.lastMove === 'hurl' ? 1 : 3.5]);
+  return w.map(([n, x]) => [n, n === b.lastMove ? x * 0.3 : x]);
+};
+
+Object.assign(BOSSES, {
+  vael: {
+    id: 'vael', name: 'Sister Vael, the Twin Fang', hp: 540, poise: 75, radius: 0.6, walk: 3.6, gap: [0.25, 0.7],
+    phase2: false, kneels: false, evade: true, moves: VAEL_MOVES, weights: VAEL_WEIGHTS, leapH: 3.5, leapR: 2.2, leapAir: 0.5, leapCd: 5,
+    punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'lunge') : 'slash2'),
+    model: { scale: 1.25, cloth: 0x2a2a3a, armor: 0x4a4a5a, accent: 0x5a5a9a, skin: 0xb8a090, head: 'hood', weapon: 'daggers', eyes: 0xa0c8ff, cape: true, bulk: 0.95 },
+  },
+  gorrath: {
+    id: 'gorrath', name: 'Gorrath, the Slag Colossus', hp: 980, poise: 230, radius: 1.15, walk: 1.9, gap: [0.6, 1.4],
+    phase2: false, kneels: false, moves: GORRATH_MOVES, weights: GORRATH_WEIGHTS,
+    punish: (b, dist) => (dist > 4 ? 'hurl' : 'swat'),
+    model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true },
+  },
+});

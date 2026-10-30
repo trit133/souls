@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MODULES, MINI_ARENA, BOSS_ARENA } from './modules.js';
+import { MODULES, MINI_ARENAS, BOSS_ARENA } from './modules.js';
 
 // The level is a chain of modules laid out along -Z. Each module adds walkable
 // shapes (rects/circles, optionally gated), solid blockers, slow zones, obstacles,
@@ -74,7 +74,7 @@ export class World {
     this.layout = layout;
     let z0 = 0;
     layout.forEach((key, i) => {
-      const def = key === 'mini' ? MINI_ARENA : key === 'boss' ? BOSS_ARENA : MODULES[key];
+      const def = key.startsWith('mini:') ? MINI_ARENAS[key.slice(5)] : key === 'boss' ? BOSS_ARENA : MODULES[key];
       const group = new THREE.Group();
       this.root.add(group);
       const mod = { i, key, name: def.name, z0, z1: z0 - def.len, len: def.len, group, ground: def.ground };
