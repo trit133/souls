@@ -1,6 +1,19 @@
 # Ashen Vigil
 
-A pseudo-3D souls-like tester built with Three.js + Vite. You fight through an enemy camp, reach a bonfire, then face one two-phase boss. It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
+A pseudo-3D souls-like built with Three.js + Vite. Each run is assembled from modular areas. You fight through two areas, then a mini boss guarding the only bonfire, three more areas, and finally a two-phase boss.
+
+## Level structure
+- **7 slots:** 1, 2, 4, 5 and 6 are drawn (without repeats) from a pool of 7 regular modules. Slot 3 is **The Executioner's Pit**: mini boss Brother Hask, with the run's only bonfire behind him. Slot 7 is **The Throne of Ash**: Varek.
+- **Regular modules:**
+  - The Broken Road: winding ruins.
+  - The Ashen Camp: palisade war camp.
+  - The Hanging Span: narrow bridge over a chasm.
+  - The Burned Hamlet: houses to path around, plus a brute.
+  - The Ossuary Hall: pillared crypt with blue torches.
+  - The Sunken Mire: bog pools that slow you.
+  - The Warden's Gate: brute courtyard plus archers past the gate.
+- The layout is rolled per new game and stays fixed for that run. Until the bonfire is lit, death sends you back to the start.
+- Module code lives in `src/modules.js`. Add a module by adding an entry to `MODULES`. It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
 ## Run
 

@@ -43,8 +43,11 @@ export class Actor {
 
   move(dx, dz) {
     if (!dx && !dz) return;
-    const to = _to.set(this.pos.x + dx, 0, this.pos.z + dz);
-    this.game.world.resolve(this.pos, to, this.radius, this.team === 'enemy' && !this.isBoss);
+    const w = this.game.world;
+    const slow = w.slowAt(this.pos.x, this.pos.z); // bog water
+    const to = _to.set(this.pos.x + dx * slow, 0, this.pos.z + dz * slow);
+    // enemies and bosses are confined to the module they spawned in
+    w.resolve(this.pos, to, this.radius, this.mod ?? null);
     this.pos.x = to.x; this.pos.z = to.z;
   }
 

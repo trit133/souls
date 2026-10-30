@@ -212,6 +212,15 @@ function attachWeapon(r, kind, o) {
     r.bladeMat = bl;
     g.add(box(0.05, 0.2, 1.75, bl, 0, 0, 0.18 + 0.88));
     put(2.0, 0.4);
+  } else if (kind === 'axe') {
+    // long-hafted executioner's axe; blade near the tip
+    g.add(box(0.06, 0.06, 1.9, grip, 0, 0, 0.55));
+    const head = r.m(0x6a6a72);
+    r.bladeMat = head;
+    g.add(box(0.05, 0.62, 0.42, head, 0, 0.22, 1.28));
+    g.add(box(0.07, 0.12, 0.5, head, 0, -0.05, 1.28));
+    g.add(box(0.08, 0.08, 0.1, gold, 0, 0, 1.52));
+    put(1.6, 0.9);
   } else if (kind === 'daggers') {
     g.add(box(0.04, 0.04, 0.14, grip, 0, 0, 0));
     g.add(box(0.12, 0.04, 0.04, gold, 0, 0, 0.08));

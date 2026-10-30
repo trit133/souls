@@ -31,7 +31,10 @@ await page.evaluate(() => {
     },
     toward(p, x, z) { const dx = x - p.pos.x, dz = z - p.pos.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, y: -dz / d }; },
     enterArena() {
-      const p = game.player; p.pos.set(0, 0, -100); game.step(1 / 60, 1 / 60);
+      const enc = game.encounters.find((e) => e.kind === (H.encKind || 'boss'));
+      game.boss = enc.boss;
+      const p = game.player; for (const e of game.enemies) e.die();
+      p.pos.set(enc.arena.x, 0, enc.arena.z + enc.arena.r - 3); game.step(1 / 60, 1 / 60);
       H.run(2.6); // boss rises
     },
   };
@@ -110,7 +113,8 @@ log('E boss moves:', JSON.stringify(await R(() => {
   const p = game.player, b = game.boss;
   const out = {};
   for (const m of ['sweep', 'combo2', 'combo3', 'overhead', 'thrust', 'leap', 'spin', 'ember', 'roar']) {
-    p.respawn(0, -110); p.pos.set(0, 0, m === 'leap' ? -104 : m === 'thrust' ? -110 : b.pos.z + 3); b.atk = null; b.y = 0; b.setState('neutral');
+    const A = game.encounters.find((e) => e.kind === 'boss').arena;
+    p.respawn(A.x, A.z); p.pos.set(A.x, 0, m === 'leap' ? A.z + 10 : m === 'thrust' ? A.z + 4 : b.pos.z + 3); b.atk = null; b.y = 0; b.setState('neutral');
     if (m === 'spin') { p.pos.set(b.pos.x, 0, b.pos.z - 2.5); b.yaw = 0; }
     else b.yaw = b.yawTo(p.pos);
     b.gap = 99; b.phase2 = m === 'combo3' || m === 'roar';
@@ -123,9 +127,10 @@ log('E boss moves:', JSON.stringify(await R(() => {
 })));
 
 // --- F: bot fights the boss (both characters) ---
-for (const kind of ['knight', 'rogue']) {
-  log(`F bot vs boss (${kind}):`, JSON.stringify(await R((kind) => {
-    H.setup(kind); H.enterArena();
+for (const [kind, enc] of [['knight', 'mini'], ['rogue', 'mini'], ['knight', 'boss'], ['rogue', 'boss']]) {
+  log(`F bot vs ${enc} (${kind}):`, JSON.stringify(await R(([kind, enc]) => {
+    H.encKind = enc;
+    H.setup(kind); H.enterArena(); H.encKind = null;
     const p = game.player, b = game.boss;
     let rolls = 0, heals = 0, hitsTaken = 0, lastHp = p.hp, deaths = 0;
     const t = H.run(400, (t) => {
@@ -150,42 +155,61 @@ for (const kind of ['knight', 'rogue']) {
       if (!opening && d < 6) { H.stick = { x: -H.toward(p, b.pos.x, b.pos.z).x, y: -H.toward(p, b.pos.x, b.pos.z).y }; return; }
       H.stick = d > 1.2 ? H.toward(p, b.pos.x, b.pos.z) : { x: 0, y: 0 };
     });
-    return { kind, time: Math.round(t), bossHp: Math.round(b.hp), phase2: b.phase2, playerHp: Math.round(p.hp), deaths, rolls, heals, hitsTaken };
-  }, kind)));
+    return { kind, boss: b.cfg.id, time: Math.round(t), bossHp: Math.round(b.hp), phase2: b.phase2, playerHp: Math.round(p.hp), deaths, rolls, heals, hitsTaken };
+  }, [kind, enc])));
 }
 
-// --- G: bot walks through the camp ---
-for (const kind of ['knight', 'rogue']) {
-  log(`G camp (${kind}):`, JSON.stringify(await R((kind) => {
+// --- G: bot plays modules 1-2 from the start to the mini boss arena (BFS pathing) ---
+for (const [kind, layout] of [['knight', ['camp', 'ruins']], ['rogue', ['camp', 'ruins']], ['knight', ['village', 'bog']], ['rogue', ['crypt', 'gate']], ['knight', ['bridge', 'crypt']]]) {
+  log(`G run ${layout.join('+')} (${kind}):`, JSON.stringify(await R(([kind, layout]) => {
     H.setup(kind);
-    const p = game.player;
-    p.setState('move');
-    let hitsTaken = 0, lastHp = p.hp, rolls = 0;
-    const path = [[0, -10], [0, -25], [-3, -35], [5, -45], [0, -57], [0, -66], [0, -80]];
-    let wi = 0;
-    const t = H.run(300, () => {
+    game.buildRun([...layout, 'mini', 'ruins', 'camp', 'bog', 'boss']);
+    const p = game.player; p.respawn(0, -2.5);
+    const w = game.world, A = game.encounters.find((e) => e.kind === 'mini').arena;
+    const goal = { x: 0, z: A.z + A.r + 3 };
+    const path = () => {
+      const st = 0.5, k = (x, z) => x + ',' + z, sx = Math.round(p.pos.x / st) * st, sz = Math.round(p.pos.z / st) * st;
+      const prev = new Map([[k(sx, sz), null]]); const q = [[sx, sz]]; let end = null;
+      for (let qi = 0; qi < q.length && qi < 60000; qi++) {
+        const [x, z] = q[qi];
+        if (Math.hypot(x - goal.x, z - goal.z) < 1) { end = [x, z]; break; }
+        for (const [dx, dz] of [[st, 0], [-st, 0], [0, st], [0, -st]]) {
+          const nx = x + dx, nz = z + dz, kk = k(nx, nz);
+          if (prev.has(kk)) continue;
+          if (!w.walkable(nx, nz, 0.5) || w.obstacles.some((o) => Math.abs(nz - o.z) < 2 && Math.hypot(nx - o.x, nz - o.z) < o.r + 0.5)) { prev.set(kk, 'x'); continue; }
+          prev.set(kk, [x, z]); q.push([nx, nz]);
+        }
+      }
+      const out = []; let c = end;
+      while (c && c !== 'x') { out.unshift(c); c = prev.get(k(...c)); }
+      return out;
+    };
+    let route = path(), ri = 0, hitsTaken = 0, lastHp = p.hp, rolls = 0, repath = 0;
+    const t = H.run(360, () => {
       if (!p.alive) return 'stop';
       if (p.hp < lastHp) hitsTaken++; lastHp = p.hp;
-      const foes = game.enemies.filter((e) => e.alive && e.state !== 'idle' && e.state !== 'sit');
+      if (Math.hypot(p.pos.x - goal.x, p.pos.z - goal.z) < 1.5) return 'stop';
+      const foes = game.enemies.filter((e) => e.alive && e.state !== 'idle' && e.state !== 'sit' && e.state !== 'return');
       let tg = null, bd = 99;
       for (const e of foes) { const d = p.distTo(e); if (d < bd) { bd = d; tg = e; } }
-      // incoming hit?
       for (const e of game.enemies) {
         if (e.state !== 'attack' || !e.atk) continue;
-        for (const h of e.atk.def.hits || []) { const dtm = h.t0 - e.atk.t; if (dtm > 0 && dtm < 0.12 && p.distTo(e) < 4 && p.state !== 'roll' && p.st > 15) { const y = p.yawTo(e.pos) + Math.PI / 2; H.stick = { x: Math.sin(y), y: -Math.cos(y) }; H.press('roll'); rolls++; return; } }
+        for (const h of e.atk.def.hits || []) { const dtm = (h.t0 - e.atk.t) / (e.atkSpeed || 1); if (dtm > 0 && dtm < 0.12 && p.distTo(e) < 4 && p.state !== 'roll' && p.st > 15) { const y = p.yawTo(e.pos) + Math.PI / 2; H.stick = { x: Math.sin(y), y: -Math.cos(y) }; H.press('roll'); rolls++; return; } }
       }
       if (p.hp < p.maxHp * 0.45 && p.flasks > 0 && p.state === 'move') { if (bd > 4.5) { H.press('heal'); return; } if (tg) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } }
-      if (tg && bd < 14) {
+      if (tg && bd < 12) {
+        if (p.fatigue > 0.5 || p.st < p.maxSt * 0.4) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; }
         if (bd > 1.8) { H.stick = H.toward(p, tg.pos.x, tg.pos.z); return; }
-        if (p.fatigue > 0.5 || p.st < p.maxSt * 0.4) { H.stick = { x: -H.toward(p, tg.pos.x, tg.pos.z).x, y: -H.toward(p, tg.pos.x, tg.pos.z).y }; return; } H.stick = { x: 0, y: 0 }; if (p.state === 'move' && p.st > 20) H.press('attack'); return;
+        H.stick = { x: 0, y: 0 }; if (p.state === 'move' && p.st > 20) H.press('attack'); return;
       }
-      const [x, z] = path[wi];
-      if (Math.hypot(p.pos.x - x, p.pos.z - z) < 1.5) { wi++; if (wi >= path.length) return 'stop'; }
-      H.stick = H.toward(p, x, z);
+      if (++repath % 120 === 0 || ri >= route.length) { route = path(); ri = 0; }
+      while (ri < route.length - 1 && Math.hypot(p.pos.x - route[ri][0], p.pos.z - route[ri][1]) < 0.9) ri++;
+      const wp = route[Math.min(ri + 2, route.length - 1)];
+      if (wp) H.stick = H.toward(p, wp[0], wp[1]);
     });
-    const alive = game.enemies.filter((e) => e.alive).map((e) => e.type);
-    return { kind, time: Math.round(t), reached: wi, playerAlive: p.alive, hp: Math.round(p.hp), flasks: p.flasks, hitsTaken, rolls, aliveEnemies: alive };
-  }, kind)));
+    const left = game.enemies.filter((e) => e.alive && e.mod <= 1).map((e) => e.type);
+    return { kind, time: Math.round(t), reachedMini: Math.hypot(p.pos.x - goal.x, p.pos.z - goal.z) < 2, alive: p.alive, hp: Math.round(p.hp), flasks: p.flasks, hitsTaken, rolls, enemiesLeft: left };
+  }, [kind, layout])));
 }
 
 if (errs.length) { console.log('ERRORS\n' + [...new Set(errs)].slice(0, 5).join('\n')); process.exitCode = 1; }

@@ -160,6 +160,7 @@ export class Enemy extends Actor {
     const rig = buildHumanoid({ ...T.model, scale: T.scale });
     super(game, rig, { x, z, yaw, hp: T.hp, radius: T.radius, poise: T.poise });
     this.uid = 'E' + UID++;
+    this.mod = opts.mod ?? null;
     this.type = type;
     this.T = T;
     this.home = { x, z, yaw };

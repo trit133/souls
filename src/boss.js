@@ -3,7 +3,6 @@ import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
-import { ARENA } from './world.js';
 
 // Varek, the Ashen Warden. Two phases. Every move has a readable windup and a
 // punish window afterwards; heavy/AoE moves are unparryable and telegraphed.
@@ -103,7 +102,7 @@ export const BOSS_MOVES = {
   },
 };
 
-const WEIGHTS = (b, d, behind) => {
+const VAREK_WEIGHTS = (b, d, behind) => {
   const w = [];
   const near = d < 3.4, mid = d >= 2.6 && d < 8.5;
   if (behind && d < 4.2) w.push(['spin', b.lastMove === 'spin' ? 2 : 7]);
@@ -119,15 +118,17 @@ const WEIGHTS = (b, d, behind) => {
 };
 
 export class Boss extends Actor {
-  constructor(game) {
-    const rig = buildHumanoid({
-      scale: 2.1, cloth: 0x2a2624, armor: 0x3c3c44, accent: 0x5a1a14, skin: 0x5a5048, head: 'horned',
-      weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25,
-    });
-    super(game, rig, { x: ARENA.x, z: ARENA.z - 3, hp: 1300, radius: 1.05, poise: 170, yaw: 0 });
-    this.uid = 'BOSS';
+  // cfg: one of BOSSES; arena: {x, z, r}; mod: module index the boss is confined to
+  constructor(game, cfg, arena, mod) {
+    const rig = buildHumanoid(cfg.model);
+    super(game, rig, { x: arena.x, z: arena.z - 3, hp: cfg.hp, radius: cfg.radius, poise: cfg.poise, yaw: 0 });
+    this.cfg = cfg;
+    this.moves = cfg.moves;
+    this.arena = arena;
+    this.mod = mod;
+    this.uid = 'BOSS_' + cfg.id;
     this.isBoss = true;
-    this.name = 'Varek, the Ashen Warden';
+    this.name = cfg.name;
     this.trail = new Trail(game.scene, 0xd8d8e8, 18, 0.5);
     this.sfxVol = 1.2;
     this.reset();
@@ -138,7 +139,7 @@ export class Boss extends Actor {
 
   reset() {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
-    this.pos.set(ARENA.x, 0, ARENA.z - 3); this.yaw = 0; this.y = 0;
+    this.pos.set(this.arena.x, 0, this.arena.z - 3); this.yaw = 0; this.y = 0;
     this.phase2 = false; this.ignited = false; this.atkSpeed = 1; this.trackMul = 1;
     this.leapCd = 4; this.emberCd = 0; this.gap = 1; this.lastMove = null; this.phase = 0; this.speed = 0;
     this.atk = null; this.kb.set(0, 0, 0); this.strafe = 1; this.strafeT = 0;
@@ -160,7 +161,7 @@ export class Boss extends Actor {
     this.ignited = true;
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0.9, 0.35, 0.05);
     this.trail.setColor(0xff7a20);
-    this.game.audio.startMusic(2);
+    if (this.cfg.phase2) this.game.audio.startMusic(2);
   }
 
   beginLeap() {
@@ -169,17 +170,19 @@ export class Boss extends Actor {
     const dx = p.x - this.pos.x, dz = p.z - this.pos.z, d = Math.hypot(dx, dz) || 1;
     const land = Math.max(0, d - 1.2);
     let tx = this.pos.x + dx / d * land, tz = this.pos.z + dz / d * land;
-    const ad = Math.hypot(tx - ARENA.x, tz - ARENA.z), lim = ARENA.r - 2.5;
-    if (ad > lim) { tx = ARENA.x + (tx - ARENA.x) / ad * lim; tz = ARENA.z + (tz - ARENA.z) / ad * lim; }
+    const A = this.arena;
+    const ad = Math.hypot(tx - A.x, tz - A.z), lim = A.r - 2.5;
+    if (ad > lim) { tx = A.x + (tx - A.x) / ad * lim; tz = A.z + (tz - A.z) / ad * lim; }
     this.leapFrom = { x: this.pos.x, z: this.pos.z };
     this.leapTo = { x: tx, z: tz };
     this.yaw = Math.atan2(dx, dz);
     const f = this.fwd();
-    this.tele = this.game.fx.telegraph(tx + f.x * 0.8, tz + f.z * 0.8, 3.5, 0.8 / this.atkSpeed);
+    const lr = this.cfg.leapR || 3.5;
+    this.tele = this.game.fx.telegraph(tx + f.x * 0.8, tz + f.z * 0.8, lr, (this.cfg.leapAir || 0.8) / this.atkSpeed);
   }
 
   chooseMove(d, behind) {
-    const w = WEIGHTS(this, d, behind);
+    const w = this.cfg.weights(this, d, behind);
     if (!w.length) return null;
     let r = Math.random() * w.reduce((s, x) => s + x[1], 0);
     for (const [n, x] of w) if ((r -= x) <= 0) return n;
@@ -197,7 +200,7 @@ export class Boss extends Actor {
 
     switch (this.state) {
       case 'dormant': {
-        pose = { ...P.rest, armR: [-0.9, 0, -0.1], foreR: [-0.5, 0, 0], handR: [2.4, 0, 0], head: [0.6, 0, 0] };
+        pose = this.cfg.kneels === false ? { ...loco(0), head: [0.45, 0, 0], torso: [0.2, 0, 0] } : { ...P.rest, armR: [-0.9, 0, -0.1], foreR: [-0.5, 0, 0], handR: [2.4, 0, 0], head: [0.6, 0, 0] };
         rate = 20;
         break;
       }
@@ -210,10 +213,10 @@ export class Boss extends Actor {
       }
       case 'neutral': {
         if (!p.alive) { pose = loco(0); break; }
-        if (!this.phase2 && this.hp <= this.maxHp * 0.55) {
+        if (this.cfg.phase2 && !this.phase2 && this.hp <= this.maxHp * 0.55) {
           this.phase2 = true; this.atkSpeed = 1.12; this.trackMul = 1.2;
           this.lastMove = 'roar';
-          this.startAttack(BOSS_MOVES.roar);
+          this.startAttack(this.moves.roar);
           this.game.ui.toast('', 0);
           break;
         }
@@ -222,18 +225,18 @@ export class Boss extends Actor {
         // punish healing at mid range
         const punish = p.state === 'heal' && dist < 9 && this.gap < 0.6;
         if (this.gap <= 0 || punish || (behind && dist < 3 && this.gap < 0.5)) {
-          const m = punish ? (dist > 4 ? (this.leapCd <= 0 && dist > 6 ? 'leap' : 'thrust') : 'sweep') : this.chooseMove(dist, behind);
+          const m = punish ? this.cfg.punish(this, dist) : this.chooseMove(dist, behind);
           if (m) {
             this.lastMove = m;
-            if (m === 'leap') this.leapCd = 7;
+            if (m === 'leap') this.leapCd = this.cfg.leapCd || 7;
             if (m === 'ember') this.emberCd = 9;
             this.counterAtk = this.counter; this.counter = false;
-            this.startAttack(BOSS_MOVES[m]);
+            this.startAttack(this.moves[m]);
             break;
           }
         }
         // movement: close distance, otherwise slow circle
-        const walk = this.phase2 ? 2.7 : 2.2;
+        const walk = (this.phase2 ? 1.22 : 1) * this.cfg.walk;
         let mx = 0, mz = 0, sp = 0;
         const dx = Math.sin(toP), dz = Math.cos(toP);
         if (dist > 2.6) { mx = dx; mz = dz; sp = dist > 9 ? walk * 1.5 : walk; }
@@ -262,7 +265,7 @@ export class Boss extends Actor {
             const e = u * u * (3 - 2 * u);
             this.pos.x = this.leapFrom.x + (this.leapTo.x - this.leapFrom.x) * e;
             this.pos.z = this.leapFrom.z + (this.leapTo.z - this.leapFrom.z) * e;
-            this.y = Math.sin(u * Math.PI) * 5.5;
+            this.y = Math.sin(u * Math.PI) * (this.cfg.leapH || 5.5);
           }
           if (t > t1) this.y = 0;
         }
@@ -277,7 +280,7 @@ export class Boss extends Actor {
           this.y = 0; this.leapTo = null;
           if (this.tele) { this.tele.dead = true; this.tele = null; }
           this.setState('neutral');
-          const g = this.phase2 ? [0.25, 0.8] : [0.45, 1.2];
+          const g = this.phase2 ? [0.25, 0.8] : this.cfg.gap;
           this.gap = g[0] + Math.random() * (g[1] - g[0]);
         }
         break;
@@ -367,7 +370,84 @@ export class Boss extends Actor {
     this.atk = null; this.y = 0;
     this.setState('dead');
     if (this.game.player.lock === this) this.game.player.lock = null;
-    this.game.onBossDeath();
+    this.game.onBossDeath(this);
   }
 }
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+
+// ---------- Brother Hask, the Pit Executioner (mini boss) ----------
+// Lighter and faster than Varek: short windups, a 3-hit flurry, a delayed chop,
+// an unparryable shoulder charge and a short hop slam. No second phase.
+export const HASK_MOVES = {
+  chop: {
+    dur: 1.4, track: [0.48, 4.2], sfx: [0.48, 'heavySwing'], trail: [0.5, 0.68],
+    keys: [[0.48, SW_WIND], [0.64, SW_STRIKE], [1.0, SW_STRIKE]],
+    hits: [{ t0: 0.52, t1: 0.66, range: 3.7, arc: 2.7, dmg: 24, poise: 30 }],
+    move: [[0.42, 0.64, 1.2]], stopAt: 1.3,
+  },
+  flurry: {
+    dur: 2.2, track: [0.45, 4.2], tracks: [[0.72, 0.92, 4], [1.12, 1.32, 4]], sfx: [0.45, 'heavySwing'], trail: [0.47, 1.52],
+    keys: [[0.45, SW_WIND], [0.6, SW_STRIKE], [0.92, BH_WIND], [1.04, BH_STRIKE], [1.32, SW_WIND], [1.46, SW_STRIKE], [1.85, SW_STRIKE]],
+    hits: [
+      { t0: 0.5, t1: 0.62, range: 3.7, arc: 2.7, dmg: 17, poise: 25 },
+      { t0: 0.95, t1: 1.06, range: 3.7, arc: 2.7, dmg: 17, poise: 25 },
+      { t0: 1.36, t1: 1.48, range: 3.8, arc: 2.7, dmg: 22, poise: 30 },
+    ],
+    move: [[0.4, 0.6, 0.8], [0.88, 1.04, 0.8], [1.3, 1.46, 0.9]], stopAt: 1.3,
+    onTime: [{ t: 0.92, fn: (b, g) => g.audio.play('swing', 1) }, { t: 1.32, fn: (b, g) => g.audio.play('heavySwing', 0.9) }],
+  },
+  overhead: {
+    dur: 1.95, track: [0.9, 3.5], sfx: [0.96, 'heavySwing'], trail: [0.98, 1.12],
+    keys: [[0.42, OH_RAISE], [0.96, OH_HOLD], [1.07, OH_STRIKE], [1.5, OH_STRIKE]],
+    hits: [{ t0: 1.0, t1: 1.1, range: 3.9, arc: 0.95, dmg: 34, poise: 50, knock: 'heavy' }],
+    move: [[0.9, 1.06, 0.8]], stopAt: 1.3,
+    onTime: [{ t: 1.07, fn: impact(3.2, 0.45) }],
+  },
+  charge: {
+    dur: 1.7, unparryable: true, track: [0.5, 5], trail: [0.55, 0.85],
+    keys: [[0.5, TH_WIND], [0.72, { ...TH_STRIKE, armR: [-0.5, 0, -0.5], foreR: [-0.8, 0, 0], torso: [0.6, -0.6, 0] }], [1.15, TH_STRIKE]],
+    hits: [{ t0: 0.55, t1: 0.86, shape: 'circle', offset: 0.9, radius: 1.25, dmg: 22, poise: 40, knockback: 11 }],
+    move: [[0.52, 0.86, 7.5]], stopAt: 0.9,
+    onTime: [{ t: 0.05, fn: (b) => b.glint(true) }, { t: 0.55, fn: (b, g) => { g.fx.dust(b.pos, 8, 1.2); g.audio.play('roll', 1); } }],
+  },
+  leap: {
+    dur: 2.25, unparryable: true, track: [0.45, 6], trail: [0.95, 1.15], leap: [0.45, 1.05],
+    keys: [[0.4, CROUCH], [0.6, AIR], [0.98, AIR], [1.08, OH_STRIKE], [1.7, OH_STRIKE]],
+    hits: [{ t0: 1.05, t1: 1.14, shape: 'circle', offset: 0.6, radius: 2.7, dmg: 30, poise: 60, knock: 'heavy' }],
+    onTime: [
+      { t: 0.45, fn: (b) => b.beginLeap() },
+      { t: 1.06, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 3.4, 0.6); } },
+    ],
+  },
+  spin: {
+    dur: 1.6, unparryable: true, sfx: [0.55, 'heavySwing'], trail: [0.55, 0.9], spin: [0.55, 0.9, -Math.PI * 2],
+    keys: [[0.48, { ...SW_WIND, torso: [0.2, 1.2, 0], armR: [-1.45, 0, -0.6] }], [0.6, { ...SW_STRIKE, torso: [0.2, 0, 0], armR: [-1.45, 0, -1.4] }], [0.92, { ...SW_STRIKE, torso: [0.2, 0, 0], armR: [-1.45, 0, -1.4] }], [1.2, SW_STRIKE]],
+    hits: [{ t0: 0.57, t1: 0.9, shape: 'circle', offset: 0, radius: 3.6, dmg: 20, poise: 40, knockback: 11 }],
+    onTime: [{ t: 0.05, fn: (b) => b.glint(true) }],
+  },
+};
+
+const HASK_WEIGHTS = (b, d, behind) => {
+  const w = [];
+  const near = d < 2.8, mid = d >= 2.2 && d < 7.5;
+  if (behind && d < 3.2) w.push(['spin', b.lastMove === 'spin' ? 2 : 6]);
+  if (near) { w.push(['chop', 3]); w.push(['flurry', 3]); w.push(['overhead', 2]); }
+  if (mid) w.push(['charge', near ? 0.5 : 2.5]);
+  if (d > 5 && b.leapCd <= 0) w.push(['leap', d > 8 ? 5 : 2]);
+  return w.map(([n, x]) => [n, n === b.lastMove ? x * 0.3 : x]);
+};
+
+export const BOSSES = {
+  varek: {
+    id: 'varek', name: 'Varek, the Ashen Warden', hp: 1300, poise: 170, radius: 1.05, walk: 2.2, gap: [0.45, 1.2],
+    phase2: true, moves: BOSS_MOVES, weights: VAREK_WEIGHTS,
+    punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 6 ? 'leap' : 'thrust') : 'sweep'),
+    model: { scale: 2.1, cloth: 0x2a2624, armor: 0x3c3c44, accent: 0x5a1a14, skin: 0x5a5048, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25 },
+  },
+  hask: {
+    id: 'hask', name: 'Brother Hask, the Pit Executioner', hp: 700, poise: 115, radius: 0.8, walk: 3.0, gap: [0.3, 0.9],
+    phase2: false, kneels: false, moves: HASK_MOVES, weights: HASK_WEIGHTS, leapH: 3.2, leapR: 2.7, leapAir: 0.6, leapCd: 6,
+    punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'charge') : 'chop'),
+    model: { scale: 1.55, cloth: 0x2a221c, armor: 0x4a3a30, accent: 0x161210, skin: 0x7a6a5a, head: 'hood', weapon: 'axe', eyes: 0xff4a2a, bulk: 1.3 },
+  },
+};

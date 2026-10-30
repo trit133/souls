@@ -3,26 +3,16 @@ import './style.css';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { FX } from './fx.js';
-import { World, ARENA, FOG_Z } from './world.js';
+import { World } from './world.js';
+import { pickLayout } from './modules.js';
 import { Player } from './player.js';
 import { Enemy } from './enemies.js';
-import { Boss, BOSS_MOVES } from './boss.js';
+import { Boss, BOSS_MOVES, BOSSES } from './boss.js';
 import { UI } from './ui.js';
 import { angDiff } from './actor.js';
 
 const $ = (id) => document.getElementById(id);
 
-const SPAWNS = [
-  ['grunt', 1.5, -15, Math.PI],
-  ['grunt', -6.2, -31.2, 1.2, { sit: true }],
-  ['spear', -2.0, -35.6, -2.4, { sit: true }],
-  ['archer', 9.5, -37, Math.PI * 0.95],
-  ['grunt', 8.2, -43.5, Math.PI, { patrol: { x: -2, z: -45 } }],
-  ['spear', 3.8, -50, Math.PI],
-  ['archer', -10.5, -53, Math.PI * 1.1],
-  ['grunt', -2.5, -55.5, Math.PI],
-  ['brute', 0, -70.5, Math.PI],
-];
 
 class Game {
   constructor() {
@@ -56,15 +46,14 @@ class Game {
     this.projectiles = [];
     this.rings = [];
     this.mode = 'title';
-    this.enemies = SPAWNS.map(([t, x, z, yaw, o]) => new Enemy(this, t, x, z, yaw, o));
-    this.boss = new Boss(this);
+    this.enemies = [];
+    this.bosses = [];
+    this.encounters = [];
     this.bossMoves = BOSS_MOVES;
     this.player = null;
-    this.bossActive = false;
-    this.bossDefeated = false;
     this.lockSprite = this.makeLockSprite();
-    this.respawnAt = this.world.bonfires[0];
     this.deaths = 0;
+    this.buildRun();
 
     this.bindUI();
     this.resize();
@@ -74,8 +63,33 @@ class Game {
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  // the encounter currently being fought (mini boss or final boss), if any
+  get activeEnc() { return this.encounters.find((e) => e.active) || null; }
+  get bossActive() { return !!this.activeEnc; }
+  get bossDefeated() { return this.encounters.find((e) => e.kind === 'boss')?.defeated; }
+
   enemiesAll() {
-    return this.bossActive && this.boss.alive ? [...this.enemies, this.boss] : this.enemies;
+    const enc = this.activeEnc;
+    return enc && enc.boss.alive ? [...this.enemies, enc.boss] : this.enemies;
+  }
+
+  // Assemble a new level from a fresh random module layout.
+  buildRun(layout = pickLayout(), seed = (Math.random() * 1e9) | 0) {
+    for (const e of this.enemies) e.remove();
+    for (const b of this.bosses) b.remove();
+    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
+    this.layout = layout;
+    this.world.build(layout, seed);
+    this.enemies = this.world.spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod }));
+    this.encounters = this.world.encounters;
+    this.bosses = this.encounters.map((enc) => {
+      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES.hask : BOSSES.varek, enc.arena, enc.mod);
+      enc.boss.enc = enc;
+      return enc.boss;
+    });
+    this.boss = this.encounters.find((e) => e.kind === 'boss').boss;
+    this.tokens = 0;
+    this.resetEncounters();
   }
 
   makeLockSprite() {
@@ -110,16 +124,11 @@ class Game {
   start(kind) {
     if (this.player) this.player.remove();
     this.kind = kind;
-    const b = this.world.bonfires[0];
-    this.player = new Player(this, kind, b.x, b.z - 2);
-    this.respawnAt = b;
-    for (const bf of this.world.bonfires) { bf.lit = false; bf.light.intensity = 0; }
-    b.lit = true;
-    for (const e of this.enemies) e.reset();
-    this.tokens = 0;
-    this.resetBoss();
-    this.bossDefeated = false;
-    this.world.fog.visible = true;
+    this.buildRun();
+    this.respawnAt = { x: 0, z: -2.5 };
+    this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z);
+    this.lastGood = null;
+    this.seenMod = 0;
     this.deaths = 0;
     this.startTime = this.time;
     this.mode = 'play';
@@ -129,7 +138,7 @@ class Game {
     this.ui.show('menu', false); this.ui.show('hud'); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('touch', this.input.isTouch);
     this.camPos.set(this.player.pos.x, 14, this.player.pos.z + 12);
-    this.ui.toast('THE ASHEN CAMP', 3);
+    this.ui.toast(this.world.mods[0].name.toUpperCase(), 3);
     this.input.reset();
   }
 
@@ -151,27 +160,35 @@ class Game {
     if (!v) this.audio.unlock();
   }
 
-  resetBoss() {
-    this.boss.reset();
-    this.bossActive = false;
-    this.world.setArenaLocked(false);
-    this.world.braziersLit = false;
+  // put every unbeaten encounter back to its pre-fight state
+  resetEncounters() {
+    for (const enc of this.encounters) {
+      enc.active = false;
+      if (enc.defeated) {
+        this.world.setGate(enc.gateIn, true, false);
+        if (enc.gateOut) this.world.setGate(enc.gateOut, true, false);
+        continue;
+      }
+      enc.boss.reset();
+      this.world.setGate(enc.gateIn, true, true); // fog you can walk through
+      if (enc.gateOut) this.world.setGate(enc.gateOut, false, true);
+    }
     this.ui.show('boss', false);
     this.audio.stopMusic();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = [];
     this.rings = [];
   }
 
-  startBossFight() {
-    this.bossActive = true;
-    this.world.setArenaLocked(true);
-    this.world.braziersLit = true;
+  startEncounter(enc) {
+    enc.active = true;
+    this.world.setGate(enc.gateIn, false, true);
     this.audio.play('fog');
-    this.boss.wake();
+    enc.boss.wake();
+    $('boss-name').textContent = enc.boss.name;
     this.ui.show('boss');
     this.ui.boss.snap(1);
     this.audio.startMusic(1);
-    setTimeout(() => this.bossActive && this.audio.play('roar', 0.8), 1200);
+    setTimeout(() => enc.active && this.audio.play('roar', enc.kind === 'mini' ? 0.5 : 0.8), 1200);
   }
 
   rest(b) {
@@ -182,6 +199,7 @@ class Game {
     p.lock = null;
     if (!b.lit) { b.lit = true; this.ui.toast('BONFIRE LIT', 2.5); this.audio.play('bonfire'); }
     else this.audio.play('heal');
+    this.lastGood = null;
     this.respawnAt = b;
     for (const e of this.enemies) e.reset();
     this.tokens = 0;
@@ -198,7 +216,8 @@ class Game {
       this.player.respawn(b.x, b.z - 1.6);
       for (const e of this.enemies) e.reset();
       this.tokens = 0;
-      if (!this.bossDefeated) this.resetBoss();
+      this.resetEncounters();
+      this.lastGood = null;
       this.fx.clear();
       this.camPos.set(b.x, 14, b.z + 12);
       this.player.setState('rest');
@@ -206,19 +225,31 @@ class Game {
     }, 3800);
   }
 
-  onBossDeath() {
-    this.bossDefeated = true;
+  onBossDeath(boss) {
+    const enc = boss.enc;
+    enc.defeated = true;
+    enc.active = false;
     this.audio.stopMusic(3);
     this.fx.addShake(0.8);
     this.slow = 1.6;
+    if (enc.kind === 'mini') {
+      // the way on (and the bonfire behind it) opens right away; fanfare follows
+      this.world.setGate(enc.gateIn, true, false);
+      this.world.setGate(enc.gateOut, true, false);
+      setTimeout(() => {
+        this.audio.play('victory');
+        this.ui.toast('GREAT FOE FELLED', 3);
+        this.ui.show('boss', false);
+      }, 2200);
+      return;
+    }
     setTimeout(() => {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
       $('victory-stats').textContent = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  Deaths ${this.deaths}  ·  ${this.kind === 'knight' ? 'Knight' : 'Rogue'}`;
       this.ui.show('victory');
       this.ui.show('boss', false);
-      this.world.setArenaLocked(false);
-      this.world.fog.visible = false;
+      this.world.setGate(enc.gateIn, true, false);
     }, 2600);
   }
 
@@ -392,8 +423,18 @@ class Game {
 
       if (dt > 0) {
         p.update(dt, this.input, presses);
-        for (const e of this.enemies) e.update(dt);
-        this.boss.update(dt);
+        for (const e of this.enemies) {
+          // distance culling: far enemies neither think nor draw
+          const near = Math.abs(e.pos.z - p.pos.z) < 42;
+          e.rig.root.visible = near && !(e.state === 'dead' && e.t > 4.5);
+          if (near) e.update(dt);
+        }
+        for (const b of this.bosses) {
+          const near = Math.abs(b.pos.z - p.pos.z) < 50;
+          if (!near) b.rig.root.visible = false;
+          else if (b.state !== 'dead') b.rig.root.visible = true;
+          if (near) b.update(dt);
+        }
         this.separate();
         this.updateProjectiles(dt);
       } else {
@@ -411,18 +452,25 @@ class Game {
       } else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
       // trigger only once the player is fully inside the arena circle, so locking the
       // fog never leaves them standing on ground that just stopped being walkable
-      if (!this.bossActive && !this.bossDefeated && p.alive && Math.hypot(p.pos.x - ARENA.x, p.pos.z - ARENA.z) < ARENA.r - 2) this.startBossFight();
+      if (!this.bossActive && p.alive) for (const enc of this.encounters) {
+        const A = enc.arena;
+        if (!enc.defeated && Math.hypot(p.pos.x - A.x, p.pos.z - A.z) < A.r - 2) { this.startEncounter(enc); break; }
+      }
       // safety net: never let the player end up on non-walkable ground
+      const enc = this.activeEnc;
       if (this.world.walkable(p.pos.x, p.pos.z, p.radius)) { (this.lastGood ||= p.pos.clone()).copy(p.pos); }
       else if (this.lastGood && this.world.walkable(this.lastGood.x, this.lastGood.z, p.radius)) p.pos.copy(this.lastGood);
-      else if (this.bossActive) { p.pos.x += (ARENA.x - p.pos.x) * 0.2; p.pos.z += (ARENA.z - p.pos.z) * 0.2; }
+      else if (enc) { p.pos.x += (enc.arena.x - p.pos.x) * 0.2; p.pos.z += (enc.arena.z - p.pos.z) * 0.2; }
+      // area title when reaching a new module
+      const m = this.world.moduleAt(p.pos.z);
+      if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); }
 
       this.ui.update(rdt, p);
-      if (this.bossActive) this.ui.boss.set(this.boss.hp / this.boss.maxHp, rdt);
+      if (enc) this.ui.boss.set(enc.boss.hp / enc.boss.maxHp, rdt);
       this.updateEnemyBars();
     }
 
-    this.world.update(dt, this.time, this.fx);
+    this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
     this.updateCamera(rdt);
   }
@@ -444,8 +492,9 @@ class Game {
   }
 
   separate() {
-    const all = [this.player, ...this.enemies.filter((e) => e.alive)];
-    if (this.bossActive && this.boss.alive && this.boss.y < 1) all.push(this.boss);
+    const all = [this.player, ...this.enemies.filter((e) => e.alive && Math.abs(e.pos.z - this.player.pos.z) < 30)];
+    const enc = this.activeEnc;
+    if (enc && enc.boss.alive && enc.boss.y < 1) all.push(enc.boss);
     for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
       const a = all[i], b = all[j];
       if (!a.alive && a !== this.player) continue;
@@ -478,8 +527,8 @@ class Game {
     const cam = this.camera;
     if (this.mode === 'title' || !this.player) {
       const a = this.time * 0.08;
-      const b = this.world.bonfires[0];
-      this.camPos.set(b.x + Math.sin(a) * 9, 6, b.z + Math.cos(a) * 9);
+      const b = { x: 0, z: -8 };
+      this.camPos.set(b.x + Math.sin(a) * 11, 7, b.z + Math.cos(a) * 11);
       cam.position.copy(this.camPos);
       cam.lookAt(b.x, 1, b.z);
       return;
@@ -499,8 +548,9 @@ class Game {
       const d = Math.min(8, p.distTo(p.lock));
       const k = d / Math.max(0.01, p.distTo(p.lock));
       focus.x += (t.x - p.pos.x) * k * 0.4; focus.z += (t.z - p.pos.z) * k * 0.4;
-    } else if (this.bossActive && this.boss.alive) {
-      focus.x += (this.boss.pos.x - p.pos.x) * 0.22; focus.z += (this.boss.pos.z - p.pos.z) * 0.22;
+    } else if (this.activeEnc && this.activeEnc.boss.alive) {
+      const B = this.activeEnc.boss;
+      focus.x += (B.pos.x - p.pos.x) * 0.22; focus.z += (B.pos.z - p.pos.z) * 0.22;
     } else if (p.vel) {
       focus.addScaledVector(p.vel, 0.18);
     }
