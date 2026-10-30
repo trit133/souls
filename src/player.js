@@ -454,7 +454,7 @@ export class Player extends Actor {
       if (mag > 0.2 && !this.lock) this.yaw = Math.atan2(dir.x, dir.z);
       else if (this.lock) this.yaw = this.yawTo(this.lock.pos);
       // The parry is judged on the attacker's clock: it only works if a parryable
-      // hit is 0.2-0.3s from landing (small tolerance for frame timing).
+      // hit lands within the next 0.5s (small tolerance for frame timing).
       const tgt = this.game.parryTargets(this, 0.03)[0];
       if (tgt) {
         tgt.e.parryMark = { atk: tgt.e.atk, h: tgt.np.h };

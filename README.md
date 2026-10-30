@@ -51,7 +51,7 @@ npm run build    # static build in dist/ — deployable to any static host
   - Parry or poise-break him for a critical. He punishes healing at mid range.
 - Red glints and red ground circles mark unparryable attacks.
 - **Parry (Rogue):**
-  - Timing: press it 0.3–0.2s before a parryable hit lands. A faint white ring on the attacker shows exactly that window.
+  - Timing: press it within the 0.5s before a parryable hit lands. A faint white ring on the attacker shows exactly that window.
   - What can be parried: only certain light attacks (grunt slashes, spear thrust and sweep, archer bash, Varek's sweeps, Hask's chop and flurry). Projectiles, slams, overheads, leaps, charges, lunges, spins and stomps never can.
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 

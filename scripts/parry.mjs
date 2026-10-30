@@ -1,4 +1,4 @@
-// Parry timing checks: window is 0.2-0.3s before a parryable hit, cue visibility,
+// Parry timing checks: window is the 0.5s before a parryable hit, cue visibility,
 // unparryable attacks, and the whiff stamina penalty.
 import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -45,10 +45,10 @@ const res = await page.evaluate(() => {
     }
     return { result: e.state === 'parried' ? 'PARRIED' : 'no', playerHpLost: Math.round(p.maxHp - p.hp), staminaLeftAfterPress: Math.round(stAfterPress), cueSeen, cueTth: cueDuring.length ? [Math.min(...cueDuring), Math.max(...cueDuring)] : null };
   };
-  out.grunt_slash_0_40_early = trial('grunt', 'slash', 0.40);
+  out.grunt_slash_0_60_early = trial('grunt', 'slash', 0.60);
+  out.grunt_slash_0_48_inWindow = trial('grunt', 'slash', 0.48);
   out.grunt_slash_0_25_inWindow = trial('grunt', 'slash', 0.25);
-  out.grunt_slash_0_21_inWindow = trial('grunt', 'slash', 0.21);
-  out.grunt_slash_0_10_late = trial('grunt', 'slash', 0.10);
+  out.grunt_slash_0_03_inWindow = trial('grunt', 'slash', 0.03);
   out.grunt_leap_0_25_unparryable = trial('grunt', 'leap', 0.25);
   out.hask_chop_0_25 = trial('hask', 'chop', 0.25);
   out.hask_charge_0_25_unparryable = trial('hask', 'charge', 0.25);

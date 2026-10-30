@@ -12,6 +12,7 @@ import { UI } from './ui.js';
 import { angDiff } from './actor.js';
 
 const $ = (id) => document.getElementById(id);
+const PARRY_EARLY = 0.5, PARRY_LATE = 0; // seconds before impact
 
 
 class Game {
@@ -312,13 +313,14 @@ class Game {
 
   hitstop(t) { this.freeze = Math.max(this.freeze, t); }
 
-  // Attackers whose next parryable hit lands in 0.2-0.3s and would reach the player.
+  // Parry window: from PARRY_EARLY seconds before a parryable hit lands until it lands.
+  // Attackers whose next parryable hit is inside that window and would reach the player.
   parryTargets(p, slack = 0) {
     const out = [];
     for (const e of this.enemiesAll()) {
       if (!e.alive) continue;
       const np = e.nextParry();
-      if (!np || np.tth < 0.2 - slack || np.tth > 0.3 + slack) continue;
+      if (!np || np.tth < PARRY_LATE - slack || np.tth > PARRY_EARLY + slack) continue;
       if (e.distTo(p) > (np.h.range ?? 3) + p.radius + 0.8) continue;
       if (Math.abs(angDiff(e.yaw, e.yawTo(p.pos))) > (np.h.arc ?? 2) / 2 + 0.5) continue;
       out.push({ e, np });
