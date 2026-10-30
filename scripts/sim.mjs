@@ -51,7 +51,7 @@ log('A parry/riposte:', JSON.stringify(await R(() => {
   b.startAttack(game.bossMoves.sweep);
   const hitT = game.bossMoves.sweep.hits[0].t0;
   let pressed = false;
-  H.run(2.5, () => { if (!pressed && b.atk && b.atk.t >= hitT - 0.08) { H.press('special'); pressed = true; } if (b.state === 'parried') return 'stop'; });
+  H.run(2.5, () => { if (!pressed && b.atk && (hitT - b.atk.t) / b.attackRate() <= 0.25) { H.press('special'); pressed = true; } if (b.state === 'parried') return 'stop'; });
   const st = b.state; const hp0 = b.hp;
   H.press('attack'); H.run(1.4);
   return { bossState: st, riposteDmg: hp0 - b.hp, playerHp: p.hp, playerState: p.state };

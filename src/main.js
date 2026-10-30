@@ -52,6 +52,7 @@ class Game {
     this.bossMoves = BOSS_MOVES;
     this.player = null;
     this.lockSprite = this.makeLockSprite();
+    this.makeParryCues();
     this.deaths = 0;
     this.buildRun();
 
@@ -256,8 +257,8 @@ class Game {
   // ---------- combat resolution ----------
   resolveHit(att, tg, h, def) {
     const info = {
-      dmg: h.dmg, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att,
-      parryable: !(def.unparryable || h.unparryable), unblockable: !!def.unblockable,
+      dmg: h.dmg, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att, hit: h,
+      parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
@@ -310,6 +311,47 @@ class Game {
   }
 
   hitstop(t) { this.freeze = Math.max(this.freeze, t); }
+
+  // Attackers whose next parryable hit lands in 0.2-0.3s and would reach the player.
+  parryTargets(p, slack = 0) {
+    const out = [];
+    for (const e of this.enemiesAll()) {
+      if (!e.alive) continue;
+      const np = e.nextParry();
+      if (!np || np.tth < 0.2 - slack || np.tth > 0.3 + slack) continue;
+      if (e.distTo(p) > (np.h.range ?? 3) + p.radius + 0.8) continue;
+      if (Math.abs(angDiff(e.yaw, e.yawTo(p.pos))) > (np.h.arc ?? 2) / 2 + 0.5) continue;
+      out.push({ e, np });
+    }
+    return out.sort((a, b) => a.e.distTo(p) - b.e.distTo(p));
+  }
+
+  // faint white ring on attackers during their parry window (rogue only: knights block)
+  makeParryCues() {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d');
+    g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 5;
+    g.beginPath(); g.arc(32, 32, 24, 0, Math.PI * 2); g.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    this.parryCues = [];
+    for (let i = 0; i < 4; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.5, depthTest: false }));
+      s.renderOrder = 11; s.visible = false; this.scene.add(s); this.parryCues.push(s);
+    }
+  }
+
+  updateParryCues() {
+    const p = this.player;
+    const list = p && p.alive && p.kind === 'rogue' && this.mode === 'play' ? this.parryTargets(p) : [];
+    this.parryCues.forEach((s, i) => {
+      const t = list[i];
+      s.visible = !!t;
+      if (!t) return;
+      const k = t.e.rig.root.scale.y;
+      s.position.set(t.e.pos.x, t.e.y + 1.35 * k, t.e.pos.z);
+      s.scale.setScalar(0.32 + 0.12 * k);
+    });
+  }
 
   impact(x, z, radius, shake) {
     this.fx.shockwave(x, z, radius);
@@ -470,6 +512,7 @@ class Game {
       this.updateEnemyBars();
     }
 
+    this.updateParryCues();
     this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
     this.updateCamera(rdt);

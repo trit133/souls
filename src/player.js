@@ -151,7 +151,7 @@ const RIPOSTE = {
 };
 
 const PARRY = {
-  dur: 0.56, cost: 14, window: [0.03, 0.22], trail: [0.03, 0.16], hand: 'L',
+  dur: 0.56, cost: 14, trail: [0.03, 0.16], hand: 'L',
   keys: [
     [0.05, { torso: [0, 0.45, 0], armL: [-1.4, 0, 1.3], foreL: [-0.3, 0, 0], handL: [1.3, 0, 0], legL: [0.2, 0, 0], legR: [-0.2, 0, 0] }],
     [0.16, { torso: [0.1, -0.35, 0], armL: [-1.35, 0, -0.45], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], legL: [0.25, 0, 0], legR: [-0.25, 0, 0], by: -0.06 }],
@@ -453,6 +453,18 @@ export class Player extends Actor {
       this.spend(PARRY.cost);
       if (mag > 0.2 && !this.lock) this.yaw = Math.atan2(dir.x, dir.z);
       else if (this.lock) this.yaw = this.yawTo(this.lock.pos);
+      // The parry is judged on the attacker's clock: it only works if a parryable
+      // hit is 0.2-0.3s from landing (small tolerance for frame timing).
+      const tgt = this.game.parryTargets(this, 0.03)[0];
+      if (tgt) {
+        tgt.e.parryMark = { atk: tgt.e.atk, h: tgt.np.h };
+        this.yaw = this.yawTo(tgt.e.pos);
+      } else {
+        // whiffed parry: huge stamina penalty and a long regen delay
+        this.st = Math.max(0, this.st - this.maxSt * 0.5);
+        this.stDelay = 1.6;
+        this.game.ui.staminaPenalty();
+      }
       this.atk = { def: PARRY, t: 0, hit: new Set() };
       this.setState('parry');
       this.game.audio.play('swing', 0.6);
@@ -530,7 +542,8 @@ export class Player extends Actor {
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;
-    if (this.state === 'parry' && this.inWindow(PARRY.window, this.t) && info.parryable && info.attacker && facing) return 'parry';
+    const A = info.attacker;
+    if (this.state === 'parry' && A && A.parryMark && A.parryMark.atk === A.atk && A.parryMark.h === info.hit) { A.parryMark = null; return 'parry'; }
     if (this.blocking && facing && !info.unblockable) {
       const cost = info.dmg * (info.knock === 'heavy' ? 1.6 : 1.15);
       this.st -= cost; this.stDelay = 0.6;

@@ -50,6 +50,10 @@ npm run build    # static build in dist/ — deployable to any static host
   - At 55% HP he roars and his blade ignites. He gets faster and adds a 3-hit combo, fire waves, a fire ring on his leap, and Ember Burst (a telegraphed AoE).
   - Parry or poise-break him for a critical. He punishes healing at mid range.
 - Red glints and red ground circles mark unparryable attacks.
+- **Parry (Rogue):**
+  - Timing: press it 0.3–0.2s before a parryable hit lands. A faint white ring on the attacker shows exactly that window.
+  - What can be parried: only certain light attacks (grunt slashes, spear thrust and sweep, archer bash, Varek's sweeps, Hask's chop and flurry). Projectiles, slams, overheads, leaps, charges, lunges, spins and stomps never can.
+  - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
 `scripts/smoke.mjs` (screenshots + runtime errors) and `scripts/sim.mjs` (deterministic mechanics checks + bot fights) run against `npx vite preview --port 4173`.

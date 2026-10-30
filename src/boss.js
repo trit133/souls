@@ -25,25 +25,25 @@ const impact = (r, shake) => (b, g) => { const f = b.fwd(); g.impact(b.pos.x + f
 
 export const BOSS_MOVES = {
   sweep: {
-    dur: 1.8, track: [0.66, 3.4], sfx: [0.66, 'heavySwing'], trail: [0.68, 0.92],
+    parry: true, dur: 1.8, track: [0.66, 3.4], sfx: [0.66, 'heavySwing'], trail: [0.68, 0.92],
     keys: [[0.66, SW_WIND], [0.88, SW_STRIKE], [1.35, SW_STRIKE]],
     hits: [{ t0: 0.72, t1: 0.9, range: 4.9, arc: 3.0, dmg: 30, poise: 40 }],
     move: [[0.6, 0.88, 1.3]], stopAt: 1.6,
   },
   combo2: {
-    dur: 2.5, track: [0.66, 3.4], tracks: [[1.0, 1.28, 3.0]], sfx: [0.66, 'heavySwing'], trail: [0.68, 1.5],
+    parry: true, dur: 2.5, track: [0.66, 3.4], tracks: [[1.0, 1.28, 3.0]], sfx: [0.66, 'heavySwing'], trail: [0.68, 1.5],
     keys: [[0.66, SW_WIND], [0.88, SW_STRIKE], [1.28, BH_WIND], [1.46, BH_STRIKE], [1.95, BH_STRIKE]],
     hits: [{ t0: 0.72, t1: 0.9, range: 4.9, arc: 3.0, dmg: 28, poise: 40 }, { t0: 1.32, t1: 1.48, range: 4.9, arc: 3.0, dmg: 28, poise: 40 }],
     move: [[0.6, 0.88, 1.2], [1.2, 1.45, 1.4]], stopAt: 1.6,
     onTime: [{ t: 1.28, fn: (b, g) => g.audio.play('heavySwing', 1) }],
   },
   combo3: {
-    dur: 3.3, track: [0.6, 3.6], tracks: [[0.95, 1.2, 3.2], [1.6, 2.05, 2.6]], sfx: [0.6, 'heavySwing'], trail: [0.62, 2.4],
+    parry: true, dur: 3.3, track: [0.6, 3.6], tracks: [[0.95, 1.2, 3.2], [1.6, 2.05, 2.6]], sfx: [0.6, 'heavySwing'], trail: [0.62, 2.4],
     keys: [[0.6, SW_WIND], [0.8, SW_STRIKE], [1.2, BH_WIND], [1.37, BH_STRIKE], [1.75, OH_RAISE], [2.12, OH_HOLD], [2.27, OH_STRIKE], [2.8, OH_STRIKE]],
     hits: [
       { t0: 0.65, t1: 0.82, range: 4.9, arc: 3.0, dmg: 26, poise: 40 },
       { t0: 1.23, t1: 1.39, range: 4.9, arc: 3.0, dmg: 26, poise: 40 },
-      { t0: 2.2, t1: 2.32, range: 5.0, arc: 0.9, dmg: 40, poise: 60, knock: 'heavy' },
+      { t0: 2.2, t1: 2.32, range: 5.0, arc: 0.9, dmg: 40, poise: 60, knock: 'heavy', parry: false },
     ],
     move: [[0.55, 0.8, 1.1], [1.1, 1.37, 1.2], [2.1, 2.27, 1.0]], stopAt: 1.6,
     onTime: [
@@ -136,6 +136,7 @@ export class Boss extends Actor {
 
   get target() { return this.game.player; }
   critable() { return this.state === 'parried' || this.state === 'broken'; }
+  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1); }
 
   reset() {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
@@ -380,13 +381,13 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3();
 // an unparryable shoulder charge and a short hop slam. No second phase.
 export const HASK_MOVES = {
   chop: {
-    dur: 1.4, track: [0.48, 4.2], sfx: [0.48, 'heavySwing'], trail: [0.5, 0.68],
+    parry: true, dur: 1.4, track: [0.48, 4.2], sfx: [0.48, 'heavySwing'], trail: [0.5, 0.68],
     keys: [[0.48, SW_WIND], [0.64, SW_STRIKE], [1.0, SW_STRIKE]],
     hits: [{ t0: 0.52, t1: 0.66, range: 3.7, arc: 2.7, dmg: 24, poise: 30 }],
     move: [[0.42, 0.64, 1.2]], stopAt: 1.3,
   },
   flurry: {
-    dur: 2.2, track: [0.45, 4.2], tracks: [[0.72, 0.92, 4], [1.12, 1.32, 4]], sfx: [0.45, 'heavySwing'], trail: [0.47, 1.52],
+    parry: true, dur: 2.2, track: [0.45, 4.2], tracks: [[0.72, 0.92, 4], [1.12, 1.32, 4]], sfx: [0.45, 'heavySwing'], trail: [0.47, 1.52],
     keys: [[0.45, SW_WIND], [0.6, SW_STRIKE], [0.92, BH_WIND], [1.04, BH_STRIKE], [1.32, SW_WIND], [1.46, SW_STRIKE], [1.85, SW_STRIKE]],
     hits: [
       { t0: 0.5, t1: 0.62, range: 3.7, arc: 2.7, dmg: 17, poise: 25 },

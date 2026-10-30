@@ -113,3 +113,10 @@ h2 { font-weight: 400; letter-spacing: 6px; }
   .char { padding: 10px; } .cdesc { font-size: 12px; } h1 { font-size: 34px; } .sub { margin-bottom: 10px; }
   #controls-help { margin-top: 8px; font-size: 11px; }
 }
+
+.bar.st.penalty { animation: stPenalty .6s ease-out; }
+@keyframes stPenalty {
+  0%, 40% { box-shadow: 0 0 10px 2px rgba(220,40,30,.9); border-color: #e04030; transform: translateX(-3px); }
+  20% { transform: translateX(3px); }
+  100% { box-shadow: none; transform: none; }
+}

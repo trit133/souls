@@ -22,13 +22,13 @@ const OVER_STRIKE = { torso: [0.6, 0, 0], armR: [-0.95, 0, 0.05], foreR: [-0.1, 
 
 const GRUNT_MOVES = {
   slash: {
-    dur: 1.25, range: 2.0, track: [0.5, 5], sfx: [0.55, 'swing'], trail: [0.54, 0.7], recover: 0.35,
+    parry: true, dur: 1.25, range: 2.0, track: [0.5, 5], sfx: [0.55, 'swing'], trail: [0.54, 0.7], recover: 0.35,
     keys: [[0.5, SWORD_WIND], [0.66, SWORD_STRIKE], [0.95, SWORD_STRIKE]],
     hits: [{ t0: 0.57, t1: 0.68, range: 2.1, arc: 2.2, dmg: 18, poise: 20 }],
     move: [[0.42, 0.66, 0.9]], stopAt: 1.0,
   },
   double: {
-    dur: 1.7, range: 2.0, track: [0.5, 5], sfx: [0.52, 'swing'], trail: [0.52, 1.02], recover: 0.4,
+    parry: true, dur: 1.7, range: 2.0, track: [0.5, 5], sfx: [0.52, 'swing'], trail: [0.52, 1.02], recover: 0.4,
     keys: [[0.48, SWORD_WIND], [0.63, SWORD_STRIKE], [0.86, BACK_WIND], [1.0, BACK_STRIKE], [1.3, BACK_STRIKE]],
     hits: [{ t0: 0.54, t1: 0.65, range: 2.1, arc: 2.2, dmg: 16, poise: 18 }, { t0: 0.9, t1: 1.01, range: 2.1, arc: 2.4, dmg: 16, poise: 18 }],
     move: [[0.4, 0.63, 0.8], [0.8, 0.98, 0.7]], stopAt: 1.0,
@@ -48,7 +48,7 @@ const SPEAR_STRIKE = { torso: [0.35, 0.25, 0], armR: [-1.5, 0, 0], foreR: [0, 0,
 
 const SPEAR_MOVES = {
   thrust: {
-    dur: 1.15, range: 3.3, track: [0.48, 4.5], sfx: [0.5, 'swing'], trail: [0.5, 0.66], recover: 0.35,
+    parry: true, dur: 1.15, range: 3.3, track: [0.48, 4.5], sfx: [0.5, 'swing'], trail: [0.5, 0.66], recover: 0.35,
     keys: [[0.5, SPEAR_WIND], [0.62, SPEAR_STRIKE], [0.9, SPEAR_STRIKE]],
     hits: [{ t0: 0.54, t1: 0.66, range: 3.4, arc: 0.6, dmg: 17, poise: 18 }],
     move: [[0.45, 0.62, 0.7]], stopAt: 2.0,
@@ -61,7 +61,7 @@ const SPEAR_MOVES = {
     onTime: [{ t: 0.75, fn: (e) => { if (e.target) e.yaw += angDiff(e.yaw, e.yawTo(e.target.pos)) * 0.7; } }],
   },
   sweep: {
-    dur: 1.1, range: 2.2, maxRange: 2.2, track: [0.4, 6], sfx: [0.42, 'swing'], trail: [0.42, 0.58], recover: 0.3,
+    parry: true, dur: 1.1, range: 2.2, maxRange: 2.2, track: [0.4, 6], sfx: [0.42, 'swing'], trail: [0.42, 0.58], recover: 0.3,
     keys: [[0.4, { torso: [0.2, -0.9, 0], armR: [-1.3, 0, -1.3], foreR: [0, 0, 0], handR: [1.5, 0, 0], by: -0.2, legL: [-0.4, 0, 0], legR: [0.4, 0, 0] }],
       [0.55, { torso: [0.3, 0.9, 0], armR: [-1.3, 0, 1.2], foreR: [0, 0, 0], handR: [1.5, 0, 0], by: -0.25, legL: [-0.4, 0, 0], legR: [0.4, 0, 0] }]],
     hits: [{ t0: 0.44, t1: 0.57, range: 2.9, arc: 2.8, dmg: 13, poise: 14, knockback: 8 }],
@@ -84,7 +84,7 @@ const ARCHER_MOVES = {
     ],
   },
   bash: {
-    dur: 1.0, range: 1.7, maxRange: 2.2, track: [0.35, 6], sfx: [0.38, 'swing'], recover: 0.3,
+    parry: true, dur: 1.0, range: 1.7, maxRange: 2.2, track: [0.35, 6], sfx: [0.38, 'swing'], recover: 0.3,
     keys: [[0.35, { armL: [-1.0, 0, 1.2], foreL: [-0.3, 0, 0], torso: [0, 0.6, 0] }], [0.48, { armL: [-1.4, 0, -0.5], foreL: [0, 0, 0], torso: [0.2, -0.5, 0], ...{ legL: [-0.5, 0, 0], legR: [0.4, 0, 0] } }]],
     hits: [{ t0: 0.4, t1: 0.5, range: 1.8, arc: 2.0, dmg: 9, poise: 10, knockback: 9 }],
   },
@@ -183,6 +183,7 @@ export class Enemy extends Actor {
   get target() { return this.game.player; }
 
   critable() { return this.state === 'parried'; }
+  attackRate() { return this.atkSpeed || 1; }
 
   alert() {
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;

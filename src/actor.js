@@ -110,6 +110,23 @@ export class Actor {
     return ang <= h.arc / 2 + Math.atan2(tg.radius, d);
   }
 
+  // playback speed of the current attack (enemies/bosses speed up when countering)
+  attackRate() { return 1; }
+
+  // The very next hit of the current attack, if it is parryable, plus the real
+  // seconds until it lands. Later hits only count once earlier ones have passed.
+  nextParry() {
+    if (this.state !== 'attack' || !this.atk || !this.atk.def.hits) return null;
+    const d = this.atk.def;
+    for (let i = 0; i < d.hits.length; i++) {
+      const h = d.hits[i];
+      if (this.atk.t > h.t0) continue;
+      if (!(h.parry ?? d.parry)) return null;
+      return { h, i, tth: (h.t0 - this.atk.t) / this.attackRate() };
+    }
+    return null;
+  }
+
   attackPose(base) { return sample(this.atk.def.keys, this.atk.t, base); }
 
   inWindow(w, t = this.atk?.t) { return w && t >= w[0] && t <= w[1]; }

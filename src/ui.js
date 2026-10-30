@@ -44,6 +44,12 @@ export class UI {
     this.flaskEl.textContent = p.flasks;
   }
 
+  // red flash on the stamina bar after a whiffed parry
+  staminaPenalty() {
+    const el = document.querySelector('.bar.st');
+    el.classList.remove('penalty'); void el.offsetWidth; el.classList.add('penalty');
+  }
+
   toast(text, dur = 2.5) {
     this.toastEl.textContent = text;
     this.toastEl.classList.toggle('show', !!text && dur > 0);
