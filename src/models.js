@@ -154,7 +154,14 @@ export function buildHumanoid(o) {
   }
   if (o.eyes) {
     const em = new THREE.MeshBasicMaterial({ color: o.eyes });
-    for (const s of [1, -1]) head.add(box(0.045, 0.03, 0.02, em, s * 0.06, 0.2, 0.15));
+    // helmets have a visor slit at the same spot, so eyes sit just in front of it
+    const ez = ht === 'helm' || ht === 'horned' ? 0.172 : 0.15;
+    for (const s of [1, -1]) head.add(box(0.045, 0.03, 0.02, em, s * 0.06, 0.2, ez));
+    if (o.eyeGlow) {
+      // bright white core inside a red halo
+      const halo = new THREE.MeshBasicMaterial({ color: o.eyeGlow });
+      for (const s of [1, -1]) head.add(box(0.08, 0.06, 0.012, halo, s * 0.06, 0.2, ez - 0.008));
+    }
   }
 
   for (const side of [1, -1]) {

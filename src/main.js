@@ -12,6 +12,8 @@ import { UI } from './ui.js';
 import { angDiff } from './actor.js';
 import { BOONS, rollBoons } from './boons.js';
 import { STATUS } from './status.js';
+import { LocalAccounts } from './account.js';
+import { GOLD_PER_ENEMY, MINI_GOLD, BOSS_GOLD, CASHOUT_MULT, WIN_MULT, payout, UPGRADES, upgradeCost, upgradeTotal, stepValue } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
@@ -56,6 +58,9 @@ class Game {
     this.player = null;
     this.lockSprite = this.makeLockSprite();
     this.makeParryCues();
+    this.accounts = new LocalAccounts();
+    this.runGold = 0;
+    this.minisFelled = 0;
     this.deaths = 0;
     this.buildRun();
 
@@ -84,10 +89,12 @@ class Game {
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
     this.layout = layout;
     this.world.build(layout, seed);
-    this.enemies = this.world.spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod }));
+    // tier = mini bosses passed before a module; everything after them is stronger
+    const tierAt = (i) => layout.slice(0, i).filter((k) => k.startsWith('mini:')).length;
+    this.enemies = this.world.spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod) }));
     this.encounters = this.world.encounters;
     this.bosses = this.encounters.map((enc) => {
-      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod);
+      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod, tierAt(enc.mod));
       enc.boss.enc = enc;
       return enc.boss;
     });
@@ -118,6 +125,23 @@ class Game {
     $('again').addEventListener('click', () => this.toTitle());
     $('retry').addEventListener('click', () => { this.audio.unlock(); this.start(this.kind); });
     $('go-title').addEventListener('click', () => this.toTitle());
+    $('btn-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
+    $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); });
+    $('btn-acct').addEventListener('click', () => {
+      if (this.accounts.user) { this.accounts.signOut(); this.refreshTitle(); return; }
+      $('acct-err').textContent = ''; this.ui.show('account');
+    });
+    $('acct-back').addEventListener('click', () => this.ui.show('account', false));
+    const auth = async (fn) => {
+      try {
+        await fn($('acct-user').value.trim(), $('acct-pass').value);
+        $('acct-pass').value = '';
+        this.ui.show('account', false); this.refreshTitle();
+      } catch (e) { $('acct-err').textContent = e.message; }
+    };
+    $('acct-form').addEventListener('submit', (e) => { e.preventDefault(); auth((u, p) => this.accounts.signIn(u, p)); });
+    $('acct-signup').addEventListener('click', () => auth((u, p) => this.accounts.signUp(u, p)));
+    this.refreshTitle();
     const pr = $('prompt');
     const tapPrompt = (e) => { e.preventDefault(); this.input.pressed.add('interact'); };
     pr.addEventListener('touchstart', tapPrompt, { passive: false });
@@ -132,7 +156,10 @@ class Game {
     this.kind = kind;
     this.buildRun();
     this.respawnAt = { x: 0, z: -2.5 };
-    this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z);
+    this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.data?.upgrades);
+    this.runGold = 0; this.minisFelled = 0;
+    this.ui.setRunGold(0);
+    if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
     this.ui.setBoons([]);
     this.ui.setProgress(1, this.world.mods.length);
     this.ui.show('gameover', false); this.ui.show('reward', false);
@@ -159,6 +186,7 @@ class Game {
     this.ui.show('hud', false); this.ui.show('touch', false); this.ui.show('menu');
     this.ui.prompt(null);
     this.ui.enemyBars([]);
+    this.refreshTitle();
   }
 
   setPaused(v) {
@@ -201,7 +229,84 @@ class Game {
     setTimeout(() => enc.active && this.audio.play('roar', enc.kind === 'mini' ? 0.5 : 0.8), 1200);
   }
 
-  // No checkpoints: death ends the run.
+  refreshTitle() {
+    const A = this.accounts;
+    $('acct-name').textContent = A.user ? A.displayName : 'Guest (gold is not saved)';
+    $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
+    $('btn-acct').textContent = A.user ? 'Sign Out' : 'Sign In';
+    $('btn-shop').classList.toggle('hidden', !A.user);
+  }
+
+  renderShop() {
+    const d = this.accounts.data;
+    $('shop-gold').textContent = `◆ ${d.gold} gold`;
+    const wrap = $('shop-list');
+    wrap.innerHTML = '';
+    for (const u of UPGRADES) {
+      const lv = d.upgrades[u.key] || 0, cost = upgradeCost(lv);
+      const row = document.createElement('div');
+      row.className = 'shop-row';
+      const info = u.locked ? u.locked : `Lv ${lv} · now +${upgradeTotal(u, lv)}${u.unit} · next +${stepValue(u, lv)}${u.unit}`;
+      row.innerHTML = `<div><div class="sname">${u.name}</div><div class="sinfo">${info}</div></div>`;
+      const b = document.createElement('button');
+      b.textContent = u.locked ? 'Locked' : `◆ ${cost}`;
+      b.disabled = !!u.locked || d.gold < cost;
+      b.addEventListener('click', () => this.buyUpgrade(u.key));
+      row.appendChild(b);
+      wrap.appendChild(row);
+    }
+  }
+
+  buyUpgrade(key) {
+    const d = this.accounts.data, u = UPGRADES.find((x) => x.key === key);
+    if (!d || !u || u.locked) return;
+    const lv = d.upgrades[key] || 0, cost = upgradeCost(lv);
+    if (d.gold < cost) return;
+    d.gold -= cost;
+    d.upgrades[key] = lv + 1;
+    this.accounts.save();
+    this.audio.play('heal');
+    this.renderShop();
+  }
+
+  addRunGold(n, a) {
+    this.runGold += n;
+    this.ui.setRunGold(this.runGold);
+    if (a) this.statusPopup(a, `+${n}`, '#e8c25a');
+  }
+
+  onEnemyKilled(e) { this.addRunGold(GOLD_PER_ENEMY, e); }
+
+  // move gold into the account; returns the amount banked
+  bankGold(mult) {
+    const amount = payout(this.runGold, mult), A = this.accounts;
+    if (A.data) {
+      A.data.gold += amount;
+      A.data.stats.goldEarned += amount;
+      A.data.stats.bestArea = Math.max(A.data.stats.bestArea, this.seenMod + 1);
+      A.save();
+    }
+    return amount;
+  }
+
+  // leave the run after a mini boss, keeping the gold
+  cashOut() {
+    const mult = CASHOUT_MULT[this.minisFelled];
+    const amount = this.bankGold(mult);
+    if (this.accounts.data) { this.accounts.data.stats.extracts++; this.accounts.save(); }
+    this.mode = 'over';
+    this.audio.stopMusic();
+    this.audio.play('victory');
+    $('gameover-title').textContent = 'You escaped with your gold';
+    $('gameover-stats').innerHTML = [
+      `◆ ${this.runGold} × ${mult} = <b>◆ ${amount}</b> ${this.accounts.user ? 'banked' : '(guest: not saved)'}`,
+      `Reached area ${this.seenMod + 1} of ${this.world.mods.length}`,
+    ].join('<br>');
+    this.ui.show('hud', false); this.ui.show('touch', false);
+    this.ui.show('gameover');
+  }
+
+  // No checkpoints: death ends the run and loses all unbanked gold.
   onPlayerDeath() {
     this.deaths++;
     this.audio.play('death');
@@ -213,7 +318,10 @@ class Game {
       if (this.mode !== 'play') return;
       this.ui.show('death', false);
       this.mode = 'over';
+      $('gameover-title').textContent = 'The run has ended';
+      if (this.accounts.data) { this.accounts.data.stats.bestArea = Math.max(this.accounts.data.stats.bestArea, this.seenMod + 1); this.accounts.save(); }
       $('gameover-stats').innerHTML = [
+        `Gold lost: ◆ ${this.runGold}`,
         `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
         `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
         `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
@@ -231,7 +339,9 @@ class Game {
     this.input.reset();
     const cards = rollBoons().map((k) => ({ key: k, name: BOONS[k].name, color: BOONS[k].color, desc: BOONS[k].desc(p) }));
     cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all health (${Math.round(p.hp)}/${p.maxHp}) and refill your flasks (${p.flasks}/${p.maxFlasks}).` });
-    this.ui.showReward(cards, (k) => this.claimReward(k));
+    const mult = CASHOUT_MULT[this.minisFelled], amount = payout(this.runGold, mult);
+    this.ui.showReward(cards, (k) => (k === 'cashout' ? this.cashOut() : this.claimReward(k)),
+      `Leave the run with ◆ ${amount} gold  (◆ ${this.runGold} × ${mult})`);
   }
 
   claimReward(k) {
@@ -261,6 +371,7 @@ class Game {
     this.fx.addShake(0.8);
     this.slow = 1.6;
     if (enc.kind === 'mini') {
+      this.addRunGold(MINI_GOLD[this.minisFelled++], boss);
       // the way on opens right away; fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
       this.world.setGate(enc.gateOut, true, false);
@@ -273,10 +384,16 @@ class Game {
       }, 2000);
       return;
     }
+    // nothing left can hurt the player once Varek falls
+    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
+    this.addRunGold(BOSS_GOLD, boss);
+    const won = this.bankGold(WIN_MULT);
+    if (this.accounts.data) { this.accounts.data.stats.wins++; this.accounts.save(); }
+    const goldLine = `◆ ${this.runGold} × ${WIN_MULT} = ◆ ${won} ${this.accounts.user ? 'banked' : '(guest: not saved)'}`;
     setTimeout(() => {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
-      $('victory-stats').innerHTML = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${this.kind === 'knight' ? 'Knight' : 'Rogue'}<br>Boons: ${this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') || 'none'}`;
+      $('victory-stats').innerHTML = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${this.kind === 'knight' ? 'Knight' : 'Rogue'}<br>${goldLine}<br>Boons: ${this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') || 'none'}`;
       this.ui.show('victory');
       this.ui.show('boss', false);
       this.world.setGate(enc.gateIn, true, false);
@@ -289,6 +406,7 @@ class Game {
       dmg: h.dmg, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att, hit: h,
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
+    if (att !== this.player) info.dmg *= att.dmgScale || 1;
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
     if (tg === this.player) {
@@ -432,7 +550,7 @@ class Game {
     mesh.position.copy(from);
     mesh.lookAt(from.clone().add(dir));
     this.scene.add(mesh);
-    this.projectiles.push({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 });
+    this.projectiles.push({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * e.dmgScale });
   }
 
   spawnFireWave(b, off) {
@@ -440,7 +558,7 @@ class Game {
     for (const a of [-0.3, 0, 0.3]) {
       const d = f.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
       const pos = new THREE.Vector3(b.pos.x + f.x * off, 0.3, b.pos.z + f.z * off);
-      this.projectiles.push({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20, mesh: null });
+      this.projectiles.push({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * b.dmgScale, mesh: null });
     }
     this.audio.play('fire');
   }
@@ -454,12 +572,12 @@ class Game {
     const dir = to.clone().sub(from).normalize();
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
     mesh.position.copy(from); this.scene.add(mesh);
-    this.projectiles.push({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26, knock: 'heavy' });
+    this.projectiles.push({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * b.dmgScale, knock: 'heavy' });
     this.audio.play('heavySwing', 1);
   }
 
   spawnFireRing(x, z, maxR, dur, dmg) {
-    this.rings.push({ x, z, maxR, dur, dmg, t: 0, hit: false });
+    this.rings.push({ x, z, maxR, dur, dmg: dmg * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: false });
     this.audio.play('fire');
   }
 

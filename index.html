@@ -20,7 +20,7 @@
     <div id="bars">
       <div class="bar hp"><div class="chip"></div><div class="fill"></div></div>
       <div class="bar st"><div class="fill"></div></div>
-      <div id="flasks"><span class="flask-icon"></span><span id="flask-count">3</span><span id="progress"></span></div>
+      <div id="flasks"><span class="flask-icon"></span><span id="flask-count">3</span><span id="progress"></span><span id="run-gold"></span></div>
       <div id="boon-tags"></div>
     </div>
     <div id="boss" class="hidden">
@@ -47,7 +47,13 @@
 
   <div id="menu" class="screen">
     <h1>ASHEN VIGIL</h1>
-    <p class="sub">a souls-like tester</p>
+    <p class="sub">a souls-like roguelite</p>
+    <div id="acct-bar">
+      <span id="acct-name"></span>
+      <span id="acct-gold"></span>
+      <button class="mini-btn" id="btn-shop">Upgrades</button>
+      <button class="mini-btn" id="btn-acct">Sign In</button>
+    </div>
     <div id="chars">
       <button class="char" data-char="knight">
         <div class="cname">The Knight</div>
@@ -74,7 +80,7 @@
 
   <div id="death" class="screen hidden"><div class="banner red">YOU DIED</div></div>
   <div id="gameover" class="screen hidden">
-    <h2>The run has ended</h2>
+    <h2 id="gameover-title">The run has ended</h2>
     <div id="gameover-stats"></div>
     <div>
       <button class="menu-btn" id="retry">Try Again</button>
@@ -85,6 +91,27 @@
     <h2>Choose your reward</h2>
     <p class="sub">Claim one</p>
     <div id="reward-cards"></div>
+    <button class="menu-btn" id="cashout"></button>
+  </div>
+  <div id="account" class="screen hidden">
+    <h2>Account</h2>
+    <form id="acct-form" autocomplete="on">
+      <input id="acct-user" placeholder="Username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input id="acct-pass" type="password" placeholder="Password" autocomplete="current-password" />
+      <div id="acct-err"></div>
+      <div>
+        <button class="menu-btn" type="submit" id="acct-signin">Sign In</button>
+        <button class="menu-btn" type="button" id="acct-signup">Create Account</button>
+      </div>
+    </form>
+    <p id="acct-note">Accounts are saved in this browser on this device.</p>
+    <button class="mini-btn" id="acct-back">Back</button>
+  </div>
+  <div id="shop" class="screen hidden">
+    <h2>Upgrades</h2>
+    <div id="shop-gold"></div>
+    <div id="shop-list"></div>
+    <button class="menu-btn" id="shop-back">Back</button>
   </div>
   <div id="victory" class="screen hidden">
     <div class="banner gold">HEIR OF ASH FELLED</div>

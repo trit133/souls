@@ -66,6 +66,7 @@ export class UI {
 
   // run progress + acquired power-up tags
   setProgress(i, n) { document.getElementById('progress').textContent = `AREA ${i}/${n}`; }
+  setRunGold(n) { document.getElementById('run-gold').textContent = `◆ ${n}`; }
   setBoons(list) {
     document.getElementById('boon-tags').innerHTML = list.map((b) => `<span class="boon-tag" style="color:${b.color}">${b.tag}${b.n > 1 ? ' ×' + b.n : ''}</span>`).join('');
   }
@@ -82,8 +83,11 @@ export class UI {
   }
 
   // reward picker: cards = [{ key, name, desc, rest? }]; resolves with the chosen key
-  showReward(cards, onPick) {
+  showReward(cards, onPick, cashLabel) {
     const wrap = document.getElementById('reward-cards');
+    const cash = document.getElementById('cashout');
+    cash.textContent = cashLabel;
+    cash.onclick = () => pick('cashout');
     wrap.innerHTML = '';
     let done = false;
     const pick = (k) => { if (done) return; done = true; removeEventListener('keydown', onKey); this.show('reward', false); onPick(k); };

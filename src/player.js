@@ -3,6 +3,7 @@ import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
+import { UPGRADES, upgradeTotal } from './progress.js';
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -160,7 +161,8 @@ const PARRY = {
 };
 
 export class Player extends Actor {
-  constructor(game, kind, x, z) {
+  // `upgrades`: permanent upgrade levels from the player's account ({ dmg: 2, hp: 1, ... })
+  constructor(game, kind, x, z, upgrades = {}) {
     const c = CHARS[kind];
     const rig = buildHumanoid({ ...c.model, scale: 1 });
     super(game, rig, { x, z, hp: c.hp, radius: 0.42, team: 'player', yaw: Math.PI, poise: 0 });
@@ -187,9 +189,13 @@ export class Player extends Actor {
     this.atkRate = 1;
     this.rollRate = 1; this.rollDist = 1;
     // run power-ups (see boons.js)
-    this.dmgMul = 1; this.rollMul = 1; this.aspdMul = 1;
+    this.dmgMul = 1; this.rollMul = 1; this.aspdMul = 1; this.moveMul = 1;
     this.statusLv = {};
     this.boonList = [];
+    const pct = (k) => upgradeTotal(UPGRADES.find((u) => u.key === k), upgrades[k] || 0) / 100;
+    this.dmgMul += pct('dmg'); this.aspdMul += pct('aspd'); this.moveMul += pct('move');
+    this.maxHp = this.hp = Math.round(c.hp * (1 + pct('hp')));
+    this.maxSt = this.st = Math.round(c.st * (1 + pct('st')));
     this.fatigueT = 0;
     this.setState('move');
   }
@@ -255,7 +261,7 @@ export class Player extends Actor {
         this.sprinting = wantSprint;
         let sp = (this.sprinting ? this.c.sprint : this.c.walk) * mag;
         if (this.blocking) sp *= 0.5;
-        sp *= 1 - 0.35 * this.fatigue;
+        sp *= (1 - 0.35 * this.fatigue) * this.moveMul;
         if (this.sprinting) { this.st -= 14 * dt; this.stDelay = 0.4; }
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.01 ? sp : 0);
         this.vel.lerp(tv, 1 - Math.exp(-14 * dt));

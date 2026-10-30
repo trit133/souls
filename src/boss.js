@@ -4,6 +4,7 @@ import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
+import { tierScale, TIER_EYES } from './progress.js';
 
 // Varek, the Ashen Warden. Two phases. Every move has a readable windup and a
 // punish window afterwards; heavy/AoE moves are unparryable and telegraphed.
@@ -120,9 +121,11 @@ const VAREK_WEIGHTS = (b, d, behind) => {
 
 export class Boss extends Actor {
   // cfg: one of BOSSES; arena: {x, z, r}; mod: module index the boss is confined to
-  constructor(game, cfg, arena, mod) {
-    const rig = buildHumanoid(cfg.model);
-    super(game, rig, { x: arena.x, z: arena.z - 3, hp: cfg.hp, radius: cfg.radius, poise: cfg.poise, yaw: 0 });
+  constructor(game, cfg, arena, mod, tier = 0) {
+    const scale = tierScale(tier);
+    const rig = buildHumanoid({ ...cfg.model, eyes: TIER_EYES[tier] ?? cfg.model.eyes, eyeGlow: tier >= 3 ? 0xff1a10 : null });
+    super(game, rig, { x: arena.x, z: arena.z - 3, hp: Math.round(cfg.hp * scale), radius: cfg.radius, poise: cfg.poise, yaw: 0 });
+    this.tier = tier; this.dmgScale = scale; this.spdScale = scale;
     this.cfg = cfg;
     this.moves = cfg.moves;
     this.arena = arena;
@@ -138,7 +141,7 @@ export class Boss extends Actor {
 
   get target() { return this.game.player; }
   critable() { return this.state === 'parried' || this.state === 'broken'; }
-  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow(); }
+  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.spdScale; }
 
   reset() {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
@@ -259,7 +262,7 @@ export class Boss extends Actor {
           if (this.strafeT <= 0) { this.strafeT = 1.5 + Math.random() * 1.5; this.strafe = -this.strafe; }
           mx = -dz * this.strafe; mz = dx * this.strafe; sp = walk * 0.5;
         }
-        sp *= this.status.slow();
+        sp *= this.status.slow() * this.spdScale;
         this.move(mx * sp * dt, mz * sp * dt);
         this.speed += (sp - this.speed) * Math.min(1, dt * 6);
         this.turnToward(toP, 3.2, dt);

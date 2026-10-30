@@ -31,6 +31,19 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
   - Bosses take roughly half the percentage.
 - Module code lives in `src/modules.js`, power-ups in `src/boons.js`, and status effects in `src/status.js`.
 
+## Gold and permanent upgrades
+- **Earning:** +1 per enemy; mini bosses pay 2, 3, then 4; Varek pays 7.
+- **Keeping it:** gold is lost on death. After a mini boss you may leave the run instead of continuing: ×1 after the first, ×1.5 after the second, ×2 after the third. Beating Varek banks ×3.
+- **Enemy tiers:** each mini boss passed gives everything after it +10% health, damage, move speed and attack speed (additive). Eyes turn red, then orange, then white with a red halo.
+- **Upgrades** (title screen): costs start at 10 and go ×1.5 rounded up (10, 15, 23, 35, 53...), per upgrade.
+  - Damage: +3%, then +4% from the 4th level.
+  - Health: +5%, then +8%.
+  - Move speed: +2%, then +4%.
+  - Attack speed: +2%, then +4%.
+  - Stamina: +6%, then +8%.
+  - Mana: locked until the game has spells.
+- **Accounts:** `src/account.js` stores accounts in the browser's localStorage with PBKDF2-hashed passwords. They are per device; an online backend can replace that class. Rules live in `src/progress.js`.
+
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
 ## Run
@@ -72,4 +85,4 @@ npm run build    # static build in dist/ — deployable to any static host
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over) and `scripts/parry.mjs` run against `npx vite preview --port 4173`.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop) and `scripts/parry.mjs` run against `npx vite preview --port 4173`.

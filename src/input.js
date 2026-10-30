@@ -24,6 +24,7 @@ export class Input {
 
   _bindKeyboard() {
     addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement) return; // typing in the account form
       if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       this.lastDevice = 'kb';
       if (e.repeat) return;

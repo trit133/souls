@@ -4,6 +4,7 @@ import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
+import { tierScale, TIER_EYES } from './progress.js';
 
 let UID = 1;
 
@@ -136,30 +137,33 @@ export const TYPES = {
   grunt: {
     hp: 140, poise: 15, scale: 1, radius: 0.45, run: 3.7, walk: 1.7, aggro: 11, prefer: 1.7, style: 'sword', turn: 7,
     cd: [0.6, 1.6], moves: GRUNT_MOVES, weights: { slash: 3, double: 2, leap: 1.5 },
-    model: { cloth: 0x4a3c2c, armor: 0x5a5046, skin: 0x8a8576, head: 'bare', weapon: 'rusty', eyes: 0xff7a2a },
+    model: { cloth: 0x4a3c2c, armor: 0x5a5046, skin: 0x8a8576, head: 'bare', weapon: 'rusty', eyes: 0xd8c060 },
   },
   spear: {
     hp: 120, poise: 15, scale: 1, radius: 0.45, run: 3.5, walk: 1.8, aggro: 11, prefer: 2.9, style: 'spear', turn: 6,
     cd: [0.8, 1.8], moves: SPEAR_MOVES, weights: { thrust: 3, double: 2, sweep: 2 }, backoff: 1.7,
-    model: { cloth: 0x3c3a30, armor: 0x6a6052, skin: 0x8a8576, head: 'cap', weapon: 'spear', eyes: 0xff7a2a },
+    model: { cloth: 0x3c3a30, armor: 0x6a6052, skin: 0x8a8576, head: 'cap', weapon: 'spear', eyes: 0xd8c060 },
   },
   archer: {
     hp: 46, poise: 10, scale: 1, radius: 0.42, run: 3.3, walk: 2.2, aggro: 16, prefer: 9, style: 'bow', turn: 6,
     cd: [1.2, 2.4], moves: ARCHER_MOVES, weights: { shoot: 1, bash: 1 }, ranged: true, backoff: 5,
-    model: { cloth: 0x2e3a26, armor: 0x3e4a32, skin: 0x8a8576, head: 'hood', weapon: 'bow', accent: 0x3e4a32, eyes: 0xff7a2a },
+    model: { cloth: 0x2e3a26, armor: 0x3e4a32, skin: 0x8a8576, head: 'hood', weapon: 'bow', accent: 0x3e4a32, eyes: 0xd8c060 },
   },
   brute: {
     hp: 280, poise: 80, scale: 1.45, radius: 0.75, run: 2.9, walk: 1.5, aggro: 12, prefer: 2.4, style: 'club', turn: 2.6,
     cd: [0.9, 1.9], moves: BRUTE_MOVES, weights: { slam: 2, sweep: 3, stomp: 3 }, superArmor: true,
-    model: { cloth: 0x5a4030, armor: 0x6b5a48, skin: 0x7a6a58, head: 'horned', weapon: 'club', bulk: 1.35, eyes: 0xff3a1a, pauldrons: true },
+    model: { cloth: 0x5a4030, armor: 0x6b5a48, skin: 0x7a6a58, head: 'horned', weapon: 'club', bulk: 1.35, eyes: 0xd8c060, pauldrons: true },
   },
 };
 
 export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {
     const T = TYPES[type];
-    const rig = buildHumanoid({ ...T.model, scale: T.scale });
-    super(game, rig, { x, z, yaw, hp: T.hp, radius: T.radius, poise: T.poise });
+    // tier = mini bosses passed before this module
+    const tier = opts.tier || 0, scale = tierScale(tier);
+    const rig = buildHumanoid({ ...T.model, scale: T.scale, eyes: TIER_EYES[tier] ?? T.model.eyes, eyeGlow: tier >= 3 ? 0xff1a10 : null });
+    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * scale), radius: T.radius, poise: T.poise });
+    this.tier = tier; this.dmgScale = scale; this.spdScale = scale;
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
     this.status = new StatusState(this, type === 'brute' ? 180 : 100);
@@ -185,7 +189,7 @@ export class Enemy extends Actor {
   get target() { return this.game.player; }
 
   critable() { return this.state === 'parried'; }
-  attackRate() { return (this.atkSpeed || 1) * this.status.slow(); }
+  attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.spdScale; }
 
   alert() {
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;
@@ -299,7 +303,7 @@ export class Enemy extends Actor {
           if (od < 2.2 && od > 0.01) { mx += ox / od * (2.2 - od) * 0.8; mz += oz / od * (2.2 - od) * 0.8; }
         }
         const ml = Math.hypot(mx, mz);
-        sp *= this.status.slow();
+        sp *= this.status.slow() * this.spdScale;
         if (ml > 0.01) this.move(mx / ml * sp * dt, mz / ml * sp * dt);
         this.speed += (sp - this.speed) * Math.min(1, dt * 8);
         this.turnToward(toP, T.turn, dt);
@@ -440,6 +444,7 @@ export class Enemy extends Actor {
   beginRiposted() { this.setState('riposted'); this.atk = null; }
 
   die(silent) {
+    if (this.alive) this.game.onEnemyKilled(this);
     this.alive = false;
     this.hp = 0;
     this.releaseToken();
