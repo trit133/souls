@@ -20,7 +20,7 @@ export const UPGRADES = [
   { key: 'move', name: 'Move Speed', a: 2, b: 4, unit: '%' },
   { key: 'aspd', name: 'Attack Speed', a: 2, b: 4, unit: '%' },
   { key: 'st', name: 'Stamina', a: 6, b: 8, unit: '%' },
-  { key: 'mana', name: 'Mana', a: 10, b: 15, unit: '', locked: 'No spells in the game yet' },
+  { key: 'mana', name: 'Mana', a: 10, b: 15, unit: '', locked: 'Locked until Spell Sword is unlocked' },
 ];
 
 // 10, 15, 23, 35, 53, 80 ... (x1.5 each, rounded up)

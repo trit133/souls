@@ -41,8 +41,8 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
   - Move speed: +2%, then +4%.
   - Attack speed: +2%, then +4%.
   - Stamina: +6%, then +8%.
-  - Mana: locked until the game has spells.
-- **Accounts:** `src/account.js` stores accounts in the browser's localStorage with PBKDF2-hashed passwords. They are per device; an online backend can replace that class. Rules live in `src/progress.js`.
+  - Mana: locked until Spell Sword is unlocked.
+- **Accounts:** `src/account.js` stores accounts in the browser's localStorage with PBKDF2-hashed passwords. They are per device and browser by design; an online backend could replace that class. Rules live in `src/progress.js`.
 
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 

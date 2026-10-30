@@ -21,6 +21,7 @@ async function hashPassword(password, saltB64) {
 
 export class LocalAccounts {
   constructor() {
+    navigator.storage?.persist?.(); // ask the browser not to clear saves automatically
     this.user = null;
     this.data = null;
     const s = localStorage.getItem(SESSION);
