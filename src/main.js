@@ -12,8 +12,10 @@ import { UI } from './ui.js';
 import { angDiff } from './actor.js';
 import { BOONS, rollBoons } from './boons.js';
 import { STATUS } from './status.js';
-import { LocalAccounts } from './account.js';
-import { GOLD_PER_ENEMY, MINI_GOLD, BOSS_GOLD, CASHOUT_MULT, WIN_MULT, payout, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed } from './progress.js';
+import { OnlineAccounts } from './account.js';
+import { Multiplayer } from './mp.js';
+import { rng } from './world.js';
+import { GOLD_PER_ENEMY, MINI_GOLD, BOSS_GOLD, CASHOUT_MULT, WIN_MULT, payout, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -66,7 +68,13 @@ class Game {
     this.player = null;
     this.lockSprite = this.makeLockSprite();
     this.makeParryCues();
-    this.accounts = new LocalAccounts();
+    this.accounts = new OnlineAccounts(() => this.mode === 'title' && this.refreshTitle());
+    this.mp = new Multiplayer(this);
+    this.fx.rawTelegraph = this.fx.telegraph.bind(this.fx);
+    this.fx.telegraph = (x, z, r, dur, color) => {
+      if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'tele', x, z, r, dur, color });
+      return this.fx.rawTelegraph(x, z, r, dur, color);
+    };
     this.runGold = 0;
     this.minisFelled = 0;
     this.deaths = 0;
@@ -91,7 +99,25 @@ class Game {
   }
 
   // Assemble a new level from a fresh random module layout.
-  buildRun(layout = pickLayout(), seed = (Math.random() * 1e9) | 0) {
+  newLayout() { return pickLayout(); }
+
+  // a party fights 30% / 60% more regular enemies, placed near the originals
+  extraSpawns(players, seed) {
+    const share = extraEnemyShare(players), pool = this.world.spawns.filter((s) => s.type !== 'brute');
+    const r = rng(seed + 7), out = [];
+    for (let i = 0, n = Math.round(this.world.spawns.length * share); i < n; i++) {
+      const s = pool[Math.floor(r() * pool.length)];
+      for (let tries = 0; tries < 12; tries++) {
+        const a = r() * Math.PI * 2, d = 1.4 + r() * 1.6, x = s.x + Math.cos(a) * d, z = s.z + Math.sin(a) * d;
+        if (!this.world.walkable(x, z, 0.5, s.mod)) continue;
+        out.push({ ...s, x, z, o: { ...s.o, patrol: null } });
+        break;
+      }
+    }
+    return out;
+  }
+
+  buildRun(layout = pickLayout(), seed = (Math.random() * 1e9) | 0, players = 1) {
     for (const e of this.enemies) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
@@ -99,14 +125,20 @@ class Game {
     this.world.build(layout, seed);
     // tier = mini bosses passed before a module; everything after them is stronger
     const tierAt = (i) => layout.slice(0, i).filter((k) => k.startsWith('mini:')).length;
-    this.enemies = this.world.spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod) }));
+    const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
+    this.enemies = spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players }));
     this.encounters = this.world.encounters;
     this.bosses = this.encounters.map((enc) => {
-      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod, tierAt(enc.mod));
+      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod, tierAt(enc.mod), players);
       enc.boss.enc = enc;
       return enc.boss;
     });
     this.boss = this.encounters.find((e) => e.kind === 'boss').boss;
+    // stable ids shared by every device in a party; guests' copies are host-driven puppets
+    this.netMap = {};
+    const puppet = this.mp?.active && !this.mp.isHost;
+    this.enemies.forEach((e, i) => { e.netId = i; e.puppet = puppet; this.netMap[i] = e; });
+    this.bosses.forEach((b, i) => { b.netId = 1000 + i; b.puppet = puppet; this.netMap[1000 + i] = b; });
     this.tokens = 0;
     this.resetEncounters();
   }
@@ -137,6 +169,15 @@ class Game {
     $('again').addEventListener('click', () => this.toTitle());
     $('retry').addEventListener('click', () => { this.audio.unlock(); this.start(this.kind); });
     $('go-title').addEventListener('click', () => this.toTitle());
+    $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
+    $('lobby-back').addEventListener('click', () => { if (this.mp.code) this.mp.leave(); this.ui.show('lobby', false); });
+    const tryNet = (fn) => fn().catch((e) => this.lobbyError(e.message));
+    $('lobby-create').addEventListener('click', () => tryNet(() => this.mp.create(this.lobbyKind)));
+    $('lobby-joinbtn').addEventListener('click', () => tryNet(() => this.mp.join($('lobby-input').value.trim(), this.lobbyKind)));
+    $('lobby-start').addEventListener('click', () => this.mp.startRun());
+    document.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+      this.lobbyKind = b.dataset.pick; if (this.mp.code) this.mp.setKind(this.lobbyKind); this.renderLobby();
+    }));
     $('btn-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
     $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); });
     $('btn-acct').addEventListener('click', () => {
@@ -163,10 +204,29 @@ class Game {
     addEventListener('touchstart', () => this.audio.ctx && this.audio.ctx.state !== 'running' && this.audio.unlock(), { passive: true });
   }
 
-  start(kind) {
+  get isGuest() { return this.mp.active && !this.mp.isHost; }
+
+  // every player in the run: this device's plus teammates
+  allPlayers() { return this.mp.active ? [this.player, ...this.mp.peers.values()] : [this.player]; }
+
+  targetOf(e) {
+    let best = this.player, bd = Infinity;
+    for (const p of this.allPlayers()) {
+      if (!p.alive) continue;
+      const d = e.distTo(p);
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best;
+  }
+
+  startParty(kind, layout, seed, players) { this.ui.show('lobby', false); this.start(kind, { layout, seed, players }); }
+
+  start(kind, party = null) {
     if (this.player) this.player.remove();
+    this.overShown = false;
     this.kind = kind;
-    this.buildRun();
+    if (party) this.buildRun(party.layout, party.seed, party.players); else this.buildRun();
+    this.waitingOnParty = false; this.reviving = null;
     this.respawnAt = { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.data?.upgrades);
     this.runGold = 0; this.minisFelled = 0;
@@ -194,6 +254,7 @@ class Game {
 
   toTitle() {
     this.mode = 'title';
+    if (this.mp.active || this.mp.code) this.mp.leave();
     this.audio.stopMusic();
     this.ui.show('pause', false); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('gameover', false); this.ui.show('reward', false);
@@ -204,6 +265,8 @@ class Game {
   }
 
   setPaused(v) {
+    // a party keeps running: the menu just opens over the game
+    if (this.mp.active) { this.ui.show('pause', v); return; }
     if (v && this.mode !== 'play') return;
     if (!v && this.mode !== 'paused') return;
     this.mode = v ? 'paused' : 'play';
@@ -233,6 +296,10 @@ class Game {
 
   startEncounter(enc) {
     enc.active = true;
+    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'enc', i: this.encounters.indexOf(enc) });
+    // the whole party is pulled in when the fog closes
+    const p = this.player, A = enc.arena;
+    if (Math.hypot(p.pos.x - A.x, p.pos.z - A.z) > A.r - 1) { p.pos.set(A.x, 0, A.z + A.r - 3); this.lastGood = null; this.camPos.set(p.pos.x, 14, p.pos.z + 12); }
     this.world.setGate(enc.gateIn, false, true);
     this.audio.play('fog');
     enc.boss.wake();
@@ -249,6 +316,7 @@ class Game {
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
     $('btn-acct').textContent = A.user ? 'Sign Out' : 'Sign In';
     $('btn-shop').classList.toggle('hidden', !A.user);
+    $('btn-mp').classList.toggle('hidden', !A.user);
     const open = !!A.data?.upgrades.mage;
     document.querySelector('.char[data-char="mage"]').classList.toggle('locked', !open);
     $('mage-lock').textContent = open ? '' : 'Locked · unlock for ◆ 100 in Upgrades';
@@ -296,7 +364,9 @@ class Game {
   }
 
   addRunGold(n, a) {
+    if (this.isGuest) return; // the host keeps the party's pot
     this.runGold += n;
+    if (this.mp.active) this.mp.sendAll({ t: 'gold', n: this.runGold });
     this.ui.setRunGold(this.runGold);
     if (a) this.statusPopup(a, `+${n}`, '#e8c25a');
   }
@@ -317,6 +387,7 @@ class Game {
 
   // leave the run after a mini boss, keeping the gold
   cashOut() {
+    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'cashout' });
     const mult = CASHOUT_MULT[this.minisFelled];
     const amount = this.bankGold(mult);
     if (this.accounts.data) { this.accounts.data.stats.extracts++; this.accounts.save(); }
@@ -329,19 +400,34 @@ class Game {
       `Reached area ${this.seenMod + 1} of ${this.world.mods.length}`,
     ].join('<br>');
     this.ui.show('hud', false); this.ui.show('touch', false);
+    $('retry').classList.toggle('hidden', this.mp.active);
     this.ui.show('gameover');
   }
 
   // No checkpoints: death ends the run and loses all unbanked gold.
+  // In a party you go down instead; the run ends only when everyone is down.
   onPlayerDeath() {
     this.deaths++;
     this.audio.play('death');
+    if (this.mp.active) {
+      this.ui.toast('YOU ARE DOWN', 3);
+      this.mp.sendAll({ t: 'down' });
+      this.mp.checkWipe();
+      return;
+    }
+    this.gameOver();
+  }
+
+  gameOver() {
+    if (this.overShown) return;
+    this.overShown = true;
     this.audio.stopMusic(2);
+    this.ui.show('reward', false);
     this.ui.show('death');
     const s = Math.round(this.time - this.startTime);
     const felled = this.encounters.filter((e) => e.defeated).map((e) => e.boss.name.split(',')[0]);
     setTimeout(() => {
-      if (this.mode !== 'play') return;
+      if (this.mode === 'title') return;
       this.ui.show('death', false);
       this.mode = 'over';
       $('gameover-title').textContent = 'The run has ended';
@@ -354,8 +440,78 @@ class Game {
         `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
       ].join('<br>');
       this.ui.show('hud', false); this.ui.show('touch', false);
+      $('retry').classList.toggle('hidden', this.mp.active);
       this.ui.show('gameover');
     }, 3400);
+  }
+
+  // ---------- party ----------
+  // a revive costs every player 10% of their max health for the rest of the run
+  onRevive(pid) {
+    const p = this.player;
+    p.maxHp = Math.max(1, Math.round(p.maxHp * 0.9));
+    p.hp = Math.min(p.hp, p.maxHp);
+    this.ui.setMaxHp(p.maxHp, p.maxSt);
+    if (pid === this.mp.id) p.revive(0.5);
+    else { const r = this.mp.peers.get(pid); if (r) r.alive = true; }
+    this.ui.toast('REVIVED · ALL LOSE 10% MAX HEALTH', 2.5);
+    this.audio.play('heal');
+  }
+
+  startRevive(target) {
+    this.reviving = { pid: target.pid, t: 1.5 };
+    this.player.setState('rest');
+  }
+
+  stepRevive(dt) {
+    const R = this.reviving, p = this.player;
+    if (!R) return;
+    const tg = this.mp.peers.get(R.pid);
+    if (p.state !== 'rest' || !tg || tg.alive) { this.reviving = null; return; }
+    if ((R.t -= dt) <= 0) {
+      this.reviving = null;
+      this.mp.sendAll({ t: 'revive', pid: R.pid });
+      this.onRevive(R.pid);
+      p.setState('move');
+    }
+  }
+
+  resumeParty() {
+    this.waitingOnParty = false;
+    this.ui.prompt(null);
+    this.mode = 'play';
+    this.last = performance.now();
+  }
+
+  // ---------- lobby ----------
+  openLobby() {
+    this.lobbyKind = this.lobbyKind || 'knight';
+    $('lobby-err').textContent = '';
+    this.renderLobby();
+    this.ui.show('lobby');
+  }
+
+  lobbyError(e) { $('lobby-err').textContent = e; }
+
+  renderLobby() {
+    const m = this.mp, inRoom = !!m.code;
+    $('lobby-join').classList.toggle('hidden', inRoom);
+    $('lobby-room').classList.toggle('hidden', !inRoom);
+    $('lobby-code').textContent = m.code || '';
+    $('lobby-members').innerHTML = m.members.map((x) => `<div>${x.name.replace(/[<&]/g, '')} · ${CHAR_NAMES[x.kind] || ''}${x.id === m.host ? ' · host' : ''}</div>`).join('');
+    $('lobby-start').classList.toggle('hidden', !m.isHost);
+    $('lobby-start').disabled = m.members.length < 2;
+    $('lobby-wait').textContent = m.isHost ? (m.members.length < 2 ? 'Share the code. Needs 2 or 3 players.' : '') : 'Waiting for the host to start';
+    document.querySelectorAll('[data-pick]').forEach((b) => {
+      b.classList.toggle('on', b.dataset.pick === this.lobbyKind);
+      b.disabled = b.dataset.pick === 'mage' && !this.accounts.data?.upgrades.mage;
+    });
+  }
+
+  onPartyClosed(reason, wasRunning = true) {
+    this.ui.show('lobby', false);
+    if (this.mode !== 'title' && wasRunning) { this.toTitle(); }
+    if (reason) { this.renderLobby(); this.ui.show('lobby'); this.lobbyError(reason); }
   }
 
   // After a mini boss: pick one of three power-ups, or rest (full HP + flasks).
@@ -367,7 +523,9 @@ class Game {
     cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all health (${Math.round(p.hp)}/${p.maxHp}) and refill your flasks (${p.flasks}/${p.maxFlasks}).` });
     const mult = CASHOUT_MULT[this.minisFelled], amount = payout(this.runGold, mult);
     this.ui.showReward(cards, (k) => (k === 'cashout' ? this.cashOut() : this.claimReward(k)),
-      `Leave the run with ◆ ${amount} gold  (◆ ${this.runGold} × ${mult})`);
+      `${this.mp.active ? 'Party leaves with' : 'Leave the run with'} ◆ ${amount} gold${this.mp.active ? ' each' : ''}  (◆ ${this.runGold} × ${mult})`);
+    // the host decides whether the party cashes out
+    $('cashout').classList.toggle('hidden', this.isGuest);
   }
 
   claimReward(k) {
@@ -385,6 +543,13 @@ class Game {
       this.audio.play('heal');
       this.fx.burst({ x: p.pos.x, y: 1, z: p.pos.z }, 30, [1, 0.9, 0.6], 3, 0.9, 0.22);
     }
+    if (this.mp.active) {
+      this.mode = 'wait';
+      this.waitingOnParty = true;
+      this.ui.prompt('Waiting for the party…');
+      if (this.isGuest) this.mp.send({ t: 'picked' }); else this.mp.checkPicks();
+      return;
+    }
     this.mode = 'play';
     this.last = performance.now();
   }
@@ -398,6 +563,7 @@ class Game {
     this.slow = 1.6;
     if (enc.kind === 'mini') {
       this.addRunGold(MINI_GOLD[this.minisFelled++], boss);
+      this.announceBossDeath(enc);
       // the way on opens right away; fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
       this.world.setGate(enc.gateOut, true, false);
@@ -413,6 +579,7 @@ class Game {
     // nothing left can hurt the player once Varek falls
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
     this.addRunGold(BOSS_GOLD, boss);
+    this.announceBossDeath(enc);
     const won = this.bankGold(WIN_MULT);
     if (this.accounts.data) { this.accounts.data.stats.wins++; this.accounts.save(); }
     const goldLine = `◆ ${this.runGold} × ${WIN_MULT} = ◆ ${won} ${this.accounts.user ? 'banked' : '(guest: not saved)'}`;
@@ -426,6 +593,10 @@ class Game {
     }, 2600);
   }
 
+  announceBossDeath(enc) {
+    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'bossdead', i: this.encounters.indexOf(enc) });
+  }
+
   // ---------- combat resolution ----------
   resolveHit(att, tg, h, def) {
     const info = {
@@ -433,6 +604,7 @@ class Game {
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
     if (att !== this.player) info.dmg *= att.dmgScale || 1;
+    if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h) }, tg.pid); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
     if (tg === this.player) {
@@ -498,6 +670,7 @@ class Game {
   riposteHit(p, tg, dmg) {
     dmg *= p.dmgMul;
     if (tg.alive) this.applyStatus(p, tg, 2);
+    if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
     tg.hp -= dmg;
     tg.rig.flash(1, 0.3, 0.2);
@@ -557,6 +730,7 @@ class Game {
   }
 
   impact(x, z, radius, shake) {
+    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'impact', x, z, r: radius, s: shake });
     this.fx.shockwave(x, z, radius);
     this.fx.dust({ x, z }, 14, radius * 0.8);
     this.fx.sparks({ x, y: 0.2, z }, null, 10, [1, 0.6, 0.25]);
@@ -566,7 +740,7 @@ class Game {
   }
 
   spawnArrow(e) {
-    const p = this.player;
+    const p = this.targetOf(e);
     const from = new THREE.Vector3(e.pos.x, 1.45, e.pos.z);
     const f = e.fwd();
     from.addScaledVector(f, 0.6);
@@ -579,7 +753,7 @@ class Game {
     mesh.position.copy(from);
     mesh.lookAt(from.clone().add(dir));
     this.scene.add(mesh);
-    this.projectiles.push({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * e.dmgScale });
+    this.addProj({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * e.dmgScale });
   }
 
   spawnFireWave(b, off) {
@@ -587,22 +761,51 @@ class Game {
     for (const a of [-0.3, 0, 0.3]) {
       const d = f.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
       const pos = new THREE.Vector3(b.pos.x + f.x * off, 0.3, b.pos.z + f.z * off);
-      this.projectiles.push({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * b.dmgScale, mesh: null });
+      this.addProj({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * b.dmgScale, mesh: null });
     }
     this.audio.play('fire');
   }
 
   // Gorrath's thrown boulder: arcs down toward where the player stands
   spawnRock(b) {
-    const p = this.player;
+    const p = this.targetOf(b);
     const f = b.fwd();
     const from = new THREE.Vector3(b.pos.x + f.x * 1.2, 4.2, b.pos.z + f.z * 1.2);
     const to = new THREE.Vector3(p.pos.x, 0.6, p.pos.z);
     const dir = to.clone().sub(from).normalize();
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
     mesh.position.copy(from); this.scene.add(mesh);
-    this.projectiles.push({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * b.dmgScale, knock: 'heavy' });
+    this.addProj({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * b.dmgScale, knock: 'heavy' });
     this.audio.play('heavySwing', 1);
+  }
+
+  // shots are shown on every device; only their owner's device applies them
+  addProj(q) {
+    this.projectiles.push(q);
+    if (!this.mp.active) return;
+    const look = q.kind === 'arrow' ? 'arrow' : q.kind === 'rock' ? 'rock' : q.friendly ? q.kind : null;
+    this.mp.sendAll({ t: 'proj', kind: q.kind, look, p: q.pos.toArray(), v: q.vel.toArray(), life: q.life, big: q.r });
+  }
+
+  addGhost(d) {
+    let mesh = null;
+    if (d.look === 'arrow') mesh = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.8), new THREE.MeshBasicMaterial({ color: 0xd8c8a0 }));
+    else if (d.look === 'rock') mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
+    else if (d.look) mesh = new THREE.Mesh(new THREE.SphereGeometry(d.big * 0.7, 10, 8), new THREE.MeshBasicMaterial({ color: d.look === 'bolt' ? 0x5ab0ff : 0xff7a1a }));
+    const pos = new THREE.Vector3(...d.p), vel = new THREE.Vector3(...d.v);
+    if (mesh) { mesh.position.copy(pos); if (d.look === 'arrow') mesh.lookAt(pos.clone().add(vel)); this.scene.add(mesh); }
+    this.projectiles.push({ ghost: true, kind: d.kind, pos, vel, life: d.life, mesh });
+  }
+
+  // a hostile shot reaching a player on this device
+  projectileHit(t, q) {
+    const src = new THREE.Vector3(q.src[0], 0, q.src[1]);
+    const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
+    if (t.isRemote) return r;
+    const chest = new THREE.Vector3(t.pos.x, 1.1, t.pos.z);
+    if (r === 'hit') { this.audio.play('hurt'); this.fx.blood(chest, null, 8); this.hitstop(0.05); this.fx.addShake(0.3); }
+    if (r === 'block') { this.audio.play('clang', 0.6); this.fx.sparks(chest, null, 8); }
+    return r;
   }
 
   spawnSpell(p, kind, spread = 0) {
@@ -611,7 +814,7 @@ class Game {
     const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25, p.pos.z + f.z * 0.8);
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
     mesh.position.copy(pos); this.scene.add(mesh);
-    this.projectiles.push({ kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, aoe: S.aoe ? S.aoe * big : 0 });
+    this.addProj({ kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, aoe: S.aoe ? S.aoe * big : 0 });
     this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
@@ -646,7 +849,8 @@ class Game {
   }
 
   spawnFireRing(x, z, maxR, dur, dmg) {
-    this.rings.push({ x, z, maxR, dur, dmg: dmg * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: false });
+    if (this.mp.active) this.mp.sendAll({ t: 'ring', x, z, maxR, dur });
+    this.rings.push({ x, z, maxR, dur, dmg: dmg * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: new Set() });
     this.audio.play('fire');
   }
 
@@ -656,6 +860,12 @@ class Game {
       q.life -= dt;
       q.pos.addScaledVector(q.vel, dt);
       if (q.mesh) q.mesh.position.copy(q.pos);
+      if (q.ghost) {
+        if (!q.mesh && q.kind === 'fire') for (let i = 0; i < 3; i++) this.fx.flame({ x: q.pos.x, y: 0.1, z: q.pos.z }, 1.1);
+        const over = q.life <= 0;
+        if (over && q.mesh) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
+        return !over;
+      }
       if (q.friendly) {
         const over = this.updateSpell(q, dt);
         if (over) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
@@ -669,13 +879,11 @@ class Game {
       let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < 0.25;
       if (dead && q.kind === 'rock') this.impact(q.pos.x, q.pos.z, 1.6, 0.35);
       // the evolved spectral shield stops shots at the wall, ahead of the knight
-      const wall = p.spectral?.visible ? 0.75 : 0;
-      if (!dead && p.alive && Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < q.r + p.radius + wall) {
-        const src = q.pos.clone().addScaledVector(q.vel, -0.1);
-        const r = p.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
-        if (r === 'hit') { this.audio.play('hurt'); this.fx.blood(new THREE.Vector3(p.pos.x, 1.1, p.pos.z), q.vel.clone().normalize(), 8); this.hitstop(0.05); this.fx.addShake(0.3); }
-        if (r === 'block') { this.audio.play('clang', 0.6); this.fx.sparks(new THREE.Vector3(p.pos.x, 1.1, p.pos.z), null, 8); }
-        if (r !== 'dodge') dead = true;
+      if (!dead) for (const t of this.allPlayers()) {
+        const wall = t.spectral?.visible ? 0.75 : 0;
+        if (!t.alive || Math.hypot(q.pos.x - t.pos.x, q.pos.z - t.pos.z) >= q.r + t.radius + wall) continue;
+        const b = q.pos.clone().addScaledVector(q.vel, -0.1);
+        if (this.projectileHit(t, { dmg: q.dmg, knock: q.knock, src: [b.x, b.z] }) !== 'dodge') { dead = true; break; }
       }
       if (dead && q.mesh) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
       return !dead;
@@ -687,11 +895,9 @@ class Game {
         const a = Math.random() * Math.PI * 2;
         this.fx.flame({ x: g.x + Math.cos(a) * r, y: 0.1, z: g.z + Math.sin(a) * r }, 0.9);
       }
-      const d = Math.hypot(p.pos.x - g.x, p.pos.z - g.z);
-      if (!g.hit && p.alive && Math.abs(d - r) < 0.7) {
-        const res = p.receive({ dmg: g.dmg, poise: 20, knock: 'light', srcPos: new THREE.Vector3(g.x, 0, g.z), parryable: false });
-        if (res !== 'dodge') g.hit = true;
-        if (res === 'hit') { this.audio.play('hurt'); this.hitstop(0.05); this.fx.addShake(0.3); }
+      if (!g.ghost) for (const t of this.allPlayers()) {
+        if (g.hit.has(t) || !t.alive || Math.abs(Math.hypot(t.pos.x - g.x, t.pos.z - g.z) - r) >= 0.7) continue;
+        if (this.projectileHit(t, { dmg: g.dmg, src: [g.x, g.z] }) !== 'dodge') g.hit.add(t);
       }
       return g.t < g.dur;
     });
@@ -730,31 +936,39 @@ class Game {
 
       if (dt > 0) {
         p.update(dt, this.input, presses);
+        const zs = this.allPlayers().map((x) => x.pos.z);
         for (const e of this.enemies) {
           // distance culling: far enemies neither think nor draw
-          const near = Math.abs(e.pos.z - p.pos.z) < 42;
+          const near = zs.some((z) => Math.abs(e.pos.z - z) < 42);
           e.rig.root.visible = near && !(e.state === 'dead' && e.t > 4.5);
           if (near) e.update(dt);
         }
         for (const b of this.bosses) {
-          const near = Math.abs(b.pos.z - p.pos.z) < 50;
+          const near = zs.some((z) => Math.abs(b.pos.z - z) < 50);
           if (!near) b.rig.root.visible = false;
           else if (b.state !== 'dead') b.rig.root.visible = true;
           if (near) b.update(dt);
         }
         this.separate();
         this.updateProjectiles(dt);
+        this.mp.tick(dt);
+        this.stepRevive(dt);
       } else {
         // keep buffered inputs during hitstop
         for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') p.push(a);
       }
 
-      if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
+      // standing over a downed teammate
+      const down = this.mp.active && p.alive && p.state === 'move' ? [...this.mp.peers.values()].find((x) => !x.alive && p.distTo(x) < 2.4) : null;
+      if (down) {
+        this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Revive ${down.name} (all lose 10% max health)`);
+        if (presses.has('interact')) this.startRevive(down);
+      } else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
       // trigger only once the player is fully inside the arena circle, so locking the
       // fog never leaves them standing on ground that just stopped being walkable
-      if (!this.bossActive && p.alive) for (const enc of this.encounters) {
+      if (!this.bossActive && !this.isGuest) for (const enc of this.encounters) {
         const A = enc.arena;
-        if (!enc.defeated && Math.hypot(p.pos.x - A.x, p.pos.z - A.z) < A.r - 2) { this.startEncounter(enc); break; }
+        if (!enc.defeated && this.allPlayers().some((t) => t.alive && Math.hypot(t.pos.x - A.x, t.pos.z - A.z) < A.r - 2)) { this.startEncounter(enc); break; }
       }
       // safety net: never let the player end up on non-walkable ground
       const enc = this.activeEnc;
@@ -766,6 +980,7 @@ class Game {
       if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
 
       this.ui.update(rdt, p);
+      this.ui.party(this.mp.active ? [...this.mp.peers.values()] : []);
       if (enc) {
         this.ui.boss.set(enc.boss.hp / enc.boss.maxHp, rdt);
         this.ui.bossStatus(enc.boss.status.bars().map((b) => ({ v: b.v, color: STATUS[b.k].color })));

@@ -46,6 +46,12 @@ export class UI {
     if (p.maxMana) this.mn.set(p.mana / p.maxMana, dt);
   }
 
+  // teammates' names and health
+  party(list) {
+    const html = list.map((p) => `<div class="pm${p.alive ? '' : ' down'}"><span>${String(p.name).replace(/[<&]/g, '')}${p.alive ? '' : ' · DOWN'}</span><i style="transform:scaleX(${Math.max(0, (p.hp || 0) / (p.maxHp || 1))})"></i></div>`).join('');
+    if (html !== this.partyHtml) { this.partyHtml = html; document.getElementById('party').innerHTML = html; }
+  }
+
   redFlash() {
     const el = document.getElementById('redflash');
     el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');

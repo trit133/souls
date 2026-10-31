@@ -23,6 +23,7 @@
       <div class="bar mn hidden"><div class="fill"></div></div>
       <div id="flasks"><span class="flask-icon"></span><span id="flask-count">3</span><span id="progress"></span><span id="run-gold"></span></div>
       <div id="boon-tags"></div>
+      <div id="party"></div>
     </div>
     <div id="boss" class="hidden">
       <div id="boss-name">Varek, the Ashen Warden</div>
@@ -53,6 +54,7 @@
       <span id="acct-name"></span>
       <span id="acct-gold"></span>
       <button class="mini-btn" id="btn-shop">Upgrades</button>
+      <button class="mini-btn" id="btn-mp">Multiplayer</button>
       <button class="mini-btn" id="btn-acct">Sign In</button>
     </div>
     <div id="chars">
@@ -108,8 +110,31 @@
         <button class="menu-btn" type="button" id="acct-signup">Create Account</button>
       </div>
     </form>
-    <p id="acct-note">Accounts are saved in this browser on this device.</p>
+    <p id="acct-note">Your account works on any device.</p>
     <button class="mini-btn" id="acct-back">Back</button>
+  </div>
+  <div id="lobby" class="screen hidden">
+    <h2>Multiplayer</h2>
+    <div id="lobby-picks">
+      <button class="mini-btn" data-pick="knight">Knight</button>
+      <button class="mini-btn" data-pick="rogue">Rogue</button>
+      <button class="mini-btn" data-pick="mage">Spellsword</button>
+    </div>
+    <div id="lobby-join">
+      <button class="menu-btn" id="lobby-create">Create Room</button>
+      <div id="lobby-joinrow">
+        <input id="lobby-input" maxlength="4" placeholder="CODE" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+        <button class="menu-btn" id="lobby-joinbtn">Join</button>
+      </div>
+    </div>
+    <div id="lobby-room" class="hidden">
+      <div id="lobby-code"></div>
+      <div id="lobby-members"></div>
+      <div id="lobby-wait"></div>
+      <button class="menu-btn" id="lobby-start">Start Run</button>
+    </div>
+    <div id="lobby-err"></div>
+    <button class="mini-btn" id="lobby-back">Back</button>
   </div>
   <div id="shop" class="screen hidden">
     <h2>Upgrades</h2>

@@ -1,7 +1,6 @@
-// Account storage. LocalAccounts keeps accounts in this browser's localStorage, with
-// passwords hashed (PBKDF2-SHA256, random salt). The rest of the game only talks to the
-// small interface below (signUp / signIn / signOut / user / data / save), so an online
-// backend can replace this class without touching gameplay code.
+// Online accounts talk to server/index.js. A copy of the profile is cached so a slow or
+// missing connection doesn't lose progress. LocalAccounts is the older browser-only store,
+// kept so those accounts can carry over when the same login signs up online.
 
 const KEY = 'ashenVigil.accounts.v1';
 const SESSION = 'ashenVigil.session.v1';
@@ -66,6 +65,13 @@ export class LocalAccounts {
 
   get displayName() { return this.user ? this._all()[this.user]?.name || this.user : null; }
 
+  // read a local profile without signing in to it
+  async peek(name, password) {
+    const acc = this._all()[(name || '').toLowerCase()];
+    if (!acc || (await hashPassword(password || '', acc.salt)) !== acc.hash) return null;
+    return { ...freshProfile(), ...acc.data };
+  }
+
   signOut() { this.user = null; this.data = null; localStorage.removeItem(SESSION); }
 
   save() {
@@ -74,5 +80,86 @@ export class LocalAccounts {
     if (!all[this.user]) return;
     all[this.user].data = this.data;
     this._write(all);
+  }
+}
+
+export const SERVER = new URLSearchParams(location.search).get('server') || 'https://h-e-r-b-i-e-optiplex-5090.tailad4548.ts.net/souls';
+const CACHE = 'ashenVigil.online.v1';
+
+export class OnlineAccounts {
+  constructor(onChange = () => {}) {
+    this.onChange = onChange;
+    this.user = null; this.data = null; this.token = null; this.displayName = null;
+    let c = null;
+    try { c = JSON.parse(localStorage.getItem(CACHE)); } catch { /* no cache */ }
+    if (c?.token) {
+      this.token = c.token; this.user = c.name.toLowerCase(); this.displayName = c.name;
+      this.data = { ...freshProfile(), ...c.data }; this.dirty = !!c.dirty;
+      this.sync();
+    }
+  }
+
+  async call(method, path, body) {
+    const r = await fetch(SERVER + path, {
+      method, headers: { 'content-type': 'application/json', ...(this.token ? { authorization: 'Bearer ' + this.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(j.error || 'Server error'); e.status = r.status; throw e; }
+    return j;
+  }
+
+  // on startup: push unsaved progress, otherwise take the server's copy
+  async sync() {
+    try {
+      if (this.dirty) return await this.flush();
+      const me = await this.call('GET', '/api/me');
+      this.data = { ...freshProfile(), ...me.data };
+      this.cache();
+      this.onChange();
+    } catch (e) { if (e.status === 401) { this.signOut(); this.onChange(); } }
+  }
+
+  cache() { localStorage.setItem(CACHE, JSON.stringify({ token: this.token, name: this.displayName, data: this.data, dirty: !!this.dirty })); }
+
+  _login(r) {
+    this.token = r.token; this.displayName = r.name; this.user = r.name.toLowerCase();
+    this.data = { ...freshProfile(), ...r.data }; this.dirty = false;
+    this.cache();
+  }
+
+  async signUp(name, password) {
+    const err = LocalAccounts.validate(name, password);
+    if (err) throw new Error(err);
+    let data = freshProfile();
+    try { data = await new LocalAccounts().peek(name, password) || data; } catch { /* nothing to import */ }
+    this._login(await this.call('POST', '/api/signup', { name, password, data }));
+  }
+
+  async signIn(name, password) { this._login(await this.call('POST', '/api/login', { name, password })); }
+
+  signOut() {
+    if (this.token) this.call('POST', '/api/logout').catch(() => {});
+    this.user = this.data = this.token = this.displayName = null;
+    localStorage.removeItem(CACHE);
+  }
+
+  // saves go out one at a time; the newest always wins
+  save() {
+    if (!this.user) return;
+    this.dirty = true;
+    this.cache();
+    this.flush();
+  }
+
+  async flush() {
+    if (this.saving) { this.again = true; return; }
+    this.saving = true;
+    try {
+      await this.call('PUT', '/api/save', { data: this.data });
+      this.dirty = false; this.cache();
+    } catch { /* stays dirty; retried on the next save or launch */ }
+    this.saving = false;
+    if (this.again) { this.again = false; this.flush(); }
   }
 }

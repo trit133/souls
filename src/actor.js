@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { sample } from './anims.js';
+import { sample, locomotion, P } from './anims.js';
 
 export const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -52,8 +52,52 @@ export class Actor {
   }
 
   // ----- attacks -----
+  // ---------- party play: on guests, enemies are puppets driven by host snapshots ----------
+  applySnapshot(s) {
+    this.net = { x: s[1], z: s[2], yaw: s[3] };
+    if (s[4] !== this.state) { this.state = s[4]; this.t = 0; }
+    if (s[5] < this.hp - 0.5) this.rig.flash(1, 0.9, 0.8);
+    this.hp = s[5]; this.y = s[8] || 0;
+    this.alive = s[4] !== 'dead';
+    const def = s[6] ? this.moves[s[6]] : null;
+    if (!def) this.atk = null;
+    else if (!this.atk || this.atk.def !== def || s[7] < this.atk.t - 0.3) this.atk = { def, t: s[7], hit: new Set() };
+    else this.atk.t = s[7];
+    if (this.state === 'attack' && !this.atk) this.state = 'chase';
+    this.seen = performance.now();
+  }
+
+  puppetUpdate(dt, style) {
+    this.t += dt;
+    if (this.net) {
+      const k = 1 - Math.exp(-14 * dt), ox = this.pos.x, oz = this.pos.z;
+      this.pos.x += (this.net.x - ox) * k; this.pos.z += (this.net.z - oz) * k;
+      this.yaw += angDiff(this.yaw, this.net.yaw) * k;
+      this.puppetSpeed = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
+    }
+    if (this.atk) this.atk.t += dt * this.attackRate();
+    const base = locomotion(style, this.phase = (this.phase || 0) + dt * (2.5 + (this.puppetSpeed || 0) * 1.6), (this.puppetSpeed || 0) / 4, false, this.game.time);
+    let pose = base;
+    if (this.state === 'attack' && this.atk) pose = this.attackPose(base);
+    else if (this.state === 'dead') pose = P.dead;
+    else if (this.state === 'sit' || this.state === 'dormant' || this.state === 'broken') pose = P.rest;
+    else if (this.state === 'hurt' || this.state === 'parried' || this.state === 'riposted') pose = { ...base, ...P.stagger };
+    if (this.state === 'dead') { this.rig.apply(pose, dt, 8); if (this.t > 4) this.rig.root.visible = false; } else this.syncRig(dt, pose, 18);
+    this.trail?.update(dt, !!(this.atk && this.inWindow(this.atk.def.trail)), this.rig.base, this.rig.tip);
+  }
+
+  // a guest's hit on a puppet: the host applies the real damage
+  puppetHit(info) {
+    this.game.mp.send({ t: 'hit', id: this.netId, dmg: info.dmg, poise: info.poise || 0 });
+    this.hp = Math.max(1, this.hp - info.dmg);
+    this.hpShow = 4;
+    this.rig.flash(1, 0.9, 0.8);
+    return 'hit';
+  }
+
   startAttack(def) {
     this.atk = { def, t: 0, hit: new Set(), sfx: false, glint: false };
+    this.atkKey = this.moves ? Object.keys(this.moves).find((k) => this.moves[k] === def) : null;
     this.setState('attack');
   }
 

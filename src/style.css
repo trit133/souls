@@ -203,3 +203,24 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 .shop-row .sname { font-size: 14px; }
 .shop-row .sinfo { font-size: 11px; line-height: 1.25; }
 @media (max-height: 500px) { #controls-help { display: none; } .cname { font-size: 18px; } }
+
+/* ---------- multiplayer ---------- */
+#lobby { background: rgba(8,6,4,.97); z-index: 12; justify-content: flex-start; }
+#lobby > :first-child { margin-top: auto; }
+#lobby > :last-child { margin-bottom: auto; }
+#lobby h2 { margin: 4px 0 10px; }
+#lobby-picks { display: flex; gap: 6px; margin-bottom: 10px; }
+[data-pick].on { border-color: #e8c88a; color: #e8c88a; }
+[data-pick]:disabled { opacity: .4; }
+#lobby-join, #lobby-room { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#lobby-joinrow { display: flex; gap: 8px; align-items: center; }
+#lobby-joinrow .menu-btn, #lobby-create { margin: 0; padding: 9px 22px; font-size: 15px; }
+#lobby-input { width: 110px; padding: 10px; text-align: center; font: 16px Georgia, serif; letter-spacing: 4px; text-transform: uppercase; background: rgba(0,0,0,.5); border: 1px solid #6a5a3a; color: #e8dcc0; }
+#lobby-code { font-size: 30px; letter-spacing: 8px; color: #e8c88a; }
+#lobby-members, #lobby-wait { font: 14px/1.5 Georgia, serif; }
+#lobby-wait { opacity: .7; }
+#lobby-err { color: #e0584a; font: 13px Georgia, serif; min-height: 18px; margin: 6px; }
+#party { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; width: 70%; }
+.pm span { display: block; font: 11px Georgia, serif; text-shadow: 0 1px 2px #000; }
+.pm i { display: block; height: 4px; background: #a8302a; transform-origin: left; }
+.pm.down span { color: #e0584a; }

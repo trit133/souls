@@ -4,7 +4,7 @@ import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
-import { tierScale, TIER_EYES } from './progress.js';
+import { tierScale, TIER_EYES, partyScale } from './progress.js';
 
 let UID = 1;
 
@@ -160,10 +160,11 @@ export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {
     const T = TYPES[type];
     // tier = mini bosses passed before this module
-    const tier = opts.tier || 0, scale = tierScale(tier);
+    const tier = opts.tier || 0, scale = tierScale(tier), party = partyScale(opts.players || 1, type === 'brute');
     const rig = buildHumanoid({ ...T.model, scale: T.scale, eyes: TIER_EYES[tier] ?? T.model.eyes, eyeGlow: tier >= 3 ? 0xff1a10 : null });
-    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * scale), radius: T.radius, poise: T.poise });
-    this.tier = tier; this.dmgScale = scale; this.spdScale = scale;
+    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * scale * party.hp), radius: T.radius, poise: T.poise });
+    this.tier = tier; this.dmgScale = scale * party.dmg; this.spdScale = scale * party.spd;
+    this.atkScale = scale * party.atk; this.gapScale = party.gap; this.moves = T.moves;
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
     this.status = new StatusState(this, type === 'brute' ? 180 : 100);
@@ -186,10 +187,10 @@ export class Enemy extends Actor {
     this.setState(this.sitting ? 'sit' : 'idle');
   }
 
-  get target() { return this.game.player; }
+  get target() { return this.game.targetOf(this); }
 
   critable() { return this.state === 'parried'; }
-  attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.spdScale; }
+  attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.atkScale; }
 
   alert() {
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;
@@ -223,9 +224,10 @@ export class Enemy extends Actor {
   }
 
   update(dt) {
+    if (this.puppet) return this.puppetUpdate(dt, this.T.style);
     this.t += dt;
     this.status.update(dt, this.game);
-    const p = this.game.player;
+    const p = this.game.targetOf(this);
     const dist = this.distTo(p);
     const toP = this.yawTo(p.pos);
     const T = this.T;
@@ -313,7 +315,7 @@ export class Enemy extends Actor {
       }
       case 'attack': {
         const d = this.atk.def;
-        const going = this.runAttack(dt * this.attackRate(), [p], p.alive ? toP : null);
+        const going = this.runAttack(dt * this.attackRate(), this.game.allPlayers(), p.alive ? toP : null);
         if (this.state !== 'attack') { pose = locomotion(T.style, 0, 0, false, 0); break; }
         pose = this.attackPose(locomotion(T.style, this.phase, 0, false, 0));
         rate = 22;
@@ -322,7 +324,7 @@ export class Enemy extends Actor {
           this.releaseToken();
           this.setState('recover');
           this.recoverT = d.recover ?? 0.3;
-          this.cd = T.cd[0] + Math.random() * (T.cd[1] - T.cd[0]);
+          this.cd = (T.cd[0] + Math.random() * (T.cd[1] - T.cd[0])) * this.gapScale;
           if (this.tele) { this.tele.dead = true; this.tele = null; }
         }
         break;
@@ -386,6 +388,7 @@ export class Enemy extends Actor {
   // returns 'hit' etc. Called by game.resolveHit
   receive(info) {
     if (!this.alive) return 'none';
+    if (this.puppet) return this.puppetHit(info);
     this.hp -= info.dmg;
     this.hpShow = 4;
     this.rig.flash(1, 0.9, 0.8);
@@ -435,13 +438,17 @@ export class Enemy extends Actor {
   }
 
   onParried() {
+    if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId }); this.state = 'parried'; this.t = 0; this.atk = null; return; }
     this.releaseToken();
     this.atk = null;
     if (this.tele) { this.tele.dead = true; this.tele = null; }
     this.setState('parried');
   }
 
-  beginRiposted() { this.setState('riposted'); this.atk = null; }
+  beginRiposted() {
+    if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId });
+    this.setState('riposted'); this.atk = null;
+  }
 
   die(silent) {
     if (this.alive) this.game.onEnemyKilled(this);

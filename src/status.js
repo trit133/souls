@@ -39,6 +39,7 @@ export class StatusState {
 
   add(kind, amount, game) {
     if (!this.a.alive) return;
+    if (this.a.puppet) { game.mp.send({ t: 'status', id: this.a.netId, kind, amount }); return; }
     this.idle = 0;
     this.meter[kind] += amount;
     if (this.meter[kind] >= this.resist[kind]) {

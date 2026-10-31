@@ -48,3 +48,13 @@ export function upgradeTotal(u, level) {
   return t;
 }
 export const upgradeByKey = (k) => UPGRADES.find((u) => u.key === k);
+
+// Party scaling. `big` = bosses and brutes.
+export function partyScale(players, big) {
+  if (players < 2) return { hp: 1, dmg: 1, atk: 1, spd: 1, gap: 1 };
+  const i = players - 2;
+  return big
+    ? { hp: [1.75, 3][i], dmg: 1.2, atk: 1.1, spd: 1.1, gap: 0.7 }
+    : { hp: [1.1, 1.13][i], dmg: [1.1, 1.12][i], atk: 1, spd: 1.1, gap: 1 };
+}
+export const extraEnemyShare = (players) => [0, 0, 0.3, 0.6][players] || 0;

@@ -17,17 +17,17 @@ const form = async (u, p, btn) => {
   if (await page.isVisible('#account')) await page.click('#acct-back');
   return err;
 };
-const R = {};
+const R = {}, NAME = 'T' + Date.now() % 1000000;
 R.badName = await form('a', 'secret1', '#acct-signup');
 R.shortPass = await form('tester', '123', '#acct-signup');
-R.signup = await form('Tester_1', 'secret123', '#acct-signup');
+R.signup = await form(NAME, 'secret123', '#acct-signup');
 R.name = await page.textContent('#acct-name');
 await page.click('#btn-acct'); // sign out
 R.afterOut = await page.textContent('#acct-name');
-R.duplicate = await form('tester_1', 'other123', '#acct-signup');
-R.wrongPass = await form('Tester_1', 'nope1234', '#acct-submit' === 0 ? '' : '#acct-signin');
-R.login = await form('tester_1', 'secret123', '#acct-signin');
-R.storedPlainPassword = await page.evaluate(() => localStorage.getItem('ashenVigil.accounts.v1').includes('secret123'));
+R.duplicate = await form(NAME.toLowerCase(), 'other123', '#acct-signup');
+R.wrongPass = await form(NAME, 'nope1234', '#acct-submit' === 0 ? '' : '#acct-signin');
+R.login = await form(NAME.toLowerCase(), 'secret123', '#acct-signin');
+R.storedPlainPassword = await page.evaluate(() => (localStorage.getItem('ashenVigil.online.v1') || '').includes('secret123'));
 log('1 accounts', R);
 
 const res = await page.evaluate(async () => {

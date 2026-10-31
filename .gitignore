@@ -1,3 +1,6 @@
 node_modules
 dist
 .shots
+server/data
+server/node_modules
+.env

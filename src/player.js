@@ -138,7 +138,7 @@ const MAGE_ATTACKS = {
 
 const MANA_BOLT = 33, MANA_FIRE = 75;
 
-const CHARS = {
+export const CHARS = {
   knight: {
     hp: 150, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
     roll: { dur: 0.6, dist: 4.6, iframes: [0.03, 0.4], cost: 22 },
@@ -160,7 +160,7 @@ CHARS.mage = {
   model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'hair', weapon: 'spellknife', bulk: 0.9 },
 };
 
-const RIPOSTE = {
+export const RIPOSTE = {
   dur: 1.15, track: 0.05, trail: [0.18, 0.5],
   keys: [
     [0.18, { torso: [0.2, -0.4, 0], armR: [-0.3, 0, -0.2], foreR: [-1.8, 0, 0], handR: [1.6, 0, 0], legL: [-0.4, 0, 0], legR: [0.3, 0, 0], by: -0.1 }],
@@ -598,6 +598,7 @@ export class Player extends Actor {
 
   doAttack(name, dir, mag) {
     const def = this.c.attacks[name];
+    this.atkKey = name;
     // repeated attacks cost more and push stamina regen further out
     this.spend(def.cost * (1 + 0.9 * this.fatigue));
     this.stDelay = 0.6 + 0.7 * this.fatigue;
@@ -652,7 +653,7 @@ export class Player extends Actor {
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;
     const A = info.attacker;
-    if (this.state === 'parry' && A && A.parryMark && A.parryMark.atk === A.atk && A.parryMark.h === info.hit) { A.parryMark = null; return 'parry'; }
+    if (this.state === 'parry' && A?.parryMark && A.parryMark.h === info.hit && (A.puppet || A.parryMark.atk === A.atk)) { A.parryMark = null; return 'parry'; }
     if (this.blocking && facing && !info.unblockable) {
       const cost = info.dmg * (info.knock === 'heavy' ? 1.6 : 1.15);
       this.st -= cost; this.stDelay = 0.6;
@@ -694,6 +695,13 @@ export class Player extends Actor {
     this.atk = null;
     this.lock = null;
     this.game.onPlayerDeath();
+  }
+
+  // party play: back on your feet after a teammate's revive
+  revive(frac) {
+    this.alive = true; this.hp = Math.max(1, Math.round(this.maxHp * frac)); this.st = this.maxSt;
+    this.kb.set(0, 0, 0); this.atk = null; this.buf = null;
+    this.setState('move');
   }
 
   respawn(x, z) {

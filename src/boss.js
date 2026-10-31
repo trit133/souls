@@ -4,7 +4,7 @@ import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
-import { tierScale, TIER_EYES } from './progress.js';
+import { tierScale, TIER_EYES, partyScale } from './progress.js';
 
 // Varek, the Ashen Warden. Two phases. Every move has a readable windup and a
 // punish window afterwards; heavy/AoE moves are unparryable and telegraphed.
@@ -121,11 +121,12 @@ const VAREK_WEIGHTS = (b, d, behind) => {
 
 export class Boss extends Actor {
   // cfg: one of BOSSES; arena: {x, z, r}; mod: module index the boss is confined to
-  constructor(game, cfg, arena, mod, tier = 0) {
-    const scale = tierScale(tier);
+  constructor(game, cfg, arena, mod, tier = 0, players = 1) {
+    const scale = tierScale(tier), party = partyScale(players, true);
     const rig = buildHumanoid({ ...cfg.model, eyes: TIER_EYES[tier] ?? cfg.model.eyes, eyeGlow: tier >= 3 ? 0xff1a10 : null });
-    super(game, rig, { x: arena.x, z: arena.z - 3, hp: Math.round(cfg.hp * scale), radius: cfg.radius, poise: cfg.poise, yaw: 0 });
-    this.tier = tier; this.dmgScale = scale; this.spdScale = scale;
+    super(game, rig, { x: arena.x, z: arena.z - 3, hp: Math.round(cfg.hp * scale * party.hp), radius: cfg.radius, poise: cfg.poise, yaw: 0 });
+    this.tier = tier; this.dmgScale = scale * party.dmg; this.spdScale = scale * party.spd;
+    this.atkScale = scale * party.atk; this.gapScale = party.gap;
     this.cfg = cfg;
     this.moves = cfg.moves;
     this.arena = arena;
@@ -139,9 +140,9 @@ export class Boss extends Actor {
     this.reset();
   }
 
-  get target() { return this.game.player; }
+  get target() { return this.game.targetOf(this); }
   critable() { return this.state === 'parried' || this.state === 'broken'; }
-  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.spdScale; }
+  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.atkScale; }
 
   reset() {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
@@ -172,7 +173,7 @@ export class Boss extends Actor {
   }
 
   beginLeap() {
-    const p = this.game.player.pos;
+    const p = this.game.targetOf(this).pos;
     // land just short of where the player is standing at takeoff
     const dx = p.x - this.pos.x, dz = p.z - this.pos.z, d = Math.hypot(dx, dz) || 1;
     const land = Math.max(0, d - 1.2);
@@ -197,8 +198,9 @@ export class Boss extends Actor {
   }
 
   update(dt) {
+    if (this.puppet) return this.puppetUpdate(dt, 'greatsword');
     this.t += dt;
-    const p = this.game.player;
+    const p = this.game.targetOf(this);
     const dist = this.distTo(p) - this.radius - p.radius;
     const toP = this.yawTo(p.pos);
     let pose = null, rate = 10;
@@ -273,7 +275,7 @@ export class Boss extends Actor {
       case 'attack': {
         const d = this.atk.def;
         const adt = dt * this.attackRate();
-        const going = this.runAttack(adt, [p], p.alive ? toP : null);
+        const going = this.runAttack(adt, this.game.allPlayers(), p.alive ? toP : null);
         if (this.state !== 'attack') { pose = loco(0); break; }
         const t = this.atk.t;
         if (d.leap && this.leapTo) {
@@ -299,7 +301,7 @@ export class Boss extends Actor {
           if (this.tele) { this.tele.dead = true; this.tele = null; }
           this.setState('neutral');
           const g = this.phase2 ? [0.25, 0.8] : this.cfg.gap;
-          this.gap = d.evade ? 0.05 : g[0] + Math.random() * (g[1] - g[0]);
+          this.gap = d.evade ? 0.05 : (g[0] + Math.random() * (g[1] - g[0])) * this.gapScale;
         }
         break;
       }
@@ -351,6 +353,7 @@ export class Boss extends Actor {
 
   receive(info) {
     if (!this.alive || this.state === 'dormant') return 'none';
+    if (this.puppet) return this.puppetHit(info);
     if (this.state === 'attack' && this.atk.def.evade && this.atk.t < 0.4) return 'none'; // sidestepped
     this.hp -= info.dmg;
     this.rig.flash(1, 0.85, 0.7);
@@ -377,12 +380,16 @@ export class Boss extends Actor {
   }
 
   onParried() {
+    if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId }); this.state = 'parried'; this.t = 0; this.atk = null; return; }
     this.atk = null; this.y = 0;
     if (this.tele) { this.tele.dead = true; this.tele = null; }
     this.setState('parried');
   }
 
-  beginRiposted() { this.setState('riposted'); this.atk = null; }
+  beginRiposted() {
+    if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId });
+    this.setState('riposted'); this.atk = null;
+  }
 
   die() {
     this.alive = false;

@@ -49,7 +49,27 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
     - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
     - Spellsword, Twin Inferno: two larger fireballs.
 - **Spellsword:** R1 knife hits give 12 mana (the only mana source). R2 fires a blue bolt (33 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana.
-- **Accounts:** `src/account.js` stores accounts in the browser's localStorage with PBKDF2-hashed passwords. They are per device and browser by design; an online backend could replace that class. Rules live in `src/progress.js`.
+- **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
+
+## Multiplayer (2-3 players)
+Create a room, share the 4-letter code, and the host starts the run. The host's browser runs the enemies; each player runs their own character, so dodges are judged on that player's device. Code is in `src/mp.js`.
+
+| | 2 players | 3 players |
+|---|---|---|
+| Bosses and brutes: health | +75% | +200% |
+| Bosses and brutes: damage / attack speed | +20% / +10%, 30% shorter gaps | same |
+| Regular enemies: health | +10% | +13% |
+| Regular enemies: damage | +10% | +12% |
+| All enemies: move speed | +10% | +10% |
+| Extra regular enemies | +30% | +60% |
+
+- **Gold:** one shared pot, and the cash-out multiplier applies to it. Every player banks the full amount. The host decides whether to cash out.
+- **Going down:** you stay down until a teammate revives you (50% health). Each revive takes 10% of max health from everyone for the rest of the run. If everyone is down, the run ends.
+- **Rewards:** each player picks their own, and the run resumes when everyone standing has chosen.
+- If the host leaves, the run ends for everyone.
+
+## Server
+Runs as the user service `souls-server` on port 4100, public at `/souls` through Tailscale Funnel. Data is in `server/data/` (gitignored). The unit file is in `deploy/`. To reinstall: `cd server && npm i`.
 
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
@@ -92,4 +112,4 @@ npm run build    # static build in dist/ — deployable to any static host
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions) and `scripts/parry.mjs` run against `npx vite preview --port 4173`.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.
