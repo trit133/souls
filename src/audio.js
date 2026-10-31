@@ -9,6 +9,9 @@ export class Audio {
       this.ctx = new AC();
       this.master = this.ctx.createGain(); this.master.gain.value = 0.7;
       this.master.connect(this.ctx.destination);
+      // teammates' sounds play through here at half volume
+      this.half = this.ctx.createGain(); this.half.gain.value = 0.5;
+      this.half.connect(this.master);
       const len = this.ctx.sampleRate;
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0);
@@ -29,7 +32,7 @@ export class Audio {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f); f.connect(g); g.connect(this.master);
+    src.connect(f); f.connect(g); g.connect(this.bus || this.master);
     src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
   }
   _tone(freq, dur, { type = 'sine', f1 = null, gain = 0.3, attack = 0.005, delay = 0 } = {}) {
@@ -40,7 +43,14 @@ export class Audio {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+    o.connect(g); g.connect(this.bus || this.master); o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  // a teammate's sound
+  remote(name, vol = 1) {
+    this.bus = this.half;
+    this.play(name, vol);
+    this.bus = null;
   }
 
   play(name, vol = 1) {

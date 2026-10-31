@@ -56,13 +56,16 @@ export class Actor {
   applySnapshot(s) {
     this.net = { x: s[1], z: s[2], yaw: s[3] };
     if (s[4] !== this.state) { this.state = s[4]; this.t = 0; }
-    if (s[5] < this.hp - 0.5) this.rig.flash(1, 0.9, 0.8);
-    this.hp = s[5]; this.y = s[8] || 0;
+    // a snapshot sent before the host saw our hit must not undo it on screen
+    const justHit = performance.now() - (this.hitAt || 0) < 900;
+    if (s[5] < this.hp - 0.5 && !justHit) this.rig.flash(1, 0.9, 0.8);
+    if (!(justHit && s[5] > this.hp)) this.hp = s[5];
+    this.y = s[8] || 0;
     this.alive = s[4] !== 'dead';
     const def = s[6] ? this.moves[s[6]] : null;
     if (!def) this.atk = null;
     else if (!this.atk || this.atk.def !== def || s[7] < this.atk.t - 0.3) this.atk = { def, t: s[7], hit: new Set() };
-    else this.atk.t = s[7];
+    else if (Math.abs(s[7] - this.atk.t) > 0.15) this.atk.t = s[7]; // otherwise keep our own smooth clock
     if (this.state === 'attack' && !this.atk) this.state = 'chase';
     this.seen = performance.now();
   }
@@ -75,7 +78,11 @@ export class Actor {
       this.yaw += angDiff(this.yaw, this.net.yaw) * k;
       this.puppetSpeed = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
     }
-    if (this.atk) this.atk.t += dt * this.attackRate();
+    if (this.atk) {
+      this.atk.t += dt * this.attackRate();
+      const fx = this.atk.def.sfx;
+      if (fx && !this.atk.sfx && this.atk.t >= fx[0]) { this.atk.sfx = true; this.game.audio.play(fx[1], this.sfxVol || 1); }
+    }
     const base = locomotion(style, this.phase = (this.phase || 0) + dt * (2.5 + (this.puppetSpeed || 0) * 1.6), (this.puppetSpeed || 0) / 4, false, this.game.time);
     let pose = base;
     if (this.state === 'attack' && this.atk) pose = this.attackPose(base);
@@ -90,6 +97,7 @@ export class Actor {
   puppetHit(info) {
     this.game.mp.send({ t: 'hit', id: this.netId, dmg: info.dmg, poise: info.poise || 0 });
     this.hp = Math.max(1, this.hp - info.dmg);
+    this.hitAt = performance.now();
     this.hpShow = 4;
     this.rig.flash(1, 0.9, 0.8);
     return 'hit';

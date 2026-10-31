@@ -536,6 +536,7 @@ export class Player extends Actor {
       this.atk = { def: PARRY, t: 0, hit: new Set() };
       this.setState('parry');
       this.game.audio.play('swing', 0.6);
+      this.game.mp.event({ k: 'sfx', s: 'swing', v: 0.6 });
       return true;
     }
     if (a === 'special') { this.buf = null; return false; }
@@ -557,6 +558,7 @@ export class Player extends Actor {
     tg.beginRiposted?.(this);
     this.atk = { def: RIPOSTE, t: 0, hit: new Set() };
     this.setState('riposte');
+    this.game.mp.event({ k: 'riposte', r: rate });
   }
 
   // Evolved rogue: a parry instantly becomes a critical, closing the gap at once
@@ -617,6 +619,7 @@ export class Player extends Actor {
     }
     this.startAttack(def);
     this.vel.set(0, 0, 0);
+    this.game.mp.event({ k: 'swing', a: name, r: this.atkRate });
   }
 
   // after paying for a dodge, an empty bar makes it ~2.2x slower and much shorter
@@ -633,6 +636,7 @@ export class Player extends Actor {
     this.yaw = Math.atan2(this.rollDir.x, this.rollDir.z);
     this.setState('roll');
     this.game.audio.play('roll');
+    this.game.mp.event({ k: 'sfx', s: 'roll' });
     this.game.fx.dust(this.pos, 5, 0.8);
     this.rig.cur.hips && (this.rig.cur.hips[0] = 0);
   }
@@ -643,6 +647,7 @@ export class Player extends Actor {
     this.fwd(this.rollDir).multiplyScalar(-1);
     this.setState('backstep');
     this.game.audio.play('roll', 0.6);
+    this.game.mp.event({ k: 'sfx', s: 'roll', v: 0.6 });
   }
 
   // ---------- receiving damage ----------

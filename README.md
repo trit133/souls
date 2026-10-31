@@ -66,6 +66,8 @@ Create a room, share the 4-letter code, and the host starts the run. The host's 
 - **Gold:** one shared pot, and the cash-out multiplier applies to it. Every player banks the full amount. The host decides whether to cash out.
 - **Going down:** you stay down until a teammate revives you (50% health). Each revive takes 10% of max health from everyone for the rest of the run. If everyone is down, the run ends.
 - **Rewards:** each player picks their own, and the run resumes when everyone standing has chosen.
+- **Teammates:** their attacks play out on your screen from instant events, and their sounds play at half volume.
+- **After a run:** everyone taps Ready Up, and the host's device rolls a new run in the same room.
 - If the host leaves, the run ends for everyone.
 
 ## Server

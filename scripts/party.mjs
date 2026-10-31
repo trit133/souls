@@ -71,7 +71,7 @@ await B.evaluate(() => { const p = game.player; p.setState('move'); p.hp = 1; p.
 log('6 down', { mode: await B.evaluate(() => [game.mode, game.player.alive]), seenByC: await C.evaluate(() => [...game.mp.peers.values()].map((p) => p.alive)) });
 const mh = () => Promise.all([A, B, C].map((p) => p.evaluate(() => game.player.maxHp)));
 const before = await mh();
-await C.evaluate(() => { const down = [...game.mp.peers.values()].find((x) => !x.alive); game.player.pos.copy(down.pos); game.player.pos.x += 1; game.player.setState('move'); game.startRevive(down); }); await wait(2200);
+await C.evaluate(() => { const down = [...game.mp.peers.values()].find((x) => !x.alive); game.player.pos.copy(down.pos); game.player.pos.x += 1; game.player.setState('move'); game.startRevive(down); window.__r0 = game.time; }); await wait(4500); log('6 revive state', await C.evaluate(() => [game.player.state, game.reviving, +(game.time - window.__r0).toFixed(2)]));
 log('6 revive', { before, after: await mh(), bAlive: await B.evaluate(() => [game.player.alive, game.player.hp]) });
 
 // 7) host cash-out pays the pot ×1 to everyone
@@ -80,6 +80,21 @@ await B.evaluate(() => { game.minisFelled = 1; }); await C.evaluate(() => { game
 const g0 = await Promise.all([A, B, C].map((p) => p.evaluate(() => game.accounts.data.gold)));
 await A.evaluate(() => game.cashOut()); await wait(500);
 log('7 cashout', { g0, g1: await Promise.all([A, B, C].map((p) => p.evaluate(() => [game.accounts.data.gold, game.mode]))) });
+
+// 7b) visible attacks, half-volume audio, no health bar bounce
+await A.click('#retry'); await B.click('#retry'); await wait(200);
+log('7b ready', await C.textContent('#ready-status'));
+const l0 = await A.evaluate(() => game.layout.join());
+await C.click('#retry'); await wait(1200);
+log('7b restart', await Promise.all([A, B, C].map((p) => p.evaluate((l) => [game.mode, game.layout.join() !== l, game.mp.peers.size, game.player.hp === game.player.maxHp, game.runGold], l0))));
+await B.evaluate(() => { window.__snd = []; const o = game.audio.remote.bind(game.audio); game.audio.remote = (n, v) => window.__snd.push(n); });
+await A.evaluate(() => { const p = game.player, e = game.enemies.find((x) => x.type === 'grunt'); p.st = p.maxSt; p.setState('move'); p.pos.set(e.pos.x, 0, e.pos.z + 1.4); p.yaw = Math.PI; window.__e = e; }); await wait(300);
+await A.evaluate(() => game.input.pressed.add('attack')); await wait(170);
+log('7b see swing', await B.evaluate(() => { const r = [...game.mp.peers.values()][0]; return { playing: !!r.play, t: +(r.play?.t || 0).toFixed(2), key: r.s.st }; }));
+await wait(700);
+log('7b B heard', await B.evaluate(() => window.__snd));
+const trace = await B.evaluate(async () => { const e = game.enemies.find((x) => x.type === 'grunt' && x.alive); game.player.pos.set(e.pos.x, 0, e.pos.z + 1.4); const v = []; const h0 = e.hp; e.receive({ dmg: 30, poise: 0, srcPos: game.player.pos }); for (let i = 0; i < 12; i++) { v.push(e.hp); await new Promise((r) => setTimeout(r, 50)); } return { h0, v }; });
+log('7b hp trace', trace);
 
 // 8) host leaving closes the party for guests
 await A.evaluate(() => game.toTitle()); await wait(500);

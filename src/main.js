@@ -166,8 +166,13 @@ class Game {
     }));
     $('resume').addEventListener('click', () => this.setPaused(false));
     $('restart').addEventListener('click', () => this.toTitle());
-    $('again').addEventListener('click', () => this.toTitle());
-    $('retry').addEventListener('click', () => { this.audio.unlock(); this.start(this.kind); });
+    const readyOr = (btn, solo) => () => {
+      if (!this.mp.active) return solo();
+      $(btn).disabled = true;
+      this.mp.setReady();
+    };
+    $('again').addEventListener('click', readyOr('again', () => this.toTitle()));
+    $('retry').addEventListener('click', readyOr('retry', () => { this.audio.unlock(); this.start(this.kind); }));
     $('go-title').addEventListener('click', () => this.toTitle());
     $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
     $('lobby-back').addEventListener('click', () => { if (this.mp.code) this.mp.leave(); this.ui.show('lobby', false); });
@@ -254,6 +259,7 @@ class Game {
 
   toTitle() {
     this.mode = 'title';
+    $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
     if (this.mp.active || this.mp.code) this.mp.leave();
     this.audio.stopMusic();
     this.ui.show('pause', false); this.ui.show('victory', false); this.ui.show('death', false);
@@ -400,7 +406,7 @@ class Game {
       `Reached area ${this.seenMod + 1} of ${this.world.mods.length}`,
     ].join('<br>');
     this.ui.show('hud', false); this.ui.show('touch', false);
-    $('retry').classList.toggle('hidden', this.mp.active);
+    this.showRetry();
     this.ui.show('gameover');
   }
 
@@ -440,7 +446,7 @@ class Game {
         `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
       ].join('<br>');
       this.ui.show('hud', false); this.ui.show('touch', false);
-      $('retry').classList.toggle('hidden', this.mp.active);
+      this.showRetry();
       this.ui.show('gameover');
     }, 3400);
   }
@@ -481,6 +487,23 @@ class Game {
     this.ui.prompt(null);
     this.mode = 'play';
     this.last = performance.now();
+  }
+
+  // run-end button: Try Again alone; in a party everyone readies up
+  showRetry() {
+    const party = this.mp.active;
+    $('retry').textContent = party ? 'Ready Up' : 'Try Again';
+    $('retry').disabled = false;
+    $('ready-status').textContent = '';
+    $('again').textContent = party ? 'Ready Up' : 'Play Again';
+    $('again').disabled = false;
+    $('victory-ready').textContent = '';
+    this.mp.ready.clear();
+  }
+
+  renderReady(n, total) {
+    const text = n < 0 ? 'Everyone else left. Go back to the title to start a new room.' : `${n} of ${total} ready`;
+    $('ready-status').textContent = text; $('victory-ready').textContent = text;
   }
 
   // ---------- lobby ----------
@@ -587,6 +610,7 @@ class Game {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
       $('victory-stats').innerHTML = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${CHAR_NAMES[this.kind]}<br>${goldLine}<br>Boons: ${this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') || 'none'}`;
+      this.showRetry();
       this.ui.show('victory');
       this.ui.show('boss', false);
       this.world.setGate(enc.gateIn, true, false);
@@ -612,6 +636,7 @@ class Game {
       if (r === 'parry') {
         att.onParried();
         this.audio.play('parry');
+        this.mp.event({ k: 'parry' });
         if (tg.evolved) { this.ui.redFlash(); tg.rig.flash(1, 0.1, 0.1); tg.instantRiposte(att); }
         const w = tg.rig.tipL ? tg.rig.tipL.getWorldPosition(new THREE.Vector3()) : hp;
         this.fx.sparks(w, null, 26, [1, 0.95, 0.7]);
@@ -619,12 +644,14 @@ class Game {
         this.fx.addShake(0.4);
       } else if (r === 'block' || r === 'guardbreak') {
         this.audio.play('clang');
+        this.mp.event({ k: 'block' });
         const s = tg.rig.shield ? tg.rig.shield.getWorldPosition(new THREE.Vector3()) : hp;
         this.fx.sparks(s, dir.clone().negate(), 14);
         this.hitstop(0.05); this.fx.addShake(r === 'guardbreak' ? 0.6 : 0.25);
         if (r === 'guardbreak') this.audio.play('bigHit');
       } else if (r === 'hit') {
         this.audio.play(h.knock === 'heavy' ? 'bigHit' : 'hurt');
+        this.mp.event({ k: 'hurt', heavy: h.knock === 'heavy' });
         this.fx.blood(hp, dir, 12);
         this.hitstop(h.knock === 'heavy' ? 0.1 : 0.07);
         this.fx.addShake(h.knock === 'heavy' ? 0.7 : 0.4);
@@ -639,6 +666,7 @@ class Game {
     if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT); // knife hits only
     if (att === this.player && tg.alive) this.applyStatus(att, tg, heavy ? 1.5 : 1);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
+    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy });
     this.fx.blood(hp, dir, heavy ? 16 : 9);
     this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]);
     this.hitstop(r === 'kill' ? 0.11 : heavy ? 0.09 : 0.055);
@@ -670,6 +698,7 @@ class Game {
   riposteHit(p, tg, dmg) {
     dmg *= p.dmgMul;
     if (tg.alive) this.applyStatus(p, tg, 2);
+    this.mp.event({ k: 'rip', id: tg.netId });
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
     tg.hp -= dmg;
@@ -795,6 +824,7 @@ class Game {
     const pos = new THREE.Vector3(...d.p), vel = new THREE.Vector3(...d.v);
     if (mesh) { mesh.position.copy(pos); if (d.look === 'arrow') mesh.lookAt(pos.clone().add(vel)); this.scene.add(mesh); }
     this.projectiles.push({ ghost: true, kind: d.kind, pos, vel, life: d.life, mesh });
+    if (d.look === 'bolt' || d.look === 'fire') this.audio.remote(d.look === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
   // a hostile shot reaching a player on this device
@@ -803,8 +833,8 @@ class Game {
     const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
     if (t.isRemote) return r;
     const chest = new THREE.Vector3(t.pos.x, 1.1, t.pos.z);
-    if (r === 'hit') { this.audio.play('hurt'); this.fx.blood(chest, null, 8); this.hitstop(0.05); this.fx.addShake(0.3); }
-    if (r === 'block') { this.audio.play('clang', 0.6); this.fx.sparks(chest, null, 8); }
+    if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.hitstop(0.05); this.fx.addShake(0.3); }
+    if (r === 'block') { this.audio.play('clang', 0.6); this.mp.event({ k: 'block' }); this.fx.sparks(chest, null, 8); }
     return r;
   }
 
@@ -823,6 +853,7 @@ class Game {
     if (r === 'none') return;
     this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
+    this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire' });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
     if (e.alive) this.applyStatus(this.player, e, 1);
   }

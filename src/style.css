@@ -224,3 +224,6 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 .pm span { display: block; font: 11px Georgia, serif; text-shadow: 0 1px 2px #000; }
 .pm i { display: block; height: 4px; background: #a8302a; transform-origin: left; }
 .pm.down span { color: #e0584a; }
+
+#ready-status, #victory-ready { font: 14px Georgia, serif; color: #e8c88a; min-height: 18px; margin-top: 6px; }
+.menu-btn:disabled { opacity: .5; }
