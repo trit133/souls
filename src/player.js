@@ -126,6 +126,18 @@ const ROGUE_ATTACKS = {
   },
 };
 
+// Spellsword melee: off-hand knife only. Swap sides of a right-handed attack.
+const SWAP = { armL: 'armR', armR: 'armL', foreL: 'foreR', foreR: 'foreL', handL: 'handR', handR: 'handL', legL: 'legR', legR: 'legL', shinL: 'shinR', shinR: 'shinL' };
+const mirrorPose = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]) => [SWAP[k] || k, Array.isArray(v) ? [v[0], -v[1], -v[2]] : v]));
+const mirror = (def) => ({ ...def, keys: def.keys.map(([t, pose]) => [t, mirrorPose(pose)]) });
+
+const MAGE_ATTACKS = {
+  s1: { ...ROGUE_ATTACKS.r2, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 14, poise: 10 }] },
+  s2: { ...mirror(ROGUE_ATTACKS.r3), next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 17, poise: 12 }] },
+};
+
+const MANA_BOLT = 33, MANA_FIRE = 75;
+
 const CHARS = {
   knight: {
     hp: 150, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
@@ -136,9 +148,16 @@ const CHARS = {
   rogue: {
     hp: 105, st: 85, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',
     roll: { dur: 0.5, dist: 4.9, iframes: [0.02, 0.4], cost: 16 },
-    attacks: ROGUE_ATTACKS, light: 'r1', critDmg: 170, trail: 0xffd0a0,
+    attacks: ROGUE_ATTACKS, light: 'r1', critDmg: 170, trail: 0xffd0a0, dual: true,
     model: { cloth: 0x4e3e30, armor: 0x6a5440, accent: 0x9a2a22, skin: 0xc49a7a, head: 'hood', weapon: 'daggers', bulk: 0.95 },
   },
+};
+
+CHARS.mage = {
+  hp: 95, st: 85, walk: 4.6, sprint: 7.0, flasks: 4, style: 'daggers', caster: true, dual: true,
+  roll: { dur: 0.55, dist: 4.6, iframes: [0.03, 0.4], cost: 18 },
+  attacks: MAGE_ATTACKS, light: 's1', critDmg: 130, trail: 0x8ab4ff,
+  model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'hair', weapon: 'spellknife', bulk: 0.9 },
 };
 
 const RIPOSTE = {
@@ -182,7 +201,7 @@ export class Player extends Actor {
     this.sprinting = false;
     this.rollDir = new THREE.Vector3();
     this.trail = new Trail(game.scene, c.trail);
-    if (kind === 'rogue') this.trailL = new Trail(game.scene, c.trail);
+    if (c.dual) this.trailL = new Trail(game.scene, c.trail);
     this.healDone = false;
     this.stepT = 0;
     this.fatigue = 0; // 0..1, builds with consecutive attacks
@@ -196,11 +215,28 @@ export class Player extends Actor {
     this.dmgMul += pct('dmg'); this.aspdMul += pct('aspd'); this.moveMul += pct('move');
     this.maxHp = this.hp = Math.round(c.hp * (1 + pct('hp')));
     this.maxSt = this.st = Math.round(c.st * (1 + pct('st')));
+    this.flasks = this.maxFlasks = c.flasks + (upgrades.flask || 0);
+    this.potionMul = 1 + pct('potion');
+    this.maxMana = this.mana = c.caster ? 100 + upgradeTotal(UPGRADES.find((u) => u.key === 'mana'), upgrades.mana || 0) : 0;
+    this.evolved = !!upgrades['evo_' + kind];
+    this.ripRate = 1;
+    if (kind === 'knight' && this.evolved) this.buildSpectralShield();
     this.fatigueT = 0;
     this.setState('move');
   }
 
   remove() { super.remove(); this.trailL?.dispose(this.game.scene); }
+
+  // Evolved block: a white wall 20% wider than the torso, held out in front
+  buildSpectralShield() {
+    const torso = 0.46 * this.c.model.bulk;
+    this.spectralWidth = torso * 1.2;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(this.spectralWidth, 1.7, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+    m.position.set(0, 1.05, 0.75); m.visible = false;
+    this.rig.root.add(m);
+    this.spectral = m;
+  }
 
   // ---------- helpers ----------
   spend(n) { this.st -= n; if (this.st < 0) this.st = 0; this.stDelay = 0.6; }
@@ -298,6 +334,7 @@ export class Player extends Actor {
         if (this.buf && (this.buf.a === 'attack' || this.buf.a === 'heavy') && d.combo && t >= d.combo[0]) {
           const heavy = this.buf.a === 'heavy';
           this.buf = null;
+          if (heavy && this.c.caster) { this.castBolt(dir, mag); break; }
           if (!this.tryRiposte(dir, mag)) this.doAttack(heavy ? 'heavy' : (d.next || this.c.light), dir, mag);
           break;
         }
@@ -363,7 +400,7 @@ export class Player extends Actor {
         if (this.t > 0.2 && this.t < 0.8) this.game.fx.heal(this.pos);
         if (!this.healDone && this.t >= 0.55) {
           this.healDone = true;
-          this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.48);
+          this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.48 * this.potionMul);
           this.game.audio.play('heal');
           this.game.fx.burst({ x: this.pos.x, y: 1, z: this.pos.z }, 16, [1, 0.75, 0.35], 3, 0.8, 0.2);
         }
@@ -381,23 +418,38 @@ export class Player extends Actor {
         if (this.t >= PARRY.dur) this.setState('move');
         break;
       }
+      case 'cast': {
+        const c = this.castDef;
+        const fired = this.t >= c.fireAt;
+        if (!c.done && fired) { c.done = true; c.fire(); }
+        pose = {
+          ...this.basePose(), torso: [0.1, -0.35, 0], by: -0.06,
+          armR: fired ? [-1.55, 0, 0.1] : [-2.5, 0, -0.2], foreR: [0, 0, 0], handR: [1.5, 0, 0],
+          legL: [-0.35, 0, 0], legR: [0.3, 0, 0], shinR: [0.35, 0, 0],
+        };
+        rate = 24;
+        if (fired && this.t > c.fireAt + 0.1 && this.buf?.a === 'roll' && this.tryAct(dir, mag)) break;
+        if (this.t >= c.dur) this.setState('move');
+        break;
+      }
       case 'riposte': {
         const tg = this.riposteTarget;
-        if (tg && this.t < 0.3) {
+        const rt = this.t * this.ripRate; // the evolved rogue's critical plays much faster
+        if (tg && rt < 0.3) {
           // glide into position in front of the victim
           const want = this.yawTo(tg.pos);
           this.turnToward(want, 20, dt);
           const d = this.distTo(tg) - tg.radius - 0.9;
           if (Math.abs(d) > 0.05) { const f = this.fwd(); const k = Math.min(1, dt * 12); this.move(f.x * d * k, f.z * d * k); }
         }
-        pose = sample(RIPOSTE.keys, this.t, this.basePose());
-        rate = 26;
-        this.trailOn = this.inWindow(RIPOSTE.trail, this.t);
-        if (!this.ripHit && this.t >= 0.32 && tg) {
+        pose = sample(RIPOSTE.keys, rt, this.basePose());
+        rate = 26 * this.ripRate;
+        this.trailOn = this.inWindow(RIPOSTE.trail, rt);
+        if (!this.ripHit && rt >= 0.32 && tg) {
           this.ripHit = true;
           this.game.riposteHit(this, tg, this.c.critDmg);
         }
-        if (this.t >= RIPOSTE.dur) this.setState('move');
+        if (rt >= RIPOSTE.dur) this.setState('move');
         break;
       }
       case 'rest': {
@@ -412,6 +464,10 @@ export class Player extends Actor {
       }
     }
     if (this.state !== 'attack' && this.state !== 'parry' && this.state !== 'riposte') this.trailOn = false;
+    if (this.spectral) {
+      this.spectral.visible = this.blocking;
+      this.spectral.material.opacity = 0.34 + Math.sin(this.game.time * 9) * 0.08 + (this.blockHitT > 0 ? 0.3 : 0);
+    }
 
     if (this.state !== 'move' && this.state !== 'heal') this.blocking = false;
     this.applyKnockback(dt);
@@ -439,6 +495,7 @@ export class Player extends Actor {
       if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
       return true;
     }
+    if (a === 'heavy' && this.c.caster) { this.buf = null; return this.castBolt(dir, mag); }
     if (a === 'attack' || a === 'heavy') {
       if (!this.canSpend()) return false;
       this.buf = null;
@@ -457,6 +514,7 @@ export class Player extends Actor {
       this.flasks--; this.healDone = false; this.setState('heal');
       return true;
     }
+    if (a === 'special' && this.c.caster) { this.buf = null; return this.castFire(dir, mag); }
     if (a === 'special' && this.kind === 'rogue') {
       if (!this.canSpend()) return false;
       this.buf = null;
@@ -490,11 +548,52 @@ export class Player extends Actor {
     if (!tg) return false;
     // must be in front of the victim
     if (Math.abs(angDiff(tg.yaw, tg.yawTo(this.pos))) > 1.3) return false;
-    this.riposteTarget = tg; this.ripHit = false;
+    this.startRiposte(tg);
+    return true;
+  }
+
+  startRiposte(tg, rate = 1) {
+    this.riposteTarget = tg; this.ripHit = false; this.ripRate = rate;
     tg.beginRiposted?.(this);
     this.atk = { def: RIPOSTE, t: 0, hit: new Set() };
     this.setState('riposte');
+  }
+
+  // Evolved rogue: a parry instantly becomes a critical, closing the gap at once
+  instantRiposte(tg) {
+    const a = this.yawTo(tg.pos), d = this.distTo(tg) - tg.radius - 0.9;
+    this.yaw = a;
+    if (d > 0) this.move(Math.sin(a) * d, Math.cos(a) * d);
+    this.startRiposte(tg, 2.8);
+  }
+
+  // ---------- Spellsword ----------
+  aimAt(dir, mag) {
+    if (this.lock) { this.yaw = this.yawTo(this.lock.pos); return; }
+    const aim = mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw;
+    const tg = this.findTarget(14, 0.5, aim);
+    this.yaw = tg ? this.yawTo(tg.pos) : aim;
+  }
+
+  startCast(cost, dur, fireAt, fire, dir, mag) {
+    if (this.mana < cost) { this.game.ui.toastSmall('Not enough mana'); return false; }
+    this.mana -= cost;
+    this.aimAt(dir, mag);
+    this.castDef = { dur: dur / this.aspdMul, fireAt: fireAt / this.aspdMul, fire, done: false };
+    this.vel.set(0, 0, 0);
+    this.setState('cast');
     return true;
+  }
+
+  castBolt(dir, mag) {
+    return this.startCast(MANA_BOLT, 0.5, 0.16, () => this.game.spawnSpell(this, 'bolt'), dir, mag);
+  }
+
+  castFire(dir, mag) {
+    return this.startCast(MANA_FIRE, 0.95, 0.45, () => {
+      if (this.evolved) { this.game.spawnSpell(this, 'fire', -0.16); this.game.spawnSpell(this, 'fire', 0.16); }
+      else this.game.spawnSpell(this, 'fire');
+    }, dir, mag);
   }
 
   doAttack(name, dir, mag) {

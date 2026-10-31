@@ -13,10 +13,18 @@ import { angDiff } from './actor.js';
 import { BOONS, rollBoons } from './boons.js';
 import { STATUS } from './status.js';
 import { LocalAccounts } from './account.js';
-import { GOLD_PER_ENEMY, MINI_GOLD, BOSS_GOLD, CASHOUT_MULT, WIN_MULT, payout, UPGRADES, upgradeCost, upgradeTotal, stepValue } from './progress.js';
+import { GOLD_PER_ENEMY, MINI_GOLD, BOSS_GOLD, CASHOUT_MULT, WIN_MULT, payout, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed } from './progress.js';
+import { icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
+const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
+const MANA_PER_HIT = 12;
+// player spells: little blue bolts, and exploding fireballs (bigger once evolved)
+const SPELLS = {
+  bolt: { dmg: 30, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 12 },
+  fire: { dmg: 120, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 60, aoe: 3 },
+};
 
 
 class Game {
@@ -118,6 +126,10 @@ class Game {
   bindUI() {
     document.querySelectorAll('.char').forEach((b) => b.addEventListener('click', () => {
       this.audio.unlock();
+      if (b.dataset.char === 'mage' && !this.accounts.data?.upgrades.mage) {
+        if (this.accounts.user) { this.renderShop(); this.ui.show('shop'); } else { $('acct-err').textContent = 'Sign in to unlock the Spellsword'; this.ui.show('account'); }
+        return;
+      }
       this.start(b.dataset.char);
     }));
     $('resume').addEventListener('click', () => this.setPaused(false));
@@ -170,7 +182,9 @@ class Game {
     this.mode = 'play';
     this.ui.setMaxHp(this.player.maxHp, this.player.maxSt);
     this.ui.hp.snap(1); this.ui.st.snap(1);
-    $('b-special').textContent = kind === 'knight' ? 'BLOCK' : 'PARRY';
+    $('b-special').textContent = { knight: 'BLOCK', rogue: 'PARRY', mage: 'FIRE' }[kind];
+    $('b-heavy').textContent = kind === 'mage' ? 'BOLT' : 'R2';
+    document.querySelector('.bar.mn').classList.toggle('hidden', kind !== 'mage');
     this.ui.show('menu', false); this.ui.show('hud'); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('touch', this.input.isTouch);
     this.camPos.set(this.player.pos.x, 14, this.player.pos.z + 12);
@@ -235,6 +249,9 @@ class Game {
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
     $('btn-acct').textContent = A.user ? 'Sign Out' : 'Sign In';
     $('btn-shop').classList.toggle('hidden', !A.user);
+    const open = !!A.data?.upgrades.mage;
+    document.querySelector('.char[data-char="mage"]').classList.toggle('locked', !open);
+    $('mage-lock').textContent = open ? '' : 'Locked · unlock for ◆ 100 in Upgrades';
   }
 
   renderShop() {
@@ -242,26 +259,35 @@ class Game {
     $('shop-gold').textContent = `◆ ${d.gold} gold`;
     const wrap = $('shop-list');
     wrap.innerHTML = '';
-    for (const u of UPGRADES) {
-      const lv = d.upgrades[u.key] || 0, cost = upgradeCost(lv);
-      const row = document.createElement('div');
-      row.className = 'shop-row';
-      const info = u.locked ? u.locked : `Lv ${lv} · now +${upgradeTotal(u, lv)}${u.unit} · next +${stepValue(u, lv)}${u.unit}`;
-      row.innerHTML = `<div><div class="sname">${u.name}</div><div class="sinfo">${info}</div></div>`;
-      const b = document.createElement('button');
-      b.textContent = u.locked ? 'Locked' : `◆ ${cost}`;
-      b.disabled = !!u.locked || d.gold < cost;
-      b.addEventListener('click', () => this.buyUpgrade(u.key));
-      row.appendChild(b);
-      wrap.appendChild(row);
+    for (const sec of SECTIONS) {
+      const h = document.createElement('div');
+      h.className = 'shop-head'; h.textContent = sec;
+      wrap.appendChild(h);
+      for (const u of UPGRADES.filter((x) => x.section === sec)) {
+        const lv = d.upgrades[u.key] || 0, cost = upgradeCost(u, lv), maxed = isMaxed(u, lv);
+        const blocked = u.requires && !d.upgrades[u.requires];
+        const row = document.createElement('div');
+        row.className = 'shop-row'; row.dataset.key = u.key;
+        const capText = u.costs ? `${lv}/${u.costs.length}` : `Lv ${lv}`;
+        const info = blocked ? 'Unlock Spellsword first'
+          : u.desc ? (maxed ? 'Owned' : u.desc)
+            : `${capText} · now +${upgradeTotal(u, lv)}${u.unit}${maxed ? '' : ` · next +${stepValue(u, lv)}${u.unit}`}`;
+        row.innerHTML = `<div class="sicon">${icon(u.key)}</div><div class="stext"><div class="sname">${u.name}</div><div class="sinfo">${info}</div></div>`;
+        const b = document.createElement('button');
+        b.textContent = blocked ? 'Locked' : maxed ? (u.desc ? 'Owned' : 'Max') : `◆ ${cost}`;
+        b.disabled = !!blocked || maxed || d.gold < cost;
+        b.addEventListener('click', () => this.buyUpgrade(u.key));
+        row.appendChild(b);
+        wrap.appendChild(row);
+      }
     }
   }
 
   buyUpgrade(key) {
     const d = this.accounts.data, u = UPGRADES.find((x) => x.key === key);
-    if (!d || !u || u.locked) return;
-    const lv = d.upgrades[key] || 0, cost = upgradeCost(lv);
-    if (d.gold < cost) return;
+    if (!d || !u || (u.requires && !d.upgrades[u.requires])) return;
+    const lv = d.upgrades[key] || 0, cost = upgradeCost(u, lv);
+    if (isMaxed(u, lv) || d.gold < cost) return;
     d.gold -= cost;
     d.upgrades[key] = lv + 1;
     this.accounts.save();
@@ -393,7 +419,7 @@ class Game {
     setTimeout(() => {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
-      $('victory-stats').innerHTML = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${this.kind === 'knight' ? 'Knight' : 'Rogue'}<br>${goldLine}<br>Boons: ${this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') || 'none'}`;
+      $('victory-stats').innerHTML = `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${CHAR_NAMES[this.kind]}<br>${goldLine}<br>Boons: ${this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') || 'none'}`;
       this.ui.show('victory');
       this.ui.show('boss', false);
       this.world.setGate(enc.gateIn, true, false);
@@ -414,9 +440,10 @@ class Game {
       if (r === 'parry') {
         att.onParried();
         this.audio.play('parry');
+        if (tg.evolved) { this.ui.redFlash(); tg.rig.flash(1, 0.1, 0.1); tg.instantRiposte(att); }
         const w = tg.rig.tipL ? tg.rig.tipL.getWorldPosition(new THREE.Vector3()) : hp;
         this.fx.sparks(w, null, 26, [1, 0.95, 0.7]);
-        this.hitstop(0.12); this.slow = 0.35;
+        this.hitstop(0.12); if (!tg.evolved) this.slow = 0.35;
         this.fx.addShake(0.4);
       } else if (r === 'block' || r === 'guardbreak') {
         this.audio.play('clang');
@@ -437,6 +464,7 @@ class Game {
     const r = tg.receive(info);
     if (r === 'none') return;
     const heavy = def.heavyHit;
+    if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT); // knife hits only
     if (att === this.player && tg.alive) this.applyStatus(att, tg, heavy ? 1.5 : 1);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
     this.fx.blood(hp, dir, heavy ? 16 : 9);
@@ -492,7 +520,8 @@ class Game {
     for (const e of this.enemiesAll()) {
       if (!e.alive) continue;
       const np = e.nextParry();
-      if (!np || np.tth < PARRY_LATE - slack || np.tth > PARRY_EARLY + slack) continue;
+      const early = PARRY_EARLY + (p.evolved ? 0.05 : 0); // Red Riposte adds 50ms
+      if (!np || np.tth < PARRY_LATE - slack || np.tth > early + slack) continue;
       if (e.distTo(p) > (np.h.range ?? 3) + p.radius + 0.8) continue;
       if (Math.abs(angDiff(e.yaw, e.yawTo(p.pos))) > (np.h.arc ?? 2) / 2 + 0.5) continue;
       out.push({ e, np });
@@ -576,6 +605,46 @@ class Game {
     this.audio.play('heavySwing', 1);
   }
 
+  spawnSpell(p, kind, spread = 0) {
+    const S = SPELLS[kind], big = kind === 'fire' && p.evolved ? 1.45 : 1;
+    const f = p.fwd().clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
+    const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25, p.pos.z + f.z * 0.8);
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
+    mesh.position.copy(pos); this.scene.add(mesh);
+    this.projectiles.push({ kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, aoe: S.aoe ? S.aoe * big : 0 });
+    this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
+  }
+
+  spellDamage(q, e, mul = 1) {
+    const r = e.receive({ dmg: q.dmg * mul * this.player.dmgMul, poise: q.poise, srcPos: q.pos, attacker: this.player });
+    if (r === 'none') return;
+    this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
+    this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
+    this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
+    if (e.alive) this.applyStatus(this.player, e, 1);
+  }
+
+  // Blue bolts and fireballs fly straight; a fireball bursts on contact or at range.
+  updateSpell(q, dt) {
+    for (let i = 0; i < 3; i++) {
+      const b = q.kind === 'fire' ? [1, 0.45, 0.1] : [0.45, 0.7, 1];
+      this.fx.add.spawn({ x: q.pos.x + (Math.random() - 0.5) * q.r, y: q.pos.y + (Math.random() - 0.5) * q.r, z: q.pos.z + (Math.random() - 0.5) * q.r, life: 0.3, size: q.r * 0.8, size1: 0.03, r: b[0], g: b[1], b: b[2] });
+    }
+    let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5);
+    let hit = null;
+    if (!dead) for (const e of this.enemiesAll()) {
+      if (e.alive && e.y < 1.5 && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.r + e.radius) { hit = e; dead = true; break; }
+    }
+    if (!dead) return false;
+    if (q.aoe) {
+      this.fx.shockwave(q.pos.x, q.pos.z, q.aoe, 0xff8a30, 0.4);
+      this.fx.burst(q.pos, 40, [1, 0.5, 0.1], 7, 0.7, 0.4);
+      this.fx.addShake(0.35);
+      for (const e of this.enemiesAll()) if (e.alive && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.aoe + e.radius) this.spellDamage(q, e);
+    } else if (hit) this.spellDamage(q, hit);
+    return true;
+  }
+
   spawnFireRing(x, z, maxR, dur, dmg) {
     this.rings.push({ x, z, maxR, dur, dmg: dmg * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: false });
     this.audio.play('fire');
@@ -587,6 +656,11 @@ class Game {
       q.life -= dt;
       q.pos.addScaledVector(q.vel, dt);
       if (q.mesh) q.mesh.position.copy(q.pos);
+      if (q.friendly) {
+        const over = this.updateSpell(q, dt);
+        if (over) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
+        return !over;
+      }
       if (q.kind === 'fire') {
         for (let i = 0; i < 3; i++) this.fx.flame({ x: q.pos.x, y: 0.1, z: q.pos.z }, 1.1);
         if (Math.random() < dt * 20) this.fx.scorch(q.pos.x, q.pos.z, 0.7);
@@ -594,7 +668,9 @@ class Game {
       if (q.kind === 'rock') { q.mesh.rotation.x += dt * 8; q.mesh.rotation.z += dt * 5; }
       let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < 0.25;
       if (dead && q.kind === 'rock') this.impact(q.pos.x, q.pos.z, 1.6, 0.35);
-      if (!dead && p.alive && Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < q.r + p.radius) {
+      // the evolved spectral shield stops shots at the wall, ahead of the knight
+      const wall = p.spectral?.visible ? 0.75 : 0;
+      if (!dead && p.alive && Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < q.r + p.radius + wall) {
         const src = q.pos.clone().addScaledVector(q.vel, -0.1);
         const r = p.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
         if (r === 'hit') { this.audio.play('hurt'); this.fx.blood(new THREE.Vector3(p.pos.x, 1.1, p.pos.z), q.vel.clone().normalize(), 8); this.hitstop(0.05); this.fx.addShake(0.3); }
@@ -723,6 +799,17 @@ class Game {
     const all = [this.player, ...this.enemies.filter((e) => e.alive && Math.abs(e.pos.z - this.player.pos.z) < 30)];
     const enc = this.activeEnc;
     if (enc && enc.boss.alive && enc.boss.y < 1) all.push(enc.boss);
+    const p = this.player;
+    if (p.spectral?.visible) {
+      // the spectral shield is a solid wall: enemies can't walk through it
+      const f = p.fwd(), hw = p.spectralWidth / 2;
+      const cx = p.pos.x + f.x * 0.75, cz = p.pos.z + f.z * 0.75;
+      for (const e of all) {
+        if (e === p) continue;
+        const dx = e.pos.x - cx, dz = e.pos.z - cz, d = Math.hypot(dx, dz), m = hw + e.radius;
+        if (d < m && d > 1e-4) e.move(dx / d * (m - d), dz / d * (m - d));
+      }
+    }
     for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
       const a = all[i], b = all[j];
       if (!a.alive && a !== this.player) continue;

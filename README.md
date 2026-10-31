@@ -41,7 +41,14 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
   - Move speed: +2%, then +4%.
   - Attack speed: +2%, then +4%.
   - Stamina: +6%, then +8%.
-  - Mana: locked until Spell Sword is unlocked.
+  - Extra Potion: +1 flask, 3 max (10, 20, 30 gold).
+  - Potion Strength: +15% healing, 3 max (10, 15, 30 gold).
+  - Spellsword: unlock for 100 gold. Then Mana: +10, then +15 from the 4th level.
+  - Evolutions (75 gold each):
+    - Knight, Spectral Shield: a white wall 20% wider than his torso that stops enemies and projectiles.
+    - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
+    - Spellsword, Twin Inferno: two larger fireballs.
+- **Spellsword:** R1 knife hits give 12 mana (the only mana source). R2 fires a blue bolt (33 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana.
 - **Accounts:** `src/account.js` stores accounts in the browser's localStorage with PBKDF2-hashed passwords. They are per device and browser by design; an online backend could replace that class. Rules live in `src/progress.js`.
 
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
@@ -85,4 +92,4 @@ npm run build    # static build in dist/ — deployable to any static host
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop) and `scripts/parry.mjs` run against `npx vite preview --port 4173`.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions) and `scripts/parry.mjs` run against `npx vite preview --port 4173`.

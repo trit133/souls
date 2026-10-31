@@ -19,6 +19,7 @@ export class UI {
   constructor() {
     this.hp = new Bar(document.querySelector('.bar.hp'));
     this.st = new Bar(document.querySelector('.bar.st'));
+    this.mn = new Bar(document.querySelector('.bar.mn'));
     this.boss = new Bar(document.querySelector('.bar.bosshp'));
     this.toastEl = $('toast');
     this.promptEl = $('prompt');
@@ -42,6 +43,12 @@ export class UI {
     this.st.set(p.st / p.maxSt, dt);
     this.st.fill.parentElement.classList.toggle('tired', p.fatigue > 0.45);
     this.flaskEl.textContent = p.flasks;
+    if (p.maxMana) this.mn.set(p.mana / p.maxMana, dt);
+  }
+
+  redFlash() {
+    const el = document.getElementById('redflash');
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   }
 
   // red flash on the stamina bar after a whiffed parry

@@ -98,7 +98,7 @@ const shop = await page.evaluate(() => {
   for (let i = 0; i < 4; i++) { costs.push(row(0).querySelector('button').textContent); row(0).querySelector('button').click(); }
   out.dmgCostsPaid = costs; out.goldLeft = game.accounts.data.gold; out.dmgInfo = row(0).querySelector('.sinfo').textContent;
   out.nextDmgButton = row(0).querySelector('button').textContent; out.nextDisabled = row(0).querySelector('button').disabled;
-  out.mana = { text: row(5).querySelector('button').textContent, disabled: row(5).querySelector('button').disabled };
+  const mr = document.querySelector('[data-key=mana] button'); out.mana = { text: mr.textContent, disabled: mr.disabled };
   document.getElementById('shop-back').click();
   // applied in a run? +3+3+3+4 = 13% damage
   game.accounts.data.upgrades = { dmg: 4, hp: 4, move: 4, aspd: 4, st: 4 }; game.accounts.save();

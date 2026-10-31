@@ -20,6 +20,7 @@
     <div id="bars">
       <div class="bar hp"><div class="chip"></div><div class="fill"></div></div>
       <div class="bar st"><div class="fill"></div></div>
+      <div class="bar mn hidden"><div class="fill"></div></div>
       <div id="flasks"><span class="flask-icon"></span><span id="flask-count">3</span><span id="progress"></span><span id="run-gold"></span></div>
       <div id="boon-tags"></div>
     </div>
@@ -57,13 +58,16 @@
     <div id="chars">
       <button class="char" data-char="knight">
         <div class="cname">The Knight</div>
-        <div class="cdesc">Longsword &amp; kite shield. Sturdy, heavy hits.<br><b>L1: Block</b> (hold) — absorbs most damage, drains stamina.</div>
-        <div class="cstats">HP ███████ &nbsp; STA █████ &nbsp; SPD ████</div>
+        <div class="cdesc">Longsword &amp; shield. Heavy hits.<br><b>L1: Block</b> (hold) absorbs damage, drains stamina.</div>
       </button>
       <button class="char" data-char="rogue">
         <div class="cname">The Rogue</div>
-        <div class="cdesc">Twin daggers. Fast combos, long i-frames.<br><b>L1: Parry</b> when a faint white ring flashes on an enemy (light attacks only). Success opens a riposte; a miss costs huge stamina.</div>
-        <div class="cstats">HP ████ &nbsp; STA ███████ &nbsp; SPD ███████</div>
+        <div class="cdesc">Twin daggers. Fast combos.<br><b>L1: Parry</b> on the faint white ring. A miss costs huge stamina.</div>
+      </button>
+      <button class="char" data-char="mage">
+        <div class="cname">The Spellsword</div>
+        <div class="cdesc">Knife hits build mana.<br><b>R2: Bolt</b> (33 mana). <b>L1: Fireball</b> (75 mana).</div>
+        <div class="clock" id="mage-lock"></div>
       </button>
     </div>
     <div id="controls-help">
@@ -119,6 +123,7 @@
     <button class="menu-btn" id="again">Play Again</button>
   </div>
 
+  <div id="redflash"></div>
   <div id="rotate" class="screen"><div>Rotate your phone to landscape</div></div>
 
   <script type="module" src="/src/main.js"></script>

@@ -146,6 +146,10 @@ export function buildHumanoid(o) {
     head.add(box(0.24, 0.26, 0.26, skin, 0, 0.17, 0));
     const hood = cyl(0.04, 0.2, 0.36, cloth, 5); hood.position.set(0, 0.24, -0.02); head.add(hood);
     head.add(box(0.26, 0.1, 0.1, accent, 0, 0.07, 0.09));
+  } else if (ht === 'hair') {
+    head.add(box(0.24, 0.26, 0.25, skin, 0, 0.17, 0));
+    head.add(box(0.27, 0.12, 0.28, accent, 0, 0.3, -0.01));
+    head.add(box(0.27, 0.42, 0.08, accent, 0, 0.08, -0.14));
   } else if (ht === 'cap') {
     head.add(box(0.24, 0.26, 0.25, skin, 0, 0.17, 0));
     const cap = cyl(0.03, 0.18, 0.18, armor, 6); cap.position.y = 0.36; head.add(cap);
@@ -236,6 +240,18 @@ function attachWeapon(r, kind, o) {
     g.add(box(0.5, 0.42, 0.5, stone, 0, 0, 1.38));
     g.add(box(0.56, 0.08, 0.56, r.m(0x3a3a3a), 0, 0, 1.12));
     put(1.65, 0.9);
+  } else if (kind === 'spellknife') {
+    // main hand: slim glowing rune blade (casting focus). Off hand: the knife she fights with.
+    g.add(box(0.04, 0.04, 0.18, grip, 0, 0, 0));
+    g.add(box(0.2, 0.04, 0.04, gold, 0, 0, 0.1));
+    g.add(box(0.025, 0.07, 0.72, new THREE.MeshBasicMaterial({ color: 0x7ab4ff }), 0, 0, 0.47));
+    put(0.85, 0.2);
+    const g2 = new THREE.Group(); r.j.handL.add(g2);
+    g2.add(box(0.04, 0.04, 0.14, grip, 0, 0, 0));
+    g2.add(box(0.12, 0.04, 0.04, gold, 0, 0, 0.08));
+    g2.add(box(0.02, 0.06, 0.38, steel, 0, 0, 0.29));
+    r.tipL = new THREE.Object3D(); r.tipL.position.z = 0.5; g2.add(r.tipL);
+    r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; g2.add(r.baseL);
   } else if (kind === 'daggers') {
     g.add(box(0.04, 0.04, 0.14, grip, 0, 0, 0));
     g.add(box(0.12, 0.04, 0.04, gold, 0, 0, 0.08));
