@@ -99,11 +99,24 @@ export class OnlineAccounts {
     }
   }
 
+  // Network failures (Safari: "Load failed") are retried, then explained in plain words
+  async request(method, path, body) {
+    for (let i = 0; ; i++) {
+      try {
+        return await fetch(SERVER + path, {
+          method, headers: { 'content-type': 'application/json', ...(this.token ? { authorization: 'Bearer ' + this.token } : {}) },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch {
+        this.retried = true;
+        if (i >= 2) throw new Error("Can't reach the game server. Try switching between Wi-Fi and cellular, or turn off any VPN or iCloud Private Relay.");
+        await new Promise((ok) => setTimeout(ok, 700 * (i + 1)));
+      }
+    }
+  }
+
   async call(method, path, body) {
-    const r = await fetch(SERVER + path, {
-      method, headers: { 'content-type': 'application/json', ...(this.token ? { authorization: 'Bearer ' + this.token } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const r = await this.request(method, path, body);
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { const e = new Error(j.error || 'Server error'); e.status = r.status; throw e; }
     return j;
@@ -133,7 +146,14 @@ export class OnlineAccounts {
     if (err) throw new Error(err);
     let data = freshProfile();
     try { data = await new LocalAccounts().peek(name, password) || data; } catch { /* nothing to import */ }
-    this._login(await this.call('POST', '/api/signup', { name, password, data }));
+    this.retried = false;
+    try {
+      this._login(await this.call('POST', '/api/signup', { name, password, data }));
+    } catch (e) {
+      // the first try may have worked with its reply lost
+      if (e.status === 409 && this.retried) return this.signIn(name, password);
+      throw e;
+    }
   }
 
   async signIn(name, password) { this._login(await this.call('POST', '/api/login', { name, password })); }

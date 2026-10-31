@@ -81,6 +81,9 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'authorization,content-type');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
   }
+  // one line per request (never bodies, so never passwords) to diagnose connection reports
+  const began = Date.now();
+  res.on('finish', () => console.log(`${req.method} ${req.url.split('?')[0]} ${res.statusCode} ${Date.now() - began}ms origin=${origin || '-'} ua=${(req.headers['user-agent'] || '-').slice(0, 60)}`));
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const send = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
   const path = req.url.split('?')[0].replace(/^\/souls/, '');
