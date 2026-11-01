@@ -90,17 +90,29 @@ export class Multiplayer {
 
   get isHost() { return this.id !== null && this.id === this.host; }
 
-  connect() {
-    if (this.ws?.readyState === 1) return Promise.resolve();
+  // brief network failures are retried before giving up
+  async connect() {
+    if (this.ws?.readyState === 1) return;
+    for (let i = 0; ; i++) {
+      try { return await this.open(); } catch (e) {
+        if (i >= 2) throw e;
+        await new Promise((ok) => setTimeout(ok, 800 * (i + 1)));
+      }
+    }
+  }
+
+  open() {
     return new Promise((ok, no) => {
       const ws = new WebSocket(SERVER.replace(/^http/, 'ws') + '/ws');
+      let ready = false;
+      const fail = () => no(new Error("Can't reach the game server. Try switching between Wi-Fi and cellular."));
       this.ws = ws;
       ws.onopen = () => ws.send(JSON.stringify({ t: 'auth', token: this.game.accounts.token }));
-      ws.onerror = () => no(new Error('Could not reach the server'));
-      ws.onclose = () => { if (this.ws === ws) this.dropped(); };
+      ws.onerror = fail;
+      ws.onclose = () => { if (!ready) fail(); else if (this.ws === ws) this.dropped(); };
       ws.onmessage = (e) => {
         const m = JSON.parse(e.data);
-        if (m.t === 'hello') { this.id = m.id; ok(); } else this.onServer(m);
+        if (m.t === 'hello') { ready = true; this.id = m.id; ok(); } else this.onServer(m);
       };
     });
   }
