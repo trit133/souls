@@ -15,7 +15,7 @@ import { STATUS } from './status.js';
 import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
-import { GOLD_PER_ENEMY, MINI_GOLD, BOSS_GOLD, CASHOUT_MULT, WIN_MULT, payout, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
+import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionPayout, sectionBreakdown, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -57,7 +57,7 @@ class Game {
     this.freeze = 0;
     this.slow = 0;
     this.tokens = 0;
-    this.maxTokens = 2;
+    this.maxTokens = 99; // replaced by assignEngagement()
     this.projectiles = [];
     this.rings = [];
     this.mode = 'title';
@@ -75,7 +75,7 @@ class Game {
       if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'tele', x, z, r, dur, color });
       return this.fx.rawTelegraph(x, z, r, dur, color);
     };
-    this.runGold = 0;
+    this.runGold = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {};
     this.minisFelled = 0;
     this.deaths = 0;
     this.buildRun();
@@ -234,7 +234,7 @@ class Game {
     this.waitingOnParty = false; this.reviving = null;
     this.respawnAt = { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.data?.upgrades);
-    this.runGold = 0; this.minisFelled = 0;
+    this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {};
     this.ui.setRunGold(0);
     if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
     this.ui.setBoons([]);
@@ -369,19 +369,68 @@ class Game {
     this.renderShop();
   }
 
+  // gold goes into the current section of the run (sections end at each mini boss)
   addRunGold(n, a) {
     if (this.isGuest) return; // the host keeps the party's pot
     this.runGold += n;
-    if (this.mp.active) this.mp.sendAll({ t: 'gold', n: this.runGold });
+    this.secGold[Math.min(3, this.minisFelled)] += n;
+    if (this.mp.active) this.mp.sendAll({ t: 'gold', n: this.runGold, s: this.secGold });
     this.ui.setRunGold(this.runGold);
     if (a) this.statusPopup(a, `+${n}`, '#e8c25a');
   }
 
-  onEnemyKilled(e) { this.addRunGold(GOLD_PER_ENEMY, e); }
+  // kills fill the room's pot; it pays out when the room is cleared
+  onEnemyKilled(e) {
+    if (this.isGuest) return;
+    const n = enemyGold(e.type);
+    this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
+    this.statusPopup(e, `+${n}`, '#a89060');
+  }
 
-  // move gold into the account; returns the amount banked
-  bankGold(mult) {
-    const amount = payout(this.runGold, mult), A = this.accounts;
+  sameRoom(e, p) { return this.world.moduleAt(p.pos.z).i === e.mod; }
+
+  // open a room's exit once all of its enemies are dead (host / solo decide)
+  stepRooms() {
+    for (const m of this.world.mods) {
+      const g = this.world.gates['exit' + m.i];
+      if (!g || g.open || this.enemies.some((e) => e.alive && e.mod === m.i)) continue;
+      const n = this.roomGold[m.i] || 0;
+      this.roomGold[m.i] = 0;
+      if (n) this.addRunGold(n);
+      this.openRoom(m.i, n);
+      if (this.mp.active) this.mp.sendAll({ t: 'room', i: m.i, n });
+    }
+  }
+
+  openRoom(i, n) {
+    this.world.setGate('exit' + i, true, false);
+    this.ui.toast(`AREA CLEARED${n ? ` · ◆ +${n}` : ''}`, 2.5);
+    this.audio.play('fog');
+  }
+
+  // one enemy fights each player; everyone else that has noticed them waits its turn
+  assignEngagement() {
+    const fighting = this.enemies.filter((e) => e.alive && !e.puppet && e.state !== 'idle' && e.state !== 'sit' && e.state !== 'return' && e.state !== 'dead');
+    const taken = new Set(), now = this.time;
+    for (const p of this.allPlayers()) {
+      if (!p.alive) continue;
+      const mine = fighting.filter((e) => !taken.has(e) && this.targetOf(e) === p);
+      if (!mine.length) continue;
+      const hitByMe = mine.filter((e) => now - (e.lastHitBy[p.uid] ?? -99) < 2.5).sort((a, b) => b.lastHitBy[p.uid] - a.lastHitBy[p.uid])[0];
+      const current = mine.find((e) => e.engagedTo === p.uid && e.distTo(p) < 9);
+      const pick = hitByMe || current || mine.reduce((a, b) => (a.distTo(p) <= b.distTo(p) ? a : b));
+      taken.add(pick); pick.engagedTo = p.uid;
+    }
+    for (const e of this.enemies) {
+      const was = e.engaged;
+      e.engaged = taken.has(e);
+      if (!e.engaged) { e.engagedTo = null; if (was) e.watchCd = 10 + Math.random() * 5; }
+    }
+  }
+
+  // move gold into the account; each section of the run is multiplied by its own rate
+  bankGold(upto) {
+    const amount = sectionPayout(this.secGold, upto), A = this.accounts;
     if (A.data) {
       A.data.gold += amount;
       A.data.stats.goldEarned += amount;
@@ -394,15 +443,15 @@ class Game {
   // leave the run after a mini boss, keeping the gold
   cashOut() {
     if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'cashout' });
-    const mult = CASHOUT_MULT[this.minisFelled];
-    const amount = this.bankGold(mult);
+    const upto = this.minisFelled;
+    const amount = this.bankGold(upto);
     if (this.accounts.data) { this.accounts.data.stats.extracts++; this.accounts.save(); }
     this.mode = 'over';
     this.audio.stopMusic();
     this.audio.play('victory');
     $('gameover-title').textContent = 'You escaped with your gold';
     $('gameover-stats').innerHTML = [
-      `◆ ${this.runGold} × ${mult} = <b>◆ ${amount}</b> ${this.accounts.user ? 'banked' : '(guest: not saved)'}`,
+      `${sectionBreakdown(this.secGold, upto)} = <b>◆ ${amount}</b> ${this.accounts.user ? 'banked' : '(guest: not saved)'}`,
       `Reached area ${this.seenMod + 1} of ${this.world.mods.length}`,
     ].join('<br>');
     this.ui.show('hud', false); this.ui.show('touch', false);
@@ -544,9 +593,9 @@ class Game {
     this.input.reset();
     const cards = rollBoons().map((k) => ({ key: k, name: BOONS[k].name, color: BOONS[k].color, desc: BOONS[k].desc(p) }));
     cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all health (${Math.round(p.hp)}/${p.maxHp}) and refill your flasks (${p.flasks}/${p.maxFlasks}).` });
-    const mult = CASHOUT_MULT[this.minisFelled], amount = payout(this.runGold, mult);
+    const upto = this.minisFelled, amount = sectionPayout(this.secGold, upto);
     this.ui.showReward(cards, (k) => (k === 'cashout' ? this.cashOut() : this.claimReward(k)),
-      `${this.mp.active ? 'Party leaves with' : 'Leave the run with'} ◆ ${amount} gold${this.mp.active ? ' each' : ''}  (◆ ${this.runGold} × ${mult})`);
+      `${this.mp.active ? 'Party leaves with' : 'Leave the run with'} ◆ ${amount} gold${this.mp.active ? ' each' : ''}  (${sectionBreakdown(this.secGold, upto)})`);
     // the host decides whether the party cashes out
     $('cashout').classList.toggle('hidden', this.isGuest);
   }
@@ -585,7 +634,8 @@ class Game {
     this.fx.addShake(0.8);
     this.slow = 1.6;
     if (enc.kind === 'mini') {
-      this.addRunGold(MINI_GOLD[this.minisFelled++], boss);
+      this.addRunGold(MINI_GOLD[this.minisFelled], boss); // counts toward the section this boss closes
+      this.minisFelled++;
       this.announceBossDeath(enc);
       // the way on opens right away; fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
@@ -603,9 +653,9 @@ class Game {
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
     this.addRunGold(BOSS_GOLD, boss);
     this.announceBossDeath(enc);
-    const won = this.bankGold(WIN_MULT);
+    const won = this.bankGold(4);
     if (this.accounts.data) { this.accounts.data.stats.wins++; this.accounts.save(); }
-    const goldLine = `◆ ${this.runGold} × ${WIN_MULT} = ◆ ${won} ${this.accounts.user ? 'banked' : '(guest: not saved)'}`;
+    const goldLine = `${sectionBreakdown(this.secGold, 4)} = ◆ ${won} ${this.accounts.user ? 'banked' : '(guest: not saved)'}`;
     setTimeout(() => {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
@@ -966,6 +1016,7 @@ class Game {
       if (presses.has('lock') && p.alive) this.toggleLock();
 
       if (dt > 0) {
+        if (!this.isGuest) { this.assignEngagement(); this.stepRooms(); }
         p.update(dt, this.input, presses);
         const zs = this.allPlayers().map((x) => x.pos.z);
         for (const e of this.enemies) {

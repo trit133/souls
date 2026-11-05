@@ -32,8 +32,10 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
 - Module code lives in `src/modules.js`, power-ups in `src/boons.js`, and status effects in `src/status.js`.
 
 ## Gold and permanent upgrades
-- **Earning:** +1 per enemy; mini bosses pay 2, 3, then 4; Varek pays 7.
-- **Keeping it:** gold is lost on death. After a mini boss you may leave the run instead of continuing: ×1 after the first, ×1.5 after the second, ×2 after the third. Beating Varek banks ×3.
+- **Earning:** enemies are worth 1 (a brute 3). A room's coins pay out when the room is cleared. Mini bosses drop 15, 20, then 25, and Varek 30.
+- **Sections:** the run has four sections, ending at each mini boss and at Varek. Each section's gold is multiplied only by its own rate: ×1, ×1.5, ×2, ×3. Cashing out after mini boss *n* banks sections 1..*n*; beating Varek banks all four. Gold is lost on death.
+- **Rooms:** each room's exit is fogged until every enemy in it is dead. Enemies never notice or chase you across rooms.
+- **Fights:** one enemy at a time fights each player. Others who have noticed you hover nearby with their weapon up, drifting in and out, and step in for one attack every 10-15s. Hitting one of them makes it your fight.
 - **Enemy tiers:** each mini boss passed gives everything after it +10% health, damage, move speed and attack speed (additive). Eyes turn red, then orange, then white with a red halo.
 - **Upgrades** (title screen): costs start at 10 and go ×1.5 rounded up (10, 15, 23, 35, 53...), per upgrade.
   - Damage: +3%, then +4% from the 4th level.
@@ -63,7 +65,7 @@ Create a room, share the 4-letter code, and the host starts the run. The host's 
 | All enemies: move speed | +10% | +10% |
 | Extra regular enemies | +30% | +60% |
 
-- **Gold:** one shared pot, and the cash-out multiplier applies to it. Every player banks the full amount. The host decides whether to cash out.
+- **Gold:** one shared pot, kept per section with the same multipliers. Every player banks the full amount. The host decides whether to cash out.
 - **Going down:** you stay down until a teammate revives you (50% health). Each revive takes 10% of max health from everyone for the rest of the run. If everyone is down, the run ends.
 - **Rewards:** each player picks their own, and the run resumes when everyone standing has chosen.
 - **Teammates:** their attacks play out on your screen from instant events, and their sounds play at half volume.
@@ -102,7 +104,7 @@ npm run build    # static build in dist/ — deployable to any static host
 ## Combat notes
 - Inputs are buffered (0.4s). Combos chain inside a window. Rolls can cancel attack recovery after a set point.
 - Hitstop, camera shake, weapon trails, and poise/stagger on both sides.
-- A maximum of 2 camp enemies attack at once; the others circle. Enemy types: grunts (slash, double, leap), spearmen (long thrusts, sweep when you are close), archers (keep distance, arrows can be sidestepped), and a super-armored brute (telegraphed slam and a stomp when you stand behind it).
+- One enemy fights each player at a time; the others watch and strike every 10-15s. Enemy types: grunts (slash, double, leap), spearmen (long thrusts, sweep when you are close), archers (keep distance, arrows can be sidestepped), and a super-armored brute (telegraphed slam and a stomp when you stand behind it).
 - **Varek, the Ashen Warden** has 1300 HP.
   - Phase 1: sweeps, a 2-hit combo, a *delayed* overhead, a lunge thrust, a leap slam with a ground telegraph, and a spin if you hug his back.
   - At 55% HP he roars and his blade ignites. He gets faster and adds a 3-hit combo, fire waves, a fire ring on his leap, and Ember Burst (a telegraphed AoE).
@@ -114,4 +116,4 @@ npm run build    # static build in dist/ — deployable to any static host
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/rooms.mjs` (fight engagement, room gates, section gold) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.

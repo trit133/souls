@@ -184,6 +184,7 @@ export class Enemy extends Actor {
     this.hpShow = 0;
     this.lastMove = null;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
+    this.engaged = false; this.engagedTo = null; this.watchCd = 10 + Math.random() * 5; this.lastHitBy = {};
     this.setState(this.sitting ? 'sit' : 'idle');
   }
 
@@ -196,7 +197,7 @@ export class Enemy extends Actor {
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;
     this.setState('alert');
     for (const o of this.game.enemies) {
-      if (o !== this && o.alive && (o.state === 'idle' || o.state === 'sit') && this.distTo(o) < 6) {
+      if (o !== this && o.alive && o.mod === this.mod && (o.state === 'idle' || o.state === 'sit') && this.distTo(o) < 6) {
         o.alertDelay = 0.2 + Math.random() * 0.5;
       }
     }
@@ -255,7 +256,7 @@ export class Enemy extends Actor {
           pose = locomotion(T.style, this.phase, s, false, this.game.time + this.phase);
         }
         const sense = this.state === 'sit' ? T.aggro * 0.6 : T.aggro;
-        if (p.alive && dist < sense) this.alert();
+        if (p.alive && dist < sense && this.game.sameRoom(this, p)) this.alert();
         break;
       }
       case 'alert': {
@@ -266,16 +267,18 @@ export class Enemy extends Actor {
         break;
       }
       case 'chase': {
-        if (!p.alive) { this.setState('return'); break; }
+        if (!p.alive || !this.game.sameRoom(this, p)) { this.setState('return'); break; }
         if (Math.hypot(this.pos.x - this.home.x, this.pos.z - this.home.z) > 30 && dist > 8) { this.setState('return'); break; }
         this.cd -= dt;
         const behind = Math.abs(angDiff(this.yaw, toP)) > 1.4;
         if (this.urgent && (this.urgentT -= dt) <= 0) this.urgent = false;
-        // `urgent` = counterattack after being hit: ignores the 2-attacker limit and swings faster
-        if (this.cd <= 0 && (T.ranged || this.urgent || this.game.tokens < this.game.maxTokens || this.token)) {
+        // Only the enemy engaged with a player fights freely; the others watch and
+        // step in for one attack every 10-15s. `urgent` = quicker counter after being hit.
+        this.watchCd -= dt;
+        if (this.cd <= 0 && (this.engaged || this.watchCd <= 0)) {
           const m = this.chooseMove(dist, behind);
           if (m) {
-            if (!(T.ranged && m === 'shoot') && !this.token && !this.urgent) { this.game.tokens++; this.token = true; }
+            if (!this.engaged) this.watchCd = 10 + Math.random() * 5;
             this.atkSpeed = this.urgent ? 1.3 : 1;
             this.urgent = false;
             this.lastMove = m;
@@ -287,8 +290,9 @@ export class Enemy extends Actor {
         // spacing
         let mx = 0, mz = 0, sp = 0;
         const dx = (p.pos.x - this.pos.x) / (dist || 1), dz = (p.pos.z - this.pos.z) / (dist || 1);
-        const waiting = !T.ranged && !this.token && this.game.tokens >= this.game.maxTokens;
-        const want = waiting ? Math.max(T.prefer + 1.8, 3.6) : T.prefer;
+        // watchers hover just out of reach, drifting in and out
+        const waiting = !this.engaged && this.watchCd > 0;
+        const want = waiting ? Math.max(T.prefer, 4.6 + Math.sin(this.game.time * 0.8 + this.netId * 1.7) * 0.9) : T.prefer;
         if (T.backoff && dist < T.backoff) { mx = -dx; mz = -dz; sp = T.walk * 1.2; }
         else if (dist > want + 0.6) { mx = dx; mz = dz; sp = dist > want + 4 ? T.run : T.run * 0.7; }
         else {
@@ -311,6 +315,7 @@ export class Enemy extends Actor {
         this.turnToward(toP, T.turn, dt);
         this.phase += dt * (2.5 + this.speed * 1.6);
         pose = locomotion(T.style, this.phase, this.speed / 4, false, this.game.time);
+        if (waiting) { pose.armR = [-0.85, 0, -0.35]; pose.foreR = [-0.75, 0, 0]; pose.torso[0] += 0.15; pose.by -= 0.06; } // weapon up, ready
         break;
       }
       case 'attack': {
@@ -369,7 +374,7 @@ export class Enemy extends Actor {
         pose = locomotion(T.style, this.phase, d > 0.5 ? 0.9 : 0, false, this.game.time);
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * dt * 0.3);
         if (d <= 0.5) { this.setState(this.sitting ? 'sit' : 'idle'); this.yaw = this.home.yaw; }
-        if (p.alive && dist < T.aggro * 0.7 && this.t > 1.0) this.setState('chase');
+        if (p.alive && dist < T.aggro * 0.7 && this.t > 1.0 && this.game.sameRoom(this, p)) this.setState('chase');
         break;
       }
     }
@@ -389,6 +394,7 @@ export class Enemy extends Actor {
   receive(info) {
     if (!this.alive) return 'none';
     if (this.puppet) return this.puppetHit(info);
+    if (info.attacker?.uid) this.lastHitBy[info.attacker.uid] = this.game.time; // hitting a watcher makes it your fight
     this.hp -= info.dmg;
     this.hpShow = 4;
     this.rig.flash(1, 0.9, 0.8);
@@ -469,6 +475,7 @@ export class Enemy extends Actor {
     this.rig.root.visible = true; this.rig.root.position.y = 0;
     this.alertDelay = undefined; this.patrolIdx = false;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
+    this.engaged = false; this.engagedTo = null; this.watchCd = 10 + Math.random() * 5; this.lastHitBy = {};
     this.status.reset();
     this.setState(this.sitting ? 'sit' : 'idle');
   }

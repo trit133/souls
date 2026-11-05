@@ -1,13 +1,19 @@
 // Meta-progression rules: gold, cash-out multipliers, enemy tiers, permanent upgrades.
 
-export const GOLD_PER_ENEMY = 1;
-export const MINI_GOLD = [2, 3, 4]; // by order of mini boss kills
-export const BOSS_GOLD = 7;
+// Kills pay into the room's pot, which is banked into the run when the room is cleared.
+export const enemyGold = (type) => (type === 'brute' ? 3 : 1);
+export const MINI_GOLD = [15, 20, 25]; // by order of mini boss kills
+export const BOSS_GOLD = 30;
 
-// Cash-out multiplier by mini bosses felled (0 = can't cash out). Beating Varek pays WIN_MULT.
-export const CASHOUT_MULT = [0, 1, 1.5, 2];
-export const WIN_MULT = 3;
-export const payout = (gold, mult) => Math.ceil(gold * mult);
+// Gold is kept per section of the run (start → 1st mini, → 2nd mini, → 3rd mini, → Varek),
+// and each section only ever gets its own multiplier.
+export const SECTION_MULT = [1, 1.5, 2, 3];
+export function sectionPayout(sections, upto) {
+  let t = 0;
+  for (let i = 0; i < upto; i++) t += (sections[i] || 0) * SECTION_MULT[i];
+  return Math.ceil(t);
+}
+export const sectionBreakdown = (sections, upto) => sections.slice(0, upto).map((g, i) => `◆${g}×${SECTION_MULT[i]}`).join(' + ');
 
 // Each mini boss passed: enemies gain +10% health, damage, move and attack speed.
 export const tierScale = (tier) => 1 + 0.1 * tier;

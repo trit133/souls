@@ -8,8 +8,10 @@ const PI = Math.PI;
 function ends(w, mod, len, half = 2.5) {
   // openings overlap both the neighbouring module and this module's interior by
   // more than an actor's diameter, so seams never form invisible walls
-  w.rect(-half, half, mod.i === 0 ? 0 : -1.5, 5.5);
-  w.rect(-half, half, len - 5.5, len + 1.5);
+  w.rect(-half, half, 0, 5.5);
+  // the way on stays fogged until every enemy in this room is dead
+  w.rect(-half, half, len - 5.5, len + 1.5, { gate: 'exit' + mod.i });
+  w.gate('exit' + mod.i, len - 0.5, 5, false);
 }
 
 export const MODULES = {
@@ -171,7 +173,7 @@ function miniArena(bossId, name, ground, theme) {
   return {
     name, len: 54, ground,
     build(w, Z, mod) {
-      w.rect(-3, 3, -1.5, 6);
+      w.rect(-3, 3, 0, 6);
       w.rect(-3, 3, 4, 12, { gate: 'in' + mod.i });
       w.circle(0, 24, 13);
       w.rect(-3, 3, 35, 42, { gate: 'out' + mod.i });
@@ -214,7 +216,7 @@ export const MINI_ARENAS = {
 export const BOSS_ARENA = {
   name: 'The Throne of Ash', len: 58, ground: 'arena',
   build(w, Z, mod) {
-    w.rect(-3, 3, -1.5, 8);
+    w.rect(-3, 3, 0, 8);
     w.rect(-3, 3, 5, 13, { gate: 'boss_in' });
     w.circle(0, 31, 19);
     w.gate('boss_in', 8.5, 6, true);

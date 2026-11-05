@@ -228,7 +228,8 @@ export class Multiplayer {
       case 'ready': this.ready.add(from); this.afterReady(); break;
       case 'p': this.peers.get(from)?.apply(d); break;
       case 'snap': for (const s of d.e) this.entity(s[0])?.applySnapshot(s); break;
-      case 'gold': g.runGold = d.n; g.ui.setRunGold(d.n); break;
+      case 'gold': g.runGold = d.n; if (d.s) g.secGold = d.s; g.ui.setRunGold(d.n); break;
+      case 'room': g.openRoom(d.i, d.n); break;
       // ----- hits on this player, decided here -----
       case 'dmg': { const e = this.entity(d.id), def = e?.moves[d.k]; if (def) g.resolveHit(e, g.player, def.hits[d.i], def); break; }
       case 'pdmg': g.projectileHit(g.player, { dmg: d.dmg, knock: d.knock, src: d.src }); break;
