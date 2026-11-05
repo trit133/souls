@@ -79,7 +79,7 @@ export class UI {
 
   // run progress + acquired power-up tags
   setProgress(i, n) { document.getElementById('progress').textContent = `AREA ${i}/${n}`; }
-  setRunGold(n) { document.getElementById('run-gold').textContent = `◆ ${n}`; }
+  setRunGold(n) { document.getElementById("run-gold").textContent = `◆ ${n} banked`; }
   setBoons(list) {
     document.getElementById('boon-tags').innerHTML = list.map((b) => `<span class="boon-tag" style="color:${b.color}">${b.tag}${b.n > 1 ? ' ×' + b.n : ''}</span>`).join('');
   }

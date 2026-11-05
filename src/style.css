@@ -246,3 +246,9 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 #settings .menu-btn { margin: 8px 4px 0; padding: 9px 22px; font-size: 15px; }
 #buttons { transform: scale(var(--touch-size, 1)); transform-origin: bottom right; opacity: var(--touch-opacity, 1); }
 #stick-base { transform: scale(var(--touch-size, 1)); }
+
+#set-quality { background: rgba(0,0,0,.5); color: #e8dcc0; border: 1px solid #6a5a3a; padding: 5px; font: 14px Georgia, serif; }
+
+/* big / ultrawide screens: keep the HUD readable */
+@media (min-height: 1200px) { #hud, #touch { zoom: 1.4; } }
+@media (min-height: 1800px) { #hud, #touch { zoom: 1.8; } }

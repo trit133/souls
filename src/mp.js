@@ -228,7 +228,7 @@ export class Multiplayer {
       case 'ready': this.ready.add(from); this.afterReady(); break;
       case 'p': this.peers.get(from)?.apply(d); break;
       case 'snap': for (const s of d.e) this.entity(s[0])?.applySnapshot(s); break;
-      case 'gold': g.runGold = d.n; if (d.s) g.secGold = d.s; g.ui.setRunGold(d.n); break;
+      case 'gold': g.runGold = d.n; if (d.s) g.secGold = d.s; break;
       case 'room': g.openRoom(d.i, d.n); break;
       // ----- hits on this player, decided here -----
       case 'dmg': { const e = this.entity(d.id), def = e?.moves[d.k]; if (def) g.resolveHit(e, g.player, def.hits[d.i], def); break; }
@@ -245,10 +245,9 @@ export class Multiplayer {
       case 'impact': g.impact(d.x, d.z, d.r, d.s); break;
       case 'tele': g.fx.rawTelegraph(d.x, d.z, d.r, d.dur, d.color); break;
       case 'enc': g.startEncounter(g.encounters[d.i]); break;
-      case 'bossdead': g.onBossDeath(g.encounters[d.i].boss); break;
+      case 'bossdead': g.onBossDeath(g.encounters[d.i].boss, d); break;
       case 'picked': this.picked.add(from); this.checkPicks(); break;
       case 'resume': g.resumeParty(); break;
-      case 'cashout': g.cashOut(); break;
       case 'down': if (this.isHost) { const p = this.peers.get(from); if (p) p.alive = false; this.checkWipe(); } break;
       case 'revive': g.onRevive(d.pid); break;
       case 'over': g.gameOver(); break;

@@ -13,7 +13,9 @@ export const DEFAULT_BINDS = {
   special: ['KeyQ', 'ControlLeft'], heal: ['KeyE', ''], lock: ['Tab', 'Mouse1'], interact: ['KeyF', ''], pause: ['Escape', 'KeyP'],
 };
 
-export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, binds: DEFAULT_BINDS };
+// quality: 'auto' adapts render resolution to keep the frame rate up; otherwise a fixed scale
+export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, quality: 'auto', binds: DEFAULT_BINDS };
+export const QUALITY = { auto: null, high: 1, medium: 0.75, low: 0.5 };
 
 const LOCAL = 'ashenVigil.settings.v1';
 

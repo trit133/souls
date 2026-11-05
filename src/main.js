@@ -15,9 +15,12 @@ import { STATUS } from './status.js';
 import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
-import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionPayout, sectionBreakdown, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
+import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
-import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
+import { ACTIONS, DEFAULTS, QUALITY, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
+
+// render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
+const PIXEL_BUDGET = 2.2e6;
 
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
@@ -34,8 +37,10 @@ class Game {
   constructor() {
     this.canvas = $('game');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: dpr < 2, powerPreference: 'high-performance' });
+    const big = innerWidth * innerHeight * dpr * dpr > PIXEL_BUDGET;
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: dpr < 2 && !big, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(dpr);
+    this.autoQ = 1; this.frameMs = 16; this.slowT = 0; this.fastT = 0; this.lastDrop = -99;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x15130f);
@@ -78,6 +83,7 @@ class Game {
       return this.fx.rawTelegraph(x, z, r, dur, color);
     };
     this.runGold = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {};
+    this.runBanked = 0; this.bankedKeys = new Set();
     this.minisFelled = 0;
     this.deaths = 0;
     this.buildRun();
@@ -180,6 +186,7 @@ class Game {
     $('btn-settings').addEventListener('click', () => this.openSettings());
     $('pause-settings').addEventListener('click', () => this.openSettings());
     $('set-back').addEventListener('click', () => this.closeSettings());
+    $('set-quality').addEventListener('change', (e) => { this.settings.quality = e.target.value; this.autoQ = 1; this.applySettings(this.settings); this.saveSettings(); });
     $('set-reset').addEventListener('click', () => { this.applySettings(normalize()); this.saveSettings(); this.renderSettings(); });
     document.querySelectorAll('[data-set]').forEach((el) => {
       el.addEventListener('input', () => {
@@ -250,7 +257,9 @@ class Game {
     this.respawnAt = { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.data?.upgrades);
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {};
+    this.runBanked = 0; this.bankedKeys = new Set();
     this.ui.setRunGold(0);
+    $('run-gold').title = 'Gold banked to your account this run';
     if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
     this.ui.setBoons([]);
     this.ui.setProgress(1, this.world.mods.length);
@@ -347,6 +356,7 @@ class Game {
     this.fx.shakeMul = s.shake;
     const root = document.documentElement.style;
     root.setProperty('--touch-size', s.touchSize); root.setProperty('--touch-opacity', s.touchOpacity);
+    if (this.camera) this.resize();
     const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
     $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} heal · ${k('lock')} lock-on · ${k('interact')} interact · ${k('pause')} pause`;
   }
@@ -368,6 +378,7 @@ class Game {
   renderSettings() {
     const s = this.settings;
     $('set-owner').textContent = this.accounts.user ? `Saved to ${this.accounts.displayName}'s account` : 'Guest: saved on this device only. Sign in to keep them on your account.';
+    $('set-quality').value = s.quality;
     document.querySelectorAll('[data-set]').forEach((el) => {
       const k = el.dataset.set;
       el.value = Math.round(s[k] * 100);
@@ -468,7 +479,6 @@ class Game {
     this.runGold += n;
     this.secGold[Math.min(3, this.minisFelled)] += n;
     if (this.mp.active) this.mp.sendAll({ t: 'gold', n: this.runGold, s: this.secGold });
-    this.ui.setRunGold(this.runGold);
     if (a) this.statusPopup(a, `+${n}`, '#e8c25a');
   }
 
@@ -497,8 +507,26 @@ class Game {
 
   openRoom(i, n) {
     this.world.setGate('exit' + i, true, false);
-    this.ui.toast(`AREA CLEARED${n ? ` · ◆ +${n}` : ''}`, 2.5);
+    this.bankNow(n, 'room' + i);
+    this.ui.toast(`AREA CLEARED${n ? ` · ◆ +${n} ${this.accounts.user ? 'banked' : '(guest: not saved)'}` : ''}`, 2.5);
     this.audio.play('fog');
+  }
+
+  // gold is kept on the account the moment it is earned (room clear / boss); each
+  // reward is keyed so a repeated message can never pay twice
+  bankNow(n, key) {
+    if (!n || this.bankedKeys.has(key)) return 0;
+    this.bankedKeys.add(key);
+    this.runBanked += n;
+    this.ui.setRunGold(this.runBanked);
+    const A = this.accounts;
+    if (A.data) {
+      A.data.gold += n;
+      A.data.stats.goldEarned += n;
+      A.data.stats.bestArea = Math.max(A.data.stats.bestArea, this.seenMod + 1);
+      A.save();
+    }
+    return n;
   }
 
   // one enemy fights each player; everyone else that has noticed them waits its turn
@@ -521,38 +549,7 @@ class Game {
     }
   }
 
-  // move gold into the account; each section of the run is multiplied by its own rate
-  bankGold(upto) {
-    const amount = sectionPayout(this.secGold, upto), A = this.accounts;
-    if (A.data) {
-      A.data.gold += amount;
-      A.data.stats.goldEarned += amount;
-      A.data.stats.bestArea = Math.max(A.data.stats.bestArea, this.seenMod + 1);
-      A.save();
-    }
-    return amount;
-  }
-
-  // leave the run after a mini boss, keeping the gold
-  cashOut() {
-    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'cashout' });
-    const upto = this.minisFelled;
-    const amount = this.bankGold(upto);
-    if (this.accounts.data) { this.accounts.data.stats.extracts++; this.accounts.save(); }
-    this.mode = 'over';
-    this.audio.stopMusic();
-    this.audio.play('victory');
-    $('gameover-title').textContent = 'You escaped with your gold';
-    $('gameover-stats').innerHTML = [
-      `${sectionBreakdown(this.secGold, upto)} = <b>◆ ${amount}</b> ${this.accounts.user ? 'banked' : '(guest: not saved)'}`,
-      `Reached area ${this.seenMod + 1} of ${this.world.mods.length}`,
-    ].join('<br>');
-    this.ui.show('hud', false); this.ui.show('touch', false);
-    this.showRetry();
-    this.ui.show('gameover');
-  }
-
-  // No checkpoints: death ends the run and loses all unbanked gold.
+  // No checkpoints: death ends the run (banked gold is already safe on the account).
   // In a party you go down instead; the run ends only when everyone is down.
   onPlayerDeath() {
     this.deaths++;
@@ -581,7 +578,7 @@ class Game {
       $('gameover-title').textContent = 'The run has ended';
       if (this.accounts.data) { this.accounts.data.stats.bestArea = Math.max(this.accounts.data.stats.bestArea, this.seenMod + 1); this.accounts.save(); }
       $('gameover-stats').innerHTML = [
-        `Gold lost: ◆ ${this.runGold}`,
+        `Banked this run: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
         `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
         `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
         `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
@@ -686,11 +683,8 @@ class Game {
     this.input.reset();
     const cards = rollBoons().map((k) => ({ key: k, name: BOONS[k].name, color: BOONS[k].color, desc: BOONS[k].desc(p) }));
     cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all health (${Math.round(p.hp)}/${p.maxHp}) and refill your flasks (${p.flasks}/${p.maxFlasks}).` });
-    const upto = this.minisFelled, amount = sectionPayout(this.secGold, upto);
-    this.ui.showReward(cards, (k) => (k === 'cashout' ? this.cashOut() : this.claimReward(k)),
-      `${this.mp.active ? 'Party leaves with' : 'Leave the run with'} ◆ ${amount} gold${this.mp.active ? ' each' : ''}  (${sectionBreakdown(this.secGold, upto)})`);
-    // the host decides whether the party cashes out
-    $('cashout').classList.toggle('hidden', this.isGuest);
+    this.ui.showReward(cards, (k) => this.claimReward(k), '');
+    $('cashout').classList.add('hidden'); // gold is banked as you go, so there is nothing to cash out
   }
 
   claimReward(k) {
@@ -719,17 +713,34 @@ class Game {
     this.last = performance.now();
   }
 
-  onBossDeath(boss) {
+  // A boss's drop and its section bonus bank straight away. The host works out the
+  // amounts and sends them (`net`) so every device banks exactly the same.
+  bossPayout(enc, net) {
+    const section = enc.kind === 'mini' ? this.minisFelled : 3;
+    let drop, bonus;
+    if (net && this.isGuest) { drop = net.drop || 0; bonus = net.bonus || 0; } else {
+      drop = enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD;
+      this.addRunGold(drop, enc.boss); // counts toward the section this boss closes
+      bonus = sectionBonus(this.secGold, section);
+    }
+    const key = 'boss' + this.encounters.indexOf(enc);
+    this.bankNow(drop + bonus, key);
+    if (bonus) setTimeout(() => this.ui.toast(`SECTION BONUS ×${SECTION_MULT[section]} · ◆ +${bonus}`, 2.5), 4600);
+    return { drop, bonus };
+  }
+
+  onBossDeath(boss, net = null) {
     const enc = boss.enc;
+    if (enc.defeated) return;
     enc.defeated = true;
     enc.active = false;
     this.audio.stopMusic(3);
     this.fx.addShake(0.8);
     this.slow = 1.6;
     if (enc.kind === 'mini') {
-      this.addRunGold(MINI_GOLD[this.minisFelled], boss); // counts toward the section this boss closes
+      const pay = this.bossPayout(enc, net);
       this.minisFelled++;
-      this.announceBossDeath(enc);
+      this.announceBossDeath(enc, pay);
       // the way on opens right away; fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
       this.world.setGate(enc.gateOut, true, false);
@@ -744,11 +755,10 @@ class Game {
     }
     // nothing left can hurt the player once Varek falls
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
-    this.addRunGold(BOSS_GOLD, boss);
-    this.announceBossDeath(enc);
-    const won = this.bankGold(4);
+    const pay = this.bossPayout(enc, net);
+    this.announceBossDeath(enc, pay);
     if (this.accounts.data) { this.accounts.data.stats.wins++; this.accounts.save(); }
-    const goldLine = `${sectionBreakdown(this.secGold, 4)} = ◆ ${won} ${this.accounts.user ? 'banked' : '(guest: not saved)'}`;
+    const goldLine = `Banked this run: ◆ ${this.runBanked}${pay.bonus ? ` (incl. ×3 bonus ◆ ${pay.bonus})` : ''}${this.accounts.user ? '' : ' (guest: not saved)'}`;
     setTimeout(() => {
       this.audio.play('victory');
       const s = Math.round(this.time - this.startTime);
@@ -760,8 +770,8 @@ class Game {
     }, 2600);
   }
 
-  announceBossDeath(enc) {
-    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'bossdead', i: this.encounters.indexOf(enc) });
+  announceBossDeath(enc, pay) {
+    if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'bossdead', i: this.encounters.indexOf(enc), ...pay });
   }
 
   // ---------- combat resolution ----------
@@ -1080,16 +1090,34 @@ class Game {
   // ---------- frame ----------
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // big screens render at most PIXEL_BUDGET pixels; then the quality setting (or auto)
+    const fit = Math.min(1, Math.sqrt(PIXEL_BUDGET / (w * h * dpr * dpr)));
+    const q = QUALITY[this.settings?.quality] ?? this.autoQ;
+    this.renderer.setPixelRatio(dpr * fit * q);
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
+    // 21:9 gets its full width; anything wider (32:9) keeps the 21:9 horizontal view
+    const aspect = w / h, maxA = 2.4;
+    this.camera.aspect = aspect;
+    this.camera.fov = aspect > maxA ? 2 * Math.atan(Math.tan((48 / 2) * Math.PI / 180) * maxA / aspect) * 180 / Math.PI : 48;
     this.camera.updateProjectionMatrix();
-    this.fx.setScale(h * this.renderer.getPixelRatio() * 0.9);
+    this.fx.setScale(h * this.renderer.getPixelRatio() * 0.9 * (48 / this.camera.fov));
+  }
+
+  // Auto quality: lower the render scale when frames run slow, raise it again when
+  // there is headroom (but not straight back to a level that was just too slow)
+  adaptQuality(rdt) {
+    if (QUALITY[this.settings?.quality] != null || this.mode !== 'play') return;
+    this.frameMs += (rdt * 1000 - this.frameMs) * 0.05;
+    if (this.frameMs > 20) { this.slowT += rdt; this.fastT = 0; } else if (this.frameMs < 17.5) { this.fastT += rdt; this.slowT = 0; } else { this.slowT = this.fastT = 0; }
+    if (this.slowT > 2 && this.autoQ > 0.5) { this.autoQ = Math.max(0.5, this.autoQ - 0.1); this.slowT = 0; this.lastDrop = this.time; this.resize(); } else if (this.fastT > 5 && this.autoQ < 1 && this.time - this.lastDrop > 30) { this.autoQ = Math.min(1, this.autoQ + 0.1); this.fastT = 0; this.resize(); }
   }
 
   loop(now) {
     requestAnimationFrame((t) => this.loop(t));
     let rdt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
+    this.adaptQuality(rdt);
     if (this.mode === 'play' || this.mode === 'title') {
       let dt = rdt;
       if (this.freeze > 0) { this.freeze -= rdt; dt = 0; }

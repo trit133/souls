@@ -74,12 +74,15 @@ const before = await mh();
 await C.evaluate(() => { const down = [...game.mp.peers.values()].find((x) => !x.alive); game.player.pos.copy(down.pos); game.player.pos.x += 1; game.player.setState('move'); game.startRevive(down); window.__r0 = game.time; }); await wait(4500); log('6 revive state', await C.evaluate(() => [game.player.state, game.reviving, +(game.time - window.__r0).toFixed(2)]));
 log('6 revive', { before, after: await mh(), bAlive: await B.evaluate(() => [game.player.alive, game.player.hp]) });
 
-// 7) host cash-out pays the pot ×1 to everyone
-await A.evaluate(() => { game.minisFelled = 1; game.mp.sendAll({ t: 'gold', n: 20 }); game.runGold = 20; }); await wait(300);
-await B.evaluate(() => { game.minisFelled = 1; }); await C.evaluate(() => { game.minisFelled = 1; });
+// 7) room clear banks to every account
 const g0 = await Promise.all([A, B, C].map((p) => p.evaluate(() => game.accounts.data.gold)));
-await A.evaluate(() => game.cashOut()); await wait(500);
-log('7 cashout', { g0, g1: await Promise.all([A, B, C].map((p) => p.evaluate(() => [game.accounts.data.gold, game.mode]))) });
+await A.evaluate(() => { const m = game.world.mods.find((x) => game.world.gates['exit' + x.i] && !game.world.gates['exit' + x.i].open); window.__m = m.i; game.enemies.filter((e) => e.mod === m.i).forEach((e) => e.die()); });
+await wait(800);
+log('7 room banked', { g0, g1: await Promise.all([A, B, C].map((p) => p.evaluate(() => [game.accounts.data.gold, game.world.gates['exit' + window.__m]?.open ?? 'n/a']))) });
+await A.evaluate(() => { game.player.receive({ dmg: 1e9, srcPos: game.player.pos.clone().add({ x: 0, y: 0, z: 1 }), knock: 'light' }); });
+await B.evaluate(() => { game.player.receive({ dmg: 1e9, srcPos: game.player.pos.clone().add({ x: 0, y: 0, z: 1 }), knock: 'light' }); });
+await C.evaluate(() => { game.player.receive({ dmg: 1e9, srcPos: game.player.pos.clone().add({ x: 0, y: 0, z: 1 }), knock: 'light' }); });
+await wait(4200);
 
 // 7b) visible attacks, half-volume audio, no health bar bounce
 await A.click('#retry'); await B.click('#retry'); await wait(200);

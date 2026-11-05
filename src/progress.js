@@ -64,3 +64,6 @@ export function partyScale(players, big) {
     : { hp: [1.1, 1.13][i], dmg: [1.1, 1.12][i], atk: 1, spd: 1.1, gap: 1 };
 }
 export const extraEnemyShare = (players) => [0, 0, 0.3, 0.6][players] || 0;
+
+// Bonus banked when a section's closing boss falls: the section's gold × (multiplier − 1).
+export const sectionBonus = (sections, i) => Math.ceil((sections[i] || 0) * (SECTION_MULT[i] - 1));

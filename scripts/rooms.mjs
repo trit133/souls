@@ -64,13 +64,11 @@ const res = await page.evaluate(() => {
   game.addRunGold(8); killMini(1);           // section 2: 8 + 20
   out.sections = [...game.secGold];
   game.accounts.data = game.accounts.data || { gold: 0, stats: { extracts: 0, goldEarned: 0, bestArea: 0 }, upgrades: {} };
-  const before = game.accounts.data.gold; game.mode = 'play'; game.cashOut();
-  out.cashoutAfter2 = { banked: game.accounts.data.gold - before, expected: Math.ceil(25 * 1 + 28 * 1.5), text: document.getElementById('gameover-stats').innerText.split('\n')[0] };
-  p = fresh(); game.runGold = 0; game.secGold = [0, 0, 0, 0];
-  game.addRunGold(4); killMini(0); game.addRunGold(6); killMini(1); game.addRunGold(2); killMini(2); game.addRunGold(5);
-  const g1 = game.accounts.data.gold;
+  // win: Varek's 30 drop + section 4 bonus (×3 → +200%) banked straight away
+  p = fresh(); game.runGold = 0; game.secGold = [0, 0, 0, 0]; game.minisFelled = 3;
+  game.addRunGold(5);
   const enc = game.encounters.find((x) => x.kind === 'boss'); enc.active = true; enc.boss.setState('neutral'); enc.boss.die();
-  out.win = { sections: [...game.secGold], banked: game.accounts.data.gold - g1, expected: Math.ceil(19 * 1 + 26 * 1.5 + 27 * 2 + 35 * 3) };
+  out.win = { runBanked: game.runBanked, expected: 30 + Math.ceil(35 * 2) };
   return out;
 });
 for (const [k, v] of Object.entries(res)) console.log(k.padEnd(26), JSON.stringify(v));
