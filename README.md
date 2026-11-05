@@ -90,6 +90,8 @@ npm run build    # static build in dist/ — deployable to any static host
 - **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window). A successful parry opens a riposte.
 
 ## Controls
+Every keyboard and mouse binding can be changed in **Settings** (title screen or pause menu), along with master, music, effects and teammate volume, screen shake, and touch button size and opacity. Signed-in players keep their settings on their account across devices; guests keep them on the device. Defaults:
+
 | | Keyboard / mouse | Touch |
 |---|---|---|
 | Move | WASD | left-side stick |
@@ -116,4 +118,4 @@ npm run build    # static build in dist/ — deployable to any static host
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/rooms.mjs` (fight engagement, room gates, section gold) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.

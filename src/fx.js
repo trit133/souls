@@ -231,7 +231,7 @@ export class FX {
     this.decals.push({ obj: m, t: 0, dur: 4, kind: 'scorch' });
   }
 
-  addShake(a) { this.shake = Math.min(1.2, Math.max(this.shake, a)); }
+  addShake(a) { a *= this.shakeMul ?? 1; this.shake = Math.min(1.2, Math.max(this.shake, a)); }
 
   update(dt) {
     this.add.update(dt); this.norm.update(dt);

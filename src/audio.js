@@ -1,17 +1,33 @@
 // Tiny procedural sound kit (WebAudio). Must be unlocked by a user gesture (iOS).
 export class Audio {
-  constructor() { this.ctx = null; this.master = null; this.music = null; this.muted = false; }
+  constructor() {
+    this.ctx = null; this.master = null; this.music = null; this.muted = false;
+    this.vol = { master: 0.7, music: 1, sfx: 1, team: 0.5 };
+  }
+
+  // master / music / effects / teammates (teammates sit under effects)
+  setVolumes(v) {
+    this.vol = { ...this.vol, ...v };
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.master.gain.setTargetAtTime(this.vol.master, t, 0.02);
+    this.musicBus.gain.setTargetAtTime(this.vol.music, t, 0.02);
+    this.sfx.gain.setTargetAtTime(this.vol.sfx, t, 0.02);
+    this.half.gain.setTargetAtTime(this.vol.team, t, 0.02);
+  }
 
   unlock() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       this.ctx = new AC();
-      this.master = this.ctx.createGain(); this.master.gain.value = 0.7;
+      this.master = this.ctx.createGain(); this.master.gain.value = this.vol.master;
       this.master.connect(this.ctx.destination);
-      // teammates' sounds play through here at half volume
-      this.half = this.ctx.createGain(); this.half.gain.value = 0.5;
-      this.half.connect(this.master);
+      this.sfx = this.ctx.createGain(); this.sfx.gain.value = this.vol.sfx; this.sfx.connect(this.master);
+      this.musicBus = this.ctx.createGain(); this.musicBus.gain.value = this.vol.music; this.musicBus.connect(this.master);
+      // teammates' sounds (half volume by default)
+      this.half = this.ctx.createGain(); this.half.gain.value = this.vol.team;
+      this.half.connect(this.sfx);
       const len = this.ctx.sampleRate;
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0);
@@ -32,7 +48,7 @@ export class Audio {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f); f.connect(g); g.connect(this.bus || this.master);
+    src.connect(f); f.connect(g); g.connect(this.bus || this.sfx);
     src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
   }
   _tone(freq, dur, { type = 'sine', f1 = null, gain = 0.3, attack = 0.005, delay = 0 } = {}) {
@@ -43,7 +59,7 @@ export class Audio {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(this.bus || this.master); o.start(t); o.stop(t + dur + 0.05);
+    o.connect(g); g.connect(this.bus || this.sfx); o.start(t); o.stop(t + dur + 0.05);
   }
 
   // a teammate's sound
@@ -94,7 +110,7 @@ export class Audio {
   startMusic(phase = 1) {
     if (!this.ctx) return;
     this.stopMusic();
-    const ctx = this.ctx, out = ctx.createGain(); out.gain.value = 0; out.connect(this.master);
+    const ctx = this.ctx, out = ctx.createGain(); out.gain.value = 0; out.connect(this.musicBus);
     out.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 2);
     const nodes = [];
     const notes = phase === 1 ? [55, 82.4, 65.4] : [55, 82.4, 103.8, 130.8];

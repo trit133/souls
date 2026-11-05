@@ -227,3 +227,22 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 
 #ready-status, #victory-ready { font: 14px Georgia, serif; color: #e8c88a; min-height: 18px; margin-top: 6px; }
 .menu-btn:disabled { opacity: .5; }
+
+/* ---------- settings ---------- */
+#settings { background: rgba(8,6,4,.97); z-index: 13; justify-content: flex-start; }
+#settings > :first-child { margin-top: auto; }
+#settings > :last-child { margin-bottom: auto; }
+#settings h2 { margin: 4px 0 4px; }
+#set-owner { font: 13px Georgia, serif; opacity: .7; margin-bottom: 8px; }
+.set-group { width: min(640px, 94vw); margin-bottom: 8px; text-align: left; }
+.set-group label { display: grid; grid-template-columns: 170px 1fr 48px; align-items: center; gap: 10px; font: 14px Georgia, serif; padding: 4px 0; }
+.set-group input[type=range] { width: 100%; accent-color: #c8a050; touch-action: pan-x; }
+.set-group label b { font-weight: normal; text-align: right; opacity: .8; }
+#set-hint { font: 12px Georgia, serif; opacity: .6; margin: 4px 0 6px; }
+#binds { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 8px; align-items: center; font: 14px Georgia, serif; }
+#binds button { min-width: 112px; padding: 6px 8px; background: rgba(30,24,18,.9); border: 1px solid #5a4c32; color: #e8dcc0; font: 13px Georgia, serif; cursor: pointer; }
+#binds button.wait { border-color: #e8c88a; color: #e8c88a; }
+#binds button.empty { opacity: .45; }
+#settings .menu-btn { margin: 8px 4px 0; padding: 9px 22px; font-size: 15px; }
+#buttons { transform: scale(var(--touch-size, 1)); transform-origin: bottom right; opacity: var(--touch-opacity, 1); }
+#stick-base { transform: scale(var(--touch-size, 1)); }

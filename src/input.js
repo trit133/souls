@@ -1,11 +1,9 @@
 // Unified keyboard / mouse / touch input. Actions are edge-triggered presses
 // (collected into `pressed` and drained once per frame) plus held states.
 
-const KEYMAP = {
-  KeyJ: 'attack', KeyL: 'heavy', Space: 'roll', KeyK: 'roll',
-  KeyQ: 'special', ControlLeft: 'special', KeyE: 'heal', Tab: 'lock',
-  KeyF: 'interact', Escape: 'pause', KeyP: 'pause',
-};
+import { DEFAULT_BINDS } from './settings.js';
+
+const MOVES = new Set(['up', 'down', 'left', 'right', 'sprint']);
 
 export class Input {
   constructor() {
@@ -15,6 +13,8 @@ export class Input {
     this.stick = { x: 0, y: 0, active: false, id: null, ox: 0, oy: 0 };
     this.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
     this.lastDevice = this.isTouch ? 'touch' : 'kb';
+    this.capture = null; // set while the settings screen waits for a key
+    this.setBinds(DEFAULT_BINDS);
     this._bindKeyboard();
     this._bindMouse();
     this._bindTouch();
@@ -22,35 +22,54 @@ export class Input {
 
   _press(a) { this.pressed.add(a); }
 
+  // binds: { action: [code, code] }; mouse buttons are 'Mouse0'..'Mouse4'
+  setBinds(binds) {
+    this.binds = binds;
+    this.codeMap = new Map();
+    for (const [a, codes] of Object.entries(binds)) for (const c of codes) if (c) this.codeMap.set(c, a);
+  }
+
+  isDown(action) { return (this.binds[action] || []).some((c) => c && this.keys.has(c)); }
+
+  _down(code) {
+    this.keys.add(code);
+    const a = this.codeMap.get(code);
+    if (!a || MOVES.has(a)) return;
+    this._press(a);
+    if (a in this.held) this.held[a] = true;
+  }
+
+  _up(code) {
+    this.keys.delete(code);
+    const a = this.codeMap.get(code);
+    if (a && a in this.held) this.held[a] = this.isDown(a); // another key may still hold it
+  }
+
   _bindKeyboard() {
     addEventListener('keydown', (e) => {
+      if (this.capture) { e.preventDefault(); this.capture(e.code); return; }
       if (e.target instanceof HTMLInputElement) return; // typing in the account form
       if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       this.lastDevice = 'kb';
       if (e.repeat) return;
-      this.keys.add(e.code);
-      const a = KEYMAP[e.code];
-      if (a) { this._press(a); if (a in this.held) this.held[a] = true; }
+      this._down(e.code);
     });
-    addEventListener('keyup', (e) => {
-      this.keys.delete(e.code);
-      const a = KEYMAP[e.code];
-      if (a && a in this.held) {
-        // another key may still hold the same action
-        this.held[a] = Object.entries(KEYMAP).some(([k, v]) => v === a && this.keys.has(k));
-      }
-    });
+    addEventListener('keyup', (e) => this._up(e.code));
     addEventListener('blur', () => { this.keys.clear(); this.held.special = false; this.held.roll = false; });
   }
 
   _bindMouse() {
     const canvas = document.getElementById('game');
+    addEventListener('mousedown', (e) => {
+      if (this.capture) { e.preventDefault(); this.capture('Mouse' + e.button); }
+    }, true);
     canvas.addEventListener('mousedown', (e) => {
+      if (this.capture) return;
       this.lastDevice = 'kb';
-      if (e.button === 0) this._press('attack');
-      if (e.button === 2) this._press('heavy');
-      if (e.button === 1) { e.preventDefault(); this._press('lock'); }
+      if (e.button === 1) e.preventDefault();
+      this._down('Mouse' + e.button);
     });
+    addEventListener('mouseup', (e) => this._up('Mouse' + e.button));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
@@ -130,17 +149,17 @@ export class Input {
   // Returns {x, y} with y = "up the screen"; magnitude <= 1.
   move() {
     let x = 0, y = 0;
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) y += 1;
-    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) y -= 1;
-    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) x += 1;
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) x -= 1;
+    if (this.isDown('up')) y += 1;
+    if (this.isDown('down')) y -= 1;
+    if (this.isDown('right')) x += 1;
+    if (this.isDown('left')) x -= 1;
     if (x || y) { const l = Math.hypot(x, y); return { x: x / l, y: y / l }; }
     if (this.stick.active) return { x: this.stick.x, y: this.stick.y };
     return { x: 0, y: 0 };
   }
 
   sprintHeld() {
-    return this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.held.roll;
+    return this.isDown('sprint') || this.held.roll;
   }
 
   drain() { const p = this.pressed; this.pressed = new Set(); return p; }

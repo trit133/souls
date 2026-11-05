@@ -55,6 +55,7 @@
       <span id="acct-gold"></span>
       <button class="mini-btn" id="btn-shop">Upgrades</button>
       <button class="mini-btn" id="btn-mp">Multiplayer</button>
+      <button class="mini-btn" id="btn-settings">Settings</button>
       <button class="mini-btn" id="btn-acct">Sign In</button>
     </div>
     <div id="chars">
@@ -73,7 +74,7 @@
       </button>
     </div>
     <div id="controls-help">
-      <div><b>Keyboard:</b> WASD move · Shift sprint · Space/K roll · J/LMB attack · L/RMB heavy · Q/Ctrl block-parry · E heal · Tab/MMB lock-on · F interact · Esc pause</div>
+      <div id="kb-help"></div>
       <div><b>Touch:</b> left side = move stick · R1 light · R2 heavy · tap ROLL to dodge (no direction = backstep), hold it to sprint · tap the prompt to rest</div>
     </div>
   </div>
@@ -81,6 +82,7 @@
   <div id="pause" class="screen hidden">
     <h2>Paused</h2>
     <button class="menu-btn" id="resume">Resume</button>
+    <button class="menu-btn" id="pause-settings">Settings</button>
     <button class="menu-btn" id="restart">Quit to Title</button>
   </div>
 
@@ -136,6 +138,32 @@
     </div>
     <div id="lobby-err"></div>
     <button class="mini-btn" id="lobby-back">Back</button>
+  </div>
+  <div id="settings" class="screen hidden">
+    <h2>Settings</h2>
+    <div id="set-owner"></div>
+    <div class="set-group">
+      <div class="shop-head">Audio</div>
+      <label>Master <input type="range" min="0" max="100" data-set="master"><b></b></label>
+      <label>Music <input type="range" min="0" max="100" data-set="music"><b></b></label>
+      <label>Effects <input type="range" min="0" max="100" data-set="sfx"><b></b></label>
+      <label>Teammates <input type="range" min="0" max="100" data-set="team"><b></b></label>
+    </div>
+    <div class="set-group">
+      <div class="shop-head">Gameplay</div>
+      <label>Screen shake <input type="range" min="0" max="100" data-set="shake"><b></b></label>
+      <label>Touch button size <input type="range" min="70" max="140" data-set="touchSize"><b></b></label>
+      <label>Touch button opacity <input type="range" min="30" max="100" data-set="touchOpacity"><b></b></label>
+    </div>
+    <div class="set-group">
+      <div class="shop-head">Controls · keyboard &amp; mouse</div>
+      <div id="set-hint">Click a key, then press the new key or mouse button. Esc cancels; Backspace clears.</div>
+      <div id="binds"></div>
+    </div>
+    <div>
+      <button class="menu-btn" id="set-reset">Reset to defaults</button>
+      <button class="menu-btn" id="set-back">Done</button>
+    </div>
   </div>
   <div id="shop" class="screen hidden">
     <h2>Upgrades</h2>

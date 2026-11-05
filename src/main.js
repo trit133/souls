@@ -17,6 +17,7 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionPayout, sectionBreakdown, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
+import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
@@ -68,7 +69,8 @@ class Game {
     this.player = null;
     this.lockSprite = this.makeLockSprite();
     this.makeParryCues();
-    this.accounts = new OnlineAccounts(() => this.mode === 'title' && this.refreshTitle());
+    // the server's copy may carry settings changed on another device
+    this.accounts = new OnlineAccounts(() => { this.settingsFor = null; if (this.mode === 'title') this.refreshTitle(); else this.loadSettings(); });
     this.mp = new Multiplayer(this);
     this.fx.rawTelegraph = this.fx.telegraph.bind(this.fx);
     this.fx.telegraph = (x, z, r, dur, color) => {
@@ -175,6 +177,19 @@ class Game {
     $('retry').addEventListener('click', readyOr('retry', () => { this.audio.unlock(); this.start(this.kind); }));
     $('go-title').addEventListener('click', () => this.toTitle());
     $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
+    $('btn-settings').addEventListener('click', () => this.openSettings());
+    $('pause-settings').addEventListener('click', () => this.openSettings());
+    $('set-back').addEventListener('click', () => this.closeSettings());
+    $('set-reset').addEventListener('click', () => { this.applySettings(normalize()); this.saveSettings(); this.renderSettings(); });
+    document.querySelectorAll('[data-set]').forEach((el) => {
+      el.addEventListener('input', () => {
+        this.settings[el.dataset.set] = el.value / 100;
+        el.nextElementSibling.textContent = el.value + '%';
+        this.applySettings(this.settings);
+        if (el.dataset.set === 'sfx' || el.dataset.set === 'master') { this.audio.unlock(); this.audio.play('hit', 0.6); }
+      });
+      el.addEventListener('change', () => this.saveSettings());
+    });
     $('lobby-back').addEventListener('click', () => { if (this.mp.code) this.mp.leave(); this.ui.show('lobby', false); });
     const tryNet = (fn) => fn().catch((e) => this.lobbyError(e.message));
     $('lobby-create').addEventListener('click', () => tryNet(() => this.mp.create(this.lobbyKind)));
@@ -316,7 +331,85 @@ class Game {
     setTimeout(() => enc.active && this.audio.play('roar', enc.kind === 'mini' ? 0.5 : 0.8), 1200);
   }
 
+  // ---------- settings (per account; guests keep them on this device) ----------
+  loadSettings() {
+    const key = this.accounts.user || '';
+    if (this.settingsFor === key && this.settings) return;
+    this.settingsFor = key;
+    // an account starts from defaults; guests use this device's settings
+    this.applySettings(this.accounts.user ? normalize(this.accounts.data?.settings) : loadGuest());
+  }
+
+  applySettings(s) {
+    this.settings = s;
+    this.input.setBinds(s.binds);
+    this.audio.setVolumes({ master: s.master, music: s.music, sfx: s.sfx, team: s.team });
+    this.fx.shakeMul = s.shake;
+    const root = document.documentElement.style;
+    root.setProperty('--touch-size', s.touchSize); root.setProperty('--touch-opacity', s.touchOpacity);
+    const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
+    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} heal · ${k('lock')} lock-on · ${k('interact')} interact · ${k('pause')} pause`;
+  }
+
+  saveSettings() {
+    if (this.accounts.user) { this.accounts.data.settings = this.settings; this.accounts.save(); } else saveGuest(this.settings);
+  }
+
+  openSettings() {
+    this.renderSettings();
+    this.ui.show('settings');
+  }
+
+  closeSettings() {
+    this.input.capture = null;
+    this.ui.show('settings', false);
+  }
+
+  renderSettings() {
+    const s = this.settings;
+    $('set-owner').textContent = this.accounts.user ? `Saved to ${this.accounts.displayName}'s account` : 'Guest: saved on this device only. Sign in to keep them on your account.';
+    document.querySelectorAll('[data-set]').forEach((el) => {
+      const k = el.dataset.set;
+      el.value = Math.round(s[k] * 100);
+      el.nextElementSibling.textContent = el.value + '%';
+    });
+    const wrap = $('binds');
+    wrap.innerHTML = '';
+    for (const [a, label] of ACTIONS) {
+      const name = document.createElement('div'); name.textContent = label; wrap.appendChild(name);
+      for (const slot of [0, 1]) {
+        const btn = document.createElement('button');
+        const code = s.binds[a][slot];
+        btn.textContent = keyLabel(code);
+        btn.classList.toggle('empty', !code);
+        btn.addEventListener('click', () => this.captureBind(btn, a, slot));
+        wrap.appendChild(btn);
+      }
+    }
+  }
+
+  // wait for the next key / mouse button; a key already used elsewhere moves here
+  captureBind(btn, action, slot) {
+    if (this.input.capture) return;
+    btn.textContent = 'Press a key…'; btn.classList.add('wait');
+    // safe to listen right away: this click's own mouse press has already happened
+    {
+      this.input.capture = (code) => {
+        this.input.capture = null;
+        const b = this.settings.binds;
+        if (code === 'Escape') return this.renderSettings();
+        if (code === 'Backspace' || code === 'Delete') b[action][slot] = '';
+        else {
+          for (const [a] of ACTIONS) b[a] = b[a].map((c) => (c === code ? '' : c));
+          b[action][slot] = code;
+        }
+        this.applySettings(this.settings); this.saveSettings(); this.renderSettings();
+      };
+    }
+  }
+
   refreshTitle() {
+    this.loadSettings();
     const A = this.accounts;
     $('acct-name').textContent = A.user ? A.displayName : 'Guest (gold is not saved)';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
