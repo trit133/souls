@@ -43,7 +43,11 @@ export class UI {
     this.st.set(p.st / p.maxSt, dt);
     this.st.fill.parentElement.classList.toggle('tired', p.fatigue > 0.45);
     this.flaskEl.textContent = p.flasks;
-    if (p.maxMana) this.mn.set(p.mana / p.maxMana, dt);
+    if (p.maxMana) {
+      this.mn.set(p.mana / p.maxMana, dt);
+      const txt = `${Math.floor(p.mana)} / ${p.maxMana}`;
+      if (txt !== this.mnTxt) { this.mnTxt = txt; (this.mnNum ||= document.querySelector('.bar.mn .num')).textContent = txt; }
+    }
   }
 
   // teammates' names and health

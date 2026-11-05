@@ -37,10 +37,10 @@ const GRUNT_MOVES = {
     onTime: [{ t: 0.8, fn: (e, g) => { if (e.target) e.yaw += angDiff(e.yaw, e.yawTo(e.target.pos)) * 0.6; } }],
   },
   leap: {
-    dur: 1.55, range: 5.5, minRange: 3.2, track: [0.62, 4], sfx: [0.62, 'heavySwing'], trail: [0.7, 0.92], recover: 0.5,
+    dur: 1.55, range: 4.0, minRange: 2.4, track: [0.62, 4], sfx: [0.62, 'heavySwing'], trail: [0.7, 0.92], recover: 0.5,
     keys: [[0.55, OVER_WIND], [0.8, { ...OVER_WIND, by: 0.25, legL: [-0.8, 0, 0], shinL: [1.0, 0, 0] }], [0.9, OVER_STRIKE], [1.25, OVER_STRIKE]],
     hits: [{ t0: 0.84, t1: 0.94, range: 2.1, arc: 1.4, dmg: 24, poise: 30 }],
-    move: [[0.6, 0.88, 3.8]], stopAt: 1.1,
+    move: [[0.6, 0.88, 1.9]], stopAt: 1.1,
     onTime: [{ t: 0.9, fn: (e, g) => g.fx.dust(e.pos, 6, 1.2) }],
   },
 };

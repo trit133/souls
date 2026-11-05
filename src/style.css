@@ -182,7 +182,8 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 #shop .menu-btn { margin: 10px 0 0; padding: 9px 30px; }
 
 /* ---------- spellsword, evolutions, new shop ---------- */
-.bar.mn { width: 85%; height: 7px; }
+.bar.mn { width: 85%; height: 11px; position: relative; }
+.bar.mn .num { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 9px; line-height: 1; color: #dfe8ff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
 .bar.mn .fill { background: linear-gradient(#4a8aff, #2a4fa8); }
 .char { width: min(270px, calc((100vw - 110px) / 3)); padding: 12px; }
 #chars { gap: 12px; flex-wrap: nowrap; }

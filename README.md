@@ -51,7 +51,7 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
     - Knight, Spectral Shield: a white wall 20% wider than his torso that stops enemies and projectiles.
     - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
     - Spellsword, Twin Inferno: two larger fireballs.
-- **Spellsword:** R1 knife hits give 12 mana (the only mana source). R2 fires a blue bolt (33 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana.
+- **Spellsword:** R1 knife hits give 16 mana (the only mana source). R2 fires a blue bolt (8 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 
 ## Multiplayer (2-3 players)
@@ -107,6 +107,7 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
 | Rest at bonfire | F | tap the prompt |
 
 ## Combat notes
+- **Stamina:** at 0 you can't attack, roll, backstep or parry (combos stop too) until it refills a little. Long attack strings slow walking by at most 10%.
 - Inputs are buffered (0.4s). Combos chain inside a window. Rolls can cancel attack recovery after a set point.
 - Hitstop, camera shake, weapon trails, and poise/stagger on both sides.
 - One enemy fights each player at a time; the others watch and strike every 10-15s. Enemy types: grunts (slash, double, leap), spearmen (long thrusts, sweep when you are close), archers (keep distance, arrows can be sidestepped), and a super-armored brute (telegraphed slam and a stomp when you stand behind it).
@@ -121,4 +122,4 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.
+`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size), `scripts/stamina.mjs` (empty-stamina lockout, mana costs, grunt leap reach) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.

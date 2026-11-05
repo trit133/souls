@@ -25,7 +25,7 @@ const PIXEL_BUDGET = 2.2e6;
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
 const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
-const MANA_PER_HIT = 12;
+const MANA_PER_HIT = 16;
 // player spells: little blue bolts, and exploding fireballs (bigger once evolved)
 const SPELLS = {
   bolt: { dmg: 30, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 12 },

@@ -136,7 +136,7 @@ const MAGE_ATTACKS = {
   s2: { ...mirror(ROGUE_ATTACKS.r3), next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 17, poise: 12 }] },
 };
 
-const MANA_BOLT = 33, MANA_FIRE = 75;
+const MANA_BOLT = 8, MANA_FIRE = 75;
 
 export const CHARS = {
   knight: {
@@ -240,7 +240,8 @@ export class Player extends Actor {
 
   // ---------- helpers ----------
   spend(n) { this.st -= n; if (this.st < 0) this.st = 0; this.stDelay = 0.6; }
-  canSpend() { return this.st > 0.5; }
+  // an empty bar blocks attacks, rolls and parries until it refills a little
+  canSpend() { return this.st >= 1; }
 
   iframe() {
     if (this.state === 'roll') return this.inWindow(this.c.roll.iframes, this.t);
@@ -293,11 +294,11 @@ export class Player extends Actor {
         this.blocking = this.kind === 'knight' && input.held.special;
         const wantSprint = input.sprintHeld() && mag > 0.3 && !this.blocking && this.st > 0.5 && !this.sprintLock;
         if (this.st <= 0.5) this.sprintLock = true;
-        if (this.sprintLock && this.st > 20) this.sprintLock = false;
+        if (this.sprintLock && this.st > 10) this.sprintLock = false;
         this.sprinting = wantSprint;
         let sp = (this.sprinting ? this.c.sprint : this.c.walk) * mag;
         if (this.blocking) sp *= 0.5;
-        sp *= (1 - 0.35 * this.fatigue) * this.moveMul;
+        sp *= (1 - 0.1 * this.fatigue) * this.moveMul;
         if (this.sprinting) { this.st -= 14 * dt; this.stDelay = 0.4; }
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.01 ? sp : 0);
         this.vel.lerp(tv, 1 - Math.exp(-14 * dt));
@@ -332,9 +333,10 @@ export class Player extends Actor {
         rate = 28;
         this.trailOn = this.inWindow(d.trail);
         if (this.buf && (this.buf.a === 'attack' || this.buf.a === 'heavy') && d.combo && t >= d.combo[0]) {
-          const heavy = this.buf.a === 'heavy';
+          const b0 = this.buf, heavy = b0.a === 'heavy';
           this.buf = null;
           if (heavy && this.c.caster) { this.castBolt(dir, mag); break; }
+          if (!this.canSpend()) { this.buf = b0; break; }
           if (!this.tryRiposte(dir, mag)) this.doAttack(heavy ? 'heavy' : (d.next || this.c.light), dir, mag);
           break;
         }
@@ -625,8 +627,8 @@ export class Player extends Actor {
   // after paying for a dodge, an empty bar makes it ~2.2x slower and much shorter
   setDodgeRate() {
     const low = Math.min(1, this.st / (this.maxSt * 0.3));
-    this.rollRate = 0.46 + 0.54 * low;
-    this.rollDist = 0.55 + 0.45 * low;
+    this.rollRate = 0.8 + 0.2 * low;
+    this.rollDist = 0.85 + 0.15 * low;
   }
 
   startRoll(dir) {
