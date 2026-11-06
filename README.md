@@ -93,7 +93,7 @@ npm run build    # static build in dist/ — deployable to any static host
 ```
 
 ## Characters
-- **Knight**: longsword and shield. 150 HP, 3-hit combo plus heavy. Hold **L1** to block. Press **heavy** right after blocking a hit for a guard counter.
+- **Knight**: longsword and shield. 150 HP, 3-hit combo plus heavy. Hold **L1** to block: it drains 10 stamina a second and a quarter of each blocked hit still gets through. Press **heavy** right after blocking a hit for a guard counter, a quick forehand-backhand (23 + 23).
 - **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window). A successful parry opens a riposte.
 
 ## Controls

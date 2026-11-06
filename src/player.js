@@ -55,14 +55,20 @@ const KNIGHT_ATTACKS = {
     move: [[0.3, 0.55, 1.5]],
     onHitShake: 0.5, heavyHit: true,
   },
+  // right after a block: a quick forehand then backhand, 23 + 23 (same total as the old single cut)
   guardCounter: {
-    dur: 0.8, cost: 18, next: 'k2', combo: [0.48, 0.8], cancel: 0.5, track: 0.16, trail: [0.16, 0.3], sfx: [0.15, 'heavySwing'], armor: [0, 0.3],
+    dur: 0.8, cost: 18, next: 'k2', combo: [0.48, 0.8], cancel: 0.5, track: 0.16, trail: [0.1, 0.36], sfx: [0.1, 'swing'], armor: [0, 0.34],
     keys: [
-      [0.16, { torso: [0.1, -0.9, 0], armR: [-1.5, 0, -1.4], foreR: [-0.1, 0, 0], handR: [1.45, 0, 0], guard: 0.6, legL: [-0.3, 0, 0], legR: [0.3, 0, 0] }],
-      [0.28, { torso: [0.3, 0.8, 0], armR: [-1.5, 0, 1.0], foreR: [0, 0, 0], handR: [1.45, 0, 0], ...lunge(1.2) }],
-      [0.55, { torso: [0.2, 0.6, 0], armR: [-1.2, 0, 0.8], foreR: [-0.3, 0, 0], handR: [1.2, 0, 0], ...lunge(1) }],
+      [0.1, { torso: [0.1, -0.9, 0], armR: [-1.5, 0, -1.4], foreR: [-0.1, 0, 0], handR: [1.45, 0, 0], guard: 0.6, legL: [-0.3, 0, 0], legR: [0.3, 0, 0] }],
+      [0.2, { torso: [0.3, 0.75, 0], armR: [-1.5, 0, 1.0], foreR: [0, 0, 0], handR: [1.45, 0, 0], guard: 0.4, ...lunge(1.0) }],
+      [0.34, { torso: [0.3, -0.8, 0], armR: [-1.45, 0, -1.3], foreR: [0, 0, 0], handR: [1.45, 0, 0], ...lunge(1.2) }],
+      [0.58, { torso: [0.2, -0.6, 0], armR: [-1.2, 0, -0.9], foreR: [-0.3, 0, 0], handR: [1.2, 0, 0], ...lunge(1) }],
     ],
-    hits: [{ t0: 0.17, t1: 0.3, range: 2.6, arc: 2.8, dmg: 46, poise: 80 }],
+    hits: [
+      { t0: 0.12, t1: 0.2, range: 2.6, arc: 2.8, dmg: 23, poise: 40 },
+      { t0: 0.26, t1: 0.34, range: 2.6, arc: 2.8, dmg: 23, poise: 40 },
+    ],
+    onTime: [{ t: 0.24, fn: (p, g) => g.audio.play('heavySwing', 0.9) }],
     move: [[0.1, 0.3, 1.2]],
     onHitShake: 0.5, heavyHit: true,
   },
@@ -322,7 +328,9 @@ export class Player extends Actor {
         }
         if (this.blocking) Object.assign(pose, this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
         if (this.speed > 1 && (this.stepT -= dt) <= 0) { this.stepT = this.sprinting ? 0.28 : 0.38; if (this.sprinting) this.game.fx.dust(this.pos, 1, 0.3); }
-        this.regen(dt, this.blocking ? 16 : 48);
+        // holding the shield up drains stamina; regen resumes shortly after lowering it
+        if (this.blocking) { this.st = Math.max(0, this.st - 10 * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
+        else this.regen(dt, 48);
         break;
       }
       case 'attack': {
@@ -688,7 +696,7 @@ export class Player extends Actor {
         if (this.hp <= 0) this.die();
         return 'guardbreak';
       }
-      this.hp -= info.dmg * 0.08;
+      this.hp -= info.dmg * 0.25; // a quarter of a blocked hit gets through
       if (this.hp <= 0) this.die();
       return 'block';
     }
