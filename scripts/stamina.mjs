@@ -1,5 +1,5 @@
 // Empty stamina blocks attacks/rolls/combo chains; fatigue barely slows walking;
-// Spellsword flat mana (bolt 8, fireball 75, +16 per knife hit); grunt leap reach.
+// Spellsword flat mana (bolt 8, fireball 75, +10 per knife hit); grunt leap reach.
 import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();

@@ -132,8 +132,8 @@ const mirrorPose = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]
 const mirror = (def) => ({ ...def, keys: def.keys.map(([t, pose]) => [t, mirrorPose(pose)]) });
 
 const MAGE_ATTACKS = {
-  s1: { ...ROGUE_ATTACKS.r2, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 14, poise: 10 }] },
-  s2: { ...mirror(ROGUE_ATTACKS.r3), next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 17, poise: 12 }] },
+  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 14, poise: 10 }] },
+  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 17, poise: 12 }] },
 };
 
 const MANA_BOLT = 8, MANA_FIRE = 75;

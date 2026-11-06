@@ -51,7 +51,7 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
     - Knight, Spectral Shield: a white wall 20% wider than his torso that stops enemies and projectiles.
     - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
     - Spellsword, Twin Inferno: two larger fireballs.
-- **Spellsword:** R1 knife hits give 16 mana (the only mana source). R2 fires a blue bolt (8 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
+- **Spellsword:** R1 knife hits (14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 
 ## Multiplayer (2-3 players)
