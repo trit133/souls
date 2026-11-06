@@ -356,7 +356,7 @@ export class Enemy extends Actor {
         const ra = this.ripAt ?? 0.55;
         pose = this.t < ra ? { ...locomotion(T.style, 0, 0, false, 0), ...P.stagger } : (this.hp > 0 ? P.knockdown : P.dead);
         rate = this.t < ra ? 14 : 9;
-        if (this.t > ra && this.hp <= 0 && this.alive) this.die(true);
+        if (this.t > ra && this.hp <= 0 && this.alive) this.die();
         if (this.t > ra + 1.45 && this.alive) this.setState('chase');
         break;
       }
@@ -459,6 +459,13 @@ export class Enemy extends Actor {
     this.setState('riposted'); this.atk = null; this.ripAt = Math.max(0.55, hitAt + 0.2);
   }
 
+  // the dust poof where an enemy falls; plays on every screen (puppets call it from the host's snapshot)
+  deathFx(sound = true) {
+    this.game.pfx?.play('poof', this.pos.clone().setY(0.2), { size: this.T.scale || 1 });
+    this.game.fx.dust(this.pos, 8, 0.9);
+    if (sound) this.game.audio.remote('enemyDie');
+  }
+
   die(silent) {
     if (this.alive) this.game.onEnemyKilled(this);
     this.alive = false;
@@ -468,7 +475,7 @@ export class Enemy extends Actor {
     this.atk = null;
     this.setState('dead');
     this.game.audio.play('enemyDie');
-    if (!silent) this.game.pfx?.play('poof', this.pos.clone().setY(0.2), { size: this.T.scale || 1 });
+    if (!silent) this.deathFx(false);
     if (this.game.player.lock === this) this.game.player.lock = null;
   }
 

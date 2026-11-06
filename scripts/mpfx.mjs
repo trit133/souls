@@ -48,6 +48,15 @@ await B.evaluate(() => {
   p.startRiposte(g, 1, (window.CRITS_SHROUD = p.constructor && null) || undefined);
 });
 await B.waitForTimeout(1500);
+// A kills a grunt (normal hit) and another with a crit: B must see each one's dust poof
+await B.evaluate(() => { window.poofs = 0; const pl = game.pfx.play.bind(game.pfx); game.pfx.play = (n, ...r) => { if (n === 'poof') window.poofs++; return pl(n, ...r); }; });
+await A.evaluate(() => {
+  const p = game.player, gs = game.enemies.filter((e) => e.alive && e.type === 'grunt');
+  gs[0].receive({ dmg: 1e6, poise: 0, srcPos: p.pos, attacker: p });
+  const g = gs[1]; g.hp = 1; p.pos.set(g.pos.x, 0, g.pos.z + 1.6); p.yaw = Math.PI; g.setState('parried'); p.setState('move'); p.startRiposte(g);
+});
+await A.waitForTimeout(1800);
+console.log('B saw death poofs:', await B.evaluate(() => window.poofs), '(expect 2)');
 const onB = await B.evaluate(() => ({ effects: [...new Set(window.got)], seen: window.seen }));
 const onA = await A.evaluate(() => ({ effects: [...new Set(window.got)], seenB: window.seenB }));
 console.log('B saw knight:', JSON.stringify(onB));

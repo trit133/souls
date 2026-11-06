@@ -61,6 +61,8 @@ export class Actor {
     if (s[5] < this.hp - 0.5 && !justHit) this.rig.flash(1, 0.9, 0.8);
     if (!(justHit && s[5] > this.hp)) this.hp = s[5];
     this.y = s[8] || 0;
+    // the host says it died: play its death here too (dust poof, sound)
+    if (this.alive && s[4] === 'dead') this.deathFx?.();
     this.alive = s[4] !== 'dead';
     const def = s[6] ? this.moves[s[6]] : null;
     if (!def) this.atk = null;
