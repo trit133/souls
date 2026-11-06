@@ -47,7 +47,7 @@ html, body {
 #stick-base {
   position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%;
   border: 2px solid rgba(232,220,192,.25); background: rgba(0,0,0,.18); opacity: .55;
-  left: calc(110px + env(safe-area-inset-left)); top: calc(100% - 110px - env(safe-area-inset-bottom));
+  left: var(--home-x, calc(110px + env(safe-area-inset-left))); top: var(--home-y, calc(100% - 110px - env(safe-area-inset-bottom)));
 }
 #stick-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(232,220,192,.35); }
 #stick-base.active { opacity: .95; }
@@ -326,6 +326,23 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 #settings .menu-btn { margin: 8px 4px 0; padding: 9px 22px; font-size: 15px; }
 #buttons { transform: scale(var(--touch-size, 1)); transform-origin: bottom right; opacity: var(--touch-opacity, 1); }
 #stick-base { transform: scale(var(--touch-size, 1)); }
+/* buttons the player has moved (touchlayout.js): left/top is the centre, as a share of the screen */
+#touch .free { right: auto; bottom: auto; transform: translate(-50%, -50%) scale(var(--touch-size, 1)); opacity: var(--touch-opacity, 1); }
+#touch .btn.free.down { transform: translate(-50%, -50%) scale(calc(var(--touch-size, 1) * .94)); }
+#b-pause.free { transform: translate(-50%, -50%); opacity: 1; }
+/* layout editor: above the menus, below the rotate-your-phone notice */
+#touch.editing { z-index: 15; background: rgba(0,0,0,.6); }
+#touch.editing .btn, #touch.editing #b-pause, #touch.editing #stick-base { outline: 2px dashed rgba(232,200,138,.7); outline-offset: 3px; cursor: grab; touch-action: none; }
+#touch.editing #stick-base { opacity: .95; }
+#touch.editing #stick-zone { pointer-events: none; }
+#touch.editing #stick-base { pointer-events: auto; }
+#touch.editing .dragging { outline-color: #e8c88a; outline-style: solid; cursor: grabbing; }
+#layout-bar {
+  position: fixed; z-index: 16; left: 50%; top: calc(8px + env(safe-area-inset-top)); transform: translateX(-50%);
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 94vw;
+  padding: 6px 10px; background: rgba(20,15,11,.94); border: 1px solid #6a5a3a; color: #e8dcc0; font: 13px Georgia, serif;
+}
+#set-layout { justify-self: start; }
 
 #set-quality { background: rgba(0,0,0,.5); color: #e8dcc0; border: 1px solid #6a5a3a; padding: 5px; font: 14px Georgia, serif; }
 

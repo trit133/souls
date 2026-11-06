@@ -47,6 +47,13 @@
     <button id="b-pause" data-act="pause">II</button>
   </div>
 
+  <div id="layout-bar" class="hidden">
+    <span>Drag the buttons and the move stick to place them</span>
+    <button class="mini-btn" id="layout-save">Save</button>
+    <button class="mini-btn" id="layout-reset">Reset layout</button>
+    <button class="mini-btn" id="layout-cancel">Cancel</button>
+  </div>
+
   <div id="menu" class="screen">
     <h1 class="fire-title"><canvas id="title-fire" role="img" aria-label="Ashen Vigil"></canvas></h1>
     <p class="sub">a souls-like roguelite</p>
@@ -188,6 +195,7 @@
       <label>Screen shake <input type="range" min="0" max="100" data-set="shake"><b></b></label>
       <label>Touch button size <input type="range" min="70" max="140" data-set="touchSize"><b></b></label>
       <label>Touch button opacity <input type="range" min="30" max="100" data-set="touchOpacity"><b></b></label>
+      <label>Touch button layout <button class="mini-btn" id="set-layout">Edit button layout</button><b></b></label>
     </div>
     <div class="set-group">
       <div class="shop-head">Controls · keyboard &amp; mouse</div>

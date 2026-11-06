@@ -14,6 +14,7 @@ export class Input {
     this.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
     this.lastDevice = this.isTouch ? 'touch' : 'kb';
     this.capture = null; // set while the settings screen waits for a key
+    this.layoutEdit = false; // touch controls are being dragged around, not pressed
     this.setBinds(DEFAULT_BINDS);
     this._bindKeyboard();
     this._bindMouse();
@@ -84,7 +85,7 @@ export class Input {
     zone.addEventListener('touchstart', (e) => {
       e.preventDefault();
       this.lastDevice = 'touch';
-      if (this.stick.id !== null) return;
+      if (this.layoutEdit || this.stick.id !== null) return;
       const t = e.changedTouches[0];
       this.stick.id = t.identifier; this.stick.active = true;
       this.stick.ox = t.clientX; this.stick.oy = t.clientY;
@@ -128,6 +129,7 @@ export class Input {
       const a = btn.dataset.act;
       const down = (e) => {
         e.preventDefault(); e.stopPropagation();
+        if (this.layoutEdit) return;
         this.lastDevice = 'touch';
         btn.classList.add('down');
         this._press(a);

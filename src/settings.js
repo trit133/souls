@@ -14,7 +14,7 @@ export const DEFAULT_BINDS = {
 };
 
 // quality: pixel size of the game picture (see PIXEL_H in pixel.js)
-export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, quality: 'medium', binds: DEFAULT_BINDS };
+export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, touchLayout: {}, quality: 'medium', binds: DEFAULT_BINDS };
 export const QUALITY = { chunky: 1, medium: 1, fine: 1 };
 
 const LOCAL = 'ashenVigil.settings.v1';
@@ -23,6 +23,8 @@ const LOCAL = 'ashenVigil.settings.v1';
 export function normalize(s) {
   const out = { ...DEFAULTS, ...(s || {}) };
   if (!(out.quality in QUALITY)) out.quality = DEFAULTS.quality; // older Auto/High/Low values
+  // touchLayout: { action or 'stick': [x, y] } screen fractions (see touchlayout.js)
+  if (!out.touchLayout || typeof out.touchLayout !== 'object') out.touchLayout = {};
   out.binds = {};
   for (const [a] of ACTIONS) {
     const b = s?.binds?.[a];

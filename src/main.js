@@ -24,6 +24,7 @@ import { skinList, unlocked } from './skins.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
+import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
@@ -237,6 +238,7 @@ class Game {
     $('lobby-start').addEventListener('click', () => this.mp.startRun());
     $('lobby-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
     this.skinMenu = new SkinMenu(this);
+    this.layoutEditor = new LayoutEditor(this);
     $('btn-skins').addEventListener('click', () => { this.audio.unlock(); this.skinMenu.open(); });
     $('lobby-skins').addEventListener('click', () => this.skinMenu.open(this.lobbyKind));
     $('lobby-settings').addEventListener('click', () => this.openSettings());
@@ -403,6 +405,7 @@ class Game {
     this.fx.shakeMul = s.shake;
     const root = document.documentElement.style;
     root.setProperty('--touch-size', s.touchSize); root.setProperty('--touch-opacity', s.touchOpacity);
+    if (!this.layoutEditor?.layout) applyLayout(s.touchLayout);
     if (this.camera) this.resize();
     const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
     $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} heal · ${k('lock')} lock-on · ${k('interact')} interact · ${k('pause')} pause`;
