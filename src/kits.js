@@ -46,7 +46,8 @@ export const KITS = {
     build(r, o) {
       const { bulk: b, sw } = r.dims;
       const { armor, cloth, accent, dark } = r.mats;
-      const hi = r.m(0xb9bfc9), gold = r.m(0xb89a4a), blue = r.m(0x3f63a3);
+      const C = { hi: 0xb9bfc9, gold: 0xb89a4a, plume: 0x3f63a3, field: 0x3a5078, fuller: 0x8c929c, ...(o.pal || {}) };
+      const hi = r.m(C.hi), gold = r.m(C.gold), blue = r.m(C.plume);
       const T = r.j.torso, H = r.j.head, hips = r.j.hips;
       // breastplate: central ridge, lower edge, gorget
       T.add(box(0.06, 0.3, 0.025, hi, 0, 0.5, 0.14 * b));
@@ -78,8 +79,8 @@ export const KITS = {
         H.add(box(0.03, 0.14, 0.12, armor, s * 0.14, 0.12, 0.09));
         H.add(box(0.02, 0.02, 0.02, dark, s * 0.05, 0.12, 0.15));
       }
-      const pl = pivot(H, 0, 0.42, -0.06);
-      strip(r, pl, 0, 0, 0, 0.06, [0.14, 0.13, 0.12], blue, { rx: Math.PI - 1.5, bend: 0.55, spring: { ...CLOTH, k: 80 }, lx: [-0.6, 0.6], th: 0.05, taper: 0.85 });
+      const pl = o.variant === 'paladin' ? null : pivot(H, 0, 0.42, -0.06);
+      if (pl) strip(r, pl, 0, 0, 0, 0.06, [0.14, 0.13, 0.12], blue, { rx: Math.PI - 1.5, bend: 0.55, spring: { ...CLOTH, k: 80 }, lx: [-0.6, 0.6], th: 0.05, taper: 0.85 });
       // elbows, gauntlets, knees, sabatons
       for (const L of [true, false]) {
         const fa = r.j[L ? 'foreL' : 'foreR'], hd = r.j[L ? 'handL' : 'handR'], sh = r.j[L ? 'shinL' : 'shinR'];
@@ -91,7 +92,7 @@ export const KITS = {
       }
       // shield: blue field, gold rim and cross, a steel boss
       const sh = new THREE.Group();
-      const field = r.m(0x3a5078);
+      const field = r.m(C.field);
       sh.add(box(0.5, 0.66, 0.06, field));
       sh.add(box(0.54, 0.04, 0.08, gold, 0, 0.33, 0)); sh.add(box(0.04, 0.6, 0.08, gold, 0.25, 0.03, 0)); sh.add(box(0.04, 0.6, 0.08, gold, -0.25, 0.03, 0));
       sh.add(box(0.1, 0.56, 0.08, gold, 0, 0.02, 0)); sh.add(box(0.46, 0.09, 0.08, gold, 0, 0.1, 0));
@@ -102,7 +103,8 @@ export const KITS = {
       const g = r.wpnR;
       g.add(box(0.07, 0.07, 0.06, gold, 0, 0, -0.13));
       for (const z of [-0.06, 0.0, 0.06]) g.add(box(0.06, 0.06, 0.02, dark, 0, 0, z));
-      g.add(box(0.035, 0.025, 0.7, r.m(0x8c929c), 0, 0, 0.55));
+      g.add(box(0.035, 0.025, 0.7, C.fullerGlow ? basic(C.fullerGlow) : r.m(C.fuller), 0, 0, 0.55));
+      if (o.variant === 'paladin') paladin(r, o, C, { hi, gold, field });
     },
   },
 
@@ -110,18 +112,24 @@ export const KITS = {
     weapon: true,
     build(r, o) {
       const { bulk: b, sw } = r.dims;
-      const cloak = r.m(0x2c2a30), lining = r.m(0x4a2422), leather = r.m(0x4a3626), wrap = r.m(0xa8977c);
-      const scarf = r.m(0x8a2420), steel = r.m(0xc4cad3), steelDk = r.m(0x5e646c), edge = r.m(0xeef3f8), grip = r.m(0x2a1c14);
+      const C = { cloak: 0x2c2a30, lining: 0x4a2422, leather: 0x4a3626, wrap: 0xa8977c, scarf: 0x8a2420, steel: 0xc4cad3, steelDk: 0x5e646c,
+        edge: 0xeef3f8, grip: 0x2a1c14, face: 0x060505, eye: 0xc8b48a, mouth: 0x3a2224, hem: 0x4a4650, ...(o.pal || {}) };
+      const cloak = r.m(C.cloak), lining = r.m(C.lining), leather = r.m(C.leather), wrap = r.m(C.wrap);
+      const scarf = r.m(C.scarf), steelDk = r.m(C.steelDk), grip = r.m(C.grip);
+      // spectral (Wraith) blades glow instead of shining
+      const steel = C.bladeGlow ? basic(C.bladeGlow) : r.m(C.steel), edge = C.bladeGlow ? basic(C.bladeCore) : r.m(C.edge);
       const T = r.j.torso, H = r.j.head, hips = r.j.hips;
       // deep hood: a shell with an overhanging brim around a shadowed face, two faint eye glints
       H.add(box(0.1, 0.08, 0.1, r.mats.dark, 0, 0.03, 0));
       H.add(box(0.31, 0.32, 0.33, cloak, 0, 0.19, -0.01));
       H.add(rbox(0.33, 0.09, 0.16, cloak, 0, 0.34, 0.11, -0.25));
       for (const s of [1, -1]) H.add(box(0.06, 0.27, 0.16, cloak, s * 0.135, 0.15, 0.11));
-      H.add(box(0.2, 0.21, 0.04, basic(0x060505), 0, 0.17, 0.158));
-      for (const s of [1, -1]) H.add(box(0.035, 0.018, 0.02, basic(0xc8b48a), s * 0.048, 0.195, 0.17));
-      H.add(box(0.2, 0.06, 0.05, r.m(0x3a2224), 0, 0.085, 0.158)); // dark wrap over the mouth
-      H.add(box(0.2, 0.015, 0.052, scarf, 0, 0.11, 0.158));
+      H.add(box(0.2, 0.21, 0.04, basic(C.face), 0, 0.17, 0.158));
+      if (o.variant !== 'wraith') {
+        for (const s of [1, -1]) H.add(box(0.035, 0.018, 0.02, basic(C.eye), s * 0.048, 0.195, 0.17));
+        H.add(box(0.2, 0.06, 0.05, r.m(C.mouth), 0, 0.085, 0.158)); // dark wrap over the mouth
+        H.add(box(0.2, 0.015, 0.052, scarf, 0, 0.11, 0.158));
+      }
       const tip = pivot(H, 0, 0.3, -0.16);
       strip(r, tip, 0, 0, 0, 0.12, [0.13, 0.12], cloak, { rx: 0.9, bend: 0.3, taper: 0.6, th: 0.08, lx: [-0.5, 0.9] });
       // mantle over the shoulders, drape points in front
@@ -135,7 +143,7 @@ export const KITS = {
       for (const s of [1, -1]) T.add(box(0.09, 0.1, 0.08, leather, s * 0.16, 0.03, 0.08));
       T.add(rbox(0.06, 0.34, 0.05, grip, -0.1, 0.05, -0.14, 0, 0, 0.9));
       // the cloak: three tattered panels from the shoulders, the sides wrapping round
-      const back = -0.17 * b, hem = r.m(0x4a4650);
+      const back = -0.17 * b, hem = r.m(C.hem);
       strip(r, T, 0, 0.66, back, 0.22, [0.42, 0.36, 0.22], cloak, { trim: hem, lx: [-0.1, 1.35], lx2: [-0.35, 0.8], taper: 0.92 });
       for (const s of [1, -1]) {
         strip(r, T, s * 0.19, 0.66, back + 0.02, 0.2, [0.4, 0.3, 0.17], cloak, { trim: hem, ry: s * 0.5, lx: [-0.1, 1.3], lx2: [-0.35, 0.8], taper: 0.85, lz: s > 0 ? [-0.2, 0.7] : [-0.7, 0.2] });
@@ -171,6 +179,7 @@ export const KITS = {
       r.wpnL = dagger(r.j.handL);
       r.tipL = new THREE.Object3D(); r.tipL.position.set(0, 0.05, 0.5); r.wpnL.add(r.tipL);
       r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; r.wpnL.add(r.baseL);
+      if (o.variant === 'wraith') wraith(r, o, C, { cloak, hem });
 
       // a lower, coiled stance (visual only)
       r.poseMod = (p) => ({ ...p, by: (p.by ?? 0) - 0.05, torso: add(p.torso, [0.08, 0, 0]), head: add(p.head, [-0.07, 0, 0]) });
@@ -193,11 +202,13 @@ export const KITS = {
     build(r, o) {
       const { bulk: b, sw } = r.dims;
       const { armor, cloth, accent, dark } = r.mats;
-      const coat = r.m(0x22305c), trim = r.m(0xb89a4a), leather = r.m(0x3a2a20), grip = r.m(0x2a1c14), steel = r.m(0xc4cad3);
+      const C = { coat: 0x22305c, trim: 0xb89a4a, leather: 0x3a2a20, grip: 0x2a1c14, steel: 0xc4cad3, runeLo: 0x1c2d5c, runeHi: 0x9fe4ff,
+        glyph: 0xa8e8ff, blade: 0x7ab4ff, core: 0xe8f6ff, hair: 0xc8ccd8, hairDk: 0x8a90a4, ...(o.pal || {}) };
+      const coat = r.m(C.coat), trim = r.m(C.trim), leather = r.m(C.leather), grip = r.m(C.grip), steel = r.m(C.steel);
       // runes glow brighter with mana (setGlow); glyphs and the blade always glow
-      const rune = basic(0x8fd8ff);
-      r.glowMats.push({ mat: rune, lo: new THREE.Color(0x1c2d5c), hi: new THREE.Color(0x9fe4ff) });
-      const glyph = basic(0xa8e8ff), blade = basic(0x7ab4ff), core = basic(0xe8f6ff);
+      const rune = basic(C.runeHi);
+      r.glowMats.push({ mat: rune, lo: new THREE.Color(C.runeLo), hi: new THREE.Color(C.runeHi) });
+      const glyph = basic(C.glyph), blade = basic(C.blade), core = basic(C.core);
       const T = r.j.torso, H = r.j.head, hips = r.j.hips;
       // high collar and lapels
       T.add(box(0.38 * b, 0.17, 0.06, coat, 0, 0.75, -0.13 * b));
@@ -218,7 +229,7 @@ export const KITS = {
         strip(r, T, s * 0.1, 0.3, 0.14 * b, 0.15, [0.28, 0.16], coat, { trim, lx: [-1.0, 0.06] });
       }
       // head: silver hair with bangs, glowing eyes, a rune mark under one eye, a ponytail that swings
-      const { skin } = r.mats, hair = r.m(0xc8ccd8), hairDk = r.m(0x8a90a4);
+      const { skin } = r.mats, hair = r.m(C.hair), hairDk = r.m(C.hairDk);
       H.add(box(0.1, 0.08, 0.1, skin, 0, 0.03, 0));
       H.add(box(0.24, 0.26, 0.25, skin, 0, 0.17, 0));
       H.add(box(0.27, 0.1, 0.28, hair, 0, 0.32, -0.01));
@@ -255,6 +266,7 @@ export const KITS = {
         orbit.add(rbox(0.04, 0.04, 0.012, glyph, Math.cos(a) * 0.17, 0.04 * Math.sin(a * 2), Math.sin(a) * 0.17, 0, a, 0.78));
       }
       r.spinners.push({ obj: orbit, axis: 'y', speed: 3.2 });
+      if (o.variant === 'starborn') starborn(r, o, C, { coat, trim });
       r.setGlow(1);
     },
   },
@@ -396,6 +408,76 @@ export const KITS = {
     },
   },
 };
+
+// ---------------- 500-kill skins: their own pieces on top of the class kit ----------------
+
+// Knight, Radiant Paladin: winged helm, a halo, a long flowing cape, a kite shield with a sun, a glowing blade
+function paladin(r, o, C, M) {
+  const { bulk: b } = r.dims;
+  const T = r.j.torso, H = r.j.head, glow = basic(0xffe9a0), white = r.m(0xf4eee0);
+  // wings on the helm: three feathers a side, swept up and back
+  for (const s of [1, -1]) {
+    const w = pivot(H, s * 0.15, 0.27, -0.02, 0, s * 0.35, -s * 0.5);
+    [0.22, 0.17, 0.12].forEach((L, i) => w.add(rbox(0.03, L, 0.06, i ? white : M.gold, s * 0.02 * i, L / 2 + 0.02, -0.05 * i, -0.25 - i * 0.2, 0, 0)));
+    r.spring(w, { k: 300, d: 9, drag: 0.02, wind: 0.3, flutter: 0.02, rattle: 0.5, lx: [-0.2, 0.2], lz: [-0.2, 0.2] });
+  }
+  // a halo behind the head, slowly turning
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 4, 18), glow);
+  const hp = pivot(H, 0, 0.36, -0.2, 0.3, 0, 0); hp.add(halo);
+  r.spinners.push({ obj: hp, axis: 'z', speed: 0.6 });
+  // long cape in three panels, gold hem
+  for (const x of [-0.16, 0, 0.16]) strip(r, T, x * b, 0.66, -0.16 * b, 0.18 * b, [0.42, 0.4, 0.26], r.m(0xf0e6cc), { trim: M.gold, lx: [-0.1, 1.2], lx2: [-0.3, 0.7], taper: 0.92 });
+  // kite shield instead of the round one
+  T.remove(r.shield);
+  const sh = new THREE.Group();
+  sh.add(box(0.5, 0.62, 0.06, M.field, 0, 0.08, 0));
+  for (const [w, y] of [[0.4, -0.3], [0.28, -0.42], [0.16, -0.52]]) sh.add(box(w, 0.14, 0.06, M.field, 0, y, 0));
+  sh.add(box(0.54, 0.04, 0.08, M.gold, 0, 0.4, 0));
+  sh.add(box(0.06, 0.9, 0.08, M.gold, 0, -0.06, 0)); sh.add(box(0.42, 0.06, 0.08, M.gold, 0, 0.12, 0));
+  const sun = cyl(0.11, 0.11, 0.05, glow, 10); sun.rotation.x = Math.PI / 2; sun.position.set(0, 0.12, 0.05); sh.add(sun);
+  T.add(sh); r.shield = sh;
+}
+
+// Rogue, Wraith: a bone mask with burning red eyes, ghostly wisps streaming off the cloak, spectral blades
+function wraith(r, o, C, M) {
+  const T = r.j.torso, H = r.j.head, bone = r.m(0xd8d0bc), crack = r.m(0x6a6050), ember = basic(0xff2a1a);
+  H.add(box(0.19, 0.2, 0.03, bone, 0, 0.17, 0.168));
+  H.add(box(0.15, 0.04, 0.032, bone, 0, 0.05, 0.166));
+  for (const s of [1, -1]) {
+    H.add(box(0.05, 0.035, 0.02, basic(0x0a0404), s * 0.048, 0.195, 0.182));
+    H.add(box(0.03, 0.02, 0.02, ember, s * 0.048, 0.195, 0.19));
+  }
+  H.add(rbox(0.01, 0.09, 0.034, crack, 0.03, 0.24, 0.17, 0, 0, 0.4));
+  const ghost = new THREE.MeshBasicMaterial({ color: 0x9aa0c0, transparent: true, opacity: 0.45, depthWrite: false });
+  // wisps off the shoulders and hood, long and light: they trail like smoke
+  for (const [x, y, z] of [[0.2, 0.62, -0.12], [-0.2, 0.62, -0.12], [0.08, 0.7, -0.18], [-0.08, 0.7, -0.18]]) {
+    strip(r, T, x, y, z, 0.05, [0.22, 0.2, 0.18, 0.14], ghost, { spring: { ...RIBBON, k: 18, drag: 0.3, flutter: 0.25 }, lx: [-0.2, 1.7], taper: 0.75, th: 0.02 });
+  }
+  strip(r, H, 0, 0.32, -0.12, 0.07, [0.2, 0.18, 0.14], ghost, { spring: { ...RIBBON, k: 18, drag: 0.3, flutter: 0.25 }, rx: 0.8, lx: [-0.3, 1.5], taper: 0.7, th: 0.02 });
+}
+
+// Spellsword, Starborn: crystal shoulders, a star-flecked cape, a crown of orbiting crystals
+function starborn(r, o, C, M) {
+  const { bulk: b, sw } = r.dims;
+  const T = r.j.torso, H = r.j.head, crystal = basic(0xc8a8ff), star = basic(0xffffff), night = r.m(0x141030);
+  for (const s of [1, -1]) {
+    for (const [x, y, rz, h] of [[0.02, 0.06, -0.3, 0.26], [0.07, 0.03, -0.75, 0.2], [-0.03, 0.04, 0.15, 0.16]]) {
+      const c = cone(0.045, h, crystal, 4); c.position.set(s * (sw + x), 0.7 + y, 0); c.rotation.z = s * rz; T.add(c);
+    }
+  }
+  // star-flecked cape
+  const panels = [-0.13, 0.13].map((x) => strip(r, T, x * b, 0.66, -0.16 * b, 0.2 * b, [0.4, 0.38, 0.24], night, { trim: M.trim, lx: [-0.1, 1.25], lx2: [-0.3, 0.7], taper: 0.9 }));
+  for (const segs of panels) segs.forEach((pv, i) => {
+    for (let k = 0; k < 3; k++) pv.add(box(0.02, 0.02, 0.03, star, (Math.random() - 0.5) * 0.14, -0.06 - Math.random() * (0.3 - i * 0.05), 0));
+  });
+  // a crown of five crystals turning over her head
+  const crown = pivot(H, 0, 0.42, 0);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2, c = cone(0.035, 0.12, crystal, 4);
+    c.position.set(Math.cos(a) * 0.17, 0.02 * Math.sin(a * 3), Math.sin(a) * 0.17); crown.add(c);
+  }
+  r.spinners.push({ obj: crown, axis: 'y', speed: 1.4 });
+}
 
 const add = (a, b) => [(a?.[0] ?? 0) + b[0], (a?.[1] ?? 0) + b[1], (a?.[2] ?? 0) + b[2]];
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);

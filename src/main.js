@@ -19,6 +19,8 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
+import { skinList, unlocked } from './skins.js';
+import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
@@ -32,7 +34,7 @@ const MANA_PER_HIT = 10;
 // player spells: little blue bolts, and exploding fireballs (bigger once evolved)
 const SPELLS = {
   bolt: { dmg: 8, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 0, noKnock: true },
-  fire: { dmg: 120, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 60, aoe: 3 },
+  fire: { dmg: 120, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 69, aoe: 3 },
 };
 
 
@@ -233,6 +235,9 @@ class Game {
     $('lobby-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('lobby-joinbtn').click(); });
     $('lobby-start').addEventListener('click', () => this.mp.startRun());
     $('lobby-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
+    this.skinMenu = new SkinMenu(this);
+    $('btn-skins').addEventListener('click', () => { this.audio.unlock(); this.skinMenu.open(); });
+    $('lobby-skins').addEventListener('click', () => this.skinMenu.open(this.lobbyKind));
     $('lobby-settings').addEventListener('click', () => this.openSettings());
     $('lobby-copy').addEventListener('click', () => {
       navigator.clipboard?.writeText(this.mp.code || '').then(() => { $('lobby-copy').textContent = 'Copied'; setTimeout(() => { $('lobby-copy').textContent = 'Copy'; }, 1500); }, () => {});
@@ -526,9 +531,31 @@ class Game {
   // kills fill the room's pot; it pays out when the room is cleared
   onEnemyKilled(e) {
     if (this.isGuest) return;
+    this.creditKill(e);
     const n = enemyGold(e.type);
     this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
     this.statusPopup(e, `+${n}`, '#a89060');
+  }
+
+  // the killing blow counts toward that player's skins (the host tells teammates about theirs)
+  creditKill(e) {
+    const k = e.lastHitBy;
+    if (k === this.player) this.addKill();
+    else if (k?.pid && this.mp.active) this.mp.send({ t: 'kill' }, k.pid);
+  }
+
+  addKill() {
+    const d = this.accounts.data, kind = this.kind;
+    if (!d || !this.accounts.user) return;
+    d.kills = d.kills || {};
+    const n = (d.kills[kind] = (d.kills[kind] || 0) + 1);
+    const s = skinList(kind).find((x) => x.kills === n);
+    if (s && n > 0) { this.ui.toast(`NEW SKIN UNLOCKED · ${s.name.toUpperCase()}`, 3); this.accounts.save(); }
+  }
+
+  equippedSkin(kind) {
+    const d = this.accounts.data, id = d?.skins?.[kind] || 'default';
+    return this.accounts.user && unlocked(kind, id, d?.kills?.[kind]) ? id : 'default';
   }
 
   sameRoom(e, p) { return this.world.moduleAt(p.pos.z).i === e.mod; }
@@ -811,6 +838,7 @@ class Game {
   onBossDeath(boss, net = null) {
     const enc = boss.enc;
     if (enc.defeated) return;
+    if (!this.isGuest) this.creditKill(boss);
     enc.defeated = true;
     enc.active = false;
     this.audio.stopMusic(3);
@@ -942,6 +970,7 @@ class Game {
     this.mp.event({ k: 'rip', id: tg.netId });
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
+    tg.lastHitBy = p;
     tg.hp -= dmg;
     tg.rig.flash(1, 0.3, 0.2);
     if (tg.hp <= 0) tg.hp = 0;
@@ -960,10 +989,10 @@ class Game {
     const push = e.isBoss ? 4 : e.type === 'brute' ? 7 : 12;
     const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
     if (e.puppet) {
-      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * p.dmgMul, poise: 10, kb: [dir.x * push, dir.z * push] });
+      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * p.dmgMul, poise: 12, kb: [dir.x * push, dir.z * push] });
       e.hp = Math.max(1, e.hp - 10 * p.dmgMul); e.hpShow = 4;
     } else {
-      const r = e.receive({ dmg: 10 * p.dmgMul, poise: 10, srcPos: p.pos, attacker: p, noKnock: true });
+      const r = e.receive({ dmg: 10 * p.dmgMul, poise: 12, srcPos: p.pos, attacker: p, noKnock: true });
       if (r !== 'none') e.kb.copy(dir).multiplyScalar(push);
     }
     this.audio.play('clang', 0.8); this.audio.play('bigHit', 0.6);

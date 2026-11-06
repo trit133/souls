@@ -356,6 +356,7 @@ export class Boss extends Actor {
   }
 
   receive(info) {
+    if (info.attacker) this.lastHitBy = info.attacker;
     if (!this.alive || this.state === 'dormant') return 'none';
     if (this.puppet) return this.puppetHit(info);
     if (this.state === 'attack' && this.atk.def.evade && this.atk.t < 0.4) return 'none'; // sidestepped

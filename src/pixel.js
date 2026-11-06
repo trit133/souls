@@ -25,6 +25,8 @@ const PALETTE = [
   '3d2a1c', '5e4128', '87603a', '4a2a5a',
   // ground and stone mid-tones, so large surfaces stay mostly flat colour
   '30281f', '41362a', '56473a', '6e5b48', '86715a', '9c8870', '45403b', '5a5650', '726d66', '8c877e',
+  // glows for skins and spells: bright greens and violets
+  '3a9a4a', '7aff9a', 'd0ffd8', '4a2e8a', '8a5ae0', 'c4a0ff', 'eadcff',
 ];
 
 const VERT = /* glsl */ `void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }`;

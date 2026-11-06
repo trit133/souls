@@ -6,7 +6,7 @@ const KEY = 'ashenVigil.accounts.v1';
 const SESSION = 'ashenVigil.session.v1';
 
 export function freshProfile() {
-  return { gold: 0, upgrades: {}, stats: { runs: 0, extracts: 0, wins: 0, bestArea: 0, goldEarned: 0 } };
+  return { gold: 0, upgrades: {}, kills: {}, skins: {}, stats: { runs: 0, extracts: 0, wins: 0, bestArea: 0, goldEarned: 0 } };
 }
 
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));

@@ -3,6 +3,7 @@ import { buildHumanoid } from './models.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
 import { CHARS, RIPOSTE, CRITS } from './player.js';
+import { skinModel } from './skins.js';
 import { SERVER } from './account.js';
 
 // Party play. The host's browser simulates enemies and bosses and streams snapshots;
@@ -15,7 +16,7 @@ const r2 = (v) => Math.round(v * 100) / 100;
 class RemotePlayer extends Actor {
   constructor(game, m) {
     const c = CHARS[m.kind] || CHARS.knight;
-    super(game, buildHumanoid({ ...c.model, scale: 1 }), { x: 0, z: -2.5, hp: c.hp, radius: 0.42, team: 'player', poise: 0 });
+    super(game, buildHumanoid({ ...skinModel(c.model, m.kind, m.skin), scale: 1 }), { x: 0, z: -2.5, hp: c.hp, radius: 0.42, team: 'player', poise: 0 });
     this.isRemote = true;
     this.pid = m.id; this.uid = 'R' + m.id; this.name = m.name; this.kind = m.kind; this.c = c;
     this.dmgMul = 1; this.phase = 0; this.s = { st: 'move' }; this.net = null;
@@ -120,9 +121,10 @@ export class Multiplayer {
   }
 
   raw(m) { if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(m)); }
-  async create(kind) { await this.connect(); this.raw({ t: 'create', kind }); }
-  async join(code, kind) { await this.connect(); this.raw({ t: 'join', code, kind }); }
-  setKind(kind) { this.raw({ t: 'kind', kind }); }
+  wire(kind) { return `${kind}:${this.game.equippedSkin(kind)}`; }
+  async create(kind) { await this.connect(); this.raw({ t: 'create', kind: this.wire(kind) }); }
+  async join(code, kind) { await this.connect(); this.raw({ t: 'join', code, kind: this.wire(kind) }); }
+  setKind(kind) { this.raw({ t: 'kind', kind: this.wire(kind) }); }
 
   // guests talk to the host; the host talks to everyone (or one player)
   send(d, to) { this.raw({ t: 'relay', d, to: to ?? (this.isHost ? undefined : this.host) }); }
@@ -170,7 +172,8 @@ export class Multiplayer {
   onServer(m) {
     if (m.t === 'roster') {
       const before = this.code === m.code ? this.members : null;
-      this.code = m.code; this.host = m.host; this.members = m.members;
+      this.code = m.code; this.host = m.host;
+      this.members = m.members.map((x) => { const [kind, skin] = String(x.kind).split(':'); return { ...x, kind, skin: skin || 'default' }; });
       if (!before) this.addChat({ sys: true, text: `You're in room ${m.code}` });
       else {
         for (const x of m.members) if (!before.some((y) => y.id === x.id)) this.addChat({ sys: true, text: `${x.name} joined` });
@@ -269,7 +272,7 @@ export class Multiplayer {
       case 'status': this.entity(d.id)?.status.add(d.kind, d.amount, g); break;
       case 'parried': { const e = this.entity(d.id); if (e?.alive) e.onParried(); break; }
       case 'riposted': this.entity(d.id)?.beginRiposted(null, d.at); break;
-      case 'rip': { const e = this.entity(d.id); if (e?.alive) { e.hp = Math.max(0, e.hp - d.dmg); e.hpShow = 4; } break; }
+      case 'rip': { const e = this.entity(d.id); if (e?.alive) { e.hp = Math.max(0, e.hp - d.dmg); e.hpShow = 4; e.lastHitBy = this.peers.get(from) || e.lastHitBy; } break; }
       // ----- shared events -----
       case 'proj': g.addGhost(d); break;
       case 'ring': g.rings.push({ ghost: true, x: d.x, z: d.z, maxR: d.maxR, dur: d.dur, dmg: 0, t: 0, hit: new Set() }); break;
@@ -281,6 +284,7 @@ export class Multiplayer {
       case 'resume': g.resumeParty(); break;
       case 'down': if (this.isHost) { const p = this.peers.get(from); if (p) p.alive = false; this.checkWipe(); } break;
       case 'revive': g.onRevive(d.pid); break;
+      case 'kill': g.addKill(); break;
       case 'up': { const p = this.peers.get(from); if (p) p.alive = true; break; } // back up after a boss kill, no penalty
       case 'over': g.gameOver(); break;
     }

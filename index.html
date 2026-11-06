@@ -55,6 +55,7 @@
       <span id="acct-gold"></span>
       <button class="mini-btn" id="btn-shop">Upgrades</button>
       <button class="mini-btn" id="btn-mp">Multiplayer</button>
+      <button class="mini-btn" id="btn-skins">Skins</button>
       <button class="mini-btn" id="btn-settings">Settings</button>
       <button class="mini-btn" id="btn-fs" data-fs>Fullscreen</button>
       <button class="mini-btn" id="btn-acct">Sign In</button>
@@ -165,6 +166,7 @@
     <div id="lobby-err"></div>
     <div id="lobby-actions">
       <button class="mini-btn" id="lobby-shop">Upgrades</button>
+      <button class="mini-btn" id="lobby-skins">Skins</button>
       <button class="mini-btn" id="lobby-settings">Settings</button>
       <button class="mini-btn" id="lobby-back">Back</button>
       <button class="menu-btn primary" id="lobby-start">Start Run</button>
@@ -196,6 +198,20 @@
       <button class="menu-btn" id="set-reset">Reset to defaults</button>
       <button class="menu-btn" id="set-back">Done</button>
     </div>
+  </div>
+  <div id="skins" class="screen hidden">
+    <h2>Skins</h2>
+    <div id="skin-tabs">
+      <button class="mini-btn" data-skin-kind="knight">Knight</button>
+      <button class="mini-btn" data-skin-kind="rogue">Rogue</button>
+      <button class="mini-btn" data-skin-kind="mage">Spellsword</button>
+    </div>
+    <div id="skin-body">
+      <canvas id="skin-view" width="240" height="300"></canvas>
+      <div id="skin-list"></div>
+    </div>
+    <div id="skin-note"></div>
+    <button class="menu-btn" id="skins-back">Back</button>
   </div>
   <div id="shop" class="screen hidden">
     <h2>Upgrades</h2>

@@ -393,6 +393,7 @@ export class Enemy extends Actor {
 
   // returns 'hit' etc. Called by game.resolveHit
   receive(info) {
+    if (info.attacker) this.lastHitBy = info.attacker;
     if (!this.alive) return 'none';
     if (this.puppet) return this.puppetHit(info);
     if (info.attacker?.uid) this.lastHitBy[info.attacker.uid] = this.game.time; // hitting a watcher makes it your fight
