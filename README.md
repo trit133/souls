@@ -51,7 +51,7 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
     - Knight, Spectral Shield: a white wall 20% wider than his torso that stops enemies and projectiles.
     - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
     - Spellsword, Twin Inferno: two larger fireballs.
-- **Spellsword:** R1 knife hits (11 and 14 damage, 20% slower swings, 14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 30 damage). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
+- **Spellsword:** R1 knife hits (11 and 14 damage, 20% slower swings, 14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 8 damage, no stagger or knockback). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 
 ## Multiplayer (2-3 players)
@@ -121,9 +121,15 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
   - Parry or poise-break him for a critical. He punishes healing at mid range.
 - Red glints and red ground circles mark unparryable attacks.
 - **Parry (Rogue):**
-  - Timing: press it within the 0.25s before a parryable hit lands. A faint white ring on the attacker shows exactly that window.
+  - Timing: press it within the 0.23s before a parryable hit lands. A faint white ring on the attacker shows exactly that window.
   - What can be parried: only certain light attacks (grunt slashes, spear thrust and sweep, archer bash, Varek's sweeps, Hask's chop and flurry). Projectiles, slams, overheads, leaps, charges, lunges, spins and stomps never can.
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
+- **Critical hits** (on a parried enemy, or a boss knocked to its knees by a poise break): each character has its own.
+  - Knight, Flying Knee: 110. Leaps and drives a knee into the enemy.
+  - Rogue after a parry, Parry Stab: 170. Flips the dagger to a reverse grip and plunges elbow first. Evolved: blinks behind the enemy in a red flash and stabs it in the back.
+  - Rogue on a downed enemy, Shroud Slash: 170. Vanishes in a black shroud and reappears past the enemy through a red slash.
+  - Spellsword, Rune Impale: 130. Hops up and drives the rune blade down into a burst of runes.
+  - Code: `CRITS` in `src/player.js`; `scripts/crits.mjs` checks damage, timing and positions.
 
 ## Tests
 `scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size), `scripts/stamina.mjs` (empty-stamina lockout, mana costs, grunt leap reach) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.

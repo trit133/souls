@@ -177,7 +177,7 @@ export const KITS = {
       // idle: flip the right dagger end over end every few seconds
       let idleT = 0, flip = -1;
       r.fx = (dt) => {
-        if (r.idle) idleT += dt; else { idleT = 0; flip = -1; r.wpnR.rotation.x = 0; }
+        if (r.idle) idleT += dt; else { idleT = 0; flip = -1; r.wpnR.rotation.x = r.reverse ? Math.PI : 0; }
         if (flip < 0 && idleT > 3.2) { flip = 0; idleT = 0; }
         if (flip >= 0) {
           flip += dt / 0.5;

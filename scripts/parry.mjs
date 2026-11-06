@@ -46,7 +46,8 @@ const res = await page.evaluate(() => {
     return { result: e.state === 'parried' ? 'PARRIED' : 'no', playerHpLost: Math.round(p.maxHp - p.hp), staminaLeftAfterPress: Math.round(stAfterPress), cueSeen, cueTth: cueDuring.length ? [Math.min(...cueDuring), Math.max(...cueDuring)] : null };
   };
   out.grunt_slash_0_35_early = trial('grunt', 'slash', 0.35);
-  out.grunt_slash_0_24_inWindow = trial('grunt', 'slash', 0.24);
+  out.grunt_slash_0_27_early = trial('grunt', 'slash', 0.27); // window 0.23 + 0.03 frame slack
+  out.grunt_slash_0_22_inWindow = trial('grunt', 'slash', 0.22);
   out.grunt_slash_0_12_inWindow = trial('grunt', 'slash', 0.12);
   out.grunt_slash_0_03_inWindow = trial('grunt', 'slash', 0.03);
   out.grunt_leap_0_25_unparryable = trial('grunt', 'leap', 0.25);

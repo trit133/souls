@@ -82,7 +82,7 @@ const ROGUE_ATTACKS = {
       [0.16, { torso: [0.25, 0.5, 0], armR: [-1.5, 0, 0.75], foreR: [-0.1, 0, 0], handR: [1.45, 0, 0], ...lunge(0.9) }],
       [0.3, { torso: [0.22, 0.4, 0], armR: [-1.3, 0, 0.55], foreR: [-0.3, 0, 0], handR: [1.3, 0, 0], ...lunge(0.8) }],
     ],
-    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 15, poise: 11 }],
+    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 17, poise: 11 }],
     move: [[0.03, 0.16, 0.55]],
   },
   r2: {
@@ -92,7 +92,7 @@ const ROGUE_ATTACKS = {
       [0.16, { torso: [0.25, -0.5, 0], armL: [-1.5, 0, -0.75], foreL: [-0.1, 0, 0], handL: [1.45, 0, 0], legL: [0.4, 0, 0], legR: [-0.5, 0, 0], shinL: [0.45, 0, 0], by: -0.1 }],
       [0.3, { torso: [0.22, -0.4, 0], armL: [-1.3, 0, -0.55], foreL: [-0.3, 0, 0], handL: [1.3, 0, 0], legL: [0.3, 0, 0], legR: [-0.4, 0, 0], by: -0.08 }],
     ],
-    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 15, poise: 11 }],
+    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 17, poise: 11 }],
     move: [[0.03, 0.16, 0.55]],
   },
   r3: {
@@ -102,7 +102,7 @@ const ROGUE_ATTACKS = {
       [0.18, { torso: [0.35, 0.3, 0], armR: [-1.55, 0, 0], foreR: [0, 0, 0], handR: [1.5, 0, 0], ...lunge(1.3) }],
       [0.34, { torso: [0.3, 0.25, 0], armR: [-1.4, 0, 0], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], ...lunge(1.1) }],
     ],
-    hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 18, poise: 12 }],
+    hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 20, poise: 12 }],
     move: [[0.05, 0.19, 0.9]],
   },
   r4: {
@@ -114,8 +114,8 @@ const ROGUE_ATTACKS = {
       [0.5, { hips: [0, 0.3, 0], torso: [0.2, 0, 0], armR: [-0.8, 0, -0.6], armL: [-0.8, 0, 0.6], ...lunge(0.6) }],
     ],
     hits: [
-      { t0: 0.12, t1: 0.21, range: 2.1, arc: 3.4, dmg: 13, poise: 10 },
-      { t0: 0.25, t1: 0.34, range: 2.1, arc: 3.4, dmg: 17, poise: 14 },
+      { t0: 0.12, t1: 0.21, range: 2.1, arc: 3.4, dmg: 14, poise: 10 },
+      { t0: 0.25, t1: 0.34, range: 2.1, arc: 3.4, dmg: 19, poise: 14 },
     ],
     move: [[0.08, 0.3, 0.7]],
   },
@@ -126,7 +126,7 @@ const ROGUE_ATTACKS = {
       [0.4, { torso: [0.5, 0, 0], armR: [-1.55, 0, 0.08], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-1.55, 0, -0.08], foreL: [0, 0, 0], handL: [1.5, 0, 0], legL: [-0.95, 0, 0], legR: [0.75, 0, 0], shinL: [0.3, 0, 0], shinR: [0.5, 0, 0], by: -0.25 }],
       [0.62, { torso: [0.4, 0, 0], armR: [-1.3, 0, 0], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], armL: [-1.3, 0, 0], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], legL: [-0.8, 0, 0], legR: [0.6, 0, 0], shinR: [0.5, 0, 0], by: -0.2 }],
     ],
-    hits: [{ t0: 0.32, t1: 0.44, range: 2.1, arc: 1.3, dmg: 36, poise: 45 }],
+    hits: [{ t0: 0.32, t1: 0.44, range: 2.1, arc: 1.3, dmg: 40, poise: 45 }],
     move: [[0.27, 0.42, 3.2]], stopAt: 1.2,
     onHitShake: 0.35,
   },
@@ -148,7 +148,7 @@ export const CHARS = {
   knight: {
     hp: 150, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
     roll: { dur: 0.6, dist: 4.6, iframes: [0.03, 0.4], cost: 22 },
-    attacks: KNIGHT_ATTACKS, light: 'k1', critDmg: 150, trail: 0xdfe8ff,
+    attacks: KNIGHT_ATTACKS, light: 'k1', critDmg: 110, trail: 0xdfe8ff,
     model: { cloth: 0x2c3e66, armor: 0x8d939c, accent: 0x2d4a7a, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08, kit: 'knight' },
   },
   rogue: {
@@ -166,15 +166,76 @@ CHARS.mage = {
   model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'none', weapon: 'spellknife', bulk: 0.9, kit: 'mage' },
 };
 
-export const RIPOSTE = {
-  dur: 1.15, track: 0.05, trail: [0.18, 0.5],
-  keys: [
-    [0.18, { torso: [0.2, -0.4, 0], armR: [-0.3, 0, -0.2], foreR: [-1.8, 0, 0], handR: [1.6, 0, 0], legL: [-0.4, 0, 0], legR: [0.3, 0, 0], by: -0.1 }],
-    [0.32, { torso: [0.45, 0.25, 0], armR: [-1.5, 0, 0], foreR: [0, 0, 0], handR: [1.5, 0, 0], ...lunge(1.3) }],
-    [0.7, { torso: [0.45, 0.25, 0], armR: [-1.45, 0, 0], foreR: [-0.05, 0, 0], handR: [1.5, 0, 0], ...lunge(1.3) }],
-    [0.85, { torso: [0.1, -0.3, 0], armR: [-0.6, 0, -0.5], foreR: [-0.6, 0, 0], handR: [1.0, 0, 0], legL: [0.2, 0, 0], legR: [-0.2, 0, 0] }],
-  ],
+// ---------- critical hits ----------
+// One per character and situation (see critFor). Times are in crit time (rt = t * rate); `hitAt` is when the
+// damage lands, `events` fire once at their time, `vanish` hides the body, `reverse` holds the right weapon in a
+// reverse grip, `jump` lifts the body [t0, t1, height], `at` is where to stand relative to the victim.
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+export const CRITS = {
+  // Knight: a flying knee into a downed enemy (least damage: he knocks enemies down the most)
+  knee: {
+    dur: 1.0, hitAt: 0.36, dmg: 110, at: 0.55, jump: [0.16, 0.62, 0.7], trail: [9, 9],
+    keys: [
+      [0.14, { torso: [0.4, 0, 0], head: [-0.2, 0, 0], armL: [-0.7, 0, 0.3], armR: [0.5, 0, -0.3], foreR: [-0.6, 0, 0], handR: [0.4, 0, 0], legL: [-0.6, 0, 0], legR: [0.45, 0, 0], shinL: [0.8, 0, 0], shinR: [0.9, 0, 0], by: -0.24 }],
+      [0.3, { torso: [-0.25, 0, 0], head: [0.2, 0, 0], armL: [0.9, 0, 0.5], armR: [1.0, 0, -0.5], foreR: [-0.3, 0, 0], handR: [0.3, 0, 0], legR: [-2.0, 0, 0], shinR: [2.4, 0, 0], legL: [0.45, 0, 0], shinL: [1.0, 0, 0], by: 0.04 }],
+      [0.42, { torso: [0.2, 0, 0], head: [0.1, 0, 0], armL: [1.1, 0, 0.6], armR: [1.2, 0, -0.6], foreR: [-0.3, 0, 0], handR: [0.3, 0, 0], legR: [-1.7, 0, 0], shinR: [2.3, 0, 0], legL: [0.3, 0, 0], shinL: [0.8, 0, 0], by: 0.02 }],
+      [0.68, { torso: [0.45, 0, 0], armL: [-0.3, 0, 0.4], armR: [-0.3, 0, -0.4], foreR: [-0.6, 0, 0], legL: [-0.7, 0, 0], legR: [0.35, 0, 0], shinL: [1.0, 0, 0], shinR: [1.1, 0, 0], by: -0.3 }],
+      [0.92, { torso: [0.1, 0, 0], armR: [-0.25, 0, -0.12], foreR: [-0.9, 0, 0], handR: [0.35, 0, 0], by: -0.04 }],
+    ],
+    events: [{ t: 0.36, fn: (p, tg, g, hp) => { g.pfx.play('crit', hp); g.fx.addShake(0.9); g.fx.dust(tg.pos, 8, 1.2); } }],
+  },
+  // Rogue after a parry: flip the dagger to a reverse grip, coil, plunge forward elbow first
+  stab: {
+    dur: 1.0, hitAt: 0.34, dmg: 170, at: 0.9, reverse: [0.06, 0.82], trail: [0.22, 0.42],
+    keys: [
+      [0.16, { torso: [0.1, -0.75, -0.18], head: [0, 0.5, 0], armR: [-1.6, 0, -1.1], foreR: [-1.7, 0, 0], handR: [0.2, 0, 0], armL: [-0.5, 0, 0.5], foreL: [-1.2, 0, 0], legL: [-0.45, 0, 0], legR: [0.4, 0, 0], shinL: [0.3, 0, 0], shinR: [0.6, 0, 0], by: -0.16 }],
+      [0.34, { torso: [0.55, 0.5, 0.25], head: [-0.3, -0.35, 0], armR: [-1.5, 0, 0.2], foreR: [-0.45, 0, 0], handR: [0.6, 0, 0], armL: [0.4, 0, 0.6], foreL: [-0.6, 0, 0], ...lunge(1.4), by: -0.22 }],
+      [0.62, { torso: [0.5, 0.45, 0.2], head: [-0.3, -0.3, 0], armR: [-1.45, 0, 0.15], foreR: [-0.5, 0, 0], handR: [0.6, 0, 0], armL: [0.4, 0, 0.6], foreL: [-0.6, 0, 0], ...lunge(1.3) }],
+      [0.86, { torso: [0.15, -0.2, 0], armR: [-0.6, 0, -0.5], foreR: [-0.9, 0, 0], handR: [0.8, 0, 0], legL: [0.2, 0, 0], legR: [-0.2, 0, 0] }],
+    ],
+  },
+  // evolved Rogue: blinks behind the enemy in a flash of red and stabs it in the back (played fast)
+  backstab: {
+    dur: 1.0, hitAt: 0.34, dmg: 170, at: -0.85, reverse: [0, 0.82], trail: [0.22, 0.42], blink: true,
+    keys: null, // the stab's keys
+    events: [{ t: 0.34, fn: (p, tg, g, hp) => { g.pfx.play('redCrit', hp); g.ui.redFlash(); } }],
+  },
+  // Rogue on a downed enemy: wraps himself in a black shroud, vanishes, and a red slash tears through
+  shroud: {
+    dur: 1.3, hitAt: 0.56, dmg: 170, at: 0.9, vanish: [0.24, 0.5], through: 0.5, trail: [0.5, 0.6],
+    keys: [
+      [0.22, { torso: [0.45, 0, 0], head: [0.3, 0, 0], armL: [-1.3, 0, -0.9], foreL: [-1.0, 0, 0], armR: [-1.3, 0, 0.9], foreR: [-1.0, 0, 0], handR: [1.0, 0, 0], handL: [1.0, 0, 0], legL: [-0.5, 0, 0], legR: [0.5, 0, 0], shinL: [0.9, 0, 0], shinR: [0.9, 0, 0], by: -0.32 }],
+      [0.5, { torso: [0.5, -0.35, 0], head: [-0.2, 0.3, 0], armR: [-0.2, 0, -1.5], foreR: [0, 0, 0], handR: [1.4, 0, 0], armL: [-1.5, 0, 0.7], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], ...lunge(1.4), by: -0.25 }],
+      [0.95, { torso: [0.45, -0.3, 0], head: [-0.2, 0.3, 0], armR: [-0.25, 0, -1.4], foreR: [0, 0, 0], handR: [1.4, 0, 0], armL: [-1.4, 0, 0.6], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], ...lunge(1.2) }],
+      [1.2, { torso: [0.12, 0, 0], armR: [-0.3, 0, -0.3], foreR: [-1.0, 0, 0], armL: [-0.3, 0, 0.3], foreL: [-1.0, 0, 0] }],
+    ],
+    events: [
+      { t: 0.1, fn: (p, tg, g) => g.pfx.play('shroud', p.pos.clone().setY(0.1)) },
+      { t: 0.5, fn: (p, tg, g, hp, dir) => g.pfx.play('redSlash', hp, { dir }) },
+      { t: 0.56, fn: (p, tg, g, hp) => { g.pfx.play('redCrit', hp); g.fx.addShake(0.6); } },
+    ],
+  },
+  // Spellsword on a downed enemy: hops up, turns the rune blade point-down and drives it in; runes burst
+  impale: {
+    dur: 1.2, hitAt: 0.48, dmg: 130, at: 0.75, jump: [0.12, 0.46, 0.5], reverse: [0.08, 0.9], trail: [0.38, 0.52],
+    keys: [
+      [0.14, { torso: [-0.15, 0, 0], head: [-0.2, 0, 0], armR: [-2.9, 0, -0.15], foreR: [-0.4, 0, 0], handR: [0.4, 0, 0], armL: [-2.7, 0, 0.15], foreL: [-0.4, 0, 0], legL: [-0.4, 0, 0], legR: [0.2, 0, 0], shinL: [0.9, 0, 0], shinR: [0.6, 0, 0], by: -0.05 }],
+      [0.48, { torso: [0.85, 0, 0], head: [0.3, 0, 0], armR: [-1.3, 0, -0.05], foreR: [-0.1, 0, 0], handR: [0.5, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.9, 0, 0], legR: [0.5, 0, 0], shinL: [1.2, 0, 0], shinR: [1.3, 0, 0], by: -0.42 }],
+      [0.85, { torso: [0.8, 0, 0], head: [0.25, 0, 0], armR: [-1.3, 0, -0.05], foreR: [-0.1, 0, 0], handR: [0.5, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.9, 0, 0], legR: [0.5, 0, 0], shinL: [1.2, 0, 0], shinR: [1.3, 0, 0], by: -0.4 }],
+      [1.12, { torso: [0.1, 0, 0], armR: [-0.3, 0, -0.2], foreR: [-0.9, 0, 0], handR: [0.5, 0, 0] }],
+    ],
+    events: [{ t: 0.48, fn: (p, tg, g, hp) => { g.pfx.play('circle', tg.pos.clone().setY(0.02)); g.pfx.play('boltHit', hp); g.fx.addShake(0.6); } }],
+  },
 };
+CRITS.backstab.keys = CRITS.stab.keys;
+for (const [k, c] of Object.entries(CRITS)) c.name = k;
+export const RIPOSTE = CRITS.stab; // the shape teammates' puppets fall back to
+
+// which crit a character performs on this target
+export function critFor(kind, tg, evolved) {
+  if (kind === 'rogue') return tg.state === 'parried' ? (evolved ? CRITS.backstab : CRITS.stab) : CRITS.shroud;
+  return kind === 'mage' ? CRITS.impale : CRITS.knee;
+}
 
 const PARRY = {
   dur: 0.56, cost: 14, trail: [0.03, 0.16], hand: 'L',
@@ -284,6 +345,12 @@ export class Player extends Actor {
     // visual only: idle flourishes, rune glow
     this.rig.idle = this.state === 'move' && this.speed < 0.2;
     if (this.c.caster) this.rig.setGlow(this.maxMana ? this.mana / this.maxMana : 0);
+    // a crit that ended any other way (knocked out of it) gives the body back
+    if (this.state !== 'riposte' && this.crit) {
+      this.rig.reverse = false;
+      if (this.ripHidden) { this.rig.root.visible = true; this.ripHidden = false; }
+      if (this.ripLift) { this.y = 0; this.ripLift = false; }
+    }
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
     for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
@@ -450,23 +517,40 @@ export class Player extends Actor {
         break;
       }
       case 'riposte': {
-        const tg = this.riposteTarget;
+        const tg = this.riposteTarget, C = this.crit;
         const rt = this.t * this.ripRate; // the evolved rogue's critical plays much faster
-        if (tg && rt < 0.3) {
-          // glide into position in front of the victim
-          const want = this.yawTo(tg.pos);
-          this.turnToward(want, 20, dt);
-          const d = this.distTo(tg) - tg.radius - 0.9;
+        if (tg && rt < Math.min(0.3, C.hitAt) && !C.blink && !(C.through && rt >= C.through)) {
+          // glide into position at the victim
+          this.turnToward(this.yawTo(tg.pos), 20, dt);
+          const d = this.distTo(tg) - tg.radius - C.at;
           if (Math.abs(d) > 0.05) { const f = this.fwd(); const k = Math.min(1, dt * 12); this.move(f.x * d * k, f.z * d * k); }
         }
-        pose = sample(RIPOSTE.keys, rt, this.basePose());
-        rate = 26 * this.ripRate;
-        this.trailOn = this.inWindow(RIPOSTE.trail, rt);
-        if (!this.ripHit && rt >= 0.32 && tg) {
-          this.ripHit = true;
-          this.game.riposteHit(this, tg, this.c.critDmg);
+        // Shroud Slash: reappear on the far side of the victim, facing on through
+        if (tg && C.through && !this.ripThrough && rt >= C.through) {
+          this.ripThrough = true;
+          const dx = tg.pos.x - this.pos.x, dz = tg.pos.z - this.pos.z, L = Math.hypot(dx, dz) || 1;
+          const go = L + tg.radius + 0.8;
+          this.ripDir = V3(dx / L, 0, dz / L);
+          this.move(dx / L * go, dz / L * go);
+          this.yaw = Math.atan2(dx, dz);
         }
-        if (rt >= RIPOSTE.dur) this.setState('move');
+        pose = sample(C.keys, rt, this.basePose());
+        rate = 26 * this.ripRate;
+        this.trailOn = this.inWindow(C.trail, rt);
+        this.rig.reverse = !!(C.reverse && rt >= C.reverse[0] && rt < C.reverse[1]);
+        if (C.vanish) { this.ripHidden = rt >= C.vanish[0] && rt < C.vanish[1]; this.rig.root.visible = !this.ripHidden; }
+        if (C.jump) { this.ripLift = true; this.y = rt > C.jump[0] && rt < C.jump[1] ? C.jump[2] * Math.sin(Math.PI * (rt - C.jump[0]) / (C.jump[1] - C.jump[0])) : 0; }
+        if (tg && C.events) for (const ev of C.events) {
+          if (this.ripEv.has(ev) || rt < ev.t) continue;
+          this.ripEv.add(ev);
+          const hp = V3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
+          ev.fn(this, tg, this.game, hp, this.ripDir || this.fwd().clone());
+        }
+        if (!this.ripHit && rt >= C.hitAt && tg) {
+          this.ripHit = true;
+          this.game.riposteHit(this, tg, C.dmg);
+        }
+        if (rt >= C.dur) this.endCrit();
         break;
       }
       case 'rest': {
@@ -492,6 +576,7 @@ export class Player extends Actor {
     const hand = this.atk?.def?.hand || (this.state === 'parry' ? 'L' : 'R');
     this.trail.update(dt, this.trailOn && hand !== 'L', this.rig.base, this.rig.tip);
     this.trailL?.update(dt, this.trailOn && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
+    if (this.rig.wpnR && !this.rig.fx) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
   }
 
   basePose() { return locomotion(this.c.style, this.phase, 0, false, this.game.time); }
@@ -571,20 +656,30 @@ export class Player extends Actor {
     return true;
   }
 
-  startRiposte(tg, rate = 1) {
+  startRiposte(tg, rate = 1, crit = critFor(this.kind, tg, false)) {
     this.riposteTarget = tg; this.ripHit = false; this.ripRate = rate;
-    tg.beginRiposted?.(this);
-    this.atk = { def: RIPOSTE, t: 0, hit: new Set() };
+    this.crit = crit; this.ripEv = new Set(); this.ripThrough = false; this.ripDir = null;
+    tg.beginRiposted?.(this, crit.hitAt / rate);
+    this.atk = { def: crit, t: 0, hit: new Set() };
     this.setState('riposte');
-    this.game.mp.event({ k: 'riposte', r: rate });
+    this.game.mp.event({ k: 'riposte', r: rate, c: crit.name });
   }
 
-  // Evolved rogue: a parry instantly becomes a critical, closing the gap at once
+  endCrit() {
+    this.rig.reverse = false;
+    if (this.ripHidden) { this.rig.root.visible = true; this.ripHidden = false; }
+    if (this.ripLift) { this.y = 0; this.ripLift = false; }
+    this.setState('move');
+  }
+
+  // Evolved rogue: a parry instantly becomes a backstab: a red blink to behind the enemy
   instantRiposte(tg) {
-    const a = this.yawTo(tg.pos), d = this.distTo(tg) - tg.radius - 0.9;
-    this.yaw = a;
-    if (d > 0) this.move(Math.sin(a) * d, Math.cos(a) * d);
-    this.startRiposte(tg, 2.8);
+    this.game.pfx.play('redPoof', this.pos.clone().setY(0.2));
+    const b = tg.fwd(), at = tg.radius + 0.85;
+    const tx = tg.pos.x - b.x * at, tz = tg.pos.z - b.z * at;
+    this.move(tx - this.pos.x, tz - this.pos.z);
+    this.yaw = this.yawTo(tg.pos);
+    this.startRiposte(tg, 2.8, CRITS.backstab);
   }
 
   // ---------- Spellsword ----------

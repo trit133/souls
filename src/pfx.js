@@ -15,10 +15,13 @@ import * as spellCharge from './pixelfx/fx/arcane/spell-charge.js';
 import * as magicCircle from './pixelfx/fx/arcane/magic-circle-cast.js';
 import * as fireball from './pixelfx/fx/fire/fireball.js';
 import * as explosion from './pixelfx/fx/explosions/small-explosion.js';
+import * as swordSlash from './pixelfx/fx/melee/sword-slash.js';
 
 const ICE = ['#10203a', '#1c3a6a', '#2c5ca8', '#4a8ae0', '#6ab4ff', '#9fd8ff', '#d4f0ff', '#ffffff'];
 const BLOOD = ['#2a0808', '#5a1010', '#8a1a14', '#c42a1e', '#ff5a3a', '#ffb08a', '#ffffff'];
 const STEEL = ['#3a3a44', '#6a6e7a', '#9aa0aa', '#c8ccd4', '#e8ecf2', '#f8faff', '#ffffff'];
+const RED = ['#1a0404', '#4a0808', '#8a1010', '#c41a14', '#ff3a2a', '#ff8a6a', '#ffd8c8', '#ffffff'];
+const BLACK = ['#020202', '#080708', '#100e10', '#1a171a', '#262226', '#332e33', '#403a40', '#4e474e'];
 const ASH = ['#1a1612', '#2e2822', '#4a423a', '#6e655a', '#948a7c', '#b8ae9e', '#d8d0c0', '#f0ead8'];
 
 // name -> effect, options, size on screen (game px per effect px), how long a loop lasts before it fades
@@ -28,6 +31,10 @@ export const PRESETS = {
   hurt: { mod: hitSpark, scale: 0.55, aim: true, opts: { palette: BLOOD } },
   block: { mod: hitSpark, scale: 0.5, aim: true, opts: { palette: STEEL } },
   crit: { mod: critHit, scale: 0.55 },
+  redCrit: { mod: critHit, scale: 0.6, opts: { palette: RED } },
+  redSlash: { mod: swordSlash, scale: 0.75, aim: true, opts: { palette: RED } },
+  shroud: { mod: poof, scale: 0.75, opts: { palette: BLACK } },
+  redPoof: { mod: poof, scale: 0.55, opts: { palette: RED } },
   parry: { mod: parry, scale: 0.5 },
   heal: { mod: heal, scale: 0.8 },
   poof: { mod: poof, scale: 0.5, opts: { palette: ASH } },

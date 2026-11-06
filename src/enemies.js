@@ -353,10 +353,11 @@ export class Enemy extends Actor {
         break;
       }
       case 'riposted': {
-        pose = this.t < 0.55 ? { ...locomotion(T.style, 0, 0, false, 0), ...P.stagger } : (this.hp > 0 ? P.knockdown : P.dead);
-        rate = this.t < 0.55 ? 14 : 9;
-        if (this.t > 0.55 && this.hp <= 0 && this.alive) this.die(true);
-        if (this.t > 2.0 && this.alive) this.setState('chase');
+        const ra = this.ripAt ?? 0.55;
+        pose = this.t < ra ? { ...locomotion(T.style, 0, 0, false, 0), ...P.stagger } : (this.hp > 0 ? P.knockdown : P.dead);
+        rate = this.t < ra ? 14 : 9;
+        if (this.t > ra && this.hp <= 0 && this.alive) this.die(true);
+        if (this.t > ra + 1.45 && this.alive) this.setState('chase');
         break;
       }
       case 'dead': {
@@ -424,11 +425,11 @@ export class Enemy extends Actor {
       this.setState('hurt');
       this.hurtDur = this.type === 'brute' ? 1.1 : 0.45;
       const away = new THREE.Vector3(this.pos.x - info.srcPos.x, 0, this.pos.z - info.srcPos.z).normalize();
-      this.kb.copy(away).multiplyScalar(this.type === 'brute' ? 3 : 5);
+      if (!info.noKnock) this.kb.copy(away).multiplyScalar(this.type === 'brute' ? 3 : 5);
       return 'stagger';
     }
     if (this.state === 'chase' || this.state === 'recover') this.counter(0.15);
-    if (!armored && this.state !== 'attack') {
+    if (!armored && this.state !== 'attack' && !info.noKnock) {
       // small flinch without full stagger
       const away = new THREE.Vector3(this.pos.x - info.srcPos.x, 0, this.pos.z - info.srcPos.z).normalize();
       this.kb.copy(away).multiplyScalar(2);
@@ -451,9 +452,10 @@ export class Enemy extends Actor {
     this.setState('parried');
   }
 
-  beginRiposted() {
-    if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId });
-    this.setState('riposted'); this.atk = null;
+  // hitAt: seconds until the crit lands (each character's crit has its own timing)
+  beginRiposted(p, hitAt = 0.32) {
+    if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId, at: hitAt });
+    this.setState('riposted'); this.atk = null; this.ripAt = Math.max(0.55, hitAt + 0.2);
   }
 
   die(silent) {

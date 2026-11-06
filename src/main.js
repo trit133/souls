@@ -26,12 +26,12 @@ import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
 
 const $ = (id) => document.getElementById(id);
-const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
+const PARRY_EARLY = 0.23, PARRY_LATE = 0; // seconds before impact
 const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const MANA_PER_HIT = 10;
 // player spells: little blue bolts, and exploding fireballs (bigger once evolved)
 const SPELLS = {
-  bolt: { dmg: 30, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 12 },
+  bolt: { dmg: 8, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 0, noKnock: true },
   fire: { dmg: 120, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 60, aoe: 3 },
 };
 
@@ -1068,14 +1068,14 @@ class Game {
     // the sphere only carries the shot; what you see is the pixelfx bolt or fireball riding on it
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
     mesh.position.copy(pos); mesh.visible = false; this.scene.add(mesh);
-    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, aoe: S.aoe ? S.aoe * big : 0 };
+    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, noKnock: !!S.noKnock, aoe: S.aoe ? S.aoe * big : 0 };
     q.pfx = this.pfx.play(kind === 'fire' ? (big > 1 ? 'bigFireball' : 'fireball') : 'bolt', pos, { follow: q });
     this.addProj(q);
     this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
   spellDamage(q, e, mul = 1) {
-    const r = e.receive({ dmg: q.dmg * mul * this.player.dmgMul, poise: q.poise, srcPos: q.pos, attacker: this.player });
+    const r = e.receive({ dmg: q.dmg * mul * this.player.dmgMul, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
     if (r === 'none') return;
     this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);

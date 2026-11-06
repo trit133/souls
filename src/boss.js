@@ -320,10 +320,11 @@ export class Boss extends Actor {
         break;
       }
       case 'riposted': {
-        pose = this.t < 0.5 ? { ...loco(0), ...P.stagger } : (this.t < 2.0 ? P.knockdown : { ...loco(0) });
-        rate = this.t < 0.5 ? 12 : 6;
-        if (this.t > 0.5 && this.hp <= 0 && this.alive) { this.die(); break; }
-        if (this.t > 2.8) { this.setState('neutral'); this.gap = 0.2; }
+        const ra = this.ripAt ?? 0.5, late = ra - 0.5;
+        pose = this.t < ra ? { ...loco(0), ...P.stagger } : (this.t < 2.0 + late ? P.knockdown : { ...loco(0) });
+        rate = this.t < ra ? 12 : 6;
+        if (this.t > ra && this.hp <= 0 && this.alive) { this.die(); break; }
+        if (this.t > 2.8 + late) { this.setState('neutral'); this.gap = 0.2; }
         break;
       }
       case 'dead': {
@@ -388,9 +389,9 @@ export class Boss extends Actor {
     this.setState('parried');
   }
 
-  beginRiposted() {
-    if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId });
-    this.setState('riposted'); this.atk = null;
+  beginRiposted(p, hitAt = 0.32) {
+    if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId, at: hitAt });
+    this.setState('riposted'); this.atk = null; this.ripAt = Math.max(0.5, hitAt + 0.2);
   }
 
   die() {

@@ -2,7 +2,7 @@ import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
-import { CHARS, RIPOSTE } from './player.js';
+import { CHARS, RIPOSTE, CRITS } from './player.js';
 import { SERVER } from './account.js';
 
 // Party play. The host's browser simulates enemies and bosses and streams snapshots;
@@ -192,7 +192,7 @@ export class Multiplayer {
 
   onEvent(from, d) {
     const g = this.game, p = this.peers.get(from);
-    if (d.k === 'swing') { const def = p?.c.attacks[d.a]; if (def) p.startPlay(def, d.r); } else if (d.k === 'riposte') p?.startPlay(RIPOSTE, d.r);
+    if (d.k === 'swing') { const def = p?.c.attacks[d.a]; if (def) p.startPlay(def, d.r); } else if (d.k === 'riposte') p?.startPlay(CRITS[d.c] || RIPOSTE, d.r);
     else if (d.k === 'sfx') g.audio.remote(d.s, d.v ?? 1);
     else if (d.k === 'hit' || d.k === 'rip') {
       // a teammate striking an enemy
@@ -268,7 +268,7 @@ export class Multiplayer {
       case 'hit': { const e = this.entity(d.id), p = this.peers.get(from); if (e?.alive && p) e.receive({ dmg: d.dmg, poise: d.poise, srcPos: p.pos, attacker: p }); break; }
       case 'status': this.entity(d.id)?.status.add(d.kind, d.amount, g); break;
       case 'parried': { const e = this.entity(d.id); if (e?.alive) e.onParried(); break; }
-      case 'riposted': this.entity(d.id)?.beginRiposted(); break;
+      case 'riposted': this.entity(d.id)?.beginRiposted(null, d.at); break;
       case 'rip': { const e = this.entity(d.id); if (e?.alive) { e.hp = Math.max(0, e.hp - d.dmg); e.hpShow = 4; } break; }
       // ----- shared events -----
       case 'proj': g.addGhost(d); break;
