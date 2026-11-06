@@ -91,7 +91,7 @@ export const BOSS_MOVES = {
     hits: [{ t0: 1.45, t1: 1.55, shape: 'circle', offset: 0, radius: 5.2, dmg: 38, poise: 80, knock: 'heavy' }],
     onTime: [
       { t: 0.7, fn: (b, g) => { g.audio.play('slam', 0.6); b.tele = g.fx.telegraph(b.pos.x, b.pos.z, 5.2, 0.8, 0xff6a1a); } },
-      { t: 1.47, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 6, 1.0); g.audio.play('fire'); g.pfx.play('blast', b.pos.clone().setY(0)); g.fx.burst({ x: b.pos.x, y: 0.5, z: b.pos.z }, 80, [1, 0.5, 0.1], 9, 1.0, 0.5); g.fx.scorch(b.pos.x, b.pos.z, 5); } },
+      { t: 1.47, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 6, 1.0); g.audio.play('fire'); g.vfx('emberBlast', b.pos.clone().setY(0)); g.fx.scorch(b.pos.x, b.pos.z, 5); } },
     ],
   },
   roar: {
@@ -170,7 +170,7 @@ export class Boss extends Actor {
   ignite() {
     this.ignited = true;
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0.9, 0.35, 0.05);
-    this.rig.setGlow(1); // ember cracks in Varek's armor
+    this.game.vfx('ignite', { e: this.netId }); // ember cracks in Varek's armor, on every screen
     this.trail.setColor(0xff7a20);
     if (this.cfg.phase2) this.game.audio.startMusic(2);
   }

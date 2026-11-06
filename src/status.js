@@ -56,21 +56,14 @@ export class StatusState {
     if (kind === 'bleed' || kind === 'frost') {
       const dmg = a.maxHp * pct + f.flat;
       game.statusDamage(a, dmg);
-      if (kind === 'bleed') {
-        game.fx.blood(chest, null, 40);
-        game.fx.burst(chest, 30, STATUS.bleed.rgb, 6, 0.7, 0.3);
-        game.audio.play('riposte');
-      } else {
-        this.frostT = f.slowDur;
-        game.fx.burst(chest, 36, STATUS.frost.rgb, 5, 0.9, 0.3);
-        game.audio.play('clang', 0.7);
-      }
+      if (kind === 'bleed') game.audio.play('riposte');
+      else { this.frostT = f.slowDur; game.audio.play('clang', 0.7); }
     } else {
       this.dots[kind] = { t: f.dur, dps: (a.maxHp * pct + f.flat) / f.dur };
-      game.fx.burst(chest, 22, STATUS[kind].rgb, 3.5, 0.8, 0.28);
       game.audio.play(kind === 'fire' ? 'fire' : 'hurt', 0.6);
     }
-    game.statusPopup(a, STATUS[kind].name.toUpperCase(), STATUS[kind].color);
+    // the burst and its popup show on every screen
+    game.vfx('statusProc', { e: a.netId }, kind);
   }
 
   update(dt, game) {

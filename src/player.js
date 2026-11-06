@@ -68,12 +68,9 @@ const KNIGHT_ATTACKS = {
     move: [[0.05, 0.42, 2.2]],
     jump: [0.04, 0.43, 1.6],
     onTime: [{ t: 0.43, fn: (p, g) => {
-      // ground pound: cracks and a dust wave, a ring along the floor
-      const at = p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0);
-      g.pfx.play('groundSlam', at);
-      g.fx.shockwave(at.x, at.z, 3.2, 0xd8c8a0, 0.45);
-      g.fx.dust(at, 18, 2.2);
-      g.fx.addShake(0.9); g.hitstop(0.06); g.audio.play('slam', 0.9);
+      // ground pound: cracks and a dust wave, a ring along the floor (on every screen)
+      g.vfx('groundPound', p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0));
+      g.hitstop(0.06);
     } }],
     onHitShake: 0.5, heavyHit: true,
   },
@@ -90,7 +87,7 @@ const KNIGHT_ATTACKS = {
       { t0: 0.12, t1: 0.2, range: 2.6, arc: 2.8, dmg: 21, poise: 14 },
       { t0: 0.26, t1: 0.34, range: 2.6, arc: 2.8, dmg: 21, poise: 14 },
     ],
-    onTime: [{ t: 0.24, fn: (p, g) => g.audio.play('heavySwing', 0.9) }],
+    onTime: [{ t: 0.24, sfx: 'heavySwing', fn: (p, g) => g.audio.play('heavySwing', 0.9) }],
     move: [[0.1, 0.3, 1.2]],
     onHitShake: 0.5, heavyHit: true,
   },
@@ -207,11 +204,8 @@ export const CRITS = {
     events: [{ t: 0.4, fn: (p, tg, g, hp, dir) => {
       // the knee connects with the head: blood sprays up off it, a hit star and sparks
       const head = new THREE.Vector3(tg.pos.x, 1.75 * tg.rig.root.scale.y + (tg.y || 0), tg.pos.z);
-      const up = new THREE.Vector3(dir.x * 0.6, 1.4, dir.z * 0.6).normalize();
-      g.fx.blood(head, up, 46); g.fx.blood(head, dir.clone(), 20);
-      g.fx.sparks(head, up, 14, [1, 0.85, 0.6]);
-      g.pfx.play('bigCrit', head); g.pfx.play('hurt', head, { dir });
-      g.fx.addShake(1.1); g.hitstop(0.09); g.audio.play('bigHit', 1);
+      g.vfx('kneeImpact', head, dir.clone());
+      g.hitstop(0.09);
     } }],
   },
   // Rogue after a parry: flip the dagger to a reverse grip, coil, plunge forward elbow first
@@ -228,7 +222,7 @@ export const CRITS = {
   backstab: {
     dur: 1.0, hitAt: 0.34, dmg: 170, at: -0.85, reverse: [0, 0.82], trail: [0.22, 0.42], blink: true,
     keys: null, // the stab's keys
-    events: [{ t: 0.34, fn: (p, tg, g, hp) => { g.pfx.play('redCrit', hp); g.ui.redFlash(); } }],
+    events: [{ t: 0.34, fn: (p, tg, g, hp) => { g.vfx('redCrit', hp); g.ui.redFlash(); } }],
   },
   // Rogue on a downed enemy: wraps himself in a black shroud, vanishes, and a red slash tears through
   shroud: {
@@ -240,9 +234,9 @@ export const CRITS = {
       [1.2, { torso: [0.12, 0, 0], armR: [-0.3, 0, -0.3], foreR: [-1.0, 0, 0], armL: [-0.3, 0, 0.3], foreL: [-1.0, 0, 0] }],
     ],
     events: [
-      { t: 0.1, fn: (p, tg, g) => g.pfx.play('shroud', p.pos.clone().setY(0.1)) },
-      { t: 0.5, fn: (p, tg, g, hp, dir) => g.pfx.play('redSlash', hp, { dir }) },
-      { t: 0.56, fn: (p, tg, g, hp) => { g.pfx.play('redCrit', hp); g.fx.addShake(0.6); } },
+      { t: 0.1, fn: (p, tg, g) => g.vfx('shroud', p.pos.clone().setY(0.1)) },
+      { t: 0.5, fn: (p, tg, g, hp, dir) => g.vfx('redSlash', hp, dir.clone()) },
+      { t: 0.56, fn: (p, tg, g, hp) => g.vfx('redCrit', hp) },
     ],
   },
   // Spellsword on a downed enemy: hops up, turns the rune blade point-down and drives it in; runes burst
@@ -254,7 +248,7 @@ export const CRITS = {
       [0.85, { torso: [0.8, 0, 0], head: [0.25, 0, 0], armR: [-1.3, 0, -0.05], foreR: [-0.1, 0, 0], handR: [0.5, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.9, 0, 0], legR: [0.5, 0, 0], shinL: [1.2, 0, 0], shinR: [1.3, 0, 0], by: -0.4 }],
       [1.12, { torso: [0.1, 0, 0], armR: [-0.3, 0, -0.2], foreR: [-0.9, 0, 0], handR: [0.5, 0, 0] }],
     ],
-    events: [{ t: 0.48, fn: (p, tg, g, hp) => { g.pfx.play('circle', tg.pos.clone().setY(0.02)); g.pfx.play('boltHit', hp); g.fx.addShake(0.6); } }],
+    events: [{ t: 0.48, fn: (p, tg, g, hp) => g.vfx('impale', tg.pos.clone().setY(0.02), hp) }],
   },
 };
 CRITS.backstab.keys = CRITS.stab.keys;
@@ -544,7 +538,6 @@ export class Player extends Actor {
       case 'cast': {
         const c = this.castDef;
         const fired = this.t >= c.fireAt;
-        this.rig.j.handR.getWorldPosition(this.castHand.pos);
         if (!c.done && fired) { c.done = true; c.fire(); if (c.charge) { this.game.pfx.kill(c.charge); c.charge = null; } }
         pose = {
           ...this.basePose(), torso: [0.1, -0.35, 0], by: -0.06,
@@ -680,7 +673,7 @@ export class Player extends Actor {
       this.buf = null;
       if (this.flasks <= 0) { this.game.ui.toastSmall?.('No flasks left'); return false; }
       this.flasks--; this.healDone = false; this.setState('heal');
-      this.game.pfx.play('heal', this.pos, { follow: { pos: this.pos } });
+      this.game.vfx('heal', this.game.myRef());
       return true;
     }
     if (a === 'special' && this.c.caster) { this.buf = null; return this.castFire(dir, mag); }
@@ -744,8 +737,7 @@ export class Player extends Actor {
     this.blocking = false;
     this.setState('charge');
     this.game.audio.play('roll', 1); this.game.audio.play('clang', 0.4);
-    this.game.mp.event({ k: 'sfx', s: 'clang', v: 0.4 });
-    this.game.fx.dust(this.pos, 6, 0.9);
+    this.game.vfx('chargeStart', this.pos.clone());
   }
 
   endCrit() {
@@ -757,7 +749,7 @@ export class Player extends Actor {
 
   // Evolved rogue: a parry instantly becomes a backstab: a red blink to behind the enemy
   instantRiposte(tg) {
-    this.game.pfx.play('redPoof', this.pos.clone().setY(0.2));
+    this.game.vfx('redPoof', this.pos.clone().setY(0.2));
     const b = tg.fwd(), at = tg.radius + 0.85;
     const tx = tg.pos.x - b.x * at, tz = tg.pos.z - b.z * at;
     this.move(tx - this.pos.x, tz - this.pos.z);
@@ -780,10 +772,7 @@ export class Player extends Actor {
     this.castDef = { dur: dur / this.aspdMul, fireAt: fireAt / this.aspdMul, fire, done: false };
     // visual: energy gathers in the casting hand until the spell leaves it
     const big = cost >= MANA_FIRE;
-    this.castHand = this.castHand || { pos: new THREE.Vector3() };
-    this.rig.j.handR.getWorldPosition(this.castHand.pos);
-    this.castDef.charge = this.game.pfx.play(big ? 'charge' : 'chargeIce', this.castHand.pos, { follow: this.castHand });
-    if (big) this.game.pfx.play('circle', this.pos.clone().setY(0.02));
+    this.game.vfx('cast', this.game.myRef(), big, this.castDef.fireAt + 0.05);
     this.vel.set(0, 0, 0);
     this.setState('cast');
     return true;

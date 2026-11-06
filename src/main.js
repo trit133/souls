@@ -5,6 +5,7 @@ import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { FX } from './fx.js';
 import { PFX } from './pfx.js';
+import { VFX, pack, unpack } from './vfx.js';
 import { World } from './world.js';
 import { pickLayout } from './modules.js';
 import { Player } from './player.js';
@@ -1005,12 +1006,22 @@ class Game {
       const r = e.receive({ dmg: 10 * p.dmgMul, poise: 12, srcPos: p.pos, attacker: p, noKnock: true });
       if (r !== 'none') e.kb.copy(dir).multiplyScalar(push);
     }
-    this.audio.play('clang', 0.8); this.audio.play('bigHit', 0.6);
-    this.pfx.play('block', hp, { dir });
-    this.fx.addShake(0.4); this.hitstop(0.05);
+    this.vfx('bash', hp, dir.clone());
+    this.hitstop(0.05);
   }
 
   hitstop(t) { this.freeze = Math.max(this.freeze, t); }
+
+  // a named effect, here and on every teammate's screen (see vfx.js)
+  vfx(name, ...args) {
+    VFX[name]?.(this, ...args, true);
+    if (this.mp.active) this.mp.event({ k: 'fx', n: name, a: args.map(pack) });
+  }
+  playVfx(name, args) { if (VFX[name]) VFX[name](this, ...args.map(unpack), false); }
+  // { p: pid } -> a player on this screen; { e: netId } -> an enemy
+  playerRef(r) { return !r ? null : r.p === this.mp.id || r.p === 'me' ? this.player : this.mp.peers.get(r.p); }
+  entityRef(r) { return !r ? null : r.e != null ? this.mp.entity(r.e) || (this.enemiesAll().find((x) => x.netId === r.e)) : null; }
+  myRef() { return { p: this.mp.active ? this.mp.id : 'me' }; }
 
   // Parry window: from PARRY_EARLY seconds before a parryable hit lands until it lands.
   // Attackers whose next parryable hit is inside that window and would reach the player.
@@ -1173,8 +1184,8 @@ class Game {
     }
     if (!dead) return false;
     if (q.pfx) this.pfx.kill(q.pfx);
-    if (q.aoe) this.pfx.play('explosion', new THREE.Vector3(q.pos.x, 0, q.pos.z), { size: q.aoe / 3 });
-    else this.pfx.play('boltHit', q.pos);
+    if (q.aoe) this.vfx('explosion', new THREE.Vector3(q.pos.x, 0, q.pos.z), q.aoe / 3);
+    else this.vfx('boltHit', q.pos.clone());
     if (q.aoe) {
       this.fx.shockwave(q.pos.x, q.pos.z, q.aoe, 0xff8a30, 0.4);
       this.fx.burst(q.pos, 40, [1, 0.5, 0.1], 7, 0.7, 0.4);

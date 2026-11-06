@@ -90,7 +90,7 @@ export class PFX {
     const e = {
       P, fx, sp, mat, tex, ctx, cv, w, h, frame: createFrame(w, h), img: new ImageData(w, h),
       pos: new THREE.Vector3().copy(pos), dir: o.dir ? o.dir.clone() : null, follow: o.follow || null,
-      size: o.size || 1, acc: 1, t: 0, stopped: false,
+      size: o.size || 1, acc: 1, t: 0, stopped: false, life: o.life || 0,
       stop: () => { if (!e.stopped) { e.stopped = true; fx.stop(); } },
     };
     this.live.push(e);
@@ -125,6 +125,7 @@ export class PFX {
       e.t += dt;
       e.fx.update(dt);
       if (e.P.cut && e.t > e.P.cut) e.stop();
+      if (e.life && e.t > e.life) { this.kill(e); continue; }
       if (e.fx.done()) { this.kill(e); continue; }
       this.place(e);
       e.acc += dt;

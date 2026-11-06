@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P, sample } from './anims.js';
@@ -46,7 +47,9 @@ class RemotePlayer extends Actor {
     if (!this.net) return;
     this.t += dt;
     const k = 1 - Math.exp(-14 * dt), ox = this.pos.x, oz = this.pos.z;
-    this.pos.x += (this.net.x - ox) * k; this.pos.z += (this.net.z - oz) * k;
+    // a blink or a dash through an enemy snaps rather than sliding across the floor
+    if (Math.hypot(this.net.x - ox, this.net.z - oz) > 2.5) { this.pos.x = this.net.x; this.pos.z = this.net.z; }
+    else { this.pos.x += (this.net.x - ox) * k; this.pos.z += (this.net.z - oz) * k; }
     this.yaw += angDiff(this.yaw, this.net.yaw) * k;
     const sp = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
     this.phase += dt * (2.5 + sp * 1.6);
@@ -58,13 +61,31 @@ class RemotePlayer extends Actor {
       P0.t += dt * P0.rate;
       const fx = P0.def.sfx;
       if (fx && !P0.sfx && P0.t >= fx[0]) { P0.sfx = true; this.game.audio.remote(fx[1]); }
+      // extra swing sounds inside a move (the guard counter's backhand)
+      if (P0.def.onTime) for (const ev of P0.def.onTime) if (ev.sfx && !P0['s' + ev.t] && P0.t >= ev.t) { P0['s' + ev.t] = true; this.game.audio.remote(ev.sfx); }
       if (P0.t >= P0.def.dur || st === 'hurt' || st === 'knockdown' || st === 'dead' || st === 'roll') this.play = null;
       else { pose = sample(P0.def.keys, P0.t, base); trail = !!P0.def.trail && P0.t >= P0.def.trail[0] && P0.t <= P0.def.trail[1]; }
+    }
+    // the move's own body language: jump height, vanishing in the shroud, a reverse-grip dagger
+    const D = this.play?.def, t = this.play?.t ?? 0;
+    this.y = D?.jump && t > D.jump[0] && t < D.jump[1] ? D.jump[2] * Math.sin(Math.PI * (t - D.jump[0]) / (D.jump[1] - D.jump[0])) : 0;
+    this.rig.root.visible = !(D?.vanish && t >= D.vanish[0] && t < D.vanish[1]);
+    this.rig.reverse = !!(D?.reverse && t >= D.reverse[0] && t < D.reverse[1]);
+    if (this.rig.wpnR && !this.rig.fx) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
+    if (this.kind === 'knight') {
+      if (!this.spectral) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.46 * this.c.model.bulk * 1.2, 1.7, 0.06),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+        m.position.set(0, 1.05, 0.75); this.rig.root.add(m); this.spectral = m;
+      }
+      this.spectral.visible = st === 'charge';
+      if (this.spectral.visible) this.spectral.material.opacity = 0.45 + Math.sin(this.game.time * 30) * 0.1;
     }
     const hand = P0?.def.hand || 'R';
     this.trail.update(dt, trail && hand !== 'L', this.rig.base, this.rig.tip);
     this.trailL?.update(dt, trail && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
     if (this.play) { /* the swing already set the pose */ }
+    else if (st === 'charge') pose = { ...base, ...P.block, legL: [-0.6, 0, 0.05], legR: [0.5, 0, -0.05], shinR: [0.5, 0, 0], torso: [0.35, -0.1, 0], by: -0.12 };
     else if (st === 'cast') pose = { ...base, torso: [0.1, -0.35, 0], armR: [-1.55, 0, 0.1], foreR: [0, 0, 0], handR: [1.5, 0, 0] };
     else if (st === 'roll') pose = { ...base, ...P.roll(Math.min(1, tt / this.c.roll.dur)) };
     else if (st === 'backstep') pose = { ...base, ...P.backstep };
@@ -197,25 +218,32 @@ export class Multiplayer {
     const g = this.game, p = this.peers.get(from);
     if (d.k === 'swing') { const def = p?.c.attacks[d.a]; if (def) p.startPlay(def, d.r); } else if (d.k === 'riposte') p?.startPlay(CRITS[d.c] || RIPOSTE, d.r);
     else if (d.k === 'sfx') g.audio.remote(d.s, d.v ?? 1);
+    else if (d.k === 'fx') g.playVfx(d.n, d.a || []);
     else if (d.k === 'hit' || d.k === 'rip') {
       // a teammate striking an enemy
       const e = this.entity(d.id);
       g.audio.remote(d.k === 'rip' ? 'riposte' : d.heavy ? 'bigHit' : 'hit', 0.9);
       if (e) {
         e.rig.flash(1, 0.9, 0.8);
-        const c = { x: e.pos.x, y: 1.1 * e.rig.root.scale.y, z: e.pos.z };
-        g.fx.blood(c, null, d.k === 'rip' ? 24 : 9); g.fx.sparks(c, null, 5, [1, 0.6, 0.3]);
+        const c = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
+        const dir = p ? new THREE.Vector3(e.pos.x - p.pos.x, 0, e.pos.z - p.pos.z).normalize() : null;
+        g.fx.blood(c, dir, d.k === 'rip' ? 30 : d.heavy ? 16 : 9); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]);
+        if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
+        else g.pfx.play(d.heavy ? 'heavyHit' : 'hit', c, { dir });
       }
     } else if (p && d.k === 'hurt') {
       // a teammate taking a hit
       p.rig.flash(1, 0.3, 0.2);
-      g.fx.blood({ x: p.pos.x, y: 1.1, z: p.pos.z }, null, 12);
+      const c = new THREE.Vector3(p.pos.x, 1.1, p.pos.z);
+      g.fx.blood(c, null, 12); g.pfx.play('hurt', c, { dir: p.fwd().clone().negate() });
       g.audio.remote(d.heavy ? 'bigHit' : 'hurt');
     } else if (p && d.k === 'block') {
-      g.fx.sparks({ x: p.pos.x, y: 1.1, z: p.pos.z }, null, 12);
+      const c = new THREE.Vector3(p.pos.x, 1.1, p.pos.z).addScaledVector(p.fwd(), 0.5);
+      g.fx.sparks(c, null, 12); g.pfx.play('block', c, { dir: p.fwd().clone() });
       g.audio.remote('clang');
     } else if (p && d.k === 'parry') {
-      g.fx.sparks({ x: p.pos.x, y: 1.2, z: p.pos.z }, null, 22, [1, 0.95, 0.7]);
+      const c = new THREE.Vector3(p.pos.x, 1.2, p.pos.z).addScaledVector(p.fwd(), 0.6);
+      g.fx.sparks(c, null, 22, [1, 0.95, 0.7]); g.pfx.play('parry', c);
       g.audio.remote('parry');
     }
   }

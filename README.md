@@ -79,7 +79,7 @@ Create a room, share the 4-letter code, and the host starts the run. The host's 
 - **Gold:** every signed-in player banks the full room and boss amounts on their own account, including section bonuses.
 - **Going down:** you stay down until a teammate revives you (50% health). Each revive takes 10% of max health from everyone for the rest of the run. If everyone is down, the run ends.
 - **Rewards:** each player picks their own, and the run resumes when everyone standing has chosen.
-- **Teammates:** their attacks play out on your screen from instant events, and their sounds play at half volume.
+- **Teammates:** their attacks play out on your screen from instant events, and their sounds play at half volume. Every ability effect (ground pound, knee impact, shroud, red slash, rune impale, cast glow and circle, explosions, heals, shield bashes, status bursts, Varek's Ember Burst and ignite) is a named effect in `src/vfx.js`: the device that performs it plays it and sends it, and every other screen plays the same thing. Jumps, the shroud vanish, reverse grips and the shield-charge shield show on teammates too. `scripts/mpfx.mjs` checks it with two devices.
 - **After a run:** everyone taps Ready Up, and the host's device rolls a new run in the same room. **Lobby & Upgrades** goes back to the room's lobby to shop and change class; the host can start from there.
 - **Down when a mini boss dies:** you get back up at half health (no revive penalty) and pick a reward like everyone else.
 - If the host leaves, the run ends for everyone.
