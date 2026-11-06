@@ -186,6 +186,25 @@ class Game {
     $('go-title').addEventListener('click', () => this.toTitle());
     $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
     $('btn-settings').addEventListener('click', () => this.openSettings());
+    // fullscreen has to start from a click; phones that support it also lock to landscape. Hidden where the
+    // browser can't (iPhone Safari), and the label follows Esc / F11 too
+    const fsOn = () => document.fullscreenElement || document.webkitFullscreenElement;
+    const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+    const fsLabel = () => document.querySelectorAll('[data-fs]').forEach((b) => {
+      b.textContent = fsOn() ? 'Exit Fullscreen' : 'Fullscreen';
+      b.classList.toggle('hidden', !fsOk);
+    });
+    const toggleFs = () => {
+      if (fsOn()) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+      Promise.resolve(req.call(el, { navigationUI: 'hide' }))
+        .then(() => screen.orientation?.lock?.('landscape').catch(() => {}))
+        .catch(() => {});
+    };
+    document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click', toggleFs));
+    document.addEventListener('fullscreenchange', fsLabel);
+    document.addEventListener('webkitfullscreenchange', fsLabel);
+    fsLabel();
     $('pause-settings').addEventListener('click', () => this.openSettings());
     $('set-back').addEventListener('click', () => this.closeSettings());
     $('set-quality').addEventListener('change', (e) => { this.settings.quality = e.target.value; this.autoQ = 1; this.applySettings(this.settings); this.saveSettings(); });
