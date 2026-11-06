@@ -132,8 +132,8 @@ const mirrorPose = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]
 const mirror = (def) => ({ ...def, keys: def.keys.map(([t, pose]) => [t, mirrorPose(pose)]) });
 
 const MAGE_ATTACKS = {
-  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 14, poise: 10 }] },
-  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 17, poise: 12 }] },
+  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 11, poise: 10 }] },
+  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 14, poise: 12 }] },
 };
 
 const MANA_BOLT = 8, MANA_FIRE = 75;
@@ -156,7 +156,7 @@ export const CHARS = {
 CHARS.mage = {
   hp: 95, st: 85, walk: 4.6, sprint: 7.0, flasks: 4, style: 'daggers', caster: true, dual: true,
   roll: { dur: 0.55, dist: 4.6, iframes: [0.03, 0.4], cost: 18 },
-  attacks: MAGE_ATTACKS, light: 's1', critDmg: 130, trail: 0x8ab4ff,
+  attacks: MAGE_ATTACKS, light: 's1', critDmg: 130, trail: 0x8ab4ff, meleeRate: 0.8, // knife swings 20% slower
   model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'none', weapon: 'spellknife', bulk: 0.9, kit: 'mage' },
 };
 
@@ -625,7 +625,7 @@ export class Player extends Actor {
     // swing speed is locked in when the attack starts: fatigue slows it a bit, and
     // swinging with an empty bar is very slow (down to ~0.3x at zero stamina)
     const low = Math.min(1, this.st / (this.maxSt * 0.3));
-    this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low) * this.aspdMul;
+    this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low) * this.aspdMul * (this.c.meleeRate ?? 1);
     // initial facing: lock target > stick > aim-assist toward a nearby enemy
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else {
