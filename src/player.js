@@ -20,7 +20,7 @@ const KNIGHT_ATTACKS = {
       [0.24, { torso: [0.28, 0.6, 0], armR: [-1.05, 0, 0.8], foreR: [-0.1, 0, 0], handR: [1.25, 0, 0], ...lunge(1.1) }],
       [0.45, { torso: [0.2, 0.45, 0], armR: [-0.9, 0, 0.55], foreR: [-0.35, 0, 0], handR: [1.0, 0, 0], ...lunge(0.9) }],
     ],
-    hits: [{ t0: 0.15, t1: 0.25, range: 2.35, arc: 2.5, dmg: 24, poise: 22 }],
+    hits: [{ t0: 0.15, t1: 0.25, range: 2.35, arc: 2.5, dmg: 22, poise: 13 }],
     move: [[0.08, 0.25, 0.75]],
   },
   k2: {
@@ -30,34 +30,47 @@ const KNIGHT_ATTACKS = {
       [0.23, { torso: [0.22, -0.65, 0], armR: [-1.45, 0, -1.25], foreR: [0, 0, 0], handR: [1.45, 0, 0], legL: [0.3, 0, 0], legR: [-0.45, 0, 0], shinL: [0.35, 0, 0], by: -0.12 }],
       [0.45, { torso: [0.15, -0.5, 0], armR: [-1.25, 0, -0.95], foreR: [-0.25, 0, 0], handR: [1.3, 0, 0], legL: [0.25, 0, 0], legR: [-0.35, 0, 0], by: -0.08 }],
     ],
-    hits: [{ t0: 0.13, t1: 0.24, range: 2.35, arc: 2.6, dmg: 26, poise: 22 }],
+    hits: [{ t0: 0.13, t1: 0.24, range: 2.35, arc: 2.6, dmg: 23, poise: 13 }],
     move: [[0.06, 0.24, 0.7]],
   },
   k3: {
-    dur: 0.88, cost: 22, next: 'k1', combo: [0.45, 0.88], cancel: 0.48, track: 0.24, trail: [0.25, 0.4], sfx: [0.26, 'heavySwing'],
+    dur: 0.88, cost: 25, next: 'k1', combo: [0.45, 0.88], cancel: 0.48, track: 0.24, trail: [0.25, 0.4], sfx: [0.26, 'heavySwing'],
     keys: [
       [0.27, { torso: [-0.25, -0.15, 0], armR: [-3.0, 0, -0.15], foreR: [-0.55, 0, 0], handR: [1.0, 0, 0], armL: [-2.6, 0, 0.25], foreL: [-0.6, 0, 0], legL: [-0.35, 0, 0], legR: [0.15, 0, 0], by: 0.02 }],
       [0.38, { torso: [0.6, 0, 0], armR: [-0.95, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.75, 0, 0], legR: [0.55, 0, 0], shinL: [0.45, 0, 0], shinR: [0.5, 0, 0], by: -0.28 }],
       [0.62, { torso: [0.45, 0, 0], armR: [-0.8, 0, 0.05], foreR: [-0.2, 0, 0], handR: [1.2, 0, 0], armL: [-0.7, 0, 0.1], legL: [-0.65, 0, 0], legR: [0.45, 0, 0], shinL: [0.35, 0, 0], shinR: [0.45, 0, 0], by: -0.22 }],
     ],
-    hits: [{ t0: 0.28, t1: 0.39, range: 2.6, arc: 1.5, dmg: 38, poise: 42 }],
+    hits: [{ t0: 0.28, t1: 0.39, range: 2.6, arc: 1.5, dmg: 34, poise: 22 }],
     move: [[0.18, 0.38, 1.1]],
     onHitShake: 0.35,
   },
   heavy: {
-    dur: 1.1, cost: 30, next: 'k2', combo: [0.72, 1.1], cancel: 0.72, track: 0.42, trail: [0.42, 0.58], sfx: [0.42, 'heavySwing'], armor: [0.25, 0.58],
+    dur: 1.1, cost: 34, next: 'k2', combo: [0.72, 1.1], cancel: 0.72, track: 0.42, trail: [0.42, 0.58], sfx: [0.42, 'heavySwing'], armor: [0.25, 0.58],
     keys: [
       [0.42, { torso: [-0.35, -0.35, 0], armR: [-3.1, 0, -0.3], foreR: [-0.95, 0, 0], handR: [0.6, 0, 0], armL: [-2.2, 0, 0.3], foreL: [-0.8, 0, 0], legL: [-0.5, 0, 0], legR: [0.35, 0, 0], shinR: [0.5, 0, 0], by: -0.2 }],
       [0.55, { torso: [0.75, 0.1, 0], armR: [-0.8, 0, 0.1], foreR: [0, 0, 0], handR: [1.35, 0, 0], armL: [-0.9, 0, 0.1], legL: [-0.85, 0, 0], legR: [0.65, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.38 }],
       [0.85, { torso: [0.6, 0.1, 0], armR: [-0.7, 0, 0.1], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], legL: [-0.75, 0, 0], legR: [0.55, 0, 0], shinL: [0.45, 0, 0], shinR: [0.55, 0, 0], by: -0.32 }],
     ],
-    hits: [{ t0: 0.44, t1: 0.57, range: 2.7, arc: 1.6, dmg: 58, poise: 75 }],
+    hits: [{ t0: 0.44, t1: 0.57, range: 2.7, arc: 1.6, dmg: 52, poise: 35 }],
     move: [[0.3, 0.55, 1.5]],
     onHitShake: 0.5, heavyHit: true,
   },
-  // right after a block: a quick forehand then backhand, 23 + 23 (same total as the old single cut)
+  // evolved: right after a shield charge, a leaping overhead
+  chargeSlam: {
+    dur: 1.0, cost: 16, next: 'k2', combo: [0.7, 1.0], cancel: 0.72, track: 0.3, trail: [0.36, 0.52], sfx: [0.36, 'heavySwing'], armor: [0, 0.5],
+    keys: [
+      [0.2, { torso: [-0.3, 0, 0], armR: [-3.0, 0, -0.15], foreR: [-0.5, 0, 0], handR: [1.0, 0, 0], armL: [-2.5, 0, 0.2], foreL: [-0.5, 0, 0], legL: [-0.8, 0, 0], shinL: [1.2, 0, 0], legR: [0.3, 0, 0], shinR: [0.9, 0, 0], by: 0.35 }],
+      [0.44, { torso: [0.7, 0, 0], armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.0, 0, 0.1], legL: [-0.8, 0, 0], legR: [0.6, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.3 }],
+      [0.75, { torso: [0.5, 0, 0], armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], ...lunge(1), by: -0.2 }],
+    ],
+    hits: [{ t0: 0.42, t1: 0.52, range: 2.7, arc: 1.8, dmg: 40, poise: 25 }],
+    move: [[0.05, 0.42, 2.2]],
+    onTime: [{ t: 0.46, fn: (p, g) => { g.fx.dust(p.pos, 8, 1.2); g.fx.addShake(0.5); g.audio.play('slam', 0.5); } }],
+    onHitShake: 0.5, heavyHit: true,
+  },
+  // right after a block: a quick forehand then backhand (21 + 21)
   guardCounter: {
-    dur: 0.8, cost: 18, next: 'k2', combo: [0.48, 0.8], cancel: 0.5, track: 0.16, trail: [0.1, 0.36], sfx: [0.1, 'swing'], armor: [0, 0.34],
+    dur: 0.8, cost: 21, next: 'k2', combo: [0.48, 0.8], cancel: 0.5, track: 0.16, trail: [0.1, 0.36], sfx: [0.1, 'swing'], armor: [0, 0.34],
     keys: [
       [0.1, { torso: [0.1, -0.9, 0], armR: [-1.5, 0, -1.4], foreR: [-0.1, 0, 0], handR: [1.45, 0, 0], guard: 0.6, legL: [-0.3, 0, 0], legR: [0.3, 0, 0] }],
       [0.2, { torso: [0.3, 0.75, 0], armR: [-1.5, 0, 1.0], foreR: [0, 0, 0], handR: [1.45, 0, 0], guard: 0.4, ...lunge(1.0) }],
@@ -65,8 +78,8 @@ const KNIGHT_ATTACKS = {
       [0.58, { torso: [0.2, -0.6, 0], armR: [-1.2, 0, -0.9], foreR: [-0.3, 0, 0], handR: [1.2, 0, 0], ...lunge(1) }],
     ],
     hits: [
-      { t0: 0.12, t1: 0.2, range: 2.6, arc: 2.8, dmg: 23, poise: 40 },
-      { t0: 0.26, t1: 0.34, range: 2.6, arc: 2.8, dmg: 23, poise: 40 },
+      { t0: 0.12, t1: 0.2, range: 2.6, arc: 2.8, dmg: 21, poise: 12 },
+      { t0: 0.26, t1: 0.34, range: 2.6, arc: 2.8, dmg: 21, poise: 12 },
     ],
     onTime: [{ t: 0.24, fn: (p, g) => g.audio.play('heavySwing', 0.9) }],
     move: [[0.1, 0.3, 1.2]],
@@ -82,7 +95,7 @@ const ROGUE_ATTACKS = {
       [0.16, { torso: [0.25, 0.5, 0], armR: [-1.5, 0, 0.75], foreR: [-0.1, 0, 0], handR: [1.45, 0, 0], ...lunge(0.9) }],
       [0.3, { torso: [0.22, 0.4, 0], armR: [-1.3, 0, 0.55], foreR: [-0.3, 0, 0], handR: [1.3, 0, 0], ...lunge(0.8) }],
     ],
-    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 17, poise: 11 }],
+    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 16, poise: 5 }],
     move: [[0.03, 0.16, 0.55]],
   },
   r2: {
@@ -92,7 +105,7 @@ const ROGUE_ATTACKS = {
       [0.16, { torso: [0.25, -0.5, 0], armL: [-1.5, 0, -0.75], foreL: [-0.1, 0, 0], handL: [1.45, 0, 0], legL: [0.4, 0, 0], legR: [-0.5, 0, 0], shinL: [0.45, 0, 0], by: -0.1 }],
       [0.3, { torso: [0.22, -0.4, 0], armL: [-1.3, 0, -0.55], foreL: [-0.3, 0, 0], handL: [1.3, 0, 0], legL: [0.3, 0, 0], legR: [-0.4, 0, 0], by: -0.08 }],
     ],
-    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 17, poise: 11 }],
+    hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 16, poise: 5 }],
     move: [[0.03, 0.16, 0.55]],
   },
   r3: {
@@ -102,7 +115,7 @@ const ROGUE_ATTACKS = {
       [0.18, { torso: [0.35, 0.3, 0], armR: [-1.55, 0, 0], foreR: [0, 0, 0], handR: [1.5, 0, 0], ...lunge(1.3) }],
       [0.34, { torso: [0.3, 0.25, 0], armR: [-1.4, 0, 0], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], ...lunge(1.1) }],
     ],
-    hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 20, poise: 12 }],
+    hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 19, poise: 6 }],
     move: [[0.05, 0.19, 0.9]],
   },
   r4: {
@@ -114,8 +127,8 @@ const ROGUE_ATTACKS = {
       [0.5, { hips: [0, 0.3, 0], torso: [0.2, 0, 0], armR: [-0.8, 0, -0.6], armL: [-0.8, 0, 0.6], ...lunge(0.6) }],
     ],
     hits: [
-      { t0: 0.12, t1: 0.21, range: 2.1, arc: 3.4, dmg: 14, poise: 10 },
-      { t0: 0.25, t1: 0.34, range: 2.1, arc: 3.4, dmg: 19, poise: 14 },
+      { t0: 0.12, t1: 0.21, range: 2.1, arc: 3.4, dmg: 13, poise: 5 },
+      { t0: 0.25, t1: 0.34, range: 2.1, arc: 3.4, dmg: 18, poise: 7 },
     ],
     move: [[0.08, 0.3, 0.7]],
   },
@@ -126,7 +139,7 @@ const ROGUE_ATTACKS = {
       [0.4, { torso: [0.5, 0, 0], armR: [-1.55, 0, 0.08], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-1.55, 0, -0.08], foreL: [0, 0, 0], handL: [1.5, 0, 0], legL: [-0.95, 0, 0], legR: [0.75, 0, 0], shinL: [0.3, 0, 0], shinR: [0.5, 0, 0], by: -0.25 }],
       [0.62, { torso: [0.4, 0, 0], armR: [-1.3, 0, 0], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], armL: [-1.3, 0, 0], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], legL: [-0.8, 0, 0], legR: [0.6, 0, 0], shinR: [0.5, 0, 0], by: -0.2 }],
     ],
-    hits: [{ t0: 0.32, t1: 0.44, range: 2.1, arc: 1.3, dmg: 40, poise: 45 }],
+    hits: [{ t0: 0.32, t1: 0.44, range: 2.1, arc: 1.3, dmg: 38, poise: 20 }],
     move: [[0.27, 0.42, 3.2]], stopAt: 1.2,
     onHitShake: 0.35,
   },
@@ -138,8 +151,8 @@ const mirrorPose = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]
 const mirror = (def) => ({ ...def, keys: def.keys.map(([t, pose]) => [t, mirrorPose(pose)]) });
 
 const MAGE_ATTACKS = {
-  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 11, poise: 10 }] },
-  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 14, poise: 12 }] },
+  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 11, poise: 6 }] },
+  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 14, poise: 7 }] },
 };
 
 const MANA_BOLT = 8, MANA_FIRE = 75;
@@ -237,6 +250,9 @@ export function critFor(kind, tg, evolved) {
   return kind === 'mage' ? CRITS.impale : CRITS.knee;
 }
 
+export const PARRY_CD = 18;    // rogue: seconds between parries
+export const CHARGE_CD = 20;   // evolved knight: seconds between shield charges
+
 const PARRY = {
   dur: 0.56, cost: 14, trail: [0.03, 0.16], hand: 'L',
   keys: [
@@ -296,7 +312,7 @@ export class Player extends Actor {
 
   remove() { super.remove(); this.trailL?.dispose(this.game.scene); }
 
-  // Evolved block: a white wall 20% wider than the torso, held out in front
+  // Evolved: the spectral shield the knight charges behind, 20% wider than his torso
   buildSpectralShield() {
     const torso = 0.46 * this.c.model.bulk;
     this.spectralWidth = torso * 1.2;
@@ -351,6 +367,8 @@ export class Player extends Actor {
       if (this.ripHidden) { this.rig.root.visible = true; this.ripHidden = false; }
       if (this.ripLift) { this.y = 0; this.ripLift = false; }
     }
+    this.parryCd = Math.max(0, (this.parryCd || 0) - dt);
+    this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
     for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
@@ -516,6 +534,22 @@ export class Player extends Actor {
         if (this.t >= c.dur) this.setState('move');
         break;
       }
+      case 'charge': {
+        // 4 m dash behind the spectral shield; whoever it meets is bashed back
+        const D = 0.45, f = this.fwd().clone();
+        if (this.t < D * 0.9) this.move(f.x * 9 * dt, f.z * 9 * dt);
+        const cx = this.pos.x + f.x * 0.8, cz = this.pos.z + f.z * 0.8;
+        for (const e of this.game.enemiesAll()) {
+          if (!e.alive || this.chargeHits.has(e) || Math.hypot(e.pos.x - cx, e.pos.z - cz) > e.radius + 0.9) continue;
+          this.chargeHits.add(e);
+          this.game.shieldBash(this, e, f);
+        }
+        pose = { ...this.basePose(), ...P.block, ...lunge(1.2), torso: [0.35, -0.1, 0] };
+        rate = 22;
+        if (Math.random() < dt * 20) this.game.fx.dust(this.pos, 1, 0.4);
+        if (this.t >= D) { this.chargeEndT = this.game.time; this.setState('move'); }
+        break;
+      }
       case 'riposte': {
         const tg = this.riposteTarget, C = this.crit;
         const rt = this.t * this.ripRate; // the evolved rogue's critical plays much faster
@@ -566,8 +600,8 @@ export class Player extends Actor {
     }
     if (this.state !== 'attack' && this.state !== 'parry' && this.state !== 'riposte') this.trailOn = false;
     if (this.spectral) {
-      this.spectral.visible = this.blocking;
-      this.spectral.material.opacity = 0.34 + Math.sin(this.game.time * 9) * 0.08 + (this.blockHitT > 0 ? 0.3 : 0);
+      this.spectral.visible = this.state === 'charge';
+      this.spectral.material.opacity = 0.45 + Math.sin(this.game.time * 30) * 0.1;
     }
 
     if (this.state !== 'move' && this.state !== 'heal') this.blocking = false;
@@ -607,6 +641,16 @@ export class Player extends Actor {
         this.doAttack('guardCounter', dir, mag);
         return true;
       }
+      // evolved knight: block + heavy = shield charge; attack right after it = leaping overhead
+      if (this.kind === 'knight' && this.evolved && this.game.time - (this.chargeEndT ?? -9) < 0.6) {
+        this.chargeEndT = -9;
+        this.doAttack('chargeSlam', dir, mag);
+        return true;
+      }
+      if (a === 'heavy' && this.kind === 'knight' && this.evolved && this.blocking) {
+        if (this.chargeCd > 0) this.game.ui.toastSmall?.(`Shield charge in ${Math.ceil(this.chargeCd)}s`);
+        else { this.startCharge(dir, mag); return true; }
+      }
       this.doAttack(a === 'heavy' ? 'heavy' : this.c.light, dir, mag);
       return true;
     }
@@ -619,8 +663,10 @@ export class Player extends Actor {
     }
     if (a === 'special' && this.c.caster) { this.buf = null; return this.castFire(dir, mag); }
     if (a === 'special' && this.kind === 'rogue') {
+      if (this.parryCd > 0) { this.buf = null; this.game.ui.toastSmall?.('Parry recharging'); return false; }
       if (!this.canSpend()) return false;
       this.buf = null;
+      this.parryCd = PARRY_CD;
       this.spend(PARRY.cost);
       if (mag > 0.2 && !this.lock) this.yaw = Math.atan2(dir.x, dir.z);
       else if (this.lock) this.yaw = this.yawTo(this.lock.pos);
@@ -663,6 +709,20 @@ export class Player extends Actor {
     this.atk = { def: crit, t: 0, hit: new Set() };
     this.setState('riposte');
     this.game.mp.event({ k: 'riposte', r: rate, c: crit.name });
+  }
+
+  // ---------- evolved knight: shield charge ----------
+  startCharge(dir, mag) {
+    this.chargeCd = CHARGE_CD;
+    this.spend(20);
+    if (this.lock) this.yaw = this.yawTo(this.lock.pos);
+    else if (mag > 0.2) this.yaw = Math.atan2(dir.x, dir.z);
+    this.chargeHits = new Set();
+    this.blocking = false;
+    this.setState('charge');
+    this.game.audio.play('roll', 1); this.game.audio.play('clang', 0.4);
+    this.game.mp.event({ k: 'sfx', s: 'clang', v: 0.4 });
+    this.game.fx.dust(this.pos, 6, 0.9);
   }
 
   endCrit() {

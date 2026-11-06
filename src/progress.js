@@ -17,6 +17,14 @@ export const sectionBreakdown = (sections, upto) => sections.slice(0, upto).map(
 
 // Each mini boss passed: enemies gain +10% health, damage, move and attack speed.
 export const tierScale = (tier) => 1 + 0.1 * tier;
+// Regular enemies per stage (tier = mini bosses passed). Solo: +10% each stage to everything. In a party,
+// health and damage climb harder (+20/40/60% health, +15/20/25% damage); speeds keep the solo steps.
+export function tierStats(tier, players = 1) {
+  const s = tierScale(tier);
+  if (players < 2) return { hp: s, dmg: s, spd: s, atk: s };
+  const t = Math.min(3, tier);
+  return { hp: [1, 1.2, 1.4, 1.6][t], dmg: [1, 1.15, 1.2, 1.25][t], spd: s, atk: s };
+}
 export const TIER_EYES = [null, 0xff1a10, 0xff8a10, 0xffffff];
 
 // Permanent upgrades. Each level gives `a`; levels past the third give `b`.
@@ -34,7 +42,7 @@ export const UPGRADES = [
   { key: 'potion', section: 'Potions', name: 'Potion Strength', a: 15, b: 15, unit: '%', costs: [10, 15, 30] },
   { key: 'mage', section: 'Spellsword', name: 'Unlock Spellsword', costs: [100], desc: 'A new character: spells, fire and a knife' },
   { key: 'mana', section: 'Spellsword', name: 'Mana', a: 10, b: 15, unit: '', requires: 'mage' },
-  { key: 'evo_knight', section: 'Evolutions', name: 'Spectral Shield', costs: [EVOLUTION_COST], desc: 'Knight: a white shield wall that stops enemies and shots' },
+  { key: 'evo_knight', section: 'Evolutions', name: 'Shield Charge', costs: [EVOLUTION_COST], desc: 'Knight: block + heavy charges behind a spectral shield, knocking enemies back (20 s cooldown); attack right after for a leaping overhead' },
   { key: 'evo_rogue', section: 'Evolutions', name: 'Red Riposte', costs: [EVOLUTION_COST], desc: 'Rogue: +50ms parry window; instant critical after a parry' },
   { key: 'evo_mage', section: 'Evolutions', name: 'Twin Inferno', costs: [EVOLUTION_COST], desc: 'Spellsword: two larger fireballs', requires: 'mage' },
 ];

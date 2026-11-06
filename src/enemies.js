@@ -4,7 +4,7 @@ import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
-import { tierScale, TIER_EYES, partyScale } from './progress.js';
+import { tierStats, TIER_EYES, partyScale } from './progress.js';
 
 let UID = 1;
 
@@ -160,11 +160,11 @@ export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {
     const T = TYPES[type];
     // tier = mini bosses passed before this module
-    const tier = opts.tier || 0, scale = tierScale(tier), party = partyScale(opts.players || 1, type === 'brute');
+    const tier = opts.tier || 0, ts = tierStats(tier, opts.players || 1), party = partyScale(opts.players || 1, type === 'brute');
     const rig = buildHumanoid({ ...T.model, scale: T.scale, eyes: TIER_EYES[tier] ?? T.model.eyes, eyeGlow: tier >= 3 ? 0xff1a10 : null });
-    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * scale * party.hp), radius: T.radius, poise: T.poise });
-    this.tier = tier; this.dmgScale = scale * party.dmg; this.spdScale = scale * party.spd;
-    this.atkScale = scale * party.atk; this.gapScale = party.gap; this.moves = T.moves;
+    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * ts.hp * party.hp), radius: T.radius, poise: T.poise });
+    this.tier = tier; this.dmgScale = ts.dmg * party.dmg; this.spdScale = ts.spd * party.spd;
+    this.atkScale = ts.atk * party.atk; this.gapScale = party.gap; this.moves = T.moves;
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
     this.status = new StatusState(this, type === 'brute' ? 180 : 100);

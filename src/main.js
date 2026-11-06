@@ -187,6 +187,8 @@ class Game {
     $('again').addEventListener('click', readyOr('again', () => this.toTitle()));
     $('retry').addEventListener('click', readyOr('retry', () => { this.audio.unlock(); this.start(this.kind); }));
     $('go-title').addEventListener('click', () => this.toTitle());
+    // after a run: solo opens the upgrade shop here; a party goes back to the room's lobby (upgrades inside)
+    for (const id of ['go-lobby', 'victory-lobby']) $(id).addEventListener('click', () => this.afterRunLobby());
     $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
     $('btn-settings').addEventListener('click', () => this.openSettings());
     // fullscreen has to start from a click; phones that support it also lock to landscape. Hidden where the
@@ -674,9 +676,23 @@ class Game {
     $('retry').disabled = false;
     $('ready-status').textContent = '';
     $('again').textContent = party ? 'Ready Up' : 'Play Again';
+    $('go-lobby').textContent = $('victory-lobby').textContent = party ? 'Lobby & Upgrades' : 'Upgrades';
+    $('go-lobby').classList.toggle('hidden', !party && !this.accounts.user);
+    $('victory-lobby').classList.toggle('hidden', !party && !this.accounts.user);
     $('again').disabled = false;
     $('victory-ready').textContent = '';
     this.mp.ready.clear();
+  }
+
+  afterRunLobby() {
+    if (!this.mp.active) { this.renderShop(); this.ui.show('shop'); return; }
+    this.mode = 'lobby';
+    this.audio.stopMusic();
+    for (const s of ['gameover', 'victory', 'death', 'reward', 'hud', 'touch']) this.ui.show(s, false);
+    this.ui.prompt(null); this.ui.enemyBars([]);
+    this.ui.show('menu');
+    this.refreshTitle();
+    this.openLobby();
   }
 
   renderReady(n, total) {
@@ -807,6 +823,11 @@ class Game {
       // the way on opens right away; fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
       this.world.setGate(enc.gateOut, true, false);
+      if (this.mp.active && !this.player.alive && this.mode === 'play') {
+        this.player.revive(0.5);
+        this.mp.sendAll({ t: 'up' });
+        this.ui.toast('BACK ON YOUR FEET', 2);
+      }
       setTimeout(() => {
         if (this.mode !== 'play' || !this.player.alive) return;
         this.audio.play('victory');
@@ -934,6 +955,22 @@ class Game {
     tg.kb.copy(p.fwd()).multiplyScalar(5);
   }
 
+  // evolved knight's shield charge meeting an enemy: a little damage and a hard shove
+  shieldBash(p, e, dir) {
+    const push = e.isBoss ? 4 : e.type === 'brute' ? 7 : 12;
+    const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
+    if (e.puppet) {
+      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * p.dmgMul, poise: 10, kb: [dir.x * push, dir.z * push] });
+      e.hp = Math.max(1, e.hp - 10 * p.dmgMul); e.hpShow = 4;
+    } else {
+      const r = e.receive({ dmg: 10 * p.dmgMul, poise: 10, srcPos: p.pos, attacker: p, noKnock: true });
+      if (r !== 'none') e.kb.copy(dir).multiplyScalar(push);
+    }
+    this.audio.play('clang', 0.8); this.audio.play('bigHit', 0.6);
+    this.pfx.play('block', hp, { dir });
+    this.fx.addShake(0.4); this.hitstop(0.05);
+  }
+
   hitstop(t) { this.freeze = Math.max(this.freeze, t); }
 
   // Parry window: from PARRY_EARLY seconds before a parryable hit lands until it lands.
@@ -968,7 +1005,7 @@ class Game {
 
   updateParryCues() {
     const p = this.player;
-    const list = p && p.alive && p.kind === 'rogue' && this.mode === 'play' ? this.parryTargets(p) : [];
+    const list = p && p.alive && p.kind === 'rogue' && !(p.parryCd > 0) && this.mode === 'play' ? this.parryTargets(p) : [];
     this.parryCues.forEach((s, i) => {
       const t = list[i];
       s.visible = !!t;

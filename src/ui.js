@@ -43,6 +43,15 @@ export class UI {
     this.st.set(p.st / p.maxSt, dt);
     this.st.fill.parentElement.classList.toggle('tired', p.fatigue > 0.45);
     this.flaskEl.textContent = p.flasks;
+    // rogue parry / evolved knight shield charge cooldowns
+    const cd = p.kind === 'rogue' ? ['Parry', p.parryCd] : p.kind === 'knight' && p.evolved ? ['Charge', p.chargeCd] : null;
+    const txt = cd ? (cd[1] > 0 ? `${cd[0]} ${Math.ceil(cd[1])}s` : `${cd[0]} ready`) : '';
+    if (txt !== this.abTxt) {
+      this.abTxt = txt;
+      const el = (this.abEl ||= document.getElementById('ability'));
+      el.textContent = txt; el.classList.toggle('ready', !!cd && !(cd[1] > 0));
+      document.getElementById('b-special')?.classList.toggle('cd', p.kind === 'rogue' && cd[1] > 0);
+    }
     if (p.maxMana) {
       this.mn.set(p.mana / p.maxMana, dt);
       const txt = `${Math.floor(p.mana)} / ${p.maxMana}`;

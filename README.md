@@ -37,7 +37,8 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
 - **Section bonus:** the run has four sections, ending at each mini boss and at Varek, with rates ×1, ×1.5, ×2, ×3. Beating the boss that closes a section banks the extra on that section's gold (+0%, +50%, +100%, +200%).
 - **Rooms:** each room's exit is fogged until every enemy in it is dead. Enemies never notice or chase you across rooms.
 - **Fights:** one enemy at a time fights each player. Others who have noticed you hover nearby with their weapon up, drifting in and out, and step in for one attack every 10-15s. Hitting one of them makes it your fight.
-- **Enemy tiers:** each mini boss passed gives everything after it +10% health, damage, move speed and attack speed (additive). Eyes turn red, then orange, then white with a red halo.
+- **Enemy tiers:** each mini boss passed gives everything after it +10% health, damage, move speed and attack speed (additive). In a party, regular enemies instead get +20% / +40% / +60% health and +15% / +20% / +25% damage per stage (speeds as solo).
+- **Boss stun:** a boss knocked to its knees by stun needs twice as much for every knockdown after the first. Eyes turn red, then orange, then white with a red halo.
 - **Upgrades** (title screen): costs start at 10 and go ×1.5 rounded up (10, 15, 23, 35, 53...), per upgrade.
   - Damage: +3%, then +4% from the 4th level.
   - Health: +5%, then +8%.
@@ -48,7 +49,7 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
   - Potion Strength: +15% healing, 3 max (10, 15, 30 gold).
   - Spellsword: unlock for 100 gold. Then Mana: +10, then +15 from the 4th level.
   - Evolutions (75 gold each):
-    - Knight, Spectral Shield: a white wall 20% wider than his torso that stops enemies and projectiles.
+    - Knight, Shield Charge: block + heavy dashes 4 m behind a spectral shield, knocking enemies back for 10 damage (20 s cooldown); press attack within 0.6 s after it for a leaping overhead (40).
     - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
     - Spellsword, Twin Inferno: two larger fireballs.
 - **Spellsword:** R1 knife hits (11 and 14 damage, 20% slower swings, 14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 8 damage, no stagger or knockback). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
@@ -70,7 +71,8 @@ Create a room, share the 4-letter code, and the host starts the run. The host's 
 - **Going down:** you stay down until a teammate revives you (50% health). Each revive takes 10% of max health from everyone for the rest of the run. If everyone is down, the run ends.
 - **Rewards:** each player picks their own, and the run resumes when everyone standing has chosen.
 - **Teammates:** their attacks play out on your screen from instant events, and their sounds play at half volume.
-- **After a run:** everyone taps Ready Up, and the host's device rolls a new run in the same room.
+- **After a run:** everyone taps Ready Up, and the host's device rolls a new run in the same room. **Lobby & Upgrades** goes back to the room's lobby to shop and change class; the host can start from there.
+- **Down when a mini boss dies:** you get back up at half health (no revive penalty) and pick a reward like everyone else.
 - If the host leaves, the run ends for everyone.
 
 ## Server
@@ -93,8 +95,8 @@ npm run build    # static build in dist/ — deployable to any static host
 ```
 
 ## Characters
-- **Knight**: longsword and shield. 150 HP, 3-hit combo plus heavy. Hold **L1** to block: it drains 10 stamina a second and a quarter of each blocked hit still gets through. Press **heavy** right after blocking a hit for a guard counter, a quick forehand-backhand (23 + 23).
-- **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window). A successful parry opens a riposte.
+- **Knight**: longsword and shield. 150 HP, 3-hit combo plus heavy. Hold **L1** to block: it drains 10 stamina a second and a quarter of each blocked hit still gets through. Press **heavy** right after blocking a hit for a guard counter, a quick forehand-backhand (21 + 21). The Knight builds the most stun by far (light 13, third swing 22, heavy 35).
+- **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window, 18 s cooldown from any attempt; the HUD shows it). A successful parry opens a riposte. Builds little stun.
 
 ## Controls
 Every keyboard and mouse binding can be changed in **Settings** (title screen or pause menu), along with Pixel size (Chunky / Medium / Fine: about 180, 270 or 360 game pixels tall), master, music, effects and teammate volume, screen shake, and touch button size and opacity. Signed-in players keep their settings on their account across devices; guests keep them on the device. Defaults:
@@ -129,7 +131,7 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
   - Rogue after a parry, Parry Stab: 170. Flips the dagger to a reverse grip and plunges elbow first. Evolved: blinks behind the enemy in a red flash and stabs it in the back.
   - Rogue on a downed enemy, Shroud Slash: 170. Vanishes in a black shroud and reappears past the enemy through a red slash.
   - Spellsword, Rune Impale: 130. Hops up and drives the rune blade down into a burst of runes.
-  - Code: `CRITS` in `src/player.js`; `scripts/crits.mjs` checks damage, timing and positions.
+  - Code: `CRITS` in `src/player.js`; `scripts/crits.mjs` checks damage, timing and positions; `scripts/balance.mjs` checks stun counts, the parry cooldown, the shield charge, party stage scaling and the after-run buttons.
 
 ## Tests
 `scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size), `scripts/stamina.mjs` (empty-stamina lockout, mana costs, grunt leap reach) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.

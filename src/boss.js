@@ -145,6 +145,7 @@ export class Boss extends Actor {
   attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.atkScale; }
 
   reset() {
+    this.basePoise = this.basePoise || this.maxPoise; this.maxPoise = this.basePoise; this.breaks = 0;
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
     this.pos.set(this.arena.x, 0, this.arena.z - 3); this.yaw = 0; this.y = 0;
     this.phase2 = false; this.ignited = false; this.atkSpeed = 1; this.trackMul = 1;
@@ -371,6 +372,10 @@ export class Boss extends Actor {
     this.poise -= info.poise || 0;
     this.poiseT = 4;
     if (this.poise <= 0) {
+      // after the first knockdown he braces: the next ones take twice the stun
+      this.breaks = (this.breaks || 0) + 1;
+      this.basePoise = this.basePoise || this.maxPoise;
+      this.maxPoise = this.basePoise * 2;
       this.poise = this.maxPoise;
       this.atk = null; this.y = 0; this.leapTo = null;
       if (this.tele) { this.tele.dead = true; this.tele = null; }
