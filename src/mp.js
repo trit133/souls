@@ -86,6 +86,8 @@ export class Multiplayer {
     this.picked = new Set();
     this.ready = new Set();
     this.clock = 0;
+    this.chatLog = []; // { name, text, me?, sys? }
+    this.sentAt = [];
   }
 
   get isHost() { return this.id !== null && this.id === this.host; }
@@ -135,6 +137,28 @@ export class Multiplayer {
     for (const p of this.peers.values()) p.remove();
     this.peers.clear();
     this.active = false; this.code = null; this.members = []; this.picked.clear(); this.ready.clear();
+    this.chatLog = [];
+  }
+
+  // lobby chat rides the room relay; the server never reads it
+  chat(text) {
+    text = String(text).trim().slice(0, 140);
+    if (!text || !this.code) return false;
+    const now = Date.now();
+    this.sentAt = this.sentAt.filter((t) => now - t < 4000);
+    if (this.sentAt.length >= 5) { this.addChat({ sys: true, text: 'Slow down a little' }); return false; }
+    this.sentAt.push(now);
+    this.sendAll({ t: 'chat', s: text });
+    this.addChat({ name: this.nameOf(this.id), text, me: true });
+    return true;
+  }
+
+  nameOf(id) { return this.members.find((x) => x.id === id)?.name || 'Someone'; }
+
+  addChat(line) {
+    this.chatLog.push(line);
+    if (this.chatLog.length > 80) this.chatLog.shift();
+    this.game.renderChat();
   }
 
   dropped() {
@@ -145,7 +169,13 @@ export class Multiplayer {
 
   onServer(m) {
     if (m.t === 'roster') {
+      const before = this.code === m.code ? this.members : null;
       this.code = m.code; this.host = m.host; this.members = m.members;
+      if (!before) this.addChat({ sys: true, text: `You're in room ${m.code}` });
+      else {
+        for (const x of m.members) if (!before.some((y) => y.id === x.id)) this.addChat({ sys: true, text: `${x.name} joined` });
+        for (const x of before) if (!m.members.some((y) => y.id === x.id)) this.addChat({ sys: true, text: `${x.name} left` });
+      }
       this.game.renderLobby();
     } else if (m.t === 'error') this.game.lobbyError(m.error);
     else if (m.t === 'closed') { const was = this.active; this.reset(); this.game.onPartyClosed(m.reason, was); } else if (m.t === 'left') {
@@ -224,6 +254,7 @@ export class Multiplayer {
     const g = this.game;
     switch (d.t) {
       case 'start': this.begin(d.layout, d.seed); break;
+      case 'chat': if (typeof d.s === 'string' && d.s.trim()) this.addChat({ name: this.nameOf(from), text: d.s.trim().slice(0, 140) }); break;
       case 'e': this.onEvent(from, d); break;
       case 'ready': this.ready.add(from); this.afterReady(); break;
       case 'p': this.peers.get(from)?.apply(d); break;

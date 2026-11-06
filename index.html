@@ -48,7 +48,7 @@
   </div>
 
   <div id="menu" class="screen">
-    <h1>ASHEN VIGIL</h1>
+    <h1 class="fire-title"><canvas id="title-fire" role="img" aria-label="Ashen Vigil"></canvas></h1>
     <p class="sub">a souls-like roguelite</p>
     <div id="acct-bar">
       <span id="acct-name"></span>
@@ -118,26 +118,54 @@
   </div>
   <div id="lobby" class="screen hidden">
     <h2>Multiplayer</h2>
-    <div id="lobby-picks">
-      <button class="mini-btn" data-pick="knight">Knight</button>
-      <button class="mini-btn" data-pick="rogue">Rogue</button>
-      <button class="mini-btn" data-pick="mage">Spellsword</button>
+    <div id="lobby-coderow" class="hidden">
+      <span class="lobby-label">Room</span>
+      <span id="lobby-code"></span>
+      <button class="mini-btn" id="lobby-copy">Copy</button>
     </div>
-    <div id="lobby-join">
-      <button class="menu-btn" id="lobby-create">Create Room</button>
-      <div id="lobby-joinrow">
-        <input id="lobby-input" maxlength="4" placeholder="CODE" autocapitalize="characters" autocorrect="off" spellcheck="false" />
-        <button class="menu-btn" id="lobby-joinbtn">Join</button>
+    <div id="lobby-grid">
+      <div id="lobby-side">
+        <section class="panel" id="lobby-party">
+          <div class="panel-head">Party</div>
+          <div id="lobby-members"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">Your class</div>
+          <div id="lobby-picks">
+            <button class="pick" data-pick="knight"><b>Knight</b><span>Longsword &amp; shield · L1 blocks</span></button>
+            <button class="pick" data-pick="rogue"><b>Rogue</b><span>Twin daggers · L1 parries</span></button>
+            <button class="pick" data-pick="mage"><b>Spellsword</b><span>Hits build mana · bolt &amp; fireball</span></button>
+          </div>
+        </section>
+      </div>
+      <div id="lobby-main">
+        <section class="panel" id="lobby-join">
+          <div class="panel-head">Play together</div>
+          <p class="panel-note">Start a room and share its code, or type a friend's code to join them. 2 or 3 players.</p>
+          <button class="menu-btn primary" id="lobby-create">Create Room</button>
+          <div id="lobby-joinrow">
+            <input id="lobby-input" maxlength="4" placeholder="CODE" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+            <button class="menu-btn" id="lobby-joinbtn">Join</button>
+          </div>
+        </section>
+        <section class="panel hidden" id="lobby-chat">
+          <div class="panel-head">Chat</div>
+          <div id="chat-log" role="log" aria-live="polite"></div>
+          <form id="chat-form" autocomplete="off">
+            <input id="chat-input" maxlength="140" placeholder="Say something…" enterkeyhint="send" />
+            <button class="mini-btn" type="submit">Send</button>
+          </form>
+        </section>
       </div>
     </div>
-    <div id="lobby-room" class="hidden">
-      <div id="lobby-code"></div>
-      <div id="lobby-members"></div>
-      <div id="lobby-wait"></div>
-      <button class="menu-btn" id="lobby-start">Start Run</button>
-    </div>
+    <div id="lobby-wait"></div>
     <div id="lobby-err"></div>
-    <button class="mini-btn" id="lobby-back">Back</button>
+    <div id="lobby-actions">
+      <button class="mini-btn" id="lobby-shop">Upgrades</button>
+      <button class="mini-btn" id="lobby-settings">Settings</button>
+      <button class="mini-btn" id="lobby-back">Back</button>
+      <button class="menu-btn primary" id="lobby-start">Start Run</button>
+    </div>
   </div>
   <div id="settings" class="screen hidden">
     <h2>Settings</h2>

@@ -17,6 +17,7 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
+import { FireTitle } from './title.js';
 import { ACTIONS, DEFAULTS, QUALITY, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
@@ -89,6 +90,7 @@ class Game {
     this.buildRun();
 
     this.bindUI();
+    new FireTitle($('title-fire'), 'ASHEN VIGIL');
     this.resize();
     addEventListener('resize', () => this.resize());
     window.visualViewport?.addEventListener('resize', () => this.resize());
@@ -197,16 +199,31 @@ class Game {
       });
       el.addEventListener('change', () => this.saveSettings());
     });
-    $('lobby-back').addEventListener('click', () => { if (this.mp.code) this.mp.leave(); this.ui.show('lobby', false); });
+    // in a room, Leave keeps the lobby open; outside one, Back closes it
+    $('lobby-back').addEventListener('click', () => {
+      if (this.mp.code) { this.mp.leave(); $('lobby-err').textContent = ''; this.renderLobby(); } else this.ui.show('lobby', false);
+    });
     const tryNet = (fn) => fn().catch((e) => this.lobbyError(e.message));
     $('lobby-create').addEventListener('click', () => tryNet(() => this.mp.create(this.lobbyKind)));
     $('lobby-joinbtn').addEventListener('click', () => tryNet(() => this.mp.join($('lobby-input').value.trim(), this.lobbyKind)));
+    $('lobby-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('lobby-joinbtn').click(); });
     $('lobby-start').addEventListener('click', () => this.mp.startRun());
+    $('lobby-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
+    $('lobby-settings').addEventListener('click', () => this.openSettings());
+    $('lobby-copy').addEventListener('click', () => {
+      navigator.clipboard?.writeText(this.mp.code || '').then(() => { $('lobby-copy').textContent = 'Copied'; setTimeout(() => { $('lobby-copy').textContent = 'Copy'; }, 1500); }, () => {});
+    });
+    $('chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (this.mp.chat($('chat-input').value)) $('chat-input').value = '';
+    });
     document.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+      // a locked Spellsword opens Upgrades, where it can be bought without leaving the room
+      if (b.dataset.pick === 'mage' && !this.accounts.data?.upgrades.mage) { this.renderShop(); this.ui.show('shop'); return; }
       this.lobbyKind = b.dataset.pick; if (this.mp.code) this.mp.setKind(this.lobbyKind); this.renderLobby();
     }));
     $('btn-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
-    $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); });
+    $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); this.renderLobby(); });
     $('btn-acct').addEventListener('click', () => {
       if (this.accounts.user) { this.accounts.signOut(); this.refreshTitle(); return; }
       $('acct-err').textContent = ''; this.ui.show('account');
@@ -657,17 +674,41 @@ class Game {
 
   renderLobby() {
     const m = this.mp, inRoom = !!m.code;
+    const esc = (s) => String(s).replace(/[<&>"]/g, '');
     $('lobby-join').classList.toggle('hidden', inRoom);
-    $('lobby-room').classList.toggle('hidden', !inRoom);
+    $('lobby-chat').classList.toggle('hidden', !inRoom);
+    $('lobby-party').classList.toggle('hidden', !inRoom);
+    $('lobby-coderow').classList.toggle('hidden', !inRoom);
     $('lobby-code').textContent = m.code || '';
-    $('lobby-members').innerHTML = m.members.map((x) => `<div>${x.name.replace(/[<&]/g, '')} · ${CHAR_NAMES[x.kind] || ''}${x.id === m.host ? ' · host' : ''}</div>`).join('');
+    const slots = m.members.map((x) => `<div class="member k-${esc(x.kind)}"><span class="mname">${esc(x.name)}</span><span class="mclass">${CHAR_NAMES[x.kind] || ''}</span>${x.id === m.host ? '<span class="tag">Host</span>' : ''}${x.id === m.id ? '<span class="tag you">You</span>' : ''}</div>`);
+    while (inRoom && slots.length < 3) slots.push('<div class="member open"><span class="mname">Open slot</span></div>');
+    $('lobby-members').innerHTML = slots.join('');
     $('lobby-start').classList.toggle('hidden', !m.isHost);
     $('lobby-start').disabled = m.members.length < 2;
-    $('lobby-wait').textContent = m.isHost ? (m.members.length < 2 ? 'Share the code. Needs 2 or 3 players.' : '') : 'Waiting for the host to start';
+    $('lobby-back').textContent = inRoom ? 'Leave Room' : 'Back';
+    $('lobby-wait').textContent = !inRoom ? '' : m.isHost ? (m.members.length < 2 ? 'Share the code. Needs 2 or 3 players.' : 'Everyone ready? Start when you are.') : 'Waiting for the host to start';
+    const mageOpen = !!this.accounts.data?.upgrades.mage;
     document.querySelectorAll('[data-pick]').forEach((b) => {
       b.classList.toggle('on', b.dataset.pick === this.lobbyKind);
-      b.disabled = b.dataset.pick === 'mage' && !this.accounts.data?.upgrades.mage;
+      b.classList.toggle('locked', b.dataset.pick === 'mage' && !mageOpen);
+      b.setAttribute('aria-pressed', b.dataset.pick === this.lobbyKind);
     });
+    const lock = document.querySelector('[data-pick="mage"] span');
+    lock.textContent = mageOpen ? 'Hits build mana · bolt & fireball' : 'Locked · tap to unlock in Upgrades';
+    this.renderChat();
+  }
+
+  renderChat() {
+    const log = $('chat-log');
+    const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 30;
+    log.replaceChildren(...this.mp.chatLog.map((l) => {
+      const d = document.createElement('div');
+      d.className = 'chat-line' + (l.sys ? ' sys' : '') + (l.me ? ' me' : '');
+      if (!l.sys) { const n = document.createElement('b'); n.textContent = l.name; d.append(n, ' '); }
+      d.append(l.text);
+      return d;
+    }));
+    if (atEnd) log.scrollTop = log.scrollHeight;
   }
 
   onPartyClosed(reason, wasRunning = true) {
