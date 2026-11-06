@@ -382,3 +382,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
   .banner { animation: bannerIn .01s both; }
 }
 @media (max-height: 500px) { #title-fire { width: min(80vw, 72vh); } }
+
+/* class card hover animations (cardfx.js): a pixel-art canvas behind the card's text */
+.char, .pick { position: relative; overflow: hidden; }
+.char > :not(.cardfx), .pick > :not(.cardfx) { position: relative; z-index: 1; }
+.cardfx {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+  image-rendering: pixelated; image-rendering: crisp-edges; opacity: 0; transition: opacity .3s;
+}
+.cardfx.on { opacity: 1; }

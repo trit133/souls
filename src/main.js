@@ -18,6 +18,7 @@ import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
 import { icon } from './icons.js';
 import { FireTitle } from './title.js';
+import { attachCardFx } from './cardfx.js';
 import { ACTIONS, DEFAULTS, QUALITY, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
@@ -91,6 +92,8 @@ class Game {
 
     this.bindUI();
     new FireTitle($('title-fire'), 'ASHEN VIGIL');
+    document.querySelectorAll('.char[data-char]').forEach((el) => attachCardFx(el, el.dataset.char));
+    document.querySelectorAll('.pick[data-pick]').forEach((el) => attachCardFx(el, el.dataset.pick));
     this.resize();
     addEventListener('resize', () => this.resize());
     window.visualViewport?.addEventListener('resize', () => this.resize());

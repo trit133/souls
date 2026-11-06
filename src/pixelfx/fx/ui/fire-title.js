@@ -20,7 +20,7 @@ export const meta = {
     outline: "#0c0403",
     scale: 4,
     depth: 10,
-    turn: 0.46,
+    turn: 0.115,
     flames: 1,
     seed: 3,
   },
