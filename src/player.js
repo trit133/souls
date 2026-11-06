@@ -143,13 +143,13 @@ export const CHARS = {
     hp: 150, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
     roll: { dur: 0.6, dist: 4.6, iframes: [0.03, 0.4], cost: 22 },
     attacks: KNIGHT_ATTACKS, light: 'k1', critDmg: 150, trail: 0xdfe8ff,
-    model: { cloth: 0x2c3e66, armor: 0x8d939c, accent: 0x2d4a7a, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08 },
+    model: { cloth: 0x2c3e66, armor: 0x8d939c, accent: 0x2d4a7a, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08, kit: 'knight' },
   },
   rogue: {
     hp: 105, st: 85, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',
     roll: { dur: 0.5, dist: 4.9, iframes: [0.02, 0.4], cost: 16 },
     attacks: ROGUE_ATTACKS, light: 'r1', critDmg: 170, trail: 0xffd0a0, dual: true,
-    model: { cloth: 0x4e3e30, armor: 0x6a5440, accent: 0x9a2a22, skin: 0xc49a7a, head: 'hood', weapon: 'daggers', bulk: 0.95 },
+    model: { cloth: 0x2e2a28, armor: 0x4a3a2c, accent: 0x9a2a22, skin: 0xc49a7a, head: 'none', weapon: 'daggers', bulk: 0.95, kit: 'rogue' },
   },
 };
 
@@ -157,7 +157,7 @@ CHARS.mage = {
   hp: 95, st: 85, walk: 4.6, sprint: 7.0, flasks: 4, style: 'daggers', caster: true, dual: true,
   roll: { dur: 0.55, dist: 4.6, iframes: [0.03, 0.4], cost: 18 },
   attacks: MAGE_ATTACKS, light: 's1', critDmg: 130, trail: 0x8ab4ff,
-  model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'hair', weapon: 'spellknife', bulk: 0.9 },
+  model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'none', weapon: 'spellknife', bulk: 0.9, kit: 'mage' },
 };
 
 export const RIPOSTE = {
@@ -185,6 +185,8 @@ export class Player extends Actor {
     const c = CHARS[kind];
     const rig = buildHumanoid({ ...c.model, scale: 1 });
     super(game, rig, { x, z, hp: c.hp, radius: 0.42, team: 'player', yaw: Math.PI, poise: 0 });
+    // the knight's plates clink on every step (louder when sprinting)
+    if (kind === 'knight') rig.onStep = (v) => game.audio.play('rattle', Math.min(1, v / 7));
     this.uid = 'P';
     this.kind = kind;
     this.c = c;
@@ -273,6 +275,10 @@ export class Player extends Actor {
   // ---------- main update ----------
   update(dt, input, presses) {
     this.t += dt;
+    // visual only: idle flourishes, rune glow
+    this.rig.idle = this.state === 'move' && this.speed < 0.2;
+    if (this.c.caster) this.rig.setGlow(this.maxMana ? this.mana / this.maxMana : 0);
+    if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
     for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
 
@@ -423,7 +429,8 @@ export class Player extends Actor {
       case 'cast': {
         const c = this.castDef;
         const fired = this.t >= c.fireAt;
-        if (!c.done && fired) { c.done = true; c.fire(); }
+        this.rig.j.handR.getWorldPosition(this.castHand.pos);
+        if (!c.done && fired) { c.done = true; c.fire(); if (c.charge) { this.game.pfx.kill(c.charge); c.charge = null; } }
         pose = {
           ...this.basePose(), torso: [0.1, -0.35, 0], by: -0.06,
           armR: fired ? [-1.55, 0, 0.1] : [-2.5, 0, -0.2], foreR: [0, 0, 0], handR: [1.5, 0, 0],
@@ -514,6 +521,7 @@ export class Player extends Actor {
       this.buf = null;
       if (this.flasks <= 0) { this.game.ui.toastSmall?.('No flasks left'); return false; }
       this.flasks--; this.healDone = false; this.setState('heal');
+      this.game.pfx.play('heal', this.pos, { follow: { pos: this.pos } });
       return true;
     }
     if (a === 'special' && this.c.caster) { this.buf = null; return this.castFire(dir, mag); }
@@ -584,6 +592,12 @@ export class Player extends Actor {
     this.mana -= cost;
     this.aimAt(dir, mag);
     this.castDef = { dur: dur / this.aspdMul, fireAt: fireAt / this.aspdMul, fire, done: false };
+    // visual: energy gathers in the casting hand until the spell leaves it
+    const big = cost >= MANA_FIRE;
+    this.castHand = this.castHand || { pos: new THREE.Vector3() };
+    this.rig.j.handR.getWorldPosition(this.castHand.pos);
+    this.castDef.charge = this.game.pfx.play(big ? 'charge' : 'chargeIce', this.castHand.pos, { follow: this.castHand });
+    if (big) this.game.pfx.play('circle', this.pos.clone().setY(0.02));
     this.vel.set(0, 0, 0);
     this.setState('cast');
     return true;

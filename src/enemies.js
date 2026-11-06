@@ -137,22 +137,22 @@ export const TYPES = {
   grunt: {
     hp: 140, poise: 15, scale: 1, radius: 0.45, run: 3.7, walk: 1.7, aggro: 11, prefer: 1.7, style: 'sword', turn: 7,
     cd: [0.6, 1.6], moves: GRUNT_MOVES, weights: { slash: 3, double: 2, leap: 1.5 },
-    model: { cloth: 0x4a3c2c, armor: 0x5a5046, skin: 0x8a8576, head: 'bare', weapon: 'rusty', eyes: 0xd8c060 },
+    model: { cloth: 0x4a3c2c, armor: 0x5a5046, skin: 0x8a8576, head: 'bare', weapon: 'rusty', eyes: 0xd8c060, kit: 'grunt' },
   },
   spear: {
     hp: 120, poise: 15, scale: 1, radius: 0.45, run: 3.5, walk: 1.8, aggro: 11, prefer: 2.9, style: 'spear', turn: 6,
     cd: [0.8, 1.8], moves: SPEAR_MOVES, weights: { thrust: 3, double: 2, sweep: 2 }, backoff: 1.7,
-    model: { cloth: 0x3c3a30, armor: 0x6a6052, skin: 0x8a8576, head: 'cap', weapon: 'spear', eyes: 0xd8c060 },
+    model: { cloth: 0x3c3a30, armor: 0x6a6052, skin: 0x8a8576, head: 'cap', weapon: 'spear', eyes: 0xd8c060, kit: 'spear' },
   },
   archer: {
     hp: 46, poise: 10, scale: 1, radius: 0.42, run: 3.3, walk: 2.2, aggro: 16, prefer: 9, style: 'bow', turn: 6,
     cd: [1.2, 2.4], moves: ARCHER_MOVES, weights: { shoot: 1, bash: 1 }, ranged: true, backoff: 5,
-    model: { cloth: 0x2e3a26, armor: 0x3e4a32, skin: 0x8a8576, head: 'hood', weapon: 'bow', accent: 0x3e4a32, eyes: 0xd8c060 },
+    model: { cloth: 0x2e3a26, armor: 0x3e4a32, skin: 0x8a8576, head: 'hood', weapon: 'bow', accent: 0x3e4a32, eyes: 0xd8c060, kit: 'archer' },
   },
   brute: {
     hp: 280, poise: 80, scale: 1.45, radius: 0.75, run: 2.9, walk: 1.5, aggro: 12, prefer: 2.4, style: 'club', turn: 2.6,
     cd: [0.9, 1.9], moves: BRUTE_MOVES, weights: { slam: 2, sweep: 3, stomp: 3 }, superArmor: true,
-    model: { cloth: 0x5a4030, armor: 0x6b5a48, skin: 0x7a6a58, head: 'horned', weapon: 'club', bulk: 1.35, eyes: 0xd8c060, pauldrons: true },
+    model: { cloth: 0x5a4030, armor: 0x6b5a48, skin: 0x7a6a58, head: 'horned', weapon: 'club', bulk: 1.35, eyes: 0xd8c060, pauldrons: true, kit: 'brute' },
   },
 };
 
@@ -465,6 +465,7 @@ export class Enemy extends Actor {
     this.atk = null;
     this.setState('dead');
     this.game.audio.play('enemyDie');
+    if (!silent) this.game.pfx?.play('poof', this.pos.clone().setY(0.2), { size: this.T.scale || 1 });
     if (this.game.player.lock === this) this.game.player.lock = null;
   }
 

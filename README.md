@@ -78,6 +78,10 @@ Runs as the user service `souls-server` on port 4100, public at `/souls` through
 
 **Pixel-art look** (`src/pixel.js`): the 3D scene renders at about 270 game pixels tall, gets 1-pixel outlines, hard 3-step lighting and a fixed palette with ordered dithering, and is scaled up by a whole number with CSS `image-rendering: pixelated`. This is also cheap on big and ultrawide screens. Screens wider than 2.4:1 get a 2.4:1 horizontal view. `scripts/look.mjs <tag>` takes review screenshots.
 
+**Living models** (`src/models.js`, `src/kits.js`): every character is built from boxes with per-character detail. Cloth, capes, plumes, scarves and hair hang on springs that react to movement, turns and a gusting wind; armor plates rattle on footsteps and hits (the Knight's also clink); arms, torso and head get a little follow-through. The Rogue is a hooded, cloaked figure with curved daggers and an idle dagger flip; the Spellsword's coat runes glow with her mana and glyphs orbit her off hand; Varek's armor cracks glow once he ignites. All visual: hit-boxes are circles around each actor.
+
+**Combat effects** (`src/pfx.js`): pixelfx effects drawn into small canvases on camera-facing sprites, on the same pixel grid as the scene: hit sparks, crits, parries, blocks, heals, death poofs, the Spellsword's charge-up, magic circle, blue bolt and churning fireball with explosion, and Varek's Ember Burst. Effects copied from the pixelfx library live in `src/pixelfx/fx/`. `scripts/models.mjs` and `scripts/effects.mjs` take review screenshots.
+
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
 ## Run

@@ -101,6 +101,9 @@ export class Audio {
       case 'victory': [261, 329, 392, 523].forEach((f, i) => this._tone(f, 2.5, { gain: 0.12, delay: i * 0.18, attack: 0.1 })); break;
       case 'bonfire': this._noise(0.9, { freq: 600, q: 0.4, gain: 0.25, attack: 0.2 }); this._tone(392, 1.2, { gain: 0.08, attack: 0.3 }); break;
       case 'fog': this._noise(1.0, { freq: 1200, f1: 300, q: 0.6, gain: 0.2, attack: 0.3 }); break;
+      case 'rattle': // armor plates clinking on a step
+        this._tone(2300 + Math.random() * 500, 0.06, { gain: 0.025 * v, type: 'square' });
+        this._noise(0.05, { freq: 5200, q: 3, gain: 0.05 * v, attack: 0.002 }); break;
       case 'enemyDie': this._tone(160, 0.6, { f1: 50, gain: 0.25 * v, type: 'triangle' }); break;
       case 'riposte': this._noise(0.3, { freq: 700, q: 0.6, gain: 0.7 }); this._tone(70, 0.6, { f1: 30, gain: 0.8, type: 'triangle' }); break;
     }

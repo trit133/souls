@@ -4,6 +4,7 @@ import './style.css';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { FX } from './fx.js';
+import { PFX } from './pfx.js';
 import { World } from './world.js';
 import { pickLayout } from './modules.js';
 import { Player } from './player.js';
@@ -56,6 +57,7 @@ class Game {
     this.input = new Input();
     this.audio = new Audio();
     this.fx = new FX(this.scene);
+    this.pfx = new PFX(this);
     this.world = new World(this.scene);
     this.ui = new UI();
 
@@ -131,7 +133,7 @@ class Game {
   buildRun(layout = pickLayout(), seed = (Math.random() * 1e9) | 0, players = 1) {
     for (const e of this.enemies) e.remove();
     for (const b of this.bosses) b.remove();
-    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
+    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     this.layout = layout;
     this.world.build(layout, seed);
     // tier = mini bosses passed before a module; everything after them is stronger
@@ -357,7 +359,7 @@ class Game {
     }
     this.ui.show('boss', false);
     this.audio.stopMusic();
-    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = [];
+    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear();
     this.rings = [];
   }
 
@@ -815,7 +817,7 @@ class Game {
       return;
     }
     // nothing left can hurt the player once Varek falls
-    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.rings = [];
+    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     const pay = this.bossPayout(enc, net);
     this.announceBossDeath(enc, pay);
     if (this.accounts.data) { this.accounts.data.stats.wins++; this.accounts.save(); }
@@ -854,6 +856,7 @@ class Game {
         if (tg.evolved) { this.ui.redFlash(); tg.rig.flash(1, 0.1, 0.1); tg.instantRiposte(att); }
         const w = tg.rig.tipL ? tg.rig.tipL.getWorldPosition(new THREE.Vector3()) : hp;
         this.fx.sparks(w, null, 26, [1, 0.95, 0.7]);
+        this.pfx.play('parry', w);
         this.hitstop(0.12); if (!tg.evolved) this.slow = 0.35;
         this.fx.addShake(0.4);
       } else if (r === 'block' || r === 'guardbreak') {
@@ -861,12 +864,14 @@ class Game {
         this.mp.event({ k: 'block' });
         const s = tg.rig.shield ? tg.rig.shield.getWorldPosition(new THREE.Vector3()) : hp;
         this.fx.sparks(s, dir.clone().negate(), 14);
+        this.pfx.play('block', s, { dir: dir.clone().negate() });
         this.hitstop(0.05); this.fx.addShake(r === 'guardbreak' ? 0.6 : 0.25);
         if (r === 'guardbreak') this.audio.play('bigHit');
       } else if (r === 'hit') {
         this.audio.play(h.knock === 'heavy' ? 'bigHit' : 'hurt');
         this.mp.event({ k: 'hurt', heavy: h.knock === 'heavy' });
         this.fx.blood(hp, dir, 12);
+        this.pfx.play('hurt', hp, { dir });
         this.hitstop(h.knock === 'heavy' ? 0.1 : 0.07);
         this.fx.addShake(h.knock === 'heavy' ? 0.7 : 0.4);
       }
@@ -883,6 +888,7 @@ class Game {
     this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy });
     this.fx.blood(hp, dir, heavy ? 16 : 9);
     this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]);
+    this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir });
     this.hitstop(r === 'kill' ? 0.11 : heavy ? 0.09 : 0.055);
     this.fx.addShake(def.onHitShake || (r === 'kill' ? 0.35 : 0.15));
   }
@@ -922,6 +928,7 @@ class Game {
     this.audio.play('riposte');
     this.fx.blood(hp, p.fwd().clone(), 30);
     this.fx.burst(hp, 20, [1, 0.3, 0.2], 5, 0.6, 0.25);
+    this.pfx.play('crit', hp);
     this.hitstop(0.16);
     this.fx.addShake(0.7);
     tg.kb.copy(p.fwd()).multiplyScalar(5);
@@ -1034,10 +1041,12 @@ class Game {
     let mesh = null;
     if (d.look === 'arrow') mesh = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.8), new THREE.MeshBasicMaterial({ color: 0xd8c8a0 }));
     else if (d.look === 'rock') mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
-    else if (d.look) mesh = new THREE.Mesh(new THREE.SphereGeometry(d.big * 0.7, 10, 8), new THREE.MeshBasicMaterial({ color: d.look === 'bolt' ? 0x5ab0ff : 0xff7a1a }));
+    else if (d.look) { mesh = new THREE.Mesh(new THREE.SphereGeometry(d.big * 0.7, 10, 8), new THREE.MeshBasicMaterial({ color: d.look === 'bolt' ? 0x5ab0ff : 0xff7a1a })); mesh.visible = false; }
     const pos = new THREE.Vector3(...d.p), vel = new THREE.Vector3(...d.v);
     if (mesh) { mesh.position.copy(pos); if (d.look === 'arrow') mesh.lookAt(pos.clone().add(vel)); this.scene.add(mesh); }
-    this.projectiles.push({ ghost: true, kind: d.kind, pos, vel, life: d.life, mesh });
+    const q = { ghost: true, kind: d.kind, pos, vel, life: d.life, mesh };
+    if (d.look === 'bolt' || d.look === 'fire') q.pfx = this.pfx.play(d.look === 'fire' ? (d.big > 0.8 ? 'bigFireball' : 'fireball') : 'bolt', pos, { follow: q });
+    this.projectiles.push(q);
     if (d.look === 'bolt' || d.look === 'fire') this.audio.remote(d.look === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
@@ -1047,7 +1056,7 @@ class Game {
     const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
     if (t.isRemote) return r;
     const chest = new THREE.Vector3(t.pos.x, 1.1, t.pos.z);
-    if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.hitstop(0.05); this.fx.addShake(0.3); }
+    if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.pfx.play('hurt', chest, { dir: chest.clone().sub(src) }); this.hitstop(0.05); this.fx.addShake(0.3); }
     if (r === 'block') { this.audio.play('clang', 0.6); this.mp.event({ k: 'block' }); this.fx.sparks(chest, null, 8); }
     return r;
   }
@@ -1056,9 +1065,12 @@ class Game {
     const S = SPELLS[kind], big = kind === 'fire' && p.evolved ? 1.45 : 1;
     const f = p.fwd().clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
     const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25, p.pos.z + f.z * 0.8);
+    // the sphere only carries the shot; what you see is the pixelfx bolt or fireball riding on it
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
-    mesh.position.copy(pos); this.scene.add(mesh);
-    this.addProj({ kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, aoe: S.aoe ? S.aoe * big : 0 });
+    mesh.position.copy(pos); mesh.visible = false; this.scene.add(mesh);
+    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, aoe: S.aoe ? S.aoe * big : 0 };
+    q.pfx = this.pfx.play(kind === 'fire' ? (big > 1 ? 'bigFireball' : 'fireball') : 'bolt', pos, { follow: q });
+    this.addProj(q);
     this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
@@ -1074,7 +1086,7 @@ class Game {
 
   // Blue bolts and fireballs fly straight; a fireball bursts on contact or at range.
   updateSpell(q, dt) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < (q.kind === 'fire' ? 2 : 1); i++) {
       const b = q.kind === 'fire' ? [1, 0.45, 0.1] : [0.45, 0.7, 1];
       this.fx.add.spawn({ x: q.pos.x + (Math.random() - 0.5) * q.r, y: q.pos.y + (Math.random() - 0.5) * q.r, z: q.pos.z + (Math.random() - 0.5) * q.r, life: 0.3, size: q.r * 0.8, size1: 0.03, r: b[0], g: b[1], b: b[2] });
     }
@@ -1084,6 +1096,9 @@ class Game {
       if (e.alive && e.y < 1.5 && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.r + e.radius) { hit = e; dead = true; break; }
     }
     if (!dead) return false;
+    if (q.pfx) this.pfx.kill(q.pfx);
+    if (q.aoe) this.pfx.play('explosion', new THREE.Vector3(q.pos.x, 0, q.pos.z), { size: q.aoe / 3 });
+    else this.pfx.play('boltHit', q.pos);
     if (q.aoe) {
       this.fx.shockwave(q.pos.x, q.pos.z, q.aoe, 0xff8a30, 0.4);
       this.fx.burst(q.pos, 40, [1, 0.5, 0.1], 7, 0.7, 0.4);
@@ -1109,6 +1124,7 @@ class Game {
         if (!q.mesh && q.kind === 'fire') for (let i = 0; i < 3; i++) this.fx.flame({ x: q.pos.x, y: 0.1, z: q.pos.z }, 1.1);
         const over = q.life <= 0;
         if (over && q.mesh) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
+        if (over && q.pfx) this.pfx.kill(q.pfx);
         return !over;
       }
       if (q.friendly) {
@@ -1241,6 +1257,7 @@ class Game {
     this.updateParryCues();
     this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
+    this.pfx.update(dt);
     this.updateCamera(rdt);
   }
 

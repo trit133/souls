@@ -91,7 +91,7 @@ export const BOSS_MOVES = {
     hits: [{ t0: 1.45, t1: 1.55, shape: 'circle', offset: 0, radius: 5.2, dmg: 38, poise: 80, knock: 'heavy' }],
     onTime: [
       { t: 0.7, fn: (b, g) => { g.audio.play('slam', 0.6); b.tele = g.fx.telegraph(b.pos.x, b.pos.z, 5.2, 0.8, 0xff6a1a); } },
-      { t: 1.47, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 6, 1.0); g.audio.play('fire'); g.fx.burst({ x: b.pos.x, y: 0.5, z: b.pos.z }, 80, [1, 0.5, 0.1], 9, 1.0, 0.5); g.fx.scorch(b.pos.x, b.pos.z, 5); } },
+      { t: 1.47, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 6, 1.0); g.audio.play('fire'); g.pfx.play('blast', b.pos.clone().setY(0)); g.fx.burst({ x: b.pos.x, y: 0.5, z: b.pos.z }, 80, [1, 0.5, 0.1], 9, 1.0, 0.5); g.fx.scorch(b.pos.x, b.pos.z, 5); } },
     ],
   },
   roar: {
@@ -153,6 +153,7 @@ export class Boss extends Actor {
     this.atk = null; this.kb.set(0, 0, 0); this.strafe = 1; this.strafeT = 0;
     this.rig.root.visible = true; this.rig.root.position.y = 0;
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0, 0, 0);
+    this.rig.setGlow(0);
     this.trail.setColor(0xd8d8e8);
     this.setState('dormant');
   }
@@ -168,6 +169,7 @@ export class Boss extends Actor {
   ignite() {
     this.ignited = true;
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0.9, 0.35, 0.05);
+    this.rig.setGlow(1); // ember cracks in Varek's armor
     this.trail.setColor(0xff7a20);
     if (this.cfg.phase2) this.game.audio.startMusic(2);
   }
@@ -468,13 +470,13 @@ export const BOSSES = {
     id: 'varek', name: 'Varek, the Ashen Warden', hp: 1300, poise: 170, radius: 1.05, walk: 2.2, gap: [0.45, 1.2],
     phase2: true, moves: BOSS_MOVES, weights: VAREK_WEIGHTS,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 6 ? 'leap' : 'thrust') : 'sweep'),
-    model: { scale: 2.1, cloth: 0x2a2624, armor: 0x3c3c44, accent: 0x5a1a14, skin: 0x5a5048, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25 },
+    model: { scale: 2.1, cloth: 0x2a2624, armor: 0x3c3c44, accent: 0x5a1a14, skin: 0x5a5048, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25, kit: 'varek' },
   },
   hask: {
     id: 'hask', name: 'Brother Hask, the Pit Executioner', hp: 700, poise: 115, radius: 0.8, walk: 3.0, gap: [0.3, 0.9],
     phase2: false, kneels: false, moves: HASK_MOVES, weights: HASK_WEIGHTS, leapH: 3.2, leapR: 2.7, leapAir: 0.6, leapCd: 6,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'charge') : 'chop'),
-    model: { scale: 1.55, cloth: 0x2a221c, armor: 0x4a3a30, accent: 0x161210, skin: 0x7a6a5a, head: 'hood', weapon: 'axe', eyes: 0xff4a2a, bulk: 1.3 },
+    model: { scale: 1.55, cloth: 0x2a221c, armor: 0x4a3a30, accent: 0x161210, skin: 0x7a6a5a, head: 'none', weapon: 'axe', eyes: 0xff4a2a, bulk: 1.3, kit: 'hask', eyeZ: 0.155 },
   },
 };
 
@@ -594,12 +596,12 @@ Object.assign(BOSSES, {
     id: 'vael', name: 'Sister Vael, the Twin Fang', hp: 540, poise: 75, radius: 0.6, walk: 3.6, gap: [0.25, 0.7],
     phase2: false, kneels: false, evade: true, moves: VAEL_MOVES, weights: VAEL_WEIGHTS, leapH: 3.5, leapR: 2.2, leapAir: 0.5, leapCd: 5,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'lunge') : 'slash2'),
-    model: { scale: 1.25, cloth: 0x2a2a3a, armor: 0x4a4a5a, accent: 0x5a5a9a, skin: 0xb8a090, head: 'hood', weapon: 'daggers', eyes: 0xa0c8ff, cape: true, bulk: 0.95 },
+    model: { scale: 1.25, cloth: 0x2a2a3a, armor: 0x4a4a5a, accent: 0x5a5a9a, skin: 0xb8a090, head: 'hood', weapon: 'daggers', eyes: 0xa0c8ff, cape: true, bulk: 0.95, kit: 'vael' },
   },
   gorrath: {
     id: 'gorrath', name: 'Gorrath, the Slag Colossus', hp: 980, poise: 230, radius: 1.15, walk: 1.9, gap: [0.6, 1.4],
     phase2: false, kneels: false, moves: GORRATH_MOVES, weights: GORRATH_WEIGHTS,
     punish: (b, dist) => (dist > 4 ? 'hurl' : 'swat'),
-    model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true },
+    model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true, kit: 'gorrath' },
   },
 });
