@@ -86,7 +86,7 @@ class Game {
       if (this.mp.active && this.mp.isHost) this.mp.sendAll({ t: 'tele', x, z, r, dur, color });
       return this.fx.rawTelegraph(x, z, r, dur, color);
     };
-    this.runGold = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {};
+    this.runGold = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
     this.minisFelled = 0;
     this.deaths = 0;
@@ -302,7 +302,7 @@ class Game {
     this.waitingOnParty = false; this.reviving = null;
     this.respawnAt = { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.data?.upgrades);
-    this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {};
+    this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
     this.ui.setRunGold(0);
     $('run-gold').title = 'Gold banked to your account this run';
@@ -531,7 +531,9 @@ class Game {
   // kills fill the room's pot; it pays out when the room is cleared
   onEnemyKilled(e) {
     if (this.isGuest) return;
-    this.creditKill(e);
+    // solo: your kill. A party shares each room's kills when it's cleared (see openRoom)
+    if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
+    else this.creditKill(e);
     const n = enemyGold(e.type);
     this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
     this.statusPopup(e, `+${n}`, '#a89060');
@@ -544,13 +546,13 @@ class Game {
     else if (k?.pid && this.mp.active) this.mp.send({ t: 'kill' }, k.pid);
   }
 
-  addKill() {
+  addKill(add = 1) {
     const d = this.accounts.data, kind = this.kind;
-    if (!d || !this.accounts.user) return;
+    if (!d || !this.accounts.user || add <= 0) return;
     d.kills = d.kills || {};
-    const n = (d.kills[kind] = (d.kills[kind] || 0) + 1);
-    const s = skinList(kind).find((x) => x.kills === n);
-    if (s && n > 0) { this.ui.toast(`NEW SKIN UNLOCKED · ${s.name.toUpperCase()}`, 3); this.accounts.save(); }
+    const was = d.kills[kind] || 0, n = (d.kills[kind] = was + add);
+    const s = skinList(kind).find((x) => x.kills > was && x.kills <= n);
+    if (s) { this.ui.toast(`NEW SKIN UNLOCKED · ${s.name.toUpperCase()}`, 3); this.accounts.save(); }
   }
 
   equippedSkin(kind) {
@@ -568,13 +570,20 @@ class Game {
       const n = this.roomGold[m.i] || 0;
       this.roomGold[m.i] = 0;
       if (n) this.addRunGold(n);
-      this.openRoom(m.i, n);
-      if (this.mp.active) this.mp.sendAll({ t: 'room', i: m.i, n });
+      const k = this.roomKills[m.i] || 0;
+      this.roomKills[m.i] = 0;
+      this.openRoom(m.i, n, k);
+      if (this.mp.active) this.mp.sendAll({ t: 'room', i: m.i, n, k });
     }
   }
 
-  openRoom(i, n) {
+  openRoom(i, n, kills = 0) {
     this.world.setGate('exit' + i, true, false);
+    // party: the room's kills are split evenly (rounded up) for everyone's skins
+    if (kills && this.mp.active && !this.bankedKeys.has('kills' + i)) {
+      this.bankedKeys.add('kills' + i);
+      this.addKill(Math.ceil(kills / Math.max(1, this.mp.members.length || this.allPlayers().length)));
+    }
     this.bankNow(n, 'room' + i);
     this.ui.toast(`AREA CLEARED${n ? ` · ◆ +${n} ${this.accounts.user ? 'banked' : '(guest: not saved)'}` : ''}`, 2.5);
     this.audio.play('fog');
@@ -838,7 +847,8 @@ class Game {
   onBossDeath(boss, net = null) {
     const enc = boss.enc;
     if (enc.defeated) return;
-    if (!this.isGuest) this.creditKill(boss);
+    if (this.mp.active) this.addKill(1); // a boss counts once for everyone in the party
+    else this.creditKill(boss);
     enc.defeated = true;
     enc.active = false;
     this.audio.stopMusic(3);

@@ -16,6 +16,7 @@ import * as magicCircle from './pixelfx/fx/arcane/magic-circle-cast.js';
 import * as fireball from './pixelfx/fx/fire/fireball.js';
 import * as explosion from './pixelfx/fx/explosions/small-explosion.js';
 import * as swordSlash from './pixelfx/fx/melee/sword-slash.js';
+import * as groundSlam from './pixelfx/fx/impacts/ground-slam.js';
 
 const ICE = ['#10203a', '#1c3a6a', '#2c5ca8', '#4a8ae0', '#6ab4ff', '#9fd8ff', '#d4f0ff', '#ffffff'];
 const BLOOD = ['#2a0808', '#5a1010', '#8a1a14', '#c42a1e', '#ff5a3a', '#ffb08a', '#ffffff'];
@@ -31,6 +32,8 @@ export const PRESETS = {
   hurt: { mod: hitSpark, scale: 0.55, aim: true, opts: { palette: BLOOD } },
   block: { mod: hitSpark, scale: 0.5, aim: true, opts: { palette: STEEL } },
   crit: { mod: critHit, scale: 0.55 },
+  groundSlam: { mod: groundSlam, scale: 0.42, cut: 1.5 },
+  bigCrit: { mod: critHit, scale: 0.8 },
   redCrit: { mod: critHit, scale: 0.6, opts: { palette: RED } },
   redSlash: { mod: swordSlash, scale: 0.75, aim: true, opts: { palette: RED } },
   shroud: { mod: poof, scale: 0.75, opts: { palette: BLACK } },

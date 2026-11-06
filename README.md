@@ -49,14 +49,14 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
   - Potion Strength: +15% healing, 3 max (10, 15, 30 gold).
   - Spellsword: unlock for 100 gold. Then Mana: +10, then +15 from the 4th level.
   - Evolutions (75 gold each):
-    - Knight, Shield Charge: block + heavy dashes 4 m behind a spectral shield, knocking enemies back for 10 damage (20 s cooldown); press attack within 0.6 s after it for a leaping overhead (40).
+    - Knight, Shield Charge: block + heavy dashes 4 m behind a spectral shield, knocking enemies back for 10 damage (20 s cooldown); press attack within 0.6 s after it for a high leaping overhead (40) that lands in a ground pound.
     - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
     - Spellsword, Twin Inferno: two larger fireballs.
 - **Spellsword:** R1 knife hits (11 and 14 damage, 20% slower swings, 14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 8 damage, no stagger or knockback). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 
 ## Skins
-Each character unlocks skins from their own kills (killing blows, saved on the account): **100** and **250** kills are recolours, **500** is a new look with its own pieces. Pick them in **Skins** on the title screen or in the lobby; teammates see your skin. Defined in `src/skins.js`; the 500-kill builds are `paladin`, `wraith` and `starborn` in `src/kits.js`. `scripts/skins.mjs` tests unlocking and takes preview shots.
+Each character unlocks skins from their own kills (saved on the account; solo counts killing blows, a party splits each cleared room's kills evenly, rounded up, and every boss counts for everyone): **100** and **250** kills are recolours, **500** is a new look with its own pieces. Pick them in **Skins** on the title screen or in the lobby; teammates see your skin. Defined in `src/skins.js`; the 500-kill builds are `paladin`, `wraith` and `starborn` in `src/kits.js`. `scripts/skins.mjs` tests unlocking and takes preview shots.
 
 | | 100 | 250 | 500 |
 |---|---|---|---|
@@ -105,7 +105,7 @@ npm run build    # static build in dist/ — deployable to any static host
 
 ## Characters
 - **Knight**: longsword and shield. 150 HP, 3-hit combo plus heavy. Hold **L1** to block: it drains 10 stamina a second and a quarter of each blocked hit still gets through. Press **heavy** right after blocking a hit for a guard counter, a quick forehand-backhand (21 + 21). The Knight builds the most stun by far (light 15, third swing 25, heavy 37).
-- **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window, 8 s cooldown from any attempt, 5 s with Red Riposte; the HUD shows it). A successful parry opens a riposte. Builds little stun.
+- **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window, 8 s cooldown from any attempt, 5 s with Red Riposte, 1.5 s less after a successful parry; the HUD shows it). A successful parry opens a riposte. Builds little stun.
 
 ## Controls
 Every keyboard and mouse binding can be changed in **Settings** (title screen or pause menu), along with Pixel size (Chunky / Medium / Fine: about 180, 270 or 360 game pixels tall), master, music, effects and teammate volume, screen shake, and touch button size and opacity. Signed-in players keep their settings on their account across devices; guests keep them on the device. Defaults:
@@ -136,7 +136,7 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
   - What can be parried: only certain light attacks (grunt slashes, spear thrust and sweep, archer bash, Varek's sweeps, Hask's chop and flurry). Projectiles, slams, overheads, leaps, charges, lunges, spins and stomps never can.
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 - **Critical hits** (on a parried enemy, or a boss knocked to its knees by a poise break): each character has its own.
-  - Knight, Flying Knee: 110. Leaps and drives a knee into the enemy.
+  - Knight, Flying Knee: 110. Leaps high and drives a knee into the enemy's head; blood sprays off it.
   - Rogue after a parry, Parry Stab: 170. Flips the dagger to a reverse grip and plunges elbow first. Evolved: blinks behind the enemy in a red flash and stabs it in the back.
   - Rogue on a downed enemy, Shroud Slash: 170. Vanishes in a black shroud and reappears past the enemy through a red slash.
   - Spellsword, Rune Impale: 130. Hops up and drives the rune blade down into a burst of runes.

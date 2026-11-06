@@ -60,13 +60,21 @@ const KNIGHT_ATTACKS = {
   chargeSlam: {
     dur: 1.0, cost: 16, next: 'k2', combo: [0.7, 1.0], cancel: 0.72, track: 0.3, trail: [0.36, 0.52], sfx: [0.36, 'heavySwing'], armor: [0, 0.5],
     keys: [
-      [0.2, { torso: [-0.3, 0, 0], armR: [-3.0, 0, -0.15], foreR: [-0.5, 0, 0], handR: [1.0, 0, 0], armL: [-2.5, 0, 0.2], foreL: [-0.5, 0, 0], legL: [-0.8, 0, 0], shinL: [1.2, 0, 0], legR: [0.3, 0, 0], shinR: [0.9, 0, 0], by: 0.35 }],
+      [0.2, { torso: [-0.35, 0, 0], armR: [-3.0, 0, -0.15], foreR: [-0.5, 0, 0], handR: [1.0, 0, 0], armL: [-2.5, 0, 0.2], foreL: [-0.5, 0, 0], legL: [-1.1, 0, 0], shinL: [1.6, 0, 0], legR: [-0.2, 0, 0], shinR: [1.4, 0, 0] }],
       [0.44, { torso: [0.7, 0, 0], armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.0, 0, 0.1], legL: [-0.8, 0, 0], legR: [0.6, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.3 }],
       [0.75, { torso: [0.5, 0, 0], armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], ...lunge(1), by: -0.2 }],
     ],
     hits: [{ t0: 0.42, t1: 0.52, range: 2.7, arc: 1.8, dmg: 40, poise: 29 }],
     move: [[0.05, 0.42, 2.2]],
-    onTime: [{ t: 0.46, fn: (p, g) => { g.fx.dust(p.pos, 8, 1.2); g.fx.addShake(0.5); g.audio.play('slam', 0.5); } }],
+    jump: [0.04, 0.43, 1.6],
+    onTime: [{ t: 0.43, fn: (p, g) => {
+      // ground pound: cracks and a dust wave, a ring along the floor
+      const at = p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0);
+      g.pfx.play('groundSlam', at);
+      g.fx.shockwave(at.x, at.z, 3.2, 0xd8c8a0, 0.45);
+      g.fx.dust(at, 18, 2.2);
+      g.fx.addShake(0.9); g.hitstop(0.06); g.audio.play('slam', 0.9);
+    } }],
     onHitShake: 0.5, heavyHit: true,
   },
   // right after a block: a quick forehand then backhand (21 + 21)
@@ -188,7 +196,7 @@ const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 export const CRITS = {
   // Knight: a flying knee into a downed enemy (least damage: he knocks enemies down the most)
   knee: {
-    dur: 1.0, hitAt: 0.36, dmg: 110, at: 0.55, jump: [0.16, 0.62, 0.7], trail: [9, 9],
+    dur: 1.05, hitAt: 0.4, dmg: 110, at: 0.55, jump: [0.14, 0.7, 1.4], trail: [9, 9],
     keys: [
       [0.14, { torso: [0.4, 0, 0], head: [-0.2, 0, 0], armL: [-0.7, 0, 0.3], armR: [0.5, 0, -0.3], foreR: [-0.6, 0, 0], handR: [0.4, 0, 0], legL: [-0.6, 0, 0], legR: [0.45, 0, 0], shinL: [0.8, 0, 0], shinR: [0.9, 0, 0], by: -0.24 }],
       [0.3, { torso: [-0.25, 0, 0], head: [0.2, 0, 0], armL: [0.9, 0, 0.5], armR: [1.0, 0, -0.5], foreR: [-0.3, 0, 0], handR: [0.3, 0, 0], legR: [-2.0, 0, 0], shinR: [2.4, 0, 0], legL: [0.45, 0, 0], shinL: [1.0, 0, 0], by: 0.04 }],
@@ -196,7 +204,15 @@ export const CRITS = {
       [0.68, { torso: [0.45, 0, 0], armL: [-0.3, 0, 0.4], armR: [-0.3, 0, -0.4], foreR: [-0.6, 0, 0], legL: [-0.7, 0, 0], legR: [0.35, 0, 0], shinL: [1.0, 0, 0], shinR: [1.1, 0, 0], by: -0.3 }],
       [0.92, { torso: [0.1, 0, 0], armR: [-0.25, 0, -0.12], foreR: [-0.9, 0, 0], handR: [0.35, 0, 0], by: -0.04 }],
     ],
-    events: [{ t: 0.36, fn: (p, tg, g, hp) => { g.pfx.play('crit', hp); g.fx.addShake(0.9); g.fx.dust(tg.pos, 8, 1.2); } }],
+    events: [{ t: 0.4, fn: (p, tg, g, hp, dir) => {
+      // the knee connects with the head: blood sprays up off it, a hit star and sparks
+      const head = new THREE.Vector3(tg.pos.x, 1.75 * tg.rig.root.scale.y + (tg.y || 0), tg.pos.z);
+      const up = new THREE.Vector3(dir.x * 0.6, 1.4, dir.z * 0.6).normalize();
+      g.fx.blood(head, up, 46); g.fx.blood(head, dir.clone(), 20);
+      g.fx.sparks(head, up, 14, [1, 0.85, 0.6]);
+      g.pfx.play('bigCrit', head); g.pfx.play('hurt', head, { dir });
+      g.fx.addShake(1.1); g.hitstop(0.09); g.audio.play('bigHit', 1);
+    } }],
   },
   // Rogue after a parry: flip the dagger to a reverse grip, coil, plunge forward elbow first
   stab: {
@@ -364,6 +380,7 @@ export class Player extends Actor {
     // visual only: idle flourishes, rune glow
     this.rig.idle = this.state === 'move' && this.speed < 0.2;
     if (this.c.caster) this.rig.setGlow(this.maxMana ? this.mana / this.maxMana : 0);
+    if (this.atkLift && (this.state !== 'attack' || !this.atk?.def.jump)) { this.y = 0; this.atkLift = false; }
     // a crit that ended any other way (knocked out of it) gives the body back
     if (this.state !== 'riposte' && this.crit) {
       this.rig.reverse = false;
@@ -429,6 +446,8 @@ export class Player extends Actor {
         }
         // fatigue makes each swing in a long string slower (down to ~70% speed)
         const going = this.runAttack(dt * this.atkRate, this.game.enemiesAll());
+        const J = this.atk?.def.jump;
+        if (J) { const t = this.atk.t; this.atkLift = true; this.y = t > J[0] && t < J[1] ? J[2] * Math.sin(Math.PI * (t - J[0]) / (J[1] - J[0])) : 0; }
         if (this.state !== 'attack' || !this.atk) { pose = this.basePose(); break; }
         const t = this.atk.t;
         pose = this.attackPose(this.basePose());
@@ -677,6 +696,7 @@ export class Player extends Actor {
       // hit lands within the next 0.25s (small tolerance for frame timing).
       const tgt = this.game.parryTargets(this, 0.03)[0];
       if (tgt) {
+        this.parryCd = Math.max(0, this.parryCd - 1.5); // a clean parry recharges 1.5 s sooner
         tgt.e.parryMark = { atk: tgt.e.atk, h: tgt.np.h };
         this.yaw = this.yawTo(tgt.e.pos);
       } else {
