@@ -43,14 +43,17 @@ const gNow = await A.evaluate(() => game.accounts.data.gold);
 await A.reload(); await A.waitForTimeout(900);
 log('after reload', [await A.evaluate(() => game.accounts.data.gold), gNow]);
 
-// ultrawide: rendered pixels capped, same horizontal view as 2:1
+// ultrawide: the scene renders at ~270 game pixels tall (whole-number upscale); 32:9 keeps a 2.4:1 view
 for (const [w, h] of [[1920, 1080], [2560, 1080], [3440, 1440], [5120, 1440]]) {
   const P = await dev({ width: w, height: h });
-  const r = await P.evaluate(() => { const c = game.renderer.domElement; return { px: Math.round(c.width * c.height / 1e5) / 10 + 'M', pr: +game.renderer.getPixelRatio().toFixed(2), fov: +game.camera.fov.toFixed(1), hfov: +(2 * Math.atan(Math.tan(game.camera.fov * Math.PI / 360) * game.camera.aspect) * 180 / Math.PI).toFixed(1), aa: game.renderer.getContext().getContextAttributes().antialias }; });
+  const r = await P.evaluate(() => { const s = game.pixel.size; return { game: s.x + 'x' + s.y, scale: game.pixel.scale, pr: +game.renderer.getPixelRatio().toFixed(2), fov: +game.camera.fov.toFixed(1), hfov: +(2 * Math.atan(Math.tan(game.camera.fov * Math.PI / 360) * game.camera.aspect) * 180 / Math.PI).toFixed(1), aa: game.renderer.getContext().getContextAttributes().antialias }; });
   log(`${w}x${h}`, r);
   if (w === 3440) {
-    await P.click('#btn-settings'); await P.selectOption('#set-quality', 'low'); await P.waitForTimeout(100);
-    log(' low quality', await P.evaluate(() => Math.round(game.renderer.domElement.width * game.renderer.domElement.height / 1e5) / 10 + 'M'));
+    for (const q of ['chunky', 'fine']) {
+      await P.click('#btn-settings'); await P.selectOption('#set-quality', q); await P.waitForTimeout(100); await P.click('#set-back');
+      log(' ' + q, await P.evaluate(() => game.pixel.size.x + 'x' + game.pixel.size.y));
+    }
+    await P.click('#btn-settings'); await P.selectOption('#set-quality', 'medium');
     await P.click('#set-back'); await P.click('.char[data-char="knight"]'); await P.waitForTimeout(700);
     await P.screenshot({ path: '.shots/ultrawide.png' });
   }

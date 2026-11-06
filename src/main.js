@@ -1,3 +1,4 @@
+import { PixelPass, PIXEL_H } from './pixel.js';
 import * as THREE from 'three';
 import './style.css';
 import { Input } from './input.js';
@@ -19,10 +20,9 @@ import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, UPGRADES, 
 import { icon } from './icons.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
-import { ACTIONS, DEFAULTS, QUALITY, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
+import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
-const PIXEL_BUDGET = 2.2e6;
 
 const $ = (id) => document.getElementById(id);
 const PARRY_EARLY = 0.25, PARRY_LATE = 0; // seconds before impact
@@ -38,11 +38,9 @@ const SPELLS = {
 class Game {
   constructor() {
     this.canvas = $('game');
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const big = innerWidth * innerHeight * dpr * dpr > PIXEL_BUDGET;
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: dpr < 2 && !big, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(dpr);
-    this.autoQ = 1; this.frameMs = 16; this.slowT = 0; this.fastT = 0; this.lastDrop = -99;
+    // the scene is drawn small and scaled up by src/pixel.js, so no antialiasing
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false, powerPreference: 'high-performance' });
+    this.pixel = new PixelPass(this.renderer);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x15130f);
@@ -210,7 +208,7 @@ class Game {
     fsLabel();
     $('pause-settings').addEventListener('click', () => this.openSettings());
     $('set-back').addEventListener('click', () => this.closeSettings());
-    $('set-quality').addEventListener('change', (e) => { this.settings.quality = e.target.value; this.autoQ = 1; this.applySettings(this.settings); this.saveSettings(); });
+    $('set-quality').addEventListener('change', (e) => { this.settings.quality = e.target.value; this.applySettings(this.settings); this.saveSettings(); });
     $('set-reset').addEventListener('click', () => { this.applySettings(normalize()); this.saveSettings(); this.renderSettings(); });
     document.querySelectorAll('[data-set]').forEach((el) => {
       el.addEventListener('input', () => {
@@ -1153,41 +1151,27 @@ class Game {
   // ---------- frame ----------
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    // big screens render at most PIXEL_BUDGET pixels; then the quality setting (or auto)
-    const fit = Math.min(1, Math.sqrt(PIXEL_BUDGET / (w * h * dpr * dpr)));
-    const q = QUALITY[this.settings?.quality] ?? this.autoQ;
-    this.renderer.setPixelRatio(dpr * fit * q);
-    this.renderer.setSize(w, h, false);
+    // the scene renders at about PIXEL_H game pixels tall; CSS scales the canvas up (see pixel.js)
+    const px = this.pixel.setSize(w, h, window.devicePixelRatio || 1, PIXEL_H[this.settings?.quality] || PIXEL_H.medium);
     // 21:9 gets its full width; anything wider (32:9) keeps the 21:9 horizontal view
-    const aspect = w / h, maxA = 2.4;
+    const aspect = px.w / px.h, maxA = 2.4;
     this.camera.aspect = aspect;
     this.camera.fov = aspect > maxA ? 2 * Math.atan(Math.tan((48 / 2) * Math.PI / 180) * maxA / aspect) * 180 / Math.PI : 48;
     this.camera.updateProjectionMatrix();
-    this.fx.setScale(h * this.renderer.getPixelRatio() * 0.9 * (48 / this.camera.fov));
-  }
-
-  // Auto quality: lower the render scale when frames run slow, raise it again when
-  // there is headroom (but not straight back to a level that was just too slow)
-  adaptQuality(rdt) {
-    if (QUALITY[this.settings?.quality] != null || this.mode !== 'play') return;
-    this.frameMs += (rdt * 1000 - this.frameMs) * 0.05;
-    if (this.frameMs > 20) { this.slowT += rdt; this.fastT = 0; } else if (this.frameMs < 17.5) { this.fastT += rdt; this.slowT = 0; } else { this.slowT = this.fastT = 0; }
-    if (this.slowT > 2 && this.autoQ > 0.5) { this.autoQ = Math.max(0.5, this.autoQ - 0.1); this.slowT = 0; this.lastDrop = this.time; this.resize(); } else if (this.fastT > 5 && this.autoQ < 1 && this.time - this.lastDrop > 30) { this.autoQ = Math.min(1, this.autoQ + 0.1); this.fastT = 0; this.resize(); }
+    this.fx.setScale(px.h * 0.9 * (48 / this.camera.fov));
   }
 
   loop(now) {
     requestAnimationFrame((t) => this.loop(t));
     let rdt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
-    this.adaptQuality(rdt);
     if (this.mode === 'play' || this.mode === 'title') {
       let dt = rdt;
       if (this.freeze > 0) { this.freeze -= rdt; dt = 0; }
       else if (this.slow > 0) { this.slow -= rdt; dt *= 0.35; }
       this.step(dt, rdt);
     }
-    this.renderer.render(this.scene, this.camera);
+    this.pixel.render(this.scene, this.camera);
   }
 
   step(dt, rdt) {

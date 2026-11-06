@@ -13,15 +13,16 @@ export const DEFAULT_BINDS = {
   special: ['KeyQ', 'ControlLeft'], heal: ['KeyE', ''], lock: ['Tab', 'Mouse1'], interact: ['KeyF', ''], pause: ['Escape', 'KeyP'],
 };
 
-// quality: 'auto' adapts render resolution to keep the frame rate up; otherwise a fixed scale
-export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, quality: 'auto', binds: DEFAULT_BINDS };
-export const QUALITY = { auto: null, high: 1, medium: 0.75, low: 0.5 };
+// quality: pixel size of the game picture (see PIXEL_H in pixel.js)
+export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, quality: 'medium', binds: DEFAULT_BINDS };
+export const QUALITY = { chunky: 1, medium: 1, fine: 1 };
 
 const LOCAL = 'ashenVigil.settings.v1';
 
 // fill in anything missing (e.g. actions added after a player saved)
 export function normalize(s) {
   const out = { ...DEFAULTS, ...(s || {}) };
+  if (!(out.quality in QUALITY)) out.quality = DEFAULTS.quality; // older Auto/High/Low values
   out.binds = {};
   for (const [a] of ACTIONS) {
     const b = s?.binds?.[a];

@@ -76,7 +76,7 @@ Create a room, share the 4-letter code, and the host starts the run. The host's 
 ## Server
 Runs as the user service `souls-server` on port 4100, public at `/souls` through Tailscale Funnel. Data is in `server/data/` (gitignored). The unit file is in `deploy/`. To reinstall: `cd server && npm i`.
 
-Large and ultrawide screens render at most about 2.2M pixels (upscaled, no MSAA), and screens wider than 2.4:1 get a 2.4:1 horizontal view.
+**Pixel-art look** (`src/pixel.js`): the 3D scene renders at about 270 game pixels tall, gets 1-pixel outlines, hard 3-step lighting and a fixed palette with ordered dithering, and is scaled up by a whole number with CSS `image-rendering: pixelated`. This is also cheap on big and ultrawide screens. Screens wider than 2.4:1 get a 2.4:1 horizontal view. `scripts/look.mjs <tag>` takes review screenshots.
 
 It runs in desktop browsers and on iPhone (landscape, touch controls). You can add it to the Home Screen for fullscreen.
 
@@ -93,7 +93,7 @@ npm run build    # static build in dist/ — deployable to any static host
 - **Rogue**: twin daggers. 105 HP, fast 4-hit combo, lunge heavy, longer i-frames. **L1** parries (tight window). A successful parry opens a riposte.
 
 ## Controls
-Every keyboard and mouse binding can be changed in **Settings** (title screen or pause menu), along with Resolution (Auto lowers render scale when frames drop; High/Medium/Low are fixed), master, music, effects and teammate volume, screen shake, and touch button size and opacity. Signed-in players keep their settings on their account across devices; guests keep them on the device. Defaults:
+Every keyboard and mouse binding can be changed in **Settings** (title screen or pause menu), along with Pixel size (Chunky / Medium / Fine: about 180, 270 or 360 game pixels tall), master, music, effects and teammate volume, screen shake, and touch button size and opacity. Signed-in players keep their settings on their account across devices; guests keep them on the device. Defaults:
 
 | | Keyboard / mouse | Touch |
 |---|---|---|

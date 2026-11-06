@@ -63,19 +63,7 @@ const res = await page.evaluate(async () => {
   out.goldSteps = gold; // expect 1,2,4,7,11
   out.finalBoss = (() => { const e = game.encounters.find((x) => x.kind === 'boss'); e.active = true; e.boss.setState('neutral'); e.boss.die(); return { runGold: game.runGold, banked: game.accounts.data.gold, wins: game.accounts.data.stats.wins }; })(); // 18 x 3 = 54
 
-  // 4) cash-out multipliers
-  const cash = {};
-  for (const [n, name] of [[1, 'after1'], [2, 'after2'], [3, 'after3']]) {
-    fresh();
-    for (let i = 0; i < 9; i++) game.enemies[i].die();
-    for (let i = 0; i < n; i++) killMini(i);
-    const held = game.runGold;
-    game.mode = 'play'; game.cashOut();
-    cash[name] = { held, banked: game.accounts.data.gold, mode: game.mode, title: document.getElementById('gameover-title').textContent };
-  }
-  out.cash = cash;
-
-  // 5) death loses unbanked gold
+  // 4) death keeps what was banked (room clears and boss kills bank at once; see bank.mjs)
   fresh();
   game.enemies[0].die(); killMini(0);
   const held = game.runGold;
@@ -84,7 +72,7 @@ const res = await page.evaluate(async () => {
   return out;
 });
 log('2 tiers', res.tiers); log('2 grunt hp', res.gruntHp); log('2 dmg', res.tier2HitOf20);
-log('3 gold', res.goldSteps); log('3 win', res.finalBoss); log('4 cashout', res.cash); log('5 death', res.death);
+log('3 gold', res.goldSteps); log('3 win', res.finalBoss); log('4 death', res.death);
 await page.waitForTimeout(3700);
 
 // 6) shop through the real UI
