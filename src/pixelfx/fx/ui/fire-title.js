@@ -36,7 +36,12 @@ function layout(text, s) {
   for (const ch of text) {
     const g = F.glyphs[ch] ?? F.glyphs[ch.toUpperCase()];
     if (!g) { x += F.space + F.gap; continue; }
-    letters.push({ x0: x * s, x1: (x + g.w) * s });
+    // the runs of ink along the glyph's top row: two or more (H, N, V), or a single 1 px one (L), are points
+    // that each get a small flame; a solid top edge gets one fire across it
+    const runs = [];
+    g.rows[0].forEach((v, c) => { if (v && !g.rows[0][c - 1]) runs.push([c, c + 1]); else if (v) runs[runs.length - 1][1] = c + 1; });
+    const pointed = runs.length > 1 || (runs.length === 1 && runs[0][1] - runs[0][0] === 1 && g.w > 1);
+    letters.push({ x0: x * s, x1: (x + g.w) * s, points: pointed ? runs.map(([a, b]) => ((x + (a + b) / 2) * s)) : null });
     for (let c = 0; c < g.w; c++) cols[x + c] = { rows: g.rows.map((r) => r[c]), i: letters.length - 1 };
     x += g.w + F.gap;
   }
@@ -69,12 +74,22 @@ export function draw(p, t, o) {
 
   // logo space (0..W, 0..Hh, top-left of the face) <-> screen: centred on x = 0, letters' foot on y = 0
   const proj = (X, Y) => { const xc = X - W / 2, z = 1 + (xc * sy) / K; return [(xc * cy) / z, (Y - Hh) / z]; };
-  // flames behind the letters: a small fire standing on each letter's top edge
+  // flames behind the letters: a fire standing on each letter's top edge, or a smaller one on each point
   if (o.flames > 0) {
     L.letters.forEach((le, i) => {
+      const tall = 0.75 + 0.35 * lift[i];
+      if (le.points) {
+        le.points.forEach((px, k) => {
+          const [x, y] = proj(px, bob[i]);
+          burn(p, t, [[-1.2, 3, 0.7 * tall, 1.6, 1], [0, 3, tall, 2, 0]], {
+            H, D, NL, S: o.seed * 31 + i * 7 + k * 101, x, y, height: 14 * o.flames, lean: 0.14, spread: 3,
+            puffs: 2, licks: 2, smoke: 0.5, smokeSize: 2.4, smokeLife: [1, 1.6], embers: 0.8, glow: 0.18, glowR: 16, wind: 2.5,
+          });
+        });
+        return;
+      }
       const mid = (le.x0 + le.x1) / 2, [x, y] = proj(mid, bob[i]);
       const half = ((le.x1 - le.x0) / 2) * cy;
-      const tall = 0.75 + 0.35 * lift[i];
       burn(p, t, [[-half * 0.55, 3, 0.62 * tall, 2.6, 1], [half * 0.6, 3, 0.7 * tall, 2.6, 1], [0, 3, tall, 3.3, 0]], {
         H, D, NL, S: o.seed * 31 + i * 7, x, y, height: 20 * o.flames, lean: 0.14, spread: half,
         puffs: 3, licks: 2.5, smoke: 0.8, smokeSize: 3.2, smokeLife: [1.2, 2], embers: 1.4, glow: 0.3, glowR: 26, wind: 2.5,
