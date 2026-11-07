@@ -17,15 +17,27 @@ out.refund = await page.evaluate(() => {
   game.refreshTitle(); const g1 = d.gold; game.refreshTitle();
   return { gold: g1, again: d.gold, mageKept: !!d.upgrades.mage, oldGone: !d.upgrades.dmg, expected: 5 + (10 + 15 + 23) + (10 + 15) + 10 + 75 };
 });
+// 1b) trees bought on the old 80-node layout come back at what they cost: s0-1..s0-6 (8+10+12+15+18+75) + knight socket s1-10 (44*1.5)
+out.refundV1 = await page.evaluate(() => {
+  const d = game.accounts.data; d.gold = 0; d.tree = { knight: ['s0-1', 's0-2', 's0-3', 's0-4', 's0-5', 's0-6', 's1-10'] }; delete d.treeV;
+  game.refreshTitle(); const g = d.gold; game.refreshTitle();
+  return { gold: g, again: d.gold, expected: 8 + 10 + 12 + 15 + 18 + 75 + 66, cleared: JSON.stringify(d.tree) };
+});
 // 2) buy rules
 await page.click('#btn-shop'); await page.waitForTimeout(400);
 out.rules = await page.evaluate(() => {
   const ui = game.treeUI, d = game.accounts.data; d.gold = 100;
   ui.kind = 'knight'; ui.render();
-  ui.buy('s0-3'); const far = (d.tree?.knight || []).length;
-  ui.buy('s0-1'); const near = d.tree.knight.slice(); const gold1 = d.gold;
-  ui.buy('s0-2');
-  return { farRefused: far === 0, bought: near, cost1: 100 - gold1, after2: d.tree.knight, gold: d.gold };
+  ui.click('s0-3'); const far = (d.tree?.knight || []).length;
+  ui.click('s0-1'); const near = d.tree.knight.slice(); const gold1 = d.gold;
+  ui.click('s0-2'); ui.click('s0-3'); ui.click('s0-4');
+  const owned4 = d.tree.knight.slice(), g4 = d.gold;
+  // reset: marking s0-2 also takes s0-3 and s0-4, which it cuts off
+  document.getElementById('tree-reset').click();
+  ui.click('s0-2');
+  const info = document.getElementById('tree-reset-info').textContent;
+  document.getElementById('tree-reset-ok').click();
+  return { farRefused: far === 0, oneClickBought: near, cost1: 100 - gold1, owned4, resetInfo: info, afterReset: d.tree.knight, refunded: d.gold - g4 };
 });
 // tooltip on hover
 const box = await page.locator('[data-node="s0-3"]').boundingBox();

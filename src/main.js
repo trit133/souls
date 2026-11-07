@@ -20,7 +20,7 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
 import { skinList, unlocked } from './skins.js';
-import { treeStats, migrateUpgrades } from './skilltree.js';
+import { treeStats, migrateUpgrades, migrateTreeV2 } from './skilltree.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
@@ -479,6 +479,11 @@ class Game {
       const back = migrateUpgrades(A.data);
       A.save();
       if (back) setTimeout(() => this.ui.toast(`SKILL TREES ARE HERE · ◆ ${back} REFUNDED`, 4), 300);
+    }
+    if (A.user && A.data && !(A.data.treeV >= 2)) {
+      const back = migrateTreeV2(A.data);
+      A.save();
+      if (back) setTimeout(() => this.ui.toast(`SKILL TREES GREW TO 120 NODES · ◆ ${back} REFUNDED`, 4), 300);
     }
     $('acct-name').textContent = A.user ? A.displayName : 'Guest (gold is not saved)';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';

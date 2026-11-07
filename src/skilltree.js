@@ -51,13 +51,14 @@ const SPECIAL = {
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
-export const CAPS = { dr: 15, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30 };
+export const CAPS = { dr: 15, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
+  parryWin: 25, potion: 30, bleed: 50, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30, dmgPct: 20 };
 
 const INNER = [{ hp: 3 }, { st: 2 }, { hp: 3 }, { dmg: 1 }];
 const MID = [{ hp: 5 }, { st: 3 }];
 const OUTER = [{ hp: 8 }, { st: 4 }, { dmg: 1 }];
 const PCT_MID = [{ hpPct: 2 }, { dmgPct: 2 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }];
-const PCT_OUTER = [{ hpPct: 2 }, { dmgPct: 3 }, { stPct: 2 }, { potion: 5 }];
+const PCT_OUTER = [{ hpPct: 2 }, { dmgPct: 2 }, { stPct: 2 }, { potion: 5 }];
 
 export const EVOS = {
   knight: { key: 'evo_knight', name: 'Shield Charge', desc: 'Block + heavy charges behind a spectral shield, knocking enemies back (20 s cooldown); attack right after it for a leaping overhead.' },
@@ -69,13 +70,14 @@ export const EVOS = {
 // spokes, max ring, twist per ring (spiral), the first spoke's angle, side branches [ring, length], ring links
 // [ring, nodes between], star links (to the spoke two over) [ring]
 const SHAPES = {
-  knight: { spokes: 4, rings: 13, twist: 0, start: -Math.PI / 2, branches: [[4, 2], [9, 2]], links: [[3, 1], [7, 1], [11, 1]], star: [] },
-  rogue: { spokes: 6, rings: 11, twist: 0.14, start: -Math.PI / 2, branches: [[7, 1]], links: [[5, 1], [9, 1]], star: [] },
-  mage: { spokes: 5, rings: 12, twist: 0, start: -Math.PI / 2, branches: [[6, 1]], links: [[4, 1], [12, 1]], star: [8] },
+  knight: { spokes: 4, rings: 15, twist: 0, start: -Math.PI / 2, branches: [[4, 2], [8, 2], [11, 3]], links: [[3, 1], [6, 1], [9, 2], [12, 2], [15, 2]], star: [] },
+  rogue: { spokes: 6, rings: 13, twist: 0.12, start: -Math.PI / 2, branches: [[3, 1], [7, 1], [11, 2]], links: [[5, 1], [9, 1], [13, 1]], star: [] },
+  mage: { spokes: 5, rings: 14, twist: 0, start: -Math.PI / 2, branches: [[3, 1], [6, 1], [11, 2]], links: [[4, 1], [10, 1], [14, 2]], star: [8, 12] },
 };
 
 export const RING = 10; // distance between rings in tree units
-const COST = [0, 8, 10, 12, 15, 18, 22, 26, 31, 37, 44, 52, 62, 74];
+// 10 gold at ring 1 up to 250 at ring 15 (x1.26 a ring), rounded to 5 from 20 up
+const COST = [0, ...Array.from({ length: 15 }, (_, i) => { const c = 10 * Math.pow(25, i / 14); return c < 20 ? Math.round(c) : Math.round(c / 5) * 5; })];
 export const EVO_RING = 6, SOCKET_RING = 10;
 
 function build(kind) {
@@ -202,6 +204,27 @@ export function describe(n) {
 
 export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo ? 'evo' : n.role === 'socket' ? 'socket' : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
 
+// The 80-node trees (version 1) were laid out and priced differently: anything bought there comes back
+// as the gold it cost, once, and the trees start fresh on the 120-node layout.
+const COST_V1 = [0, 8, 10, 12, 15, 18, 22, 26, 31, 37, 44, 52, 62, 74];
+const SOCKETS_V1 = { knight: ['s0-10', 's1-10', 's3-10'], rogue: ['s0-10', 's2-10', 's4-10'], mage: ['s0-10', 's2-10', 's3-10'] };
+function costV1(kind, id) {
+  if (id === 's0-6') return 75;
+  const m = id.match(/^[slx](\d+)-(\d+)/), b = id.match(/^b\d+-(\d+)-(\d+)/);
+  const ring = b ? +b[1] + +b[2] : m ? +m[2] : 0;
+  const c = COST_V1[Math.min(ring, COST_V1.length - 1)] || 0;
+  return SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
+}
+export function migrateTreeV2(data) {
+  if (!data || data.treeV >= 2) return 0;
+  let refund = 0;
+  for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costV1(kind, id);
+  data.tree = {};
+  data.gold = (data.gold || 0) + refund;
+  data.treeV = 2;
+  return refund;
+}
+
 // One-time move from the old shop: everything bought back as gold, except the Spellsword unlock.
 export function migrateUpgrades(data) {
   if (!data || data.treeMigrated) return 0;
@@ -215,5 +238,6 @@ export function migrateUpgrades(data) {
   data.gold = (data.gold || 0) + refund;
   data.tree = data.tree || {};
   data.treeMigrated = true;
+  data.treeV = 2; // brand-new trees are already on the 120-node layout
   return refund;
 }

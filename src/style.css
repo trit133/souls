@@ -323,6 +323,11 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 #tree-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
 #tree-lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(7,6,10,.7); font-size: 16px; }
 #tree-foot { display: flex; align-items: center; gap: 14px; }
+#tree-resetbar { display: flex; align-items: center; gap: 10px; color: #f0a090; font-size: 13px; }
+#tree-wrap.resetting { border-color: #8a3a2a; }
+#tree-svg .te.gone { stroke: #c0392b; stroke-dasharray: 1.6 1; }
+#tree-svg .tn.mark circle, #tree-svg .tn.mark polygon { fill: #4a1410; stroke: #ff5a40; stroke-width: 1.3; }
+#tree-svg .tn.orphan circle, #tree-svg .tn.orphan polygon { fill: #2a1210; stroke: #c0392b; stroke-dasharray: 1 .6; }
 #tree-count { font-size: 12px; opacity: .7; letter-spacing: 1px; }
 #skins { background: rgba(8,6,4,.97); z-index: 13; justify-content: flex-start; padding-top: calc(10px + env(safe-area-inset-top)); }
 #skin-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
