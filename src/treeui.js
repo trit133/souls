@@ -37,7 +37,8 @@ export class TreeUI {
     this.kind = kind || this.game.lobbyKind || this.game.kind || 'knight';
     this.sel = null;
     this.game.ui.show('tree');
-    this.fit(); this.render();
+    this.fit(); this.view.z = 1.7; // open on the inner rings, where early nodes are; Fit shows the whole web
+    this.render();
   }
 
   close() {

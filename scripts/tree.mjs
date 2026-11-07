@@ -18,6 +18,12 @@ out.refund = await page.evaluate(() => {
   return { gold: g1, again: d.gold, mageKept: !!d.upgrades.mage, oldGone: !d.upgrades.dmg, expected: 5 + (10 + 15 + 23) + (10 + 15) + 10 + 75 };
 });
 // 1b) trees bought on the old 80-node layout come back at what they cost: s0-1..s0-6 (8+10+12+15+18+75) + knight socket s1-10 (44*1.5)
+// 1e) trees bought on the 15-ring 180-node layout (v4): 10..350 by ring, evolution 150, sockets 300, ring-10 links 200
+out.refundV4 = await page.evaluate(() => {
+  const d = game.accounts.data; d.gold = 0; d.tree = { knight: ['s0-1', 's0-2', 's0-6', 'r1', 'ra2', 'f0-12-0-1'] }; d.treeV = 4;
+  game.refreshTitle(); const g = d.gold; game.refreshTitle();
+  return { gold: g, again: d.gold, expected: 10 + 15 + 150 + 300 + 200 + 300, cleared: JSON.stringify(d.tree) };
+});
 // 1d) trees bought on the 120-node socket-triangle layout (v3): old prices, sockets 120, ring-10 links 80
 out.refundV3 = await page.evaluate(() => {
   const d = game.accounts.data; d.gold = 0; d.tree = { mage: ['s0-1', 's0-2', 's0-6', 'r0', 'ra1'] }; d.treeV = 3;
@@ -49,7 +55,7 @@ out.rules = await page.evaluate(() => {
   ui.click('s0-2');
   const info = document.getElementById('tree-reset-info').textContent;
   document.getElementById('tree-reset-ok').click();
-  return { farRefused: far === 0, oneClickBought: near, cost1: 200 - gold1, owned4, resetInfo: info, afterReset: d.tree.knight, refunded: d.gold - g4, expectRefund: 15 + 30 + 50 };
+  return { farRefused: far === 0, oneClickBought: near, cost1: 200 - gold1, owned4, resetInfo: info, afterReset: d.tree.knight, refunded: d.gold - g4, expectRefund: 14 + 20 + 30 };
 });
 // tooltip follows the hover: node A, node B, empty space; clicking does not pin it
 const center = async (id) => { const b = await page.locator(`[data-node="${id}"]`).boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
