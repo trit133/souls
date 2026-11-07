@@ -52,13 +52,14 @@ const SPECIAL = {
 };
 // limits so a full tree stays fair
 export const CAPS = { dr: 15, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
-  parryWin: 25, potion: 30, bleed: 50, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30, dmgPct: 20 };
+  parryWin: 25, potion: 40, bleed: 50, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30, dmgPct: 25 };
 
-const INNER = [{ hp: 3 }, { st: 2 }, { hp: 3 }, { dmg: 1 }];
-const MID = [{ hp: 5 }, { st: 3 }];
-const OUTER = [{ hp: 8 }, { st: 4 }, { dmg: 1 }];
+const INNER = [{ hp: 4 }, { st: 3 }, { hp: 4 }, { dmg: 1 }];
+const MID = [{ hp: 6 }, { st: 4 }];
+const EARLY_PCT = [{ hpPct: 2 }, { stPct: 2 }];
+const OUTER = [{ hp: 10 }, { st: 6 }, { dmg: 2 }];
 const PCT_MID = [{ hpPct: 2 }, { dmgPct: 2 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }];
-const PCT_OUTER = [{ hpPct: 2 }, { dmgPct: 2 }, { stPct: 2 }, { potion: 5 }];
+const PCT_OUTER = [{ hpPct: 3 }, { dmgPct: 3 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }, { potion: 5 }];
 
 export const EVOS = {
   knight: { key: 'evo_knight', name: 'Shield Charge', desc: 'Block + heavy charges behind a spectral shield, knocking enemies back (20 s cooldown); attack right after it for a leaping overhead.' },
@@ -70,15 +71,15 @@ export const EVOS = {
 // spokes, max ring, twist per ring (spiral), the first spoke's angle, side branches [ring, length], ring links
 // [ring, nodes between], star links (to the spoke two over) [ring]
 const SHAPES = {
-  knight: { spokes: 4, rings: 15, twist: 0, start: -Math.PI / 2, branches: [[4, 2], [8, 2], [11, 3]], links: [[3, 1], [6, 1], [9, 2], [12, 2], [15, 2]], star: [] },
-  rogue: { spokes: 6, rings: 13, twist: 0.12, start: -Math.PI / 2, branches: [[3, 1], [7, 1], [11, 2]], links: [[5, 1], [9, 1], [13, 1]], star: [] },
-  mage: { spokes: 5, rings: 14, twist: 0, start: -Math.PI / 2, branches: [[3, 1], [6, 1], [11, 2]], links: [[4, 1], [10, 1], [14, 2]], star: [8, 12] },
+  knight: { spokes: 4, rings: 15, twist: 0, start: -Math.PI / 2, branches: [[4, 2], [8, 2]], links: [[3, 1], [6, 1], [9, 2], [12, 2], [15, 2]], star: [] },
+  rogue: { spokes: 6, rings: 13, twist: 0.12, start: -Math.PI / 2, branches: [[3, 1], [7, 1]], links: [[5, 1], [9, 1], [13, 1]], star: [] },
+  mage: { spokes: 5, rings: 14, twist: 0, start: -Math.PI / 2, branches: [[3, 1], [6, 1]], links: [[4, 1], [10, 1], [14, 2]], star: [8, 12] },
 };
 
 export const RING = 10; // distance between rings in tree units
 // 10 gold at ring 1 up to 250 at ring 15 (x1.26 a ring), rounded to 5 from 20 up
 const COST = [0, ...Array.from({ length: 15 }, (_, i) => { const c = 10 * Math.pow(25, i / 14); return c < 20 ? Math.round(c) : Math.round(c / 5) * 5; })];
-export const EVO_RING = 6, SOCKET_RING = 10;
+export const EVO_RING = 6, SOCKET_RING = 10, SOCKET_GAP = 3;
 
 function build(kind) {
   const S = SHAPES[kind], nodes = new Map(), edges = [];
@@ -124,10 +125,32 @@ function build(kind) {
     add({ id, ring: d, role: 'link', x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 });
     link(A.id, id); link(id, B.id);
   }
-  // the evolution and the three rune sockets
+  // the evolution
   nodes.get(`s0-${EVO_RING}`).role = 'evo';
-  const third = S.spokes / 3;
-  for (let k = 0; k < 3; k++) nodes.get(`s${Math.round(k * third) % S.spokes}-${SOCKET_RING}`).role = 'socket';
+  // the rune sockets: a triangle on their own ring just outside ring 10, joined socket to socket by the same
+  // chain of SOCKET_GAP nodes on every tree (so the trip between any two costs the same for every character).
+  // The ring turns to keep its nodes off the spokes; each socket also links to the nearest spoke.
+  const SR = (SOCKET_RING + 0.5) * RING, steps = 3 * (SOCKET_GAP + 1);
+  const spokeA = Array.from({ length: S.spokes }, (_, i) => ang(i, SOCKET_RING));
+  const off = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  let best = 0, bestGap = -1;
+  for (let deg = 0; deg < 360 / steps; deg += 0.5) {
+    const a0 = S.start + (deg * Math.PI) / 180;
+    const gap = Math.min(...Array.from({ length: steps }, (_, k) => Math.min(...spokeA.map((sa) => off(a0 + (k * Math.PI * 2) / steps, sa)))));
+    if (gap > bestGap) { bestGap = gap; best = a0; }
+  }
+  const ringIds = [];
+  for (let k = 0; k < steps; k++) {
+    const a = best + (k * Math.PI * 2) / steps, sock = k % (SOCKET_GAP + 1) === 0;
+    const id = sock ? `r${k / (SOCKET_GAP + 1)}` : `ra${k}`;
+    add({ id, ring: SOCKET_RING, role: sock ? 'socket' : 'link', socketRing: true, ...at(a, SR) });
+    if (sock) {
+      let near = 0; spokeA.forEach((sa, i) => { if (off(a, sa) < off(a, spokeA[near])) near = i; });
+      link(`s${near}-${SOCKET_RING}`, id);
+    }
+    ringIds.push(id);
+  }
+  ringIds.forEach((id, k) => link(id, ringIds[(k + 1) % steps]));
   // extra flasks on two spokes
   nodes.get(`s${1 % S.spokes}-5`).flask = true;
   nodes.get(`s${(S.spokes - 1)}-9`).flask = true;
@@ -150,10 +173,14 @@ function assign(kind, nodes) {
     else if (n.role === 'tip') { n.give = special(n.ring >= 8); n.big = n.ring >= 8; }
     else if (n.role === 'branch') n.give = special(false);
     else if (n.role === 'link') n.give = n.ring >= 8 ? PCT_OUTER[po++ % PCT_OUTER.length] : PCT_MID[pm++ % PCT_MID.length];
-    else if (n.ring <= 7) n.give = (mi++ % 2 === 0) ? MID[(mi >> 1) % MID.length] : special(false);
-    else {
-      const r = oi++ % 3;
-      n.give = r === 0 ? OUTER[(oi / 3 | 0) % OUTER.length] : r === 1 ? PCT_OUTER[po++ % PCT_OUTER.length] : special(false);
+    else if (n.ring <= 7) {
+      // middle rings: flat stat, the character's own, an early percentage
+      const r = mi++ % 3;
+      n.give = r === 0 ? MID[(mi / 3 | 0) % MID.length] : r === 1 ? special(false) : EARLY_PCT[(mi / 3 | 0) % EARLY_PCT.length];
+    } else {
+      // outer rings: mostly percentages, some big flat chunks and the character's own
+      const r = oi++ % 4;
+      n.give = r === 0 ? OUTER[(oi / 4 | 0) % OUTER.length] : r === 3 ? special(false) : PCT_OUTER[po++ % PCT_OUTER.length];
     }
   }
 }
@@ -204,24 +231,28 @@ export function describe(n) {
 
 export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo ? 'evo' : n.role === 'socket' ? 'socket' : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
 
-// The 80-node trees (version 1) were laid out and priced differently: anything bought there comes back
-// as the gold it cost, once, and the trees start fresh on the 120-node layout.
+// Earlier tree layouts were priced and placed differently: anything bought on them comes back as the
+// gold it cost, once, and the trees start fresh on the current layout (version 3: socket triangle).
+// v1: 80 nodes, cheap rings; v2: 120 nodes, sockets on the spokes at ring 10.
 const COST_V1 = [0, 8, 10, 12, 15, 18, 22, 26, 31, 37, 44, 52, 62, 74];
 const SOCKETS_V1 = { knight: ['s0-10', 's1-10', 's3-10'], rogue: ['s0-10', 's2-10', 's4-10'], mage: ['s0-10', 's2-10', 's3-10'] };
-function costV1(kind, id) {
+function costOld(v, kind, id) {
   if (id === 's0-6') return 75;
   const m = id.match(/^[slx](\d+)-(\d+)/), b = id.match(/^b\d+-(\d+)-(\d+)/);
   const ring = b ? +b[1] + +b[2] : m ? +m[2] : 0;
-  const c = COST_V1[Math.min(ring, COST_V1.length - 1)] || 0;
+  const table = v === 2 ? COST : COST_V1;
+  const c = table[Math.min(ring, table.length - 1)] || 0;
   return SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export function migrateTreeV2(data) {
-  if (!data || data.treeV >= 2) return 0;
+export const TREE_VERSION = 3;
+export function migrateTree(data) {
+  if (!data || data.treeV >= TREE_VERSION) return 0;
+  const v = data.treeV === 2 ? 2 : 1;
   let refund = 0;
-  for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costV1(kind, id);
+  for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costOld(v, kind, id);
   data.tree = {};
   data.gold = (data.gold || 0) + refund;
-  data.treeV = 2;
+  data.treeV = TREE_VERSION;
   return refund;
 }
 
@@ -238,6 +269,6 @@ export function migrateUpgrades(data) {
   data.gold = (data.gold || 0) + refund;
   data.tree = data.tree || {};
   data.treeMigrated = true;
-  data.treeV = 2; // brand-new trees are already on the 120-node layout
+  data.treeV = TREE_VERSION; // brand-new trees are already on the current layout
   return refund;
 }

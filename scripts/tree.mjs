@@ -18,6 +18,12 @@ out.refund = await page.evaluate(() => {
   return { gold: g1, again: d.gold, mageKept: !!d.upgrades.mage, oldGone: !d.upgrades.dmg, expected: 5 + (10 + 15 + 23) + (10 + 15) + 10 + 75 };
 });
 // 1b) trees bought on the old 80-node layout come back at what they cost: s0-1..s0-6 (8+10+12+15+18+75) + knight socket s1-10 (44*1.5)
+// 1c) trees bought on the 120-node layout (v2): rings priced 10..250, sockets on spokes at 1.5x
+out.refundV2 = await page.evaluate(() => {
+  const d = game.accounts.data; d.gold = 0; d.tree = { rogue: ['s0-1', 's0-2', 's0-6', 's2-10'] }; d.treeV = 2;
+  game.refreshTitle(); const g = d.gold; game.refreshTitle();
+  return { gold: g, again: d.gold, expected: 10 + 13 + 75 + 120, cleared: JSON.stringify(d.tree) };
+});
 out.refundV1 = await page.evaluate(() => {
   const d = game.accounts.data; d.gold = 0; d.tree = { knight: ['s0-1', 's0-2', 's0-3', 's0-4', 's0-5', 's0-6', 's1-10'] }; delete d.treeV;
   game.refreshTitle(); const g = d.gold; game.refreshTitle();
@@ -39,10 +45,17 @@ out.rules = await page.evaluate(() => {
   document.getElementById('tree-reset-ok').click();
   return { farRefused: far === 0, oneClickBought: near, cost1: 100 - gold1, owned4, resetInfo: info, afterReset: d.tree.knight, refunded: d.gold - g4 };
 });
-// tooltip on hover
-const box = await page.locator('[data-node="s0-3"]').boundingBox();
-await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(150);
-out.tip = await page.evaluate(() => document.getElementById('tree-tip').innerText.replace(/\n/g, ' | '));
+// tooltip follows the hover: node A, node B, empty space; clicking does not pin it
+const center = async (id) => { const b = await page.locator(`[data-node="${id}"]`).boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+const tipNow = () => page.evaluate(() => { const t = document.getElementById('tree-tip'); return t.classList.contains('hidden') ? '(hidden)' : t.innerText.split('\n')[0]; });
+const hov = {};
+await page.mouse.move(...(await center('s0-3'))); await page.waitForTimeout(100); hov.overA = await tipNow();
+await page.mouse.move(...(await center('s1-2'))); await page.waitForTimeout(100); hov.overB = await tipNow();
+await page.mouse.move(5, 300); await page.waitForTimeout(100); hov.empty = await tipNow();
+await page.mouse.click(...(await center('s1-1'))); await page.waitForTimeout(100); hov.afterClick = await tipNow();
+await page.mouse.move(...(await center('s0-3'))); await page.waitForTimeout(100); hov.nextHover = await tipNow();
+await page.mouse.move(5, 300); await page.waitForTimeout(100); hov.leftAgain = await tipNow();
+out.tip = hov;
 // screenshots, with part of each tree owned so the paths show
 for (const kind of ['knight', 'rogue', 'mage']) {
   await page.evaluate((kind) => {

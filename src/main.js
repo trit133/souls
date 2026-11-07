@@ -20,7 +20,7 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
 import { skinList, unlocked } from './skins.js';
-import { treeStats, migrateUpgrades, migrateTreeV2 } from './skilltree.js';
+import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
@@ -480,10 +480,10 @@ class Game {
       A.save();
       if (back) setTimeout(() => this.ui.toast(`SKILL TREES ARE HERE · ◆ ${back} REFUNDED`, 4), 300);
     }
-    if (A.user && A.data && !(A.data.treeV >= 2)) {
-      const back = migrateTreeV2(A.data);
+    if (A.user && A.data && !(A.data.treeV >= TREE_VERSION)) {
+      const back = migrateTree(A.data);
       A.save();
-      if (back) setTimeout(() => this.ui.toast(`SKILL TREES GREW TO 120 NODES · ◆ ${back} REFUNDED`, 4), 300);
+      if (back) setTimeout(() => this.ui.toast(`SKILL TREES REBUILT · ◆ ${back} REFUNDED`, 4), 300);
     }
     $('acct-name').textContent = A.user ? A.displayName : 'Guest (gold is not saved)';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';

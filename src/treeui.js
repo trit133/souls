@@ -78,7 +78,7 @@ export class TreeUI {
       if (!pts.has(e.pointerId)) {
         // mouse hover shows a node's tooltip
         const id = e.target.closest?.('[data-node]')?.dataset.node || null;
-        if (id !== this.hover) { this.hover = id; if (!this.sel) this.showTip(id); }
+        if (id !== this.hover) { this.hover = id; this.sel = null; if (id) this.showTip(id); else this.hideTip(); }
         return;
       }
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -100,7 +100,7 @@ export class TreeUI {
       if (pts.size === 0) {
         if (drag && moved < 6) {
           const id = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-node]')?.dataset.node || null;
-          this.click(id);
+          this.click(id, e.pointerType !== 'mouse');
         }
         drag = null;
       }
@@ -111,13 +111,15 @@ export class TreeUI {
   }
 
   // one click: buy it if you can; in reset mode, mark or unmark it
-  click(id) {
+  // mouse: the tooltip just follows the hover; touch (no hover): a tap shows it until the next tap
+  click(id, touch = false) {
     if (!id) { this.sel = null; this.hideTip(); return; }
     if (this.resetting) { this.toggleMark(id); return; }
     const have = this.data ? owned(this.data, this.kind) : new Set(['start']);
     const n = this.tree.nodes.get(id);
     if (!have.has(id) && canTake(this.tree, have, id) && this.game.accounts.user && !this.locked && (this.data?.gold ?? 0) >= nodeCost(n)) this.buy(id);
-    this.sel = id; this.showTip(id);
+    this.sel = touch ? id : null;
+    this.showTip(id);
   }
 
   // ---------- reset ----------
@@ -172,7 +174,7 @@ export class TreeUI {
     // links: owned both ends = gold, reachable = theme, else dim
     for (const [a, b] of T.edges) {
       const A = T.nodes.get(a), B = T.nodes.get(b), ha = have.has(a), hb = have.has(b);
-      const cls = (gone.has(a) || gone.has(b)) && ha && hb ? 'gone' : ha && hb ? 'own' : ha || hb ? 'reach' : '';
+      const cls = ((gone.has(a) || gone.has(b)) && ha && hb ? 'gone' : ha && hb ? 'own' : ha || hb ? 'reach' : '') + (A.socketRing && B.socketRing ? ' sr' : '');
       s += `<line class="te ${cls}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>`;
     }
     for (const n of T.nodes.values()) {
@@ -188,7 +190,7 @@ export class TreeUI {
     }
     $('tree-svg').innerHTML = s;
     this.applyView();
-    if (this.sel) this.showTip(this.sel);
+    if (this.sel || this.hover) this.showTip(this.sel || this.hover); else this.hideTip();
   }
 
   showTip(id) {
