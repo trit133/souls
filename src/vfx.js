@@ -60,7 +60,7 @@ export const VFX = {
   },
   // ---------- enemies (host) ----------
   statusProc(g, ref, kind) {
-    const a = g.entityRef(ref);
+    const a = ref?.p != null ? g.playerRef(ref) : g.entityRef(ref);
     if (!a) return;
     const chest = { x: a.pos.x, y: 1.2 * a.rig.root.scale.y + (a.y || 0), z: a.pos.z };
     if (kind === 'bleed') { g.fx.blood(chest, null, 40); g.fx.burst(chest, 30, STATUS.bleed.rgb, 6, 0.7, 0.3); }
@@ -72,7 +72,7 @@ export const VFX = {
     g.pfx.play('blast', at);
     g.fx.burst({ x: at.x, y: 0.5, z: at.z }, 80, [1, 0.5, 0.1], 9, 1.0, 0.5);
   },
-  ignite(g, ref) { const b = g.entityRef(ref); if (b) b.rig.setGlow(1); },
+  ignite(g, ref) { const b = g.entityRef(ref); if (b) { b.rig.setGlow(1); b.elems = { fire: 0.3 }; } }, // his hits burn on every screen
 };
 
 // to the wire and back: Vector3s become {v:[x,y,z]}

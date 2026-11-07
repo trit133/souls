@@ -294,11 +294,11 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 /* ---------- settings ---------- */
 #settings { background: rgba(8,6,4,.97); z-index: 13; justify-content: flex-start; }
 /* floating damage numbers */
-.dmgnum { position: absolute; transform: translate(-50%, -50%); font: bold 16px Georgia, serif; color: #f4efe4; text-shadow: 0 0 2px #000, 0 1px 2px #000, 0 0 4px #000; pointer-events: none; animation: dmgup .95s ease-out forwards; white-space: nowrap; }
+.dmgnum { position: absolute; transform: translate(-50%, -50%); font: bold 16px Georgia, serif; color: #f4efe4; text-shadow: 0 0 2px #000, 0 1px 2px #000, 0 0 4px #000; pointer-events: none; animation: dmgup .95s ease-out both; white-space: nowrap; }
 .dmgnum.heavy { font-size: 20px; }
 .dmgnum.crit { font-size: 26px; color: #ffd24a; }
-.dmgnum.team { font-size: 14px; color: #a8a49c; }
-.dmgnum.teamcrit { font-size: 20px; color: #c8b070; }
+.dmgnum.team { font-size: 14px; color: #a8a49c; opacity: .75; }
+.dmgnum.teamcrit { font-size: 20px; color: #c8b070; opacity: .8; }
 .dmgnum.status, .dmgnum.dot { font-size: 15px; }
 @keyframes dmgup { 0% { opacity: 0; margin-top: 6px; transform: translate(-50%, -50%) scale(1.5); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; margin-top: -46px; } }
 /* status icons above enemies */
@@ -479,3 +479,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
   image-rendering: pixelated; image-rendering: crisp-edges; opacity: 0; transition: opacity .3s;
 }
 .cardfx.on { opacity: 1; }
+/* status build-up on the player, over the health bar */
+#pstatus { display: flex; gap: 5px; height: 18px; margin-bottom: 3px; }
+.psicon { position: relative; display: inline-block; width: 16px; height: 16px; filter: drop-shadow(0 0 2px #000); }
+.psicon i { position: absolute; left: 0; right: 0; bottom: -3px; height: 2px; transform-origin: left; }
+.psicon.proc { animation: stproc .6s ease-out; }
+/* skill tree stats breakdown */
+#tree-stats { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 230px; overflow-y: auto; background: rgba(8,7,10,.88); border: 1px solid #3a3020; padding: 6px 8px; font-size: 12px; color: #d8d0c0; z-index: 2; }
+#tree-stats-btn { position: absolute; left: 6px; top: 6px; z-index: 3; display: none; }
+.ts-head { color: #e8c88a; font-size: 12px; margin: 8px 0 3px; border-bottom: 1px solid #3a3020; padding-bottom: 2px; }
+.ts-head:first-child { margin-top: 0; }
+.ts-row { display: flex; justify-content: space-between; gap: 8px; line-height: 1.45; }
+.ts-row span { opacity: .85; }
+.ts-row b { font-weight: normal; text-align: right; color: #f2ead8; }
+.ts-type b { color: inherit; }
+.ts-row em { font-style: normal; color: #8ae07a; }
+.ts-hit i { font-style: normal; }
+.ts-none { opacity: .5; }
+@media (max-width: 760px), (max-height: 460px) {
+  #tree-stats { display: none; width: 200px; top: 36px; }
+  #tree-stats.open { display: block; }
+  #tree-stats-btn { display: block; }
+}

@@ -1,12 +1,12 @@
-// Elden Ring-style status buildup. Each hit adds buildup to a per-enemy meter (hidden; enemies show an icon
-// while a status is building); when the meter passes the enemy's resistance the effect procs and the meter
-// resets. After its first proc, a status takes 2.5x the buildup on that enemy.
+// Elden Ring-style status buildup. Elemental damage adds buildup to a meter (enemies show an icon while a status
+// is building, players see theirs over the health bar); when the meter passes the threshold the effect procs and
+// the meter resets. After its first proc, a status takes twice the buildup on that enemy or player.
 
 export const STATUS = {
-  bleed: { name: 'Bleed', color: '#c0262a', rgb: [0.85, 0.08, 0.08], desc: 'Builds up per hit. When full: a burst of blood dealing a big chunk of max HP.' },
-  poison: { name: 'Poison', color: '#6aa832', rgb: [0.4, 0.75, 0.2], desc: 'Builds up per hit. When full: slow damage over 10 seconds.' },
-  frost: { name: 'Frost', color: '#7ac8ff', rgb: [0.55, 0.85, 1], desc: 'Builds up per hit. When full: a damage burst, and the enemy is slowed (movement and attacks) for 6 seconds.' },
-  fire: { name: 'Fire', color: '#ff7a1a', rgb: [1, 0.45, 0.08], desc: 'Builds up per hit. When full: they burn — fast damage over 3.5 seconds.' },
+  bleed: { name: 'Bleed', color: '#c0262a', rgb: [0.85, 0.08, 0.08], desc: 'Bleed damage builds it up. When full: a burst of blood dealing a big chunk of max HP.' },
+  poison: { name: 'Poison', color: '#6aa832', rgb: [0.4, 0.75, 0.2], desc: 'Poison damage builds it up. When full: slow damage over 10 seconds.' },
+  frost: { name: 'Frost', color: '#7ac8ff', rgb: [0.55, 0.85, 1], desc: 'Frost damage builds it up. When full: a damage burst, and the enemy is slowed (movement and attacks) for 6 seconds.' },
+  fire: { name: 'Fire', color: '#ff7a1a', rgb: [1, 0.45, 0.08], desc: 'Fire damage builds it up. When full: they burn — fast damage over 3.5 seconds.' },
 };
 export const STATUS_KEYS = Object.keys(STATUS);
 
@@ -17,10 +17,18 @@ const FX = {
   poison: { dur: 10, pct: 0.2, bossPct: 0.1, flat: 60 },
   fire: { dur: 3.5, pct: 0.25, bossPct: 0.105, flat: 50 },
 };
+// on players: share of max HP
+const PFX = {
+  bleed: { pct: 0.15 },
+  frost: { pct: 0.06, slowDur: 4, slow: 0.65 },
+  poison: { dur: 10, pct: 0.15 },
+  fire: { dur: 3.5, pct: 0.15 },
+};
 
 export class StatusState {
   constructor(actor, resist) {
     this.a = actor;
+    this.base = resist;
     this.resist = {};
     for (const k of STATUS_KEYS) this.resist[k] = resist;
     this.meter = { bleed: 0, poison: 0, frost: 0, fire: 0 };
@@ -31,12 +39,13 @@ export class StatusState {
   }
 
   reset(resist) {
-    for (const k of STATUS_KEYS) { this.meter[k] = 0; if (resist) this.resist[k] = resist; }
+    if (resist) this.base = resist;
+    for (const k of STATUS_KEYS) { this.meter[k] = 0; this.resist[k] = this.base; }
     this.procd = {}; this.procAt = {};
     this.dots = {}; this.frostT = 0; this.idle = 0;
   }
 
-  slow() { return this.frostT > 0 ? FX.frost.slow : 1; }
+  slow() { return this.frostT > 0 ? (this.a.isPlayer ? PFX : FX).frost.slow : 1; }
 
   add(kind, amount, game) {
     if (!this.a.alive) return;
@@ -47,12 +56,13 @@ export class StatusState {
       this.meter[kind] = 0;
       this.proc(kind, game);
       this.procAt[kind] = performance.now();
-      if (!this.procd[kind]) { this.procd[kind] = true; this.resist[kind] *= 2.5; } // much harder the second time
+      if (!this.procd[kind]) { this.procd[kind] = true; this.resist[kind] *= 2; } // twice as hard after the first
     }
   }
 
   proc(kind, game) {
     const a = this.a, boss = a.isBoss, f = FX[kind];
+    if (a.isPlayer) return this.procPlayer(kind, game);
     const chest = { x: a.pos.x, y: 1.2 * a.rig.root.scale.y + a.y, z: a.pos.z };
     const pct = boss ? f.bossPct : f.pct;
     if (kind === 'bleed' || kind === 'frost') {
@@ -66,6 +76,19 @@ export class StatusState {
     }
     // the burst and its popup show on every screen
     game.vfx('statusProc', { e: a.netId }, kind);
+  }
+
+  procPlayer(kind, game) {
+    const a = this.a, f = PFX[kind];
+    if (kind === 'bleed' || kind === 'frost') {
+      game.statusDamage(a, a.maxHp * f.pct, false, kind);
+      if (kind === 'frost') this.frostT = f.slowDur;
+      game.audio.play(kind === 'bleed' ? 'riposte' : 'clang', 0.7);
+    } else {
+      this.dots[kind] = { t: f.dur, dps: (a.maxHp * f.pct) / f.dur };
+      game.audio.play(kind === 'fire' ? 'fire' : 'hurt', 0.6);
+    }
+    game.vfx('statusProc', game.myRef(), kind);
   }
 
   update(dt, game) {

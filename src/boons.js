@@ -11,7 +11,7 @@ export const BOONS = {
 for (const k of STATUS_KEYS) {
   BOONS[k] = {
     name: STATUS[k].name + ' Infusion', tag: STATUS[k].name.slice(0, 4).toUpperCase(), color: STATUS[k].color, status: k,
-    desc: (p) => `+${p.statusLv[k] ? 5 : 10}% ${STATUS[k].name.toLowerCase()} build-up (max 30%). ` + STATUS[k].desc,
+    desc: (p) => `Each hit adds ${p.statusLv[k] ? '8% more' : '15%'} of its physical damage as ${STATUS[k].name.toLowerCase()} damage. ` + STATUS[k].desc,
     apply: (p) => { p.statusLv[k] = (p.statusLv[k] || 0) + 1; },
   };
 }

@@ -38,6 +38,11 @@ const P = {
   spellDmg: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M12 19v2"/>',
   fireRadius: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 10s1.5 1 1.5 2a1.5 1.5 0 0 1-3 0c0-1 1.5-2 1.5-2z"/>',
   knifeDmg: '<path d="M4 20l9-9M13 11l7-7-1 6-6 1zM6 15l3 3"/>',
+  fire: '<path d="M9 21a5 5 0 0 1-3-9c0 2 1 3 2 3 0-4 2-9 6-12 0 4 4 6 4 12a6 6 0 0 1-5 6"/>',
+  resFire: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M11 17a2.5 2.5 0 0 1-1.5-4.2c0 1 .5 1.5 1 1.5 0-2 1-4 3-5.5 0 2 2 3 2 5.5a3 3 0 0 1-2.5 2.7"/>',
+  resBleed: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8s3 3.5 3 5.5a3 3 0 0 1-6 0C9 11.5 12 8 12 8z"/>',
+  resPoison: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8s3 3.5 3 5.5a3 3 0 0 1-6 0C9 11.5 12 8 12 8z"/><circle cx="12" cy="14" r=".8"/>',
+  resFrost: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v9M8.5 10l7 5M15.5 10l-7 5"/>',
 };
 export const iconPath = (k) => P[k] || '';
 export const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${P[k] || ''}</svg>`;

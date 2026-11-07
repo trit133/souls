@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { skinModel } from './skins.js';
-import { statusPct } from './skilltree.js';
-import { statusKey } from './weaponfx.js';
+import { weaponElems, mitigate, enemyParts } from './damage.js';
+import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
 
@@ -313,8 +313,11 @@ export class Player extends Actor {
     this.boonList = [];
     // `upgrades`: this character's summed skill-tree stats (skilltree.js treeStats)
     const T = (this.tree = upgrades || {}), pct = (k) => (T[k] || 0) / 100;
-    this.dmgMul += pct('dmgPct'); this.aspdMul += pct('aspd'); this.moveMul += pct('move');
-    this.flatDmg = T.dmg || 0;
+    this.aspdMul += pct('aspd'); this.moveMul += pct('move');
+    this.flatDmg = T.physDmg || 0;
+    // status effects build on players too (meters over the health bar)
+    this.isPlayer = true;
+    this.status = new StatusState(this, 100);
     this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')));
     this.maxSt = this.st = Math.round((c.st + (T.st || 0)) * (1 + pct('stPct')));
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0);
@@ -377,7 +380,8 @@ export class Player extends Actor {
     this.t += dt;
     // visual only: idle flourishes, rune glow
     this.rig.idle = this.state === 'move' && this.speed < 0.2;
-    this.wfxKey = statusKey(statusPct(this.tree, this.statusLv)); // weapon status effect (above 5%)
+    this.wfxKey = weaponElems(this.tree, this.statusLv); // elements showing on the weapon
+    this.status.update(dt, this.game);
     if (this.c.caster) this.rig.setGlow(this.maxMana ? this.mana / this.maxMana : 0);
     if (this.atkLift && (this.state !== 'attack' || !this.atk?.def.jump)) { this.y = 0; this.atkLift = false; }
     // a crit that ended any other way (knocked out of it) gives the body back
@@ -414,7 +418,7 @@ export class Player extends Actor {
         this.sprinting = wantSprint;
         let sp = (this.sprinting ? this.c.sprint : this.c.walk) * mag;
         if (this.blocking) sp *= 0.5;
-        sp *= (1 - 0.1 * this.fatigue) * this.moveMul;
+        sp *= (1 - 0.1 * this.fatigue) * this.moveMul * this.status.slow();
         if (this.sprinting) { this.st -= 14 * dt; this.stDelay = 0.4; }
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.01 ? sp : 0);
         this.vel.lerp(tv, 1 - Math.exp(-14 * dt));
@@ -603,8 +607,7 @@ export class Player extends Actor {
         if (!this.ripHit && rt >= C.hitAt && tg) {
           this.ripHit = true;
           // parry crits hit like three light attacks (more against bosses); others use their own number
-          const dmg = (C.dmg + (C.flatHits || 0) * (this.flatDmg || 0)) * (tg.isBoss ? C.bossMul || 1 : 1);
-          this.game.riposteHit(this, tg, dmg);
+          this.game.riposteHit(this, tg, C.dmg * (tg.isBoss ? C.bossMul || 1 : 1), C.flatHits || 1);
         }
         if (rt >= C.dur) this.endCrit();
         break;
@@ -852,7 +855,9 @@ export class Player extends Actor {
   receive(info) {
     if (!this.alive) return 'none';
     if (this.iframe()) return 'dodge';
-    if (this.tree?.dr) info = { ...info, dmg: info.dmg * (1 - this.tree.dr / 100) };
+    // armour and resistances: what gets through, and the status build-up the elements add
+    const mit = mitigate(info.parts || enemyParts(info.dmg, info.elems), this.tree, info.buildMul ?? 1);
+    info = { ...info, dmg: mit.total };
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;
@@ -878,6 +883,7 @@ export class Player extends Actor {
     this.hp -= info.dmg;
     this.rig.flash(1, 0.3, 0.2);
     if (this.hp <= 0) { this.die(); return 'hit'; }
+    for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
     if (info.knock === 'heavy' && !(this.hyperArmor() && info.dmg < 30)) {
       this.kb.copy(away).multiplyScalar(11);

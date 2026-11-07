@@ -1,27 +1,28 @@
 // Per-character skill trees (replacing the old upgrade shop). Each tree is a web around a start node:
 // spokes run outward ring by ring, side branches fork off them and ring links join neighbouring spokes,
 // so there is more than one way out. Inner rings give small flat stats, outer rings bigger flat chunks,
-// small percentages and the character's own stats. The evolution sits 6 rings out; 3 rune sockets sit at
-// ring 10 (empty for now). A node can be bought when it touches one you own; price grows with the ring.
+// small percentages and the character's own stats; damage nodes for each damage type (leaning to the character's
+// own: Knight physical, Rogue bleed, Spellsword frost), resistances to the four elements and the Knight's armour
+// are spread through it. The evolution sits 6 rings out; 3 rune sockets sit at ring 10 (empty for now). A node
+// can be bought when it touches one you own; price grows with the ring.
 import { UPGRADES, upgradeCost } from './progress.js';
 import { LAYOUT } from './treelayout.js';
 import { COST_V5 } from './treecost-v5.js';
+import { COST_V6 } from './treecost-v6.js';
 
 // ---------- what nodes can give ----------
 // fmt: how a value reads in the tooltip
 export const STATS = {
   hp: { name: 'Health', fmt: (v) => `+${v} health`, icon: 'hp' },
   st: { name: 'Stamina', fmt: (v) => `+${v} stamina`, icon: 'st' },
-  dmg: { name: 'Damage', fmt: (v) => `+${v} damage per hit`, icon: 'dmg' },
   hpPct: { name: 'Vitality', fmt: (v) => `+${v}% health`, icon: 'hp' },
   stPct: { name: 'Endurance', fmt: (v) => `+${v}% stamina`, icon: 'st' },
-  dmgPct: { name: 'Might', fmt: (v) => `+${v}% damage`, icon: 'dmg' },
   move: { name: 'Swiftness', fmt: (v) => `+${v}% move speed`, icon: 'move' },
   aspd: { name: 'Quickness', fmt: (v) => `+${v}% attack speed`, icon: 'aspd' },
   potion: { name: 'Alchemy', fmt: (v) => `+${v}% potion healing`, icon: 'potion' },
   flask: { name: 'Extra Flask', fmt: (v) => `+${v} flask`, icon: 'flask' },
   // knight
-  dr: { name: 'Bulwark', fmt: (v) => `${v}% less damage taken`, icon: 'dr' },
+  armor: { name: 'Armour', fmt: (v) => `+${v}% armour (less physical damage taken)`, icon: 'dr' },
   blockDrain: { name: 'Steady Guard', fmt: (v) => `${v}% less stamina drain while blocking`, icon: 'blockDrain' },
   chip: { name: 'Tempered Shield', fmt: (v) => `${v} points less damage through the shield (of 25)`, icon: 'chip' },
   stun: { name: 'Crushing Blows', fmt: (v) => `+${v}% stun buildup`, icon: 'stun' },
@@ -44,29 +45,40 @@ export const STATS = {
   spellDmg: { name: 'Arcana', fmt: (v) => `+${v}% spell damage`, icon: 'spellDmg' },
   fireRadius: { name: 'Conflagration', fmt: (v) => `+${v}% fireball blast radius`, icon: 'fireRadius' },
   knifeDmg: { name: 'Spellblade', fmt: (v) => `+${v}% knife damage`, icon: 'knifeDmg' },
-  // status build-up without an Infusion (an Infusion counts 10%; every status caps at 30%)
-  bleedPct: { name: 'Hemorrhage', fmt: (v) => `+${v}% bleed build-up`, icon: 'bleed' },
-  firePct: { name: 'Kindle', fmt: (v) => `+${v}% fire build-up`, icon: 'fireCost' },
-  frostPct: { name: 'Rime', fmt: (v) => `+${v}% frost build-up`, icon: 'frost' },
-  poisonPct: { name: 'Venom', fmt: (v) => `+${v}% poison build-up`, icon: 'poison' },
+  // damage by type (status build-up comes from elemental damage)
+  physDmg: { name: 'Brutality', fmt: (v) => `+${v} physical damage per hit`, icon: 'dmg' },
+  physPct: { name: 'Heft', fmt: (v) => `+${v}% physical damage`, icon: 'dmg' },
+  fireDmg: { name: 'Ember Edge', fmt: (v) => `+${v} fire damage per hit`, icon: 'fire' },
+  firePct: { name: 'Kindle', fmt: (v) => `+${v}% fire damage`, icon: 'fire' },
+  bleedDmg: { name: 'Serrated', fmt: (v) => `+${v} bleed damage per hit`, icon: 'bleed' },
+  bleedPct: { name: 'Hemorrhage', fmt: (v) => `+${v}% bleed damage`, icon: 'bleed' },
+  poisonDmg: { name: 'Toxin', fmt: (v) => `+${v} poison damage per hit`, icon: 'poison' },
+  poisonPct: { name: 'Venom', fmt: (v) => `+${v}% poison damage`, icon: 'poison' },
+  frostDmg: { name: 'Chill', fmt: (v) => `+${v} frost damage per hit`, icon: 'frost' },
+  frostPct: { name: 'Rime', fmt: (v) => `+${v}% frost damage`, icon: 'frost' },
+  // resistances: each 1% cuts that element's build-up on you by 1% and its damage by 0.5%
+  fireRes: { name: 'Fireproof', fmt: (v) => `+${v}% fire resistance`, icon: 'resFire', res: true },
+  bleedRes: { name: 'Clotting', fmt: (v) => `+${v}% bleed resistance`, icon: 'resBleed', res: true },
+  poisonRes: { name: 'Antidote', fmt: (v) => `+${v}% poison resistance`, icon: 'resPoison', res: true },
+  frostRes: { name: 'Warmth', fmt: (v) => `+${v}% frost resistance`, icon: 'resFrost', res: true },
 };
 
 // the character's own stats: [small, large] values
 const SPECIAL = {
-  knight: [['dr', 1.5, 3], ['blockDrain', 6, 12], ['chip', 1.5, 3], ['stun', 3, 6], ['counter', 6, 12], ['chargeCd', 1, 2], ['chargeKb', 10, 20]],
+  knight: [['blockDrain', 6, 12], ['chip', 1.5, 3], ['stun', 3, 6], ['counter', 6, 12], ['chargeCd', 1, 2], ['chargeKb', 10, 20]],
   rogue: [['parryCd', 0.25, 0.5], ['critDmg', 4, 8], ['iframe', 0.01, 0.02], ['atkCost', 3, 6], ['parryWin', 1, 3], ['rollCost', 4, 8]],
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
-export const CAPS = { dr: 15, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
-  parryWin: 10, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30, dmgPct: 25 };
+export const CAPS = { armor: 20, physPct: 25, firePct: 45, bleedPct: 45, poisonPct: 45, frostPct: 45, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
+  parryWin: 10, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
 
-const INNER = [{ hp: 3 }, { st: 2 }, { dmg: 1 }, { hp: 3 }, { st: 2 }];
+const INNER = [{ hp: 3 }, { st: 2 }];
 const MID = [{ hp: 4 }, { st: 2 }];
-const EARLY_PCT = [{ hpPct: 1 }, { stPct: 1 }, { dmgPct: 1 }];
-const OUTER = [{ hp: 8 }, { st: 4 }, { dmg: 2 }];
-const PCT_MID = [{ hpPct: 2 }, { dmgPct: 2 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }];
-const PCT_OUTER = [{ hpPct: 3 }, { dmgPct: 3 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }, { potion: 5 }];
+const EARLY_PCT = [{ hpPct: 1 }, { stPct: 1 }];
+const OUTER = [{ hp: 8 }, { st: 4 }];
+const PCT_MID = [{ hpPct: 2 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }];
+const PCT_OUTER = [{ hpPct: 3 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }, { potion: 5 }];
 
 export const EVOS = {
   knight: { key: 'evo_knight', name: 'Shield Charge', desc: 'Block + heavy charges behind a spectral shield, knocking enemies back (20 s cooldown); attack right after it for a leaping overhead.' },
@@ -80,26 +92,27 @@ export const EVOS = {
 // 'wheel' (a hub ringed by small nodes), 'arc' (a curved chain sweeping toward the next spoke), 'gem' (wheels
 // set out at the star's points and forks between them)
 const SHAPES = {
-  knight: { spokes: 4, lens: [20, 20, 20, 20], twist: 0, start: -Math.PI / 2, links: [[4, 1], [9, 2], [13, 2], [18, 1]], star: [], style: 'wheel' },
-  rogue: { spokes: 6, lens: [20, 15, 20, 15, 20, 15], twist: 0.09, start: -Math.PI / 2, links: [[5, 1], [13, 1]], star: [], style: 'arc' },
-  mage: { spokes: 5, lens: [20, 20, 20, 20, 20], twist: 0, start: -Math.PI / 2, links: [[4, 1]], star: [12, 16], style: 'gem' },
+  knight: { spokes: 4, lens: [22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1], [9, 2], [13, 2], [18, 1], [21, 1]], star: [], style: 'wheel' },
+  rogue: { spokes: 6, lens: [22, 17, 22, 17, 22, 17], twist: 0.09, start: -Math.PI / 2, links: [[5, 1], [13, 1]], star: [], style: 'arc' },
+  mage: { spokes: 5, lens: [22, 22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1]], star: [12, 16], style: 'gem' },
 };
 
 export const RING = 12; // distance between rings in tree units
-// the three price bands, spread over 20 rings: 1-7: 10 -> 80, 8-14: 100 -> 200, 15-20: 250 -> 350
-const COST = [0, 10, 14, 20, 30, 40, 55, 80, 100, 110, 125, 140, 160, 180, 200, 250, 270, 290, 310, 330, 350];
-// every tree has the same number of nodes in each band of rings: [first ring, last ring, nodes]
-export const BANDS = [[1, 7, 90], [8, 14, 60], [15, 20, 30]];
-// the most nodes a tree can hold: 70 in the first section, 100 once that character beats it (Varek),
-// 120 in the second section, 130 once that is beaten (the second section is still to come)
+// the three price bands, spread over 22 rings: 1-8: 10 -> 80, 9-15: 100 -> 200, 16-22: 250 -> 350
+const COST = [0, 10, 14, 20, 28, 38, 50, 65, 80, 100, 115, 130, 150, 165, 180, 200, 250, 265, 285, 300, 320, 335, 350];
+export const RINGS = 22;
+// every tree has the same number of nodes in each band of rings (about 10 a ring): [first ring, last ring, nodes]
+export const BANDS = [[1, 8, 80], [9, 15, 70], [16, 22, 65]];
+// the most nodes a tree can hold: 45 in the first section, 70 once that character beats it (Varek),
+// 100 in the second section, 130 once that is beaten (the second section is still to come)
 export function nodeCap(data, kind) {
   const st = data?.stats || {};
   if (st.section2WinsBy?.[kind]) return 130;
-  if (st.section2By?.[kind]) return 120;
-  if (st.winsBy?.[kind]) return 100;
-  return 70;
+  if (st.section2By?.[kind]) return 100;
+  if (st.winsBy?.[kind]) return 70;
+  return 45;
 }
-export const capHint = (cap) => (cap <= 70 ? 'Beat Varek with this character to raise the limit to 100' : cap <= 100 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
+export const capHint = (cap) => (cap <= 45 ? 'Beat Varek with this character to raise the limit to 70' : cap <= 70 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
 export const EVO_RING = 6, SOCKET_RING = 10, SOCKET_GAP = 3;
 function segCross(a, b, c, d) {
   const o = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
@@ -314,11 +327,11 @@ export function build(kind, opts = {}) {
   // a moved node is priced by where it ended up (staying inside its band, so the band counts hold)
   for (const n of nodes.values()) {
     if (n.pin || n.role === 'socket' || n.role === 'evo' || n.socketRing) continue;
-    const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, 20];
+    const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
   assign(kind, nodes);
-  statusNodes(kind, nodes);
+  typedNodes(kind, nodes);
   return { kind, nodes, edges };
 }
 
@@ -349,28 +362,40 @@ function assign(kind, nodes) {
   }
 }
 
-// Status build-up nodes: the character's own status adds up to 10% over the tree, the other three 8% each;
-// 1-2% near the centre, 3% in the middle, 4% at the edge. They take over regular stat nodes, spread around.
-export const STATUS_EMPHASIS = { knight: 'fire', rogue: 'bleed', mage: 'frost' };
-const STATUS_RINGS = { 1: [2, 4], 2: [4, 7], 3: [8, 13], 4: [15, 20] };
-function statusNodes(kind, nodes) {
+// Damage, resistance and armour nodes take over regular stat nodes, spread round the web. Each sits in a ring
+// range by tier: small values near the centre, the biggest at the edge. [stat, value, tier]
+const TIER_RINGS = { 1: [2, 5], 2: [6, 8], 3: [9, 12], 4: [13, 16], 5: [17, 22] };
+export const EMPHASIS = { knight: 'phys', rogue: 'bleed', mage: 'frost' };
+function typedSet(kind) {
+  const own = EMPHASIS[kind], out = [];
+  // the character's own type: flat damage 1,1,1,1,1,2 and +5/8/12% (physical) or +10/15/20% (an element)
+  for (const [v, t] of [[1, 1], [1, 1], [1, 2], [1, 3], [1, 4], [2, 5]]) out.push([own + 'Dmg', v, t]);
+  for (const [v, t] of own === 'phys' ? [[5, 2], [8, 4], [12, 5]] : [[10, 2], [15, 4], [20, 5]]) out.push([own + 'Pct', v, t]);
+  // every other element: +1 and +2 flat, +10%
+  for (const k of ['bleed', 'fire', 'frost', 'poison']) if (k !== own) out.push([k + 'Dmg', 1, 1], [k + 'Dmg', 2, 3], [k + 'Pct', 10, 4]);
+  // a little physical for the elemental characters
+  if (own !== 'phys') out.push(['physDmg', 1, 1], ['physDmg', 1, 2]);
+  // resistances: 6/8/10/12/14 = 50% for each element
+  for (const k of ['fire', 'bleed', 'poison', 'frost']) [6, 8, 10, 12, 14].forEach((v, i) => out.push([k + 'Res', v, i + 1]));
+  // Knight armour: up to 20%
+  if (kind === 'knight') [1, 1, 1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3].forEach((v, i) => out.push(['armor', v, 1 + (i >> 1)]));
+  return out;
+}
+function typedNodes(kind, nodes) {
   const placed = [];
-  const free = (n) => !n.flask && !n.evo && n.role !== 'evo' && n.role !== 'socket' && n.role !== 'start' && !n.socketRing && !n.statusNode;
-  for (const st of ['bleed', 'fire', 'frost', 'poison']) {
-    const vals = st === STATUS_EMPHASIS[kind] ? [1, 2, 3, 4] : [1, 3, 4];
-    for (const v of vals) {
-      const [lo, hi] = STATUS_RINGS[v];
-      let cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo && n.ring <= hi);
-      if (!cands.length) cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo - 2 && n.ring <= hi + 2);
-      // farthest from the status nodes already placed, so they spread round the web
-      let best = cands[0], bd = -1;
-      for (const n of cands) {
-        const d = placed.length ? Math.min(...placed.map((p) => Math.hypot(p.x - n.x, p.y - n.y))) : Math.hypot(n.x, n.y);
-        if (d > bd) { bd = d; best = n; }
-      }
-      best.give = { [st + 'Pct']: v }; best.statusNode = true; best.big = v >= 3;
-      placed.push(best);
+  const free = (n) => !n.flask && !n.evo && n.role !== 'evo' && n.role !== 'socket' && n.role !== 'start' && !n.socketRing && !n.typed;
+  for (const [stat, v, t] of typedSet(kind)) {
+    const [lo, hi] = TIER_RINGS[t];
+    let cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo && n.ring <= hi);
+    if (!cands.length) cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo - 2 && n.ring <= hi + 2);
+    // farthest from the typed nodes already placed, so they spread round the web
+    let best = cands[0], bd = -1;
+    for (const n of cands) {
+      const d = placed.length ? Math.min(...placed.map((p) => Math.hypot(p.x - n.x, p.y - n.y))) : Math.hypot(n.x, n.y);
+      if (d > bd) { bd = d; best = n; }
     }
+    best.give = { [stat]: v }; best.typed = true; best.big = t >= 4;
+    placed.push(best);
   }
 }
 
@@ -397,8 +422,10 @@ export function canTake(tree, have, id) {
 }
 
 // summed stats for a character (caps applied); `evolved` if the evolution node is owned
-export function treeStats(kind, data) {
-  const tree = TREES[kind], have = owned(data, kind), s = {};
+export function treeStats(kind, data) { return sumStats(kind, owned(data, kind)); }
+// the same for any set of owned node ids (the tree screen previews a node before you buy it)
+export function sumStats(kind, have) {
+  const tree = TREES[kind], s = {};
   for (const id of have) {
     const n = tree?.nodes.get(id);
     if (!n) continue;
@@ -407,17 +434,6 @@ export function treeStats(kind, data) {
   }
   for (const [k, cap] of Object.entries(CAPS)) if (s[k] > cap) s[k] = cap;
   return s;
-}
-
-// a character's status strengths in %: tree nodes + Infusions (10% the first, 5% each more), capped at 30
-export const STATUS_CAP = 30;
-export function statusPct(tree, statusLv) {
-  const out = {};
-  for (const k of ['bleed', 'fire', 'frost', 'poison']) {
-    const lv = statusLv?.[k] || 0;
-    out[k] = Math.min(STATUS_CAP, (tree?.[k + 'Pct'] || 0) + (lv ? 10 + 5 * (lv - 1) : 0));
-  }
-  return out;
 }
 
 export function describe(n) {
@@ -439,6 +455,7 @@ const SOCKETS_V1 = { knight: ['s0-10', 's1-10', 's3-10'], rogue: ['s0-10', 's2-1
 const COST_V4 = [0, 10, 15, 30, 50, 80, 100, 120, 140, 170, 200, 250, 275, 300, 325, 350];
 const COST_V23 = [0, ...Array.from({ length: 15 }, (_, i) => { const c = 10 * Math.pow(25, i / 14); return c < 20 ? Math.round(c) : Math.round(c / 5) * 5; })];
 function costOld(v, kind, id) {
+  if (v === 6) return COST_V6[kind]?.[id] || 0;
   if (v === 5) return COST_V5[kind]?.[id] || 0;
   if (v === 4) {
     if (id === 's0-6') return 150;
@@ -457,10 +474,10 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 6;
+export const TREE_VERSION = 7;
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
-  const v = data.treeV >= 2 && data.treeV <= 5 ? data.treeV : 1;
+  const v = data.treeV >= 2 && data.treeV <= 6 ? data.treeV : 1;
   let refund = 0;
   for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costOld(v, kind, id);
   data.tree = {};

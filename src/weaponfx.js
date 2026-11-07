@@ -1,5 +1,5 @@
-// Status effects shown on the weapon: any status above 5% (skill tree + Infusions) puts its pixel effect on
-// the blade. Bleed drips red, fire burns, frost radiates white cold, poison drips green. Two or three at once
+// Elemental damage shown on the weapon: any element a player deals a fair amount of (skill tree + Infusions),
+// or that an enemy carries, puts its pixel effect on the blade. Bleed drips red, fire burns, frost radiates white cold, poison drips green. Two or three at once
 // blend into a named combination with its own colours (all the motions together); all four flash gold.
 // Particles go through the pixel pass, so they come out as pixel art.
 import * as THREE from 'three';
@@ -26,7 +26,6 @@ export const COMBOS = {
 };
 const ALL = 'bleed+fire+frost+poison';
 
-export const statusKey = (pct) => ['bleed', 'fire', 'frost', 'poison'].filter((k) => (pct?.[k] || 0) > 5).join('+');
 export const comboName = (key) => (key === ALL ? 'Gilded' : COMBOS[key]?.name || SOLO[key]?.name || '');
 
 const a = new THREE.Vector3(), b = new THREE.Vector3(), p = new THREE.Vector3();
@@ -36,13 +35,13 @@ export class WeaponFx {
   constructor(game) { this.game = game; this.t = 0; }
 
   // actor: the local player or a teammate; key: e.g. 'bleed+fire'
-  emit(actor, key, dt) {
+  emit(actor, key, dt, rate = 1) {
     if (!key || !actor.rig?.root.visible || !actor.alive) return;
     const fx = this.game.fx, gold = key === ALL;
     const parts = key.split('+'), look = gold ? null : parts.length > 1 ? COMBOS[key] : SOLO[key];
     const motions = new Set(parts.flatMap((k) => MOTION[k]));
     const blades = [[actor.rig.base, actor.rig.tip], [actor.rig.baseL, actor.rig.tipL]].filter(([u, v]) => u && v);
-    actor.wfxAcc = (actor.wfxAcc || 0) + dt * (gold ? 70 : 34) * blades.length;
+    actor.wfxAcc = (actor.wfxAcc || 0) + dt * (gold ? 70 : 34) * blades.length * rate;
     while (actor.wfxAcc >= 1) {
       actor.wfxAcc -= 1;
       const [u, v] = blades[(Math.random() * blades.length) | 0];
@@ -76,5 +75,9 @@ export class WeaponFx {
     const g = this.game;
     if (g.player) this.emit(g.player, g.player.wfxKey, dt);
     for (const r of g.mp.peers.values()) this.emit(r, r.s?.w || '', dt);
+    // enemies carrying elements: a lighter version, only near the player
+    const me = g.player;
+    if (me) for (const e of g.enemies) if (e.wfxKey && e.alive && Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) < 22) this.emit(e, e.wfxKey, dt, 0.5);
+    for (const b of g.bosses || []) if (b.alive && b.active !== false && b.elems && Math.hypot(b.pos.x - me?.pos.x, b.pos.z - me?.pos.z) < 26) this.emit(b, Object.keys(b.elems).sort().join('+'), dt, 0.6);
   }
 }

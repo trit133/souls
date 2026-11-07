@@ -1,5 +1,6 @@
 import { icon } from './icons.js';
-const STATUS_ICON = { bleed: 'bleed', fire: 'fireCost', frost: 'frost', poison: 'poison' };
+import { STATUS } from './status.js';
+const STATUS_ICON = { bleed: 'bleed', fire: 'fire', frost: 'frost', poison: 'poison' };
 // DOM HUD: bars with trailing "chip" damage, boss bar, prompts, toasts, enemy health bars.
 const $ = (id) => document.getElementById(id);
 
@@ -54,6 +55,9 @@ export class UI {
       el.textContent = txt; el.classList.toggle('ready', !!cd && !(cd[1] > 0));
       document.getElementById('b-special')?.classList.toggle('cd', p.kind === 'rogue' && cd[1] > 0);
     }
+    // status build-up on you: an icon per building status with its meter; it flashes when it procs
+    const ps = (p.status?.bars() || []).map((b) => `<span class="psicon${b.flash ? ' proc' : ''}" style="color:${STATUS[b.k].color}">${icon(STATUS_ICON[b.k])}<i style="background:${STATUS[b.k].color};transform:scaleX(${b.flash ? 1 : b.v.toFixed(2)})"></i></span>`).join('');
+    if (ps !== this.psHtml) { this.psHtml = ps; (this.psEl ||= document.getElementById('pstatus')).innerHTML = ps; }
     if (p.maxMana) {
       this.mn.set(p.mana / p.maxMana, dt);
       const txt = `${Math.floor(p.mana)} / ${p.maxMana}`;
@@ -103,13 +107,14 @@ export class UI {
     el.innerHTML = bars.map((b) => `<div class="smeter"><div style="background:${b.color};transform:scaleX(${b.v})"></div></div>`).join('');
   }
   // a damage number that pops out and floats up
-  dmgNumber(x, y, n, kind, color) {
+  dmgNumber(x, y, n, kind, color, delay = 0) {
     const d = document.createElement('div');
     d.className = 'dmgnum ' + kind; d.textContent = n;
     if (color) d.style.color = color;
-    d.style.left = x + (Math.random() - 0.5) * 26 + 'px'; d.style.top = y + 'px';
+    if (delay) d.style.animationDelay = delay + 'ms';
+    d.style.left = x + (Math.random() - 0.5) * 16 + 'px'; d.style.top = y + 'px';
     this.barLayer.appendChild(d);
-    setTimeout(() => d.remove(), 950);
+    setTimeout(() => d.remove(), 950 + delay);
   }
 
   popup(x, y, text, color) {

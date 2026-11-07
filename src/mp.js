@@ -20,7 +20,7 @@ class RemotePlayer extends Actor {
     super(game, buildHumanoid({ ...skinModel(c.model, m.kind, m.skin), scale: 1 }), { x: 0, z: -2.5, hp: c.hp, radius: 0.42, team: 'player', poise: 0 });
     this.isRemote = true;
     this.pid = m.id; this.uid = 'R' + m.id; this.name = m.name; this.kind = m.kind; this.c = c;
-    this.dmgMul = 1; this.phase = 0; this.s = { st: 'move' }; this.net = null;
+    this.isPlayer = true; this.dmgMul = 1; this.phase = 0; this.s = { st: 'move' }; this.net = null;
     this.play = null; // attack playing out from an instant event, not from snapshots
     this.trail = new Trail(game.scene, c.trail);
     if (c.dual) this.trailL = new Trail(game.scene, c.trail);
@@ -230,7 +230,7 @@ export class Multiplayer {
         g.fx.blood(c, dir, d.k === 'rip' ? 30 : d.heavy ? 16 : 9); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]);
         if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
         else g.pfx.play(d.heavy ? 'heavyHit' : 'hit', c, { dir });
-        if (d.dmg) g.dmgPop(e, d.dmg, d.k === 'rip' ? 'teamcrit' : 'team');
+        if (d.d) g.dmgPops(e, d.d, d.k === 'rip' ? 'teamcrit' : 'team');
       }
     } else if (p && d.k === 'hurt') {
       // a teammate taking a hit

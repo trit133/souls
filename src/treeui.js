@@ -1,12 +1,19 @@
 // Skill tree screen: the selected character's web drawn in SVG. Hover (or tap) a node to see what it
 // gives; buy it from the tooltip. Drag to pan, wheel / pinch / buttons to zoom.
-import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint } from './skilltree.js';
+import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
+import { CHARS } from './player.js';
+import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
 import { iconPath } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const THEME = { knight: '#9ab4e8', rogue: '#e05a48', mage: '#b48aff' };
 const MAGE_UNLOCK = 100;
+// light-hit damage each character's weapon starts from (Knight first swing, Rogue first stab, Spellsword knife)
+const LIGHT = { knight: 22, rogue: 16, mage: 11 };
+// stats the panel shows in its own sections; everything else is listed under the character
+const SHOWN = new Set(['hp', 'hpPct', 'st', 'stPct', 'flask', 'potion', 'move', 'aspd', 'armor', 'evolved',
+  ...TYPES.flatMap((k) => [k + 'Dmg', k + 'Pct']), ...['fire', 'bleed', 'poison', 'frost'].map((k) => k + 'Res')]);
 
 export class TreeUI {
   constructor(game) {
@@ -21,6 +28,7 @@ export class TreeUI {
     document.querySelectorAll('[data-tree-kind]').forEach((b) => b.addEventListener('click', () => { this.kind = b.dataset.treeKind; this.sel = null; this.resetting = false; this.marked.clear(); this.fit(); this.render(); }));
     $('tree-back').addEventListener('click', () => this.close());
     $('tree-unlock').addEventListener('click', () => this.unlockMage());
+    $('tree-stats-btn').addEventListener('click', () => $('tree-stats').classList.toggle('open'));
     document.querySelectorAll('[data-tz]').forEach((b) => b.addEventListener('click', () => {
       const z = b.dataset.tz;
       if (z === 'fit') this.fit(); else this.zoom(z === 'in' ? 1.35 : 1 / 1.35);
@@ -79,7 +87,7 @@ export class TreeUI {
       if (!pts.has(e.pointerId)) {
         // mouse hover shows a node's tooltip
         const id = e.target.closest?.('[data-node]')?.dataset.node || null;
-        if (id !== this.hover) { this.hover = id; this.sel = null; if (id) this.showTip(id); else this.hideTip(); }
+        if (id !== this.hover) { this.hover = id; this.sel = null; if (id) this.showTip(id); else this.hideTip(); this.renderStats(); }
         return;
       }
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -107,7 +115,7 @@ export class TreeUI {
       }
     };
     svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
-    svg.addEventListener('pointerleave', () => { this.hover = null; if (!this.sel) this.hideTip(); });
+    svg.addEventListener('pointerleave', () => { this.hover = null; if (!this.sel) this.hideTip(); this.renderStats(); });
     svg.addEventListener('wheel', (e) => { e.preventDefault(); const p = this.toTree(e.clientX, e.clientY); this.zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y); this.applyView(); }, { passive: false });
   }
 
@@ -192,7 +200,50 @@ export class TreeUI {
     }
     $('tree-svg').innerHTML = s;
     this.applyView();
+    this.renderStats();
     if (this.sel || this.hover) this.showTip(this.sel || this.hover); else this.hideTip();
+  }
+
+  // ---------- stats panel ----------
+  // this character's totals from the nodes owned; hovering an unowned node previews what it would change
+  renderStats() {
+    const el = $('tree-stats');
+    if (!el) return;
+    const kind = this.kind, c = CHARS[kind], have = this.data ? owned(this.data, kind) : new Set(['start']);
+    const peek = this.sel || this.hover, n = peek && this.tree.nodes.get(peek);
+    const cur = sumStats(kind, have), next = n && !have.has(peek) ? sumStats(kind, new Set([...have, peek])) : null;
+    const fmt = (v) => (Math.round(v * 100) / 100).toString();
+    // one row: label, the value now, and the value after the hovered node if it changes
+    const row = (label, f, cls = '', style = '') => {
+      const a = f(cur), b = next ? f(next) : a;
+      return `<div class="ts-row ${cls}"${style ? ` style="${style}"` : ''}><span>${label}</span><b>${a}${b !== a ? `<em> → ${b}</em>` : ''}</b></div>`;
+    };
+    const head = (t) => `<div class="ts-head">${t}</div>`;
+    const hp = (S) => Math.round((c.hp + (S.hp || 0)) * (1 + (S.hpPct || 0) / 100));
+    const st = (S) => Math.round((c.st + (S.st || 0)) * (1 + (S.stPct || 0) / 100));
+    let h = head(`${NAMES[kind]} · from the tree`);
+    h += row('Health', (S) => `${hp(S)}`) + row('Stamina', (S) => `${st(S)}`);
+    h += row('Flasks', (S) => `${c.flasks + (S.flask || 0)}`) + row('Potion healing', (S) => `+${fmt(S.potion || 0)}%`);
+    h += row('Move speed', (S) => `+${fmt(S.move || 0)}%`) + row('Attack speed', (S) => `+${fmt(S.aspd || 0)}%`);
+    h += head(`Damage · light hit ${LIGHT[kind]} base`);
+    for (const k of TYPES) {
+      const has = (S) => (S[k + 'Dmg'] || 0) || (S[k + 'Pct'] || 0) || k === 'phys';
+      if (!has(cur) && !(next && has(next))) continue;
+      h += row(TYPE_NAME[k], (S) => `+${fmt(S[k + 'Dmg'] || 0)} · +${fmt(S[k + 'Pct'] || 0)}%`, 'ts-type', `color:${TYPE_COLOR[k]}`);
+    }
+    h += row('Light hit', (S) => {
+      const p = playerParts(S, {}, LIGHT[kind]);
+      return TYPES.filter((k) => p[k] >= 0.05).map((k) => `<i style="color:${TYPE_COLOR[k]}">${fmt(Math.round(p[k] * 10) / 10)}</i>`).join(' + ');
+    }, 'ts-hit');
+    h += head('Resistances');
+    if (kind === 'knight') h += row('Armour (physical)', (S) => `${fmt(Math.min(ARMOR_CAP, S.armor || 0))} / ${ARMOR_CAP}%`);
+    for (const k of ['fire', 'bleed', 'poison', 'frost']) h += row(TYPE_NAME[k], (S) => `${fmt(Math.min(RES_CAP, S[k + 'Res'] || 0))} / ${RES_CAP}%`, 'ts-type', `color:${TYPE_COLOR[k]}`);
+    h += head(`${NAMES[kind]} bonuses`);
+    const keys = [...new Set([...Object.keys(cur), ...Object.keys(next || {})])].filter((k) => !SHOWN.has(k) && STATS[k]);
+    for (const k of keys) h += row(STATS[k].name, (S) => (S[k] ? STATS[k].fmt(+fmt(S[k])) + (CAPS[k] && S[k] >= CAPS[k] ? ' (max)' : '') : '—'));
+    if (!keys.length) h += '<div class="ts-none">None yet</div>';
+    h += row('Evolution', (S) => (S.evolved ? 'Owned' : '—'));
+    el.innerHTML = h;
   }
 
   showTip(id) {

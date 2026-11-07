@@ -193,6 +193,13 @@ export class Enemy extends Actor {
   critable() { return this.state === 'parried'; }
   attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.atkScale; }
 
+  // elemental damage this enemy carries (a share of each hit, taken out of the physical): { fire: 0.25 } or null.
+  // Its weapon shows the element(s), like a player's.
+  setElems(elems) {
+    this.elems = elems; this.elemBuild = 1;
+    this.wfxKey = elems ? ['bleed', 'fire', 'frost', 'poison'].filter((k) => elems[k]).join('+') : '';
+  }
+
   alert() {
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;
     this.setState('alert');

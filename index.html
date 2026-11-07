@@ -18,6 +18,7 @@
 
   <div id="hud" class="hidden">
     <div id="bars">
+      <div id="pstatus"></div>
       <div class="bar hp"><div class="chip"></div><div class="fill"></div></div>
       <div class="bar st"><div class="fill"></div></div>
       <div class="bar mn hidden"><div class="fill"></div><span class="num"></span></div>
@@ -233,6 +234,8 @@
     </div>
     <div id="tree-wrap">
       <svg id="tree-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="tree-stats"></div>
+      <button class="mini-btn" id="tree-stats-btn">Stats</button>
       <div id="tree-tip" class="hidden"></div>
       <div id="tree-zoom"><button class="mini-btn" data-tz="in">+</button><button class="mini-btn" data-tz="out">−</button><button class="mini-btn" data-tz="fit">Fit</button></div>
       <div id="tree-lock" class="hidden"><div>The Spellsword is locked</div><button class="menu-btn" id="tree-unlock">Unlock</button></div>

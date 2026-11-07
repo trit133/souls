@@ -21,7 +21,8 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
 import { skinList, unlocked } from './skins.js';
-import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION, statusPct } from './skilltree.js';
+import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
+import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems } from './damage.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
@@ -41,6 +42,9 @@ const SPELLS = {
   fire: { dmg: 120, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 69, aoe: 3 },
 };
 
+
+// damage parts for the wire: whole numbers, zeros dropped
+const packParts = (p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v >= 0.5).map(([k, v]) => [k, Math.round(v)]));
 
 class Game {
   constructor() {
@@ -159,6 +163,9 @@ class Game {
     const puppet = this.mp?.active && !this.mp.isHost;
     this.enemies.forEach((e, i) => { e.netId = i; e.puppet = puppet; this.netMap[i] = e; });
     this.bosses.forEach((b, i) => { b.netId = 1000 + i; b.puppet = puppet; this.netMap[1000 + i] = b; });
+    // regular enemies carrying elemental damage: more of them the further into the run (same roll on every device)
+    const er = rng(seed + 13);
+    for (const e of this.enemies) e.setElems(rollElems(e.tier, er));
     this.tokens = 0;
     this.resetEncounters();
   }
@@ -887,7 +894,7 @@ class Game {
       dmg: h.dmg, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att, hit: h,
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
-    if (att !== this.player) info.dmg *= att.dmgScale || 1;
+    if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
     if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h) }, tg.pid); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
@@ -924,20 +931,23 @@ class Game {
     }
     if (att === this.player) {
       // skill tree: flat damage, knife and counter bonuses, stun buildup
+      // the weapon is physical; the tree and Infusions add each damage type
       const T = att.tree || {};
-      info.dmg = (info.dmg + (att.flatDmg || 0)) * att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1)
-        * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
+      const mul = att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1) * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
+      info.parts = scaleParts(playerParts(T, att.statusLv, info.dmg), mul);
+      info.dmg = sumParts(info.parts);
       info.poise *= 1 + (T.stun || 0) / 100;
     }
     const hp0 = tg.hp;
     const r = tg.receive(info);
     if (r === 'none') return;
     const heavy = def.heavyHit, dealt = tg.puppet ? info.dmg : Math.max(0, hp0 - tg.hp);
-    this.dmgPop(tg, dealt, heavy ? 'heavy' : 'me');
+    const shown = scaleParts(info.parts || { phys: info.dmg }, info.dmg > 0 ? dealt / info.dmg : 0);
+    this.dmgPops(tg, shown, heavy ? 'heavy' : 'me');
     if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT + (att.tree?.manaHit || 0)); // knife hits only
-    if (att === this.player && tg.alive) this.applyStatus(att, tg, heavy ? 1.5 : 1);
+    if (att === this.player && tg.alive) this.applyStatus(tg, info.parts, BUILD_PER_DMG);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
-    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, dmg: Math.round(dealt) });
+    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, d: packParts(shown) });
     this.fx.blood(hp, dir, heavy ? 16 : 9);
     this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]);
     this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir });
@@ -945,12 +955,23 @@ class Game {
     this.fx.addShake(def.onHitShake || (r === 'kill' ? 0.35 : 0.15));
   }
 
-  // status buildup from infusion boons (knight swings slower, so builds more per hit)
-  // status build-up per hit: base x strength (10% = one Infusion, the old Infusion strength; max 30%)
-  applyStatus(p, tg, mul = 1) {
-    if (!tg.status) return;
-    const base = p.kind === 'knight' ? 34 : 26, pct = statusPct(p.tree, p.statusLv);
-    for (const [k, v] of Object.entries(pct)) if (v > 0) tg.status.add(k, base * (v / 10) * mul, this);
+  // status build-up: each point of elemental damage adds `per` to that status's meter
+  applyStatus(tg, parts, per) {
+    if (!tg.status || !parts) return;
+    for (const k of ELEMS) if (parts[k] > 0) tg.status.add(k, parts[k] * per, this);
+  }
+
+  // one floating number per damage type in a hit, each in its type's colour, fanned out a little
+  dmgPops(e, parts, style = 'me') {
+    if (!e?.rig || !parts) return;
+    const list = TYPES.filter((k) => parts[k] > 0.5);
+    const v = new THREE.Vector3(e.pos.x, 2.2 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+    if (v.z > 1) return;
+    const x = (v.x * 0.5 + 0.5) * innerWidth, y = (-v.y * 0.5 + 0.5) * innerHeight;
+    list.forEach((k, i) => {
+      const color = k === 'phys' ? null : TYPE_COLOR[k];
+      this.ui.dmgNumber(x + (i - (list.length - 1) / 2) * 30, y - i * 7, Math.round(parts[k]), style, color, i * 45);
+    });
   }
 
   // damage dealt by status effects (bleed/frost bursts, poison/fire ticks)
@@ -970,7 +991,7 @@ class Game {
   }
 
   statusDamage(a, dmg, dot = false, kind = null) {
-    this.dmgPop(a, Math.min(dmg, a.hp), (dot ? 'dot:' : 'status:') + (kind || 'bleed'));
+    if (!a.isPlayer) this.dmgPop(a, Math.min(dmg, a.hp), (dot ? 'dot:' : 'status:') + (kind || 'bleed'));
     if (!a.alive) return;
     a.hp -= dmg;
     if (!dot) a.rig.flash(1, 0.4, 0.4);
@@ -984,11 +1005,15 @@ class Game {
     this.ui.popup((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight, text, color);
   }
 
-  riposteHit(p, tg, dmg) {
-    dmg *= p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100);
-    if (tg.alive) this.applyStatus(p, tg, 2);
-    this.mp.event({ k: 'rip', id: tg.netId, dmg: Math.round(dmg) });
-    this.dmgPop(tg, dmg, 'crit');
+  // a critical hit: `base` physical, flat tree damage counted `flatHits` times (a parry stab hits like three lights)
+  riposteHit(p, tg, base, flatHits = 1) {
+    const T = { ...(p.tree || {}) };
+    for (const k of TYPES) if (T[k + 'Dmg']) T[k + 'Dmg'] *= flatHits;
+    const parts = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100));
+    const dmg = sumParts(parts);
+    if (tg.alive) this.applyStatus(tg, parts, BUILD_PER_DMG);
+    this.mp.event({ k: 'rip', id: tg.netId, d: packParts(parts) });
+    this.dmgPops(tg, parts, 'crit');
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
     tg.lastHitBy = p;
@@ -1100,7 +1125,7 @@ class Game {
     mesh.position.copy(from);
     mesh.lookAt(from.clone().add(dir));
     this.scene.add(mesh);
-    this.addProj({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * e.dmgScale });
+    this.addProj({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * e.dmgScale, elems: e.elems });
   }
 
   spawnFireWave(b, off) {
@@ -1108,7 +1133,7 @@ class Game {
     for (const a of [-0.3, 0, 0.3]) {
       const d = f.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
       const pos = new THREE.Vector3(b.pos.x + f.x * off, 0.3, b.pos.z + f.z * off);
-      this.addProj({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * b.dmgScale, mesh: null });
+      this.addProj({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * b.dmgScale, mesh: null, elems: { fire: 0.4 } });
     }
     this.audio.play('fire');
   }
@@ -1122,7 +1147,7 @@ class Game {
     const dir = to.clone().sub(from).normalize();
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
     mesh.position.copy(from); this.scene.add(mesh);
-    this.addProj({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * b.dmgScale, knock: 'heavy' });
+    this.addProj({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * b.dmgScale, knock: 'heavy', elems: b.elems, buildMul: b.elemBuild });
     this.audio.play('heavySwing', 1);
   }
 
@@ -1150,7 +1175,7 @@ class Game {
   // a hostile shot reaching a player on this device
   projectileHit(t, q) {
     const src = new THREE.Vector3(q.src[0], 0, q.src[1]);
-    const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false });
+    const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false, elems: q.elems, buildMul: q.buildMul });
     if (t.isRemote) return r;
     const chest = new THREE.Vector3(t.pos.x, 1.1, t.pos.z);
     if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.pfx.play('hurt', chest, { dir: chest.clone().sub(src) }); this.hitstop(0.05); this.fx.addShake(0.3); }
@@ -1175,12 +1200,14 @@ class Game {
     const hp0 = e.hp, sd = q.dmg * mul * this.player.dmgMul * (1 + (this.player.tree?.spellDmg || 0) / 100);
     const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
     if (r === 'none') return;
-    this.dmgPop(e, e.puppet ? sd : hp0 - e.hp, q.kind === 'fire' ? 'heavy' : 'me');
+    // the bolt is frost, the fireball fire
+    const el = q.kind === 'fire' ? 'fire' : 'frost', dealt = e.puppet ? sd : hp0 - e.hp;
+    this.dmgPops(e, { [el]: dealt }, q.kind === 'fire' ? 'heavy' : 'me');
     this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
-    this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', dmg: Math.round(e.puppet ? sd : hp0 - e.hp) });
+    this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', d: { [el]: Math.round(dealt) } });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
-    if (e.alive) this.applyStatus(this.player, e, 1);
+    if (e.alive) this.applyStatus(e, { [el]: sd }, SPELL_BUILD);
   }
 
   // Blue bolts and fireballs fly straight; a fireball bursts on contact or at range.
@@ -1243,7 +1270,7 @@ class Game {
         const wall = t.spectral?.visible ? 0.75 : 0;
         if (!t.alive || Math.hypot(q.pos.x - t.pos.x, q.pos.z - t.pos.z) >= q.r + t.radius + wall) continue;
         const b = q.pos.clone().addScaledVector(q.vel, -0.1);
-        if (this.projectileHit(t, { dmg: q.dmg, knock: q.knock, src: [b.x, b.z] }) !== 'dodge') { dead = true; break; }
+        if (this.projectileHit(t, { dmg: q.dmg, knock: q.knock, src: [b.x, b.z], elems: q.elems, buildMul: q.buildMul }) !== 'dodge') { dead = true; break; }
       }
       if (dead && q.mesh) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
       return !dead;
@@ -1257,7 +1284,7 @@ class Game {
       }
       if (!g.ghost) for (const t of this.allPlayers()) {
         if (g.hit.has(t) || !t.alive || Math.abs(Math.hypot(t.pos.x - g.x, t.pos.z - g.z) - r) >= 0.7) continue;
-        if (this.projectileHit(t, { dmg: g.dmg, src: [g.x, g.z] }) !== 'dodge') g.hit.add(t);
+        if (this.projectileHit(t, { dmg: g.dmg, src: [g.x, g.z], elems: { fire: 0.4 } }) !== 'dodge') g.hit.add(t);
       }
       return g.t < g.dur;
     });

@@ -149,6 +149,8 @@ export class Boss extends Actor {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
     this.pos.set(this.arena.x, 0, this.arena.z - 3); this.yaw = 0; this.y = 0;
     this.phase2 = false; this.ignited = false; this.atkSpeed = 1; this.trackMul = 1;
+    // elemental share of each hit (taken out of the physical); fast hitters build status slower per hit
+    this.elems = this.cfg.elems || null; this.elemBuild = this.cfg.elemBuild ?? 1;
     this.leapCd = 4; this.emberCd = 0; this.gap = 1; this.evadeCd = 0; this.seenAtk = null;
     this.status.reset(this.cfg.id === 'varek' ? 340 : 260); this.lastMove = null; this.phase = 0; this.speed = 0;
     this.atk = null; this.kb.set(0, 0, 0); this.strafe = 1; this.strafeT = 0;
@@ -169,6 +171,7 @@ export class Boss extends Actor {
 
   ignite() {
     this.ignited = true;
+    this.elems = { fire: 0.3 }; // his blade burns: fire damage from here on
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0.9, 0.35, 0.05);
     this.game.vfx('ignite', { e: this.netId }); // ember cracks in Varek's armor, on every screen
     this.trail.setColor(0xff7a20);
@@ -480,7 +483,7 @@ export const BOSSES = {
     model: { scale: 2.1, cloth: 0x2a2624, armor: 0x3c3c44, accent: 0x5a1a14, skin: 0x5a5048, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25, kit: 'varek' },
   },
   hask: {
-    id: 'hask', name: 'Brother Hask, the Pit Executioner', hp: 700, poise: 115, radius: 0.8, walk: 3.0, gap: [0.3, 0.9],
+    id: 'hask', name: 'Brother Hask, the Pit Executioner', elems: { bleed: 0.3 }, hp: 700, poise: 115, radius: 0.8, walk: 3.0, gap: [0.3, 0.9],
     phase2: false, kneels: false, moves: HASK_MOVES, weights: HASK_WEIGHTS, leapH: 3.2, leapR: 2.7, leapAir: 0.6, leapCd: 6,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'charge') : 'chop'),
     model: { scale: 1.55, cloth: 0x2a221c, armor: 0x4a3a30, accent: 0x161210, skin: 0x7a6a5a, head: 'none', weapon: 'axe', eyes: 0xff4a2a, bulk: 1.3, kit: 'hask', eyeZ: 0.155 },
@@ -600,13 +603,13 @@ const GORRATH_WEIGHTS = (b, d, behind) => {
 
 Object.assign(BOSSES, {
   vael: {
-    id: 'vael', name: 'Sister Vael, the Twin Fang', hp: 540, poise: 75, radius: 0.6, walk: 3.6, gap: [0.25, 0.7],
+    id: 'vael', name: 'Sister Vael, the Twin Fang', elems: { frost: 0.15, bleed: 0.15 }, elemBuild: 0.5, hp: 540, poise: 75, radius: 0.6, walk: 3.6, gap: [0.25, 0.7],
     phase2: false, kneels: false, evade: true, moves: VAEL_MOVES, weights: VAEL_WEIGHTS, leapH: 3.5, leapR: 2.2, leapAir: 0.5, leapCd: 5,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'lunge') : 'slash2'),
     model: { scale: 1.25, cloth: 0x1e2032, armor: 0x2c2e44, accent: 0x5a5a9a, skin: 0xb8a090, head: 'none', weapon: 'daggers', eyes: 0xa0c8ff, eyeZ: 0.17, cape: true, bulk: 0.95, kit: 'vael' },
   },
   gorrath: {
-    id: 'gorrath', name: 'Gorrath, the Slag Colossus', hp: 980, poise: 230, radius: 1.15, walk: 1.9, gap: [0.6, 1.4],
+    id: 'gorrath', name: 'Gorrath, the Slag Colossus', elems: { fire: 0.3 }, hp: 980, poise: 230, radius: 1.15, walk: 1.9, gap: [0.6, 1.4],
     phase2: false, kneels: false, moves: GORRATH_MOVES, weights: GORRATH_WEIGHTS,
     punish: (b, dist) => (dist > 4 ? 'hurl' : 'swat'),
     model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true, kit: 'gorrath' },
