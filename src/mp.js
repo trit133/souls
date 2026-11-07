@@ -230,6 +230,7 @@ export class Multiplayer {
         g.fx.blood(c, dir, d.k === 'rip' ? 30 : d.heavy ? 16 : 9); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]);
         if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
         else g.pfx.play(d.heavy ? 'heavyHit' : 'hit', c, { dir });
+        if (d.dmg) g.dmgPop(e, d.dmg, d.k === 'rip' ? 'teamcrit' : 'team');
       }
     } else if (p && d.k === 'hurt') {
       // a teammate taking a hit
@@ -336,7 +337,7 @@ export class Multiplayer {
     this.clock += dt;
     if (this.clock < 1 / 20) return;
     this.clock = 0;
-    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp });
+    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '' });
     if (this.isHost) {
       const zs = g.allPlayers().map((x) => x.pos.z);
       const near = (z) => zs.some((v) => Math.abs(v - z) < 46);

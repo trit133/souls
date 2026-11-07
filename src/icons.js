@@ -13,6 +13,8 @@ const P = {
   evo_rogue: '<path d="M5 19L17 7l2-3-3 2L4 18zM19 19L7 7 5 4l3 2 12 12z"/>',
   evo_mage: '<path d="M9 21a5 5 0 0 1-3-9c0 2 1 3 2 3 0-4 2-9 6-12 0 4 4 6 4 12a6 6 0 0 1-5 6"/>',
   // skill tree
+  frost: '<path d="M12 2v20M4 6l16 12M20 6L4 18M12 5l-2-2M12 5l2-2M12 19l-2 2M12 19l2 2"/>',
+  poison: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/><circle cx="10" cy="14" r="1"/><circle cx="14" cy="12" r="1.3"/>',
   start: '<circle cx="12" cy="12" r="3"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>',
   evo: '<path d="M3 18l2-11 4 5 3-7 3 7 4-5 2 11z"/><path d="M5 21h14"/>',
   socket: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 8l4 2.3v3.4L12 16l-4-2.3v-3.4z"/>',

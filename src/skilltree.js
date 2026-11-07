@@ -33,7 +33,7 @@ export const STATS = {
   critDmg: { name: 'Cruelty', fmt: (v) => `+${v}% critical damage`, icon: 'critDmg' },
   iframe: { name: 'Shadowstep', fmt: (v) => `+${v}s roll invincibility`, icon: 'iframe' },
   atkCost: { name: 'Light Blades', fmt: (v) => `Attacks cost ${v}% less stamina`, icon: 'atkCost' },
-  bleed: { name: 'Serrated', fmt: (v) => `+${v}% bleed buildup`, icon: 'bleed' },
+
   parryWin: { name: 'Keen Eye', fmt: (v) => `+${v}ms parry window`, icon: 'parryWin' },
   rollCost: { name: 'Nimble', fmt: (v) => `Rolls cost ${v}% less stamina`, icon: 'rollCost' },
   // spellsword
@@ -44,17 +44,22 @@ export const STATS = {
   spellDmg: { name: 'Arcana', fmt: (v) => `+${v}% spell damage`, icon: 'spellDmg' },
   fireRadius: { name: 'Conflagration', fmt: (v) => `+${v}% fireball blast radius`, icon: 'fireRadius' },
   knifeDmg: { name: 'Spellblade', fmt: (v) => `+${v}% knife damage`, icon: 'knifeDmg' },
+  // status build-up without an Infusion (an Infusion counts 10%; every status caps at 30%)
+  bleedPct: { name: 'Hemorrhage', fmt: (v) => `+${v}% bleed build-up`, icon: 'bleed' },
+  firePct: { name: 'Kindle', fmt: (v) => `+${v}% fire build-up`, icon: 'fireCost' },
+  frostPct: { name: 'Rime', fmt: (v) => `+${v}% frost build-up`, icon: 'frost' },
+  poisonPct: { name: 'Venom', fmt: (v) => `+${v}% poison build-up`, icon: 'poison' },
 };
 
 // the character's own stats: [small, large] values
 const SPECIAL = {
   knight: [['dr', 1.5, 3], ['blockDrain', 6, 12], ['chip', 1.5, 3], ['stun', 3, 6], ['counter', 6, 12], ['chargeCd', 1, 2], ['chargeKb', 10, 20]],
-  rogue: [['parryCd', 0.25, 0.5], ['critDmg', 4, 8], ['iframe', 0.01, 0.02], ['atkCost', 3, 6], ['bleed', 8, 15], ['parryWin', 5, 10], ['rollCost', 4, 8]],
+  rogue: [['parryCd', 0.25, 0.5], ['critDmg', 4, 8], ['iframe', 0.01, 0.02], ['atkCost', 3, 6], ['parryWin', 1, 3], ['rollCost', 4, 8]],
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
 export const CAPS = { dr: 15, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
-  parryWin: 25, potion: 40, bleed: 50, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30, dmgPct: 25 };
+  parryWin: 10, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30, dmgPct: 25 };
 
 const INNER = [{ hp: 3 }, { st: 2 }, { dmg: 1 }, { hp: 3 }, { st: 2 }];
 const MID = [{ hp: 4 }, { st: 2 }];
@@ -313,6 +318,7 @@ export function build(kind, opts = {}) {
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
   assign(kind, nodes);
+  statusNodes(kind, nodes);
   return { kind, nodes, edges };
 }
 
@@ -339,6 +345,31 @@ function assign(kind, nodes) {
       // outer rings: mostly percentages, some big flat chunks and the character's own
       const r = oi++ % 4;
       n.give = r === 0 ? OUTER[(oi / 4 | 0) % OUTER.length] : r === 3 ? special(false) : PCT_OUTER[po++ % PCT_OUTER.length];
+    }
+  }
+}
+
+// Status build-up nodes: the character's own status adds up to 10% over the tree, the other three 8% each;
+// 1-2% near the centre, 3% in the middle, 4% at the edge. They take over regular stat nodes, spread around.
+export const STATUS_EMPHASIS = { knight: 'fire', rogue: 'bleed', mage: 'frost' };
+const STATUS_RINGS = { 1: [2, 4], 2: [4, 7], 3: [8, 13], 4: [15, 20] };
+function statusNodes(kind, nodes) {
+  const placed = [];
+  const free = (n) => !n.flask && !n.evo && n.role !== 'evo' && n.role !== 'socket' && n.role !== 'start' && !n.socketRing && !n.statusNode;
+  for (const st of ['bleed', 'fire', 'frost', 'poison']) {
+    const vals = st === STATUS_EMPHASIS[kind] ? [1, 2, 3, 4] : [1, 3, 4];
+    for (const v of vals) {
+      const [lo, hi] = STATUS_RINGS[v];
+      let cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo && n.ring <= hi);
+      if (!cands.length) cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo - 2 && n.ring <= hi + 2);
+      // farthest from the status nodes already placed, so they spread round the web
+      let best = cands[0], bd = -1;
+      for (const n of cands) {
+        const d = placed.length ? Math.min(...placed.map((p) => Math.hypot(p.x - n.x, p.y - n.y))) : Math.hypot(n.x, n.y);
+        if (d > bd) { bd = d; best = n; }
+      }
+      best.give = { [st + 'Pct']: v }; best.statusNode = true; best.big = v >= 3;
+      placed.push(best);
     }
   }
 }
@@ -376,6 +407,17 @@ export function treeStats(kind, data) {
   }
   for (const [k, cap] of Object.entries(CAPS)) if (s[k] > cap) s[k] = cap;
   return s;
+}
+
+// a character's status strengths in %: tree nodes + Infusions (10% the first, 5% each more), capped at 30
+export const STATUS_CAP = 30;
+export function statusPct(tree, statusLv) {
+  const out = {};
+  for (const k of ['bleed', 'fire', 'frost', 'poison']) {
+    const lv = statusLv?.[k] || 0;
+    out[k] = Math.min(STATUS_CAP, (tree?.[k + 'Pct'] || 0) + (lv ? 10 + 5 * (lv - 1) : 0));
+  }
+  return out;
 }
 
 export function describe(n) {

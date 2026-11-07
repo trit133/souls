@@ -603,7 +603,7 @@ Object.assign(BOSSES, {
     id: 'vael', name: 'Sister Vael, the Twin Fang', hp: 540, poise: 75, radius: 0.6, walk: 3.6, gap: [0.25, 0.7],
     phase2: false, kneels: false, evade: true, moves: VAEL_MOVES, weights: VAEL_WEIGHTS, leapH: 3.5, leapR: 2.2, leapAir: 0.5, leapCd: 5,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'lunge') : 'slash2'),
-    model: { scale: 1.25, cloth: 0x2a2a3a, armor: 0x4a4a5a, accent: 0x5a5a9a, skin: 0xb8a090, head: 'hood', weapon: 'daggers', eyes: 0xa0c8ff, cape: true, bulk: 0.95, kit: 'vael' },
+    model: { scale: 1.25, cloth: 0x1e2032, armor: 0x2c2e44, accent: 0x5a5a9a, skin: 0xb8a090, head: 'none', weapon: 'daggers', eyes: 0xa0c8ff, eyeZ: 0.17, cape: true, bulk: 0.95, kit: 'vael' },
   },
   gorrath: {
     id: 'gorrath', name: 'Gorrath, the Slag Colossus', hp: 980, poise: 230, radius: 1.15, walk: 1.9, gap: [0.6, 1.4],

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { skinModel } from './skins.js';
+import { statusPct } from './skilltree.js';
+import { statusKey } from './weaponfx.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
 
@@ -207,9 +209,10 @@ export const CRITS = {
       g.hitstop(0.09);
     } }],
   },
-  // Rogue after a parry: flip the dagger to a reverse grip, coil, plunge forward elbow first
+  // Rogue after a parry: flip the dagger to a reverse grip, coil, plunge forward elbow first.
+  // 48 = three light attacks (one-shots an archer, not a healthy swordsman); x2.3 on bosses
   stab: {
-    dur: 1.0, hitAt: 0.34, dmg: 170, at: 0.9, reverse: [0.06, 0.82], trail: [0.22, 0.42],
+    dur: 1.0, hitAt: 0.34, dmg: 48, flatHits: 3, bossMul: 2.3, at: 0.9, reverse: [0.06, 0.82], trail: [0.22, 0.42],
     keys: [
       [0.16, { torso: [0.1, -0.75, -0.18], head: [0, 0.5, 0], armR: [-1.6, 0, -1.1], foreR: [-1.7, 0, 0], handR: [0.2, 0, 0], armL: [-0.5, 0, 0.5], foreL: [-1.2, 0, 0], legL: [-0.45, 0, 0], legR: [0.4, 0, 0], shinL: [0.3, 0, 0], shinR: [0.6, 0, 0], by: -0.16 }],
       [0.34, { torso: [0.55, 0.5, 0.25], head: [-0.3, -0.35, 0], armR: [-1.5, 0, 0.2], foreR: [-0.45, 0, 0], handR: [0.6, 0, 0], armL: [0.4, 0, 0.6], foreL: [-0.6, 0, 0], ...lunge(1.4), by: -0.22 }],
@@ -219,7 +222,7 @@ export const CRITS = {
   },
   // evolved Rogue: blinks behind the enemy in a flash of red and stabs it in the back (played fast)
   backstab: {
-    dur: 1.0, hitAt: 0.34, dmg: 170, at: -0.85, reverse: [0, 0.82], trail: [0.22, 0.42], blink: true,
+    dur: 1.0, hitAt: 0.34, dmg: 48, flatHits: 3, bossMul: 2.3, at: -0.85, reverse: [0, 0.82], trail: [0.22, 0.42], blink: true,
     keys: null, // the stab's keys
     events: [{ t: 0.34, fn: (p, tg, g, hp) => { g.vfx('redCrit', hp); g.ui.redFlash(); } }],
   },
@@ -374,6 +377,7 @@ export class Player extends Actor {
     this.t += dt;
     // visual only: idle flourishes, rune glow
     this.rig.idle = this.state === 'move' && this.speed < 0.2;
+    this.wfxKey = statusKey(statusPct(this.tree, this.statusLv)); // weapon status effect (above 5%)
     if (this.c.caster) this.rig.setGlow(this.maxMana ? this.mana / this.maxMana : 0);
     if (this.atkLift && (this.state !== 'attack' || !this.atk?.def.jump)) { this.y = 0; this.atkLift = false; }
     // a crit that ended any other way (knocked out of it) gives the body back
@@ -598,7 +602,9 @@ export class Player extends Actor {
         }
         if (!this.ripHit && rt >= C.hitAt && tg) {
           this.ripHit = true;
-          this.game.riposteHit(this, tg, C.dmg);
+          // parry crits hit like three light attacks (more against bosses); others use their own number
+          const dmg = (C.dmg + (C.flatHits || 0) * (this.flatDmg || 0)) * (tg.isBoss ? C.bossMul || 1 : 1);
+          this.game.riposteHit(this, tg, dmg);
         }
         if (rt >= C.dur) this.endCrit();
         break;

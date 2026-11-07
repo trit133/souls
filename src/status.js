@@ -1,7 +1,6 @@
-// Elden Ring-style status buildup. Each hit from an infused weapon adds buildup to a
-// per-enemy meter; when the meter passes the enemy's resistance the effect procs and
-// the meter resets. Meters decay after a few seconds without buildup. Bosses get
-// tougher (resistance x1.3) after every proc, like ER's rising resistance.
+// Elden Ring-style status buildup. Each hit adds buildup to a per-enemy meter (hidden; enemies show an icon
+// while a status is building); when the meter passes the enemy's resistance the effect procs and the meter
+// resets. After its first proc, a status takes 2.5x the buildup on that enemy.
 
 export const STATUS = {
   bleed: { name: 'Bleed', color: '#c0262a', rgb: [0.85, 0.08, 0.08], desc: 'Builds up per hit. When full: a burst of blood dealing a big chunk of max HP.' },
@@ -27,11 +26,13 @@ export class StatusState {
     this.meter = { bleed: 0, poison: 0, frost: 0, fire: 0 };
     this.idle = 0;
     this.dots = {}; // poison / fire: { t, dps }
+    this.procd = {}; this.procAt = {};
     this.frostT = 0;
   }
 
   reset(resist) {
     for (const k of STATUS_KEYS) { this.meter[k] = 0; if (resist) this.resist[k] = resist; }
+    this.procd = {}; this.procAt = {};
     this.dots = {}; this.frostT = 0; this.idle = 0;
   }
 
@@ -45,7 +46,8 @@ export class StatusState {
     if (this.meter[kind] >= this.resist[kind]) {
       this.meter[kind] = 0;
       this.proc(kind, game);
-      if (this.a.isBoss) this.resist[kind] *= 1.3;
+      this.procAt[kind] = performance.now();
+      if (!this.procd[kind]) { this.procd[kind] = true; this.resist[kind] *= 2.5; } // much harder the second time
     }
   }
 
@@ -55,7 +57,7 @@ export class StatusState {
     const pct = boss ? f.bossPct : f.pct;
     if (kind === 'bleed' || kind === 'frost') {
       const dmg = a.maxHp * pct + f.flat;
-      game.statusDamage(a, dmg);
+      game.statusDamage(a, dmg, false, kind);
       if (kind === 'bleed') game.audio.play('riposte');
       else { this.frostT = f.slowDur; game.audio.play('clang', 0.7); }
     } else {
@@ -79,7 +81,7 @@ export class StatusState {
       if (!d) continue;
       d.t -= dt;
       if (d.t <= 0 || !a.alive) { delete this.dots[k]; continue; }
-      game.statusDamage(a, d.dps * dt, true);
+      game.statusDamage(a, d.dps * dt, true, k);
       if (Math.random() < dt * (k === 'fire' ? 30 : 10)) {
         const p = { x: a.pos.x + (Math.random() - 0.5) * 0.6, y: 0.3 + Math.random() * 1.4 * a.rig.root.scale.y, z: a.pos.z + (Math.random() - 0.5) * 0.6 };
         if (k === 'fire') game.fx.flame(p, 0.6);
@@ -91,7 +93,11 @@ export class StatusState {
   // meters to draw (0..1), only those with buildup
   bars() {
     const out = [];
-    for (const k of STATUS_KEYS) if (this.meter[k] > 0.5) out.push({ k, v: Math.min(1, this.meter[k] / this.resist[k]) });
+    const now = performance.now();
+    for (const k of STATUS_KEYS) {
+      const flash = now - (this.procAt[k] || -1e9) < 600;
+      if (this.meter[k] > 0.5 || flash) out.push({ k, v: Math.min(1, this.meter[k] / this.resist[k]), flash });
+    }
     return out;
   }
 }

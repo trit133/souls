@@ -6,6 +6,7 @@ import { Audio } from './audio.js';
 import { FX } from './fx.js';
 import { PFX } from './pfx.js';
 import { VFX, pack, unpack } from './vfx.js';
+import { WeaponFx } from './weaponfx.js';
 import { World } from './world.js';
 import { pickLayout } from './modules.js';
 import { Player } from './player.js';
@@ -20,7 +21,7 @@ import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
 import { skinList, unlocked } from './skins.js';
-import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
+import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION, statusPct } from './skilltree.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
@@ -63,6 +64,7 @@ class Game {
     this.audio = new Audio();
     this.fx = new FX(this.scene);
     this.pfx = new PFX(this);
+    this.weaponFx = new WeaponFx(this);
     this.world = new World(this.scene);
     this.ui = new UI();
 
@@ -927,13 +929,15 @@ class Game {
         * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
       info.poise *= 1 + (T.stun || 0) / 100;
     }
+    const hp0 = tg.hp;
     const r = tg.receive(info);
     if (r === 'none') return;
-    const heavy = def.heavyHit;
+    const heavy = def.heavyHit, dealt = tg.puppet ? info.dmg : Math.max(0, hp0 - tg.hp);
+    this.dmgPop(tg, dealt, heavy ? 'heavy' : 'me');
     if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT + (att.tree?.manaHit || 0)); // knife hits only
     if (att === this.player && tg.alive) this.applyStatus(att, tg, heavy ? 1.5 : 1);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
-    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy });
+    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, dmg: Math.round(dealt) });
     this.fx.blood(hp, dir, heavy ? 16 : 9);
     this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]);
     this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir });
@@ -942,14 +946,31 @@ class Game {
   }
 
   // status buildup from infusion boons (knight swings slower, so builds more per hit)
+  // status build-up per hit: base x strength (10% = one Infusion, the old Infusion strength; max 30%)
   applyStatus(p, tg, mul = 1) {
     if (!tg.status) return;
-    const base = p.kind === 'knight' ? 34 : 26;
-    for (const [k, lv] of Object.entries(p.statusLv)) tg.status.add(k, base * (1 + 0.5 * (lv - 1)) * mul * (k === 'bleed' ? 1 + (p.tree?.bleed || 0) / 100 : 1), this);
+    const base = p.kind === 'knight' ? 34 : 26, pct = statusPct(p.tree, p.statusLv);
+    for (const [k, v] of Object.entries(pct)) if (v > 0) tg.status.add(k, base * (v / 10) * mul, this);
   }
 
   // damage dealt by status effects (bleed/frost bursts, poison/fire ticks)
-  statusDamage(a, dmg, dot = false) {
+  // floating damage numbers: yours white, heavy hits bigger, crits gold, teammates grey, status in its colour
+  dmgPop(e, amount, kind = 'me') {
+    if (!(amount > 0.5) || !e?.rig) return;
+    if (kind.startsWith('dot:')) {
+      // damage over time: gather it and show it about twice a second
+      e.dotAcc = (e.dotAcc || 0) + amount;
+      if ((e.dotT = (e.dotT ?? 0) - 1) > 0 && e.dotAcc < 40) return;
+      e.dotT = 30; amount = e.dotAcc; e.dotAcc = 0;
+    }
+    const v = new THREE.Vector3(e.pos.x, 2.2 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+    if (v.z > 1) return;
+    const st = kind.split(':')[1];
+    this.ui.dmgNumber((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight, Math.round(amount), kind.split(':')[0], st ? STATUS[st].color : null);
+  }
+
+  statusDamage(a, dmg, dot = false, kind = null) {
+    this.dmgPop(a, Math.min(dmg, a.hp), (dot ? 'dot:' : 'status:') + (kind || 'bleed'));
     if (!a.alive) return;
     a.hp -= dmg;
     if (!dot) a.rig.flash(1, 0.4, 0.4);
@@ -966,7 +987,8 @@ class Game {
   riposteHit(p, tg, dmg) {
     dmg *= p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100);
     if (tg.alive) this.applyStatus(p, tg, 2);
-    this.mp.event({ k: 'rip', id: tg.netId });
+    this.mp.event({ k: 'rip', id: tg.netId, dmg: Math.round(dmg) });
+    this.dmgPop(tg, dmg, 'crit');
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
     tg.lastHitBy = p;
@@ -1150,11 +1172,13 @@ class Game {
   }
 
   spellDamage(q, e, mul = 1) {
-    const r = e.receive({ dmg: q.dmg * mul * this.player.dmgMul * (1 + (this.player.tree?.spellDmg || 0) / 100), poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
+    const hp0 = e.hp, sd = q.dmg * mul * this.player.dmgMul * (1 + (this.player.tree?.spellDmg || 0) / 100);
+    const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
     if (r === 'none') return;
+    this.dmgPop(e, e.puppet ? sd : hp0 - e.hp, q.kind === 'fire' ? 'heavy' : 'me');
     this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
-    this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire' });
+    this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', dmg: Math.round(e.puppet ? sd : hp0 - e.hp) });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
     if (e.alive) this.applyStatus(this.player, e, 1);
   }
@@ -1333,6 +1357,7 @@ class Game {
     this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
     this.pfx.update(dt);
+    if (this.mode === 'play' || this.mode === 'wait') this.weaponFx.update(dt);
     this.updateCamera(rdt);
   }
 
@@ -1390,7 +1415,7 @@ class Game {
       if (!e.alive || (e.hpShow <= 0 && this.player.lock !== e && !e.status.bars().length)) continue;
       v.set(e.pos.x, 2.25 * e.rig.root.scale.y, e.pos.z).project(this.camera);
       if (v.z > 1) continue;
-      list.push({ x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, v: e.hp / e.maxHp, status: e.status.bars().map((b) => ({ v: b.v, color: STATUS[b.k].color })) });
+      list.push({ x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, v: e.hp / e.maxHp, status: e.status.bars().map((b) => ({ k: b.k, flash: b.flash, color: STATUS[b.k].color })) });
     }
     this.ui.enemyBars(list);
   }

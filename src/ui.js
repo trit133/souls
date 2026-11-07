@@ -1,3 +1,5 @@
+import { icon } from './icons.js';
+const STATUS_ICON = { bleed: 'bleed', fire: 'fireCost', frost: 'frost', poison: 'poison' };
 // DOM HUD: bars with trailing "chip" damage, boss bar, prompts, toasts, enemy health bars.
 const $ = (id) => document.getElementById(id);
 
@@ -100,6 +102,16 @@ export class UI {
     const el = document.getElementById('boss-status');
     el.innerHTML = bars.map((b) => `<div class="smeter"><div style="background:${b.color};transform:scaleX(${b.v})"></div></div>`).join('');
   }
+  // a damage number that pops out and floats up
+  dmgNumber(x, y, n, kind, color) {
+    const d = document.createElement('div');
+    d.className = 'dmgnum ' + kind; d.textContent = n;
+    if (color) d.style.color = color;
+    d.style.left = x + (Math.random() - 0.5) * 26 + 'px'; d.style.top = y + 'px';
+    this.barLayer.appendChild(d);
+    setTimeout(() => d.remove(), 950);
+  }
+
   popup(x, y, text, color) {
     const d = document.createElement('div');
     d.className = 'popup'; d.textContent = text; d.style.color = color;
@@ -137,7 +149,7 @@ export class UI {
       const f = document.createElement('div');
       f.style.cssText = 'height:100%;background:#a8302a;transform-origin:left;';
       const st = document.createElement('div');
-      st.style.cssText = 'position:absolute;left:0;right:0;top:6px;';
+      st.style.cssText = 'position:absolute;left:0;right:0;top:6px;display:flex;justify-content:center;gap:2px;';
       d.appendChild(f); d.appendChild(st); this.barLayer.appendChild(d);
       this.bars.push({ d, f, s: st });
     }
@@ -147,7 +159,8 @@ export class UI {
       b.d.style.display = 'block';
       b.d.style.transform = `translate(${e.x}px, ${e.y}px)`;
       b.f.style.transform = `scaleX(${e.v})`;
-      const sm = (e.status || []).map((s) => `<div style="height:3px;margin-top:2px;background:rgba(0,0,0,.6)"><div style="height:100%;background:${s.color};width:${(s.v * 100).toFixed(0)}%"></div></div>`).join('');
+      // status: just an icon per effect building up (it flashes when it procs); the meter stays hidden
+      const sm = (e.status || []).map((s) => `<span class="sticon${s.flash ? ' proc' : ''}" style="color:${s.color}">${icon(STATUS_ICON[s.k])}</span>`).join('');
       if (b.sm !== sm) { b.sm = sm; b.s.innerHTML = sm; }
     });
   }
