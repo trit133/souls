@@ -5,6 +5,7 @@
 // ring 10 (empty for now). A node can be bought when it touches one you own; price grows with the ring.
 import { UPGRADES, upgradeCost } from './progress.js';
 import { LAYOUT } from './treelayout.js';
+import { COST_V5 } from './treecost-v5.js';
 
 // ---------- what nodes can give ----------
 // fmt: how a value reads in the tooltip
@@ -76,7 +77,7 @@ export const EVOS = {
 const SHAPES = {
   knight: { spokes: 4, lens: [20, 20, 20, 20], twist: 0, start: -Math.PI / 2, links: [[4, 1], [9, 2], [13, 2], [18, 1]], star: [], style: 'wheel' },
   rogue: { spokes: 6, lens: [20, 15, 20, 15, 20, 15], twist: 0.09, start: -Math.PI / 2, links: [[5, 1], [13, 1]], star: [], style: 'arc' },
-  mage: { spokes: 5, lens: [20, 20, 20, 20, 20], twist: 0, start: -Math.PI / 2, links: [[4, 1]], star: [7, 14], style: 'gem' },
+  mage: { spokes: 5, lens: [20, 20, 20, 20, 20], twist: 0, start: -Math.PI / 2, links: [[4, 1]], star: [12, 16], style: 'gem' },
 };
 
 export const RING = 12; // distance between rings in tree units
@@ -95,6 +96,15 @@ export function nodeCap(data, kind) {
 }
 export const capHint = (cap) => (cap <= 70 ? 'Beat Varek with this character to raise the limit to 100' : cap <= 100 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
 export const EVO_RING = 6, SOCKET_RING = 10, SOCKET_GAP = 3;
+function segCross(a, b, c, d) {
+  const o = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
+function segDist(c, a, b) {
+  const vx = b.x - a.x, vy = b.y - a.y, L2 = vx * vx + vy * vy || 1, t = ((c.x - a.x) * vx + (c.y - a.y) * vy) / L2;
+  if (t <= 0.02 || t >= 0.98) return 1e9;
+  return Math.hypot(c.x - a.x - vx * t, c.y - a.y - vy * t);
+}
 // drawn sizes (tree units), used to keep nodes apart
 const SIZE = (n) => (n.role === 'start' ? 4.6 : n.role === 'socket' || n.role === 'evo' ? 5 : 3.9);
 const GAP = 2.4;
@@ -143,43 +153,53 @@ export function build(kind, opts = {}) {
     }
   }
   nodes.get(`s0-${EVO_RING}`).role = 'evo';
-  // rune sockets: a triangle on their own ring just outside ring 10, joined socket to socket by the same chain
-  // of SOCKET_GAP nodes on every tree; turned to keep off the spokes; each socket links to the nearest spoke
-  const SR = (SOCKET_RING + 0.5) * RING, steps = 3 * (SOCKET_GAP + 1);
-  const spokeA = Array.from({ length: S.spokes }, (_, i) => ang(i, SOCKET_RING));
-  const off = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
-  let best = 0, bestGap = -1;
-  for (let deg = 0; deg < 360 / steps; deg += 0.5) {
-    const a0 = S.start + (deg * Math.PI) / 180;
-    const gap = Math.min(...Array.from({ length: steps }, (_, k) => Math.min(...spokeA.map((sa) => off(a0 + (k * Math.PI * 2) / steps, sa)))));
-    if (gap > bestGap) { bestGap = gap; best = a0; }
-  }
+  // ring 10 is a full circle of 12 nodes passing through every spoke's ring-10 node (lines only meet at nodes);
+  // the three rune sockets sit 4 steps apart on it, so going socket to socket crosses the same 3 nodes on every
+  // tree. Spokes that are sockets themselves stay spokes.
+  const RN = 3 * (SOCKET_GAP + 1), per = Array(S.spokes).fill(Math.floor((RN - S.spokes) / S.spokes));
+  for (let k = 0; k < (RN - S.spokes) % S.spokes; k++) per[Math.floor((k * S.spokes) / ((RN - S.spokes) % S.spokes))]++;
   const ringIds = [];
-  for (let k = 0; k < steps; k++) {
-    const a = best + (k * Math.PI * 2) / steps, sock = k % (SOCKET_GAP + 1) === 0;
-    const id = sock ? `r${k / (SOCKET_GAP + 1)}` : `ra${k}`;
-    add({ id, ring: SOCKET_RING, role: sock ? 'socket' : 'link', socketRing: true, ...at(a, SR) });
-    if (sock) {
-      let near = 0; spokeA.forEach((sa, i) => { if (off(a, sa) < off(a, spokeA[near])) near = i; });
-      link(`s${near}-${SOCKET_RING}`, id);
+  for (let g = 0; g < S.spokes; g++) {
+    const sid = `s${g}-${SOCKET_RING}`;
+    nodes.get(sid).socketRing = true; ringIds.push(sid);
+    let a0 = ang(g, SOCKET_RING), a1 = ang((g + 1) % S.spokes, SOCKET_RING);
+    if (a1 <= a0) a1 += Math.PI * 2;
+    for (let k = 1; k <= per[g]; k++) {
+      const id = `q${g}-${k}`;
+      add({ id, ring: SOCKET_RING, role: 'link', socketRing: true, ...at(a0 + ((a1 - a0) * k) / (per[g] + 1), SOCKET_RING * RING) });
+      ringIds.push(id);
     }
-    ringIds.push(id);
   }
-  ringIds.forEach((id, k) => link(id, ringIds[(k + 1) % steps]));
+  ringIds.forEach((id, k) => link(id, ringIds[(k + 1) % RN]));
+  // pick the socket places: every 4th node, starting where the most of them land between spokes
+  let bestO = 0, bestN = -1;
+  for (let o = 0; o <= SOCKET_GAP; o++) {
+    const n = [0, 1, 2].filter((k) => !ringIds[o + k * (SOCKET_GAP + 1)].startsWith('s')).length;
+    if (n > bestN) { bestN = n; bestO = o; }
+  }
+  for (let k = 0; k < 3; k++) nodes.get(ringIds[bestO + k * (SOCKET_GAP + 1)]).role = 'socket';
 
   // ---- fill each band to its share with the character's own features, out in the gaps between spokes ----
   const inBand = (lo, hi) => [...nodes.values()].filter((n) => n.ring >= lo && n.ring <= hi).length;
   let uid = 0;
-  const nearest = (x, y, lo, hi, not = new Set()) => {
-    let bestId = null, bd = 1e9;
-    for (const n of nodes.values()) {
-      if (not.has(n.id) || n.role === 'socket' || n.ring < lo || n.ring > hi) continue;
-      const d = Math.hypot(n.x - x, n.y - y);
-      if (d < bd) { bd = d; bestId = n.id; }
-    }
-    return bestId;
+  // the nearest node a new line from (x, y) can reach without crossing anything
+  const nearest = (x, y, lo, hi, not = new Set(), from = null) => {
+    const cands = [...nodes.values()].filter((n) => !not.has(n.id) && n.role !== 'socket' && n.ring >= lo && n.ring <= hi)
+      .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    for (const n of cands.slice(0, 12)) if (!blocked(from || { x, y }, n, new Set([...not, n.id]))) return n.id;
+    return cands[0]?.id ?? null;
   };
   const clampRing = (x, y, lo, hi) => Math.min(hi, Math.max(lo, ringOf(x, y)));
+  // would a new line p-q cross an existing line, or pass over a node?
+  const blocked = (p, q, skip = new Set()) => {
+    for (const [a, b] of edges) {
+      if (skip.has(a) || skip.has(b)) continue;
+      if (segCross(p, q, nodes.get(a), nodes.get(b))) return true;
+    }
+    for (const n of nodes.values()) if (!skip.has(n.id) && n !== p && n !== q && segDist(n, p, q) < SIZE(n) + 1.5) return true;
+    return false;
+  };
+  const lineGap = (x, y) => { let d = 1e9; for (const [a, b] of edges) d = Math.min(d, segDist({ x, y }, nodes.get(a), nodes.get(b))); return d; };
   // the clearest point near (x, y): most room from every node already placed
   const freeSpot = (x, y, reach) => {
     const r0 = Math.hypot(x, y), a0 = Math.atan2(y, x);
@@ -188,7 +208,7 @@ export function build(kind, opts = {}) {
       const r = r0 + dr * RING, cx = Math.cos(a0 + da) * r, cy = Math.sin(a0 + da) * r;
       let c = 1e9;
       for (const n of nodes.values()) c = Math.min(c, Math.hypot(n.x - cx, n.y - cy) - SIZE(n));
-      c -= reach;
+      c = Math.min(c, lineGap(cx, cy)) - reach;
       if (c > bc) { bc = c; bx = cx; by = cy; }
     }
     return [bx, by];
@@ -208,63 +228,84 @@ export function build(kind, opts = {}) {
     for (let k = 0; k < m - 1 && m > 2; k++) if (k % 2 === 0) link(ids[k], ids[k + 1]);
     const inner = ids.length ? ids.reduce((a, b) => (Math.hypot(nodes.get(a).x, nodes.get(a).y) < Math.hypot(nodes.get(b).x, nodes.get(b).y) ? a : b)) : hub;
     const n = nodes.get(inner);
-    link(nearest(n.x, n.y, Math.max(0, lo - 2), hi, new Set([hub, ...ids])), inner);
+    link(nearest(n.x, n.y, Math.max(0, lo - 2), hi, new Set([hub, ...ids]), n), inner);
   };
-  const arc = (i, r, len, lo, hi) => {
-    // a curved chain from a spoke sweeping toward the next one, a little outside ring r
-    const a0 = ang(i, r), span = (Math.PI * 2) / S.spokes, dir = 1;
-    let prev = `s${i}-${r}`;
-    for (let k = 1; k <= len; k++) {
-      const a = a0 + dir * span * (k / (len + 1)), rr = (r + 0.5 + 0.15 * k) * RING, p = at(a, rr), id = `a${uid++}`;
-      add({ id, ring: clampRing(p.x, p.y, lo, hi), role: k === len ? 'tip' : 'link', ...p });
-      link(prev, id); prev = id;
+  // can a node go at p? (room from every node and every line)
+  const roomAt = (p, extra = []) => [...nodes.values(), ...extra].every((n) => Math.hypot(n.x - p.x, n.y - p.y) >= SIZE(n) + 3.9 + GAP)
+    && lineGap(p.x, p.y) >= 3.9 + 2;
+  // add a planned group: points, their roles, and its lines ([i, j] into the group, or [nodeId, j] to the web)
+  const group = (pts, roles, lines, lo, hi, prefix) => {
+    for (let k = 0; k < pts.length; k++) if (!roomAt(pts[k], pts.slice(0, k).map((q) => ({ ...q, role: 'main' })))) return false;
+    const P = (e) => (typeof e === 'number' ? pts[e] : nodes.get(e));
+    const planned = lines.map(([u, v]) => [P(u), P(v)]);
+    for (let i = 0; i < planned.length; i++) {
+      const [A, B] = planned[i];
+      if (blocked(A, B, new Set([typeof lines[i][0] === 'string' ? lines[i][0] : '', typeof lines[i][1] === 'string' ? lines[i][1] : '']))) return false;
+      for (let j = 0; j < i; j++) {
+        const [C, D] = planned[j];
+        if (A !== C && A !== D && B !== C && B !== D && segCross(A, B, C, D)) return false;
+      }
+      for (const q of pts) if (q !== A && q !== B && segDist(q, A, B) < 3.9 + 1.5) return false;
     }
+    const ids = pts.map((p, k) => { const id = `${prefix}${uid++}`; add({ id, ring: clampRing(p.x, p.y, lo, hi), role: roles[k], x: p.x, y: p.y }); return id; });
+    for (const [u, v] of lines) link(typeof u === 'number' ? ids[u] : u, typeof v === 'number' ? ids[v] : v);
+    return true;
   };
-  const fork = (i, r, len, lo, hi, side) => {
-    // out from a spoke then split in two
-    const a = ang(i, r) + side * 0.32, p = at(a, (r + 0.5) * RING), stem = `k${uid++}`;
-    add({ id: stem, ring: clampRing(p.x, p.y, lo, hi), role: 'branch', ...p });
-    link(`s${i}-${r}`, stem);
-    for (let k = 0; k < len - 1; k++) {
-      const q = at(a + (k ? 0.16 : -0.16) * side, (r + 1.4) * RING), id = `k${uid++}`;
-      add({ id, ring: clampRing(q.x, q.y, lo, hi), role: 'tip', ...q });
-      link(stem, id);
+  // the closest web node a group can hang from
+  const anchors = (p, lo, hi) => [...nodes.values()].filter((n) => n.role !== 'socket' && n.ring >= Math.max(1, lo - 2) && n.ring <= hi)
+    .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 6);
+  const tryWheel = (c, size, lo, hi) => {
+    // a hub ringed by size-1 nodes, every other pair joined; it hangs from the web by its inner-most node
+    const m = size - 1, rad = RING * 0.95, base = Math.atan2(c.y, c.x);
+    const pts = [c, ...Array.from({ length: m }, (_, k) => ({ x: c.x + Math.cos(base + Math.PI + (k / m) * Math.PI * 2) * rad, y: c.y + Math.sin(base + Math.PI + (k / m) * Math.PI * 2) * rad }))];
+    const lines = Array.from({ length: m }, (_, k) => [0, k + 1]);
+    for (let k = 1; k < m; k += 2) lines.push([k, k + 1]);
+    for (const A of anchors(pts[1], lo, hi)) if (group(pts, ['tip', ...Array(m).fill('main')], [...lines, [A.id, 1]], lo, hi, 'w')) return true;
+    return false;
+  };
+  const tryChain = (c, len, lo, hi, kind) => {
+    // a short chain from the nearest web node out through c, bending along the ring (arc) or outward (fork)
+    for (const A of anchors(c, lo, hi)) {
+      const a0 = Math.atan2(A.y, A.x), r0 = Math.hypot(A.x, A.y), ac = Math.atan2(c.y, c.x), rc = Math.hypot(c.x, c.y);
+      const pts = Array.from({ length: len }, (_, k) => {
+        const f = (k + 1) / len;
+        const a = kind === 'arc' ? a0 + (ac - a0) * f * 1.15 : ac + (ac - a0) * 0.25 * k;
+        const r = kind === 'arc' ? rc + 0.12 * RING * k : r0 + (rc - r0) * f + 0.55 * RING * k;
+        return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+      });
+      const lines = [[A.id, 0], ...Array.from({ length: len - 1 }, (_, k) => [k, k + 1])];
+      if (group(pts, pts.map((_, k) => (k === len - 1 ? 'tip' : kind === 'arc' ? 'link' : 'branch')), lines, lo, hi, kind === 'arc' ? 'a' : 'k')) return true;
     }
+    return false;
   };
   for (const [lo, hi, want] of BANDS) {
-    let need = want - inBand(lo, hi), slot = 0;
-    const span = (Math.PI * 2) / S.spokes;
-    // candidate places: the middle of each gap between spokes, at a few radii in the band
-    const radii = [];
-    for (let r = lo === 1 ? 3.6 : lo + 1.5; r <= hi - 0.5; r += 2.6) radii.push(r);
-    if (!radii.length) radii.push((lo + hi) / 2);
-    const spots = [];
-    for (const r of radii) for (let g = 0; g < S.spokes; g++) {
-      const reach = Math.max(S.lens[g], S.lens[(g + 1) % S.spokes]);
-      if (r <= reach + 1) spots.push([g, r]);
+    let need = want - inBand(lo, hi);
+    const span = (Math.PI * 2) / S.spokes, cands = [];
+    for (let r = (lo === 1 ? 2.6 : lo) ; r <= hi + 0.3; r += 0.55) for (const f of [0.5, 0.32, 0.68, 0.18, 0.82]) for (let g = 0; g < S.spokes; g++) {
+      if (r > Math.max(S.lens[g], S.lens[(g + 1) % S.spokes]) + 0.5) continue;
+      cands.push({ r, f, g, ...at(ang(g, r) + span * f, r * RING) });
     }
-    while (need > 0 && slot < 400) {
-      const [g, r] = spots[slot % spots.length], round = Math.floor(slot / spots.length);
-      slot++;
-      const a = ang(g, r) + span / 2 + (round % 2 ? 0.22 : -0.22) * round, gx = Math.cos(a) * r * RING, gy = Math.sin(a) * r * RING;
-      const spokeHere = has(`s${g}-${Math.round(r)}`) ? g : (g + 1) % S.spokes;
-      const rr = Math.max(lo, Math.min(hi, Math.round(r)));
-      if (!has(`s${spokeHere}-${rr}`)) continue;
-      if (S.style === 'wheel' || (S.style === 'gem' && round === 0)) {
-        if (need >= 4) { const size = Math.min(need, round === 0 ? 6 : 5); wheel(gx, gy, size, lo, hi); need -= size; continue; }
-      }
-      if (S.style === 'arc' && need >= 2) { const len = Math.min(need, 4); arc(spokeHere, rr, len, lo, hi); need -= len; continue; }
-      if (need >= 3) { fork(spokeHere, rr, 3, lo, hi, round % 2 ? 1 : -1); need -= 3; continue; }
-      fork(spokeHere, rr, need, lo, hi, round % 2 ? 1 : -1); need = 0;
+    // spread: alternate gaps and radii rather than filling one gap first
+    cands.sort((a, b) => (a.f === 0.5 ? 0 : 1) - (b.f === 0.5 ? 0 : 1) || a.g - b.g || a.r - b.r);
+    const order = []; const byG = Array.from({ length: S.spokes }, (_, g) => cands.filter((c) => c.g === g));
+    for (let k = 0; order.length < cands.length; k++) for (const list of byG) if (list[k]) order.push(list[k]);
+    for (const c of order) {
+      if (need <= 0) break;
+      let ok = false;
+      if (S.style !== 'arc' && need >= 4) for (const size of [6, 5, 4]) if (size <= need && tryWheel(c, size, lo, hi)) { need -= size; ok = true; break; }
+      if (ok) continue;
+      if (S.style === 'arc') for (const len of [4, 3, 2]) if (len <= need && tryChain(c, len, lo, hi, 'arc')) { need -= len; ok = true; break; }
+      if (ok) continue;
+      for (const len of [3, 2, 1]) if (len <= need && tryChain(c, len, lo, hi, 'fork')) { need -= len; break; }
     }
   }
   // extra flasks on two spokes
   nodes.get(`s${1 % S.spokes}-5`).flask = true;
   nodes.get(`s${(S.spokes - 1)}-9`).flask = true;
-  // positions: worked out once by scripts/gen-trees.mjs (relax below) and shipped in treelayout.js
+  // positions: generated once by scripts/gen-trees.mjs and shipped in treelayout.js
   const saved = LAYOUT[kind];
-  if (opts.relax || !saved || Object.keys(saved).length !== nodes.size) relax(nodes, edges);
-  else for (const n of nodes.values()) if (saved[n.id]) [n.x, n.y] = saved[n.id];
+  // (nodes are placed clear of each other and of every line as the tree is built; the saved copy only speeds up loading)
+  if (!opts.relax && saved && Object.keys(saved).length === nodes.size) for (const n of nodes.values()) if (saved[n.id]) [n.x, n.y] = saved[n.id];
   // a moved node is priced by where it ended up (staying inside its band, so the band counts hold)
   for (const n of nodes.values()) {
     if (n.pin || n.role === 'socket' || n.role === 'evo' || n.socketRing) continue;
@@ -273,72 +314,6 @@ export function build(kind, opts = {}) {
   }
   assign(kind, nodes);
   return { kind, nodes, edges };
-}
-
-// Push apart anything that overlaps (and nodes sitting on a link line). Spokes, the start and the socket
-// ring stay put; the rest move and are pulled gently back to their ring's radius.
-function relax(nodes, edges) {
-  const all = [...nodes.values()];
-  for (const n of all) n.r0 = Math.hypot(n.x, n.y);
-  const E = edges.map(([a, b]) => [nodes.get(a), nodes.get(b)]);
-  for (let it = 0; it < 1600; it++) {
-    let moved = 0;
-    for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
-      const A = all[i], B = all[j];
-      if (A.pin && B.pin) continue;
-      let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
-      const want = SIZE(A) + SIZE(B) + GAP;
-      if (d >= want) continue;
-      if (d < 1e-3) { dx = Math.cos(i + j); dy = Math.sin(i + j); d = 1; }
-      dx += (((i * 7 + j * 13) % 11) - 5) * 0.002; dy += (((i * 11 + j * 5) % 7) - 3) * 0.002;
-      const push = (want - d) / d, wa = A.pin ? 0 : B.pin ? 1 : 0.5, wb = 1 - wa;
-      A.x -= dx * push * wa; A.y -= dy * push * wa; B.x += dx * push * wb; B.y += dy * push * wb;
-      moved++;
-    }
-    for (const [A, B] of E) {
-      const vx = B.x - A.x, vy = B.y - A.y, L2 = vx * vx + vy * vy || 1;
-      for (const C of all) {
-        if (C === A || C === B || (C.pin && A.pin && B.pin)) continue;
-        const t = Math.max(0, Math.min(1, ((C.x - A.x) * vx + (C.y - A.y) * vy) / L2));
-        const px = A.x + vx * t, py = A.y + vy * t, dx = C.x - px, dy = C.y - py, d = Math.hypot(dx, dy);
-        const want = SIZE(C) + 2.4;
-        if (t <= 0.02 || t >= 0.98 || d >= want) continue;
-        const k = (want - d) / (d || 1), nx = (d ? dx : -vy) * k, ny = (d ? dy : vx) * k;
-        if (!C.pin) { C.x += nx; C.y += ny; }
-        else {
-          // a fixed node on a line: move the line's free end(s) away instead
-          for (const [P, w] of [[A, 1 - t], [B, t]]) if (!P.pin) { P.x -= nx * (0.5 + w); P.y -= ny * (0.5 + w); }
-        }
-        moved++;
-      }
-    }
-    // a gentle pull back to the node's ring, weaker as the layout settles
-    const pull = 0.03 * Math.max(0.15, 1 - it / 500);
-    for (const n of all) if (!n.pin && n.r0 > 0) {
-      const r = Math.hypot(n.x, n.y), f = 1 + ((n.r0 - r) / r) * pull;
-      n.x *= f; n.y *= f;
-    }
-    if (!moved && it > 20) break;
-  }
-  // last pass: anything still touching a line jumps to the nearest clear spot
-  const segD = (C, A, B) => {
-    const vx = B.x - A.x, vy = B.y - A.y, L2 = vx * vx + vy * vy || 1, t = ((C.x - A.x) * vx + (C.y - A.y) * vy) / L2;
-    return t <= 0.02 || t >= 0.98 ? 1e9 : Math.hypot(C.x - A.x - vx * t, C.y - A.y - vy * t);
-  };
-  const clear = (C) => all.every((N) => N === C || Math.hypot(N.x - C.x, N.y - C.y) >= SIZE(N) + SIZE(C) + GAP)
-    && E.every(([A, B]) => A === C || B === C || segD(C, A, B) >= SIZE(C) + 1.5)
-    && E.every(([A, B]) => (A !== C && B !== C) || all.every((N) => N === A || N === B || segD(N, A, B) >= SIZE(N) + 1));
-  for (let pass = 0; pass < 3; pass++) for (const C of all) {
-    if (C.pin || clear(C)) continue;
-    const x0 = C.x, y0 = C.y;
-    let done = false;
-    for (let rad = 2; rad <= 16 && !done; rad += 2) for (let k = 0; k < 24 && !done; k++) {
-      C.x = x0 + Math.cos((k / 24) * Math.PI * 2) * rad; C.y = y0 + Math.sin((k / 24) * Math.PI * 2) * rad;
-      if (clear(C)) done = true;
-    }
-    if (!done) { C.x = x0; C.y = y0; }
-  }
-  for (const n of all) delete n.r0;
 }
 
 // what each node gives, by ring and role (cycled so neighbours differ)
@@ -422,6 +397,7 @@ const SOCKETS_V1 = { knight: ['s0-10', 's1-10', 's3-10'], rogue: ['s0-10', 's2-1
 const COST_V4 = [0, 10, 15, 30, 50, 80, 100, 120, 140, 170, 200, 250, 275, 300, 325, 350];
 const COST_V23 = [0, ...Array.from({ length: 15 }, (_, i) => { const c = 10 * Math.pow(25, i / 14); return c < 20 ? Math.round(c) : Math.round(c / 5) * 5; })];
 function costOld(v, kind, id) {
+  if (v === 5) return COST_V5[kind]?.[id] || 0;
   if (v === 4) {
     if (id === 's0-6') return 150;
     if (/^r\d+$/.test(id)) return 300;
@@ -439,10 +415,10 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 5;
+export const TREE_VERSION = 6;
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
-  const v = data.treeV === 4 ? 4 : data.treeV === 3 ? 3 : data.treeV === 2 ? 2 : 1;
+  const v = data.treeV >= 2 && data.treeV <= 5 ? data.treeV : 1;
   let refund = 0;
   for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costOld(v, kind, id);
   data.tree = {};

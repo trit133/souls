@@ -18,6 +18,13 @@ out.refund = await page.evaluate(() => {
   return { gold: g1, again: d.gold, mageKept: !!d.upgrades.mage, oldGone: !d.upgrades.dmg, expected: 5 + (10 + 15 + 23) + (10 + 15) + 10 + 75 };
 });
 // 1b) trees bought on the old 80-node layout come back at what they cost: s0-1..s0-6 (8+10+12+15+18+75) + knight socket s1-10 (44*1.5)
+// 1f) trees bought on the first 20-ring layout (v5): exact recorded prices
+out.refundV5 = await page.evaluate(async () => {
+  const { COST_V5 } = await import('/src/treecost-v5.js').catch(() => ({ COST_V5: null }));
+  const d = game.accounts.data; d.gold = 0; d.tree = { rogue: ['s0-1', 's0-2', 's0-6'] }; d.treeV = 5;
+  game.refreshTitle(); const g = d.gold; game.refreshTitle();
+  return { gold: g, again: d.gold, expected: 10 + 14 + 150, cleared: JSON.stringify(d.tree) };
+});
 // 1e) trees bought on the 15-ring 180-node layout (v4): 10..350 by ring, evolution 150, sockets 300, ring-10 links 200
 out.refundV4 = await page.evaluate(() => {
   const d = game.accounts.data; d.gold = 0; d.tree = { knight: ['s0-1', 's0-2', 's0-6', 'r1', 'ra2', 'f0-12-0-1'] }; d.treeV = 4;

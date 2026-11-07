@@ -1,4 +1,5 @@
-// Lays out the three skill trees (pushing nodes apart so nothing overlaps) and writes src/treelayout.js.
+// Builds the three skill trees (placed so no nodes overlap and no lines cross) and writes their positions to
+// src/treelayout.js.
 // Run after changing the tree shapes: node scripts/gen-trees.mjs
 import { writeFileSync } from 'fs';
 import { build } from '../src/skilltree.js';
