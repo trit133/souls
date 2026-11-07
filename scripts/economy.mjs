@@ -79,27 +79,24 @@ await page.waitForTimeout(3700);
 const shop = await page.evaluate(() => {
   const out = {};
   game.toTitle();
-  game.accounts.data.gold = 100; game.accounts.data.upgrades = {}; game.accounts.save(); game.refreshTitle();
+  game.accounts.data.gold = 100; game.accounts.data.tree = {}; game.accounts.save(); game.refreshTitle();
   document.getElementById('btn-shop').click();
-  const row = (i) => document.querySelectorAll('.shop-row')[i];
+  const ui = game.treeUI; ui.kind = 'knight'; ui.render();
   const costs = [];
-  for (let i = 0; i < 4; i++) { costs.push(row(0).querySelector('button').textContent); row(0).querySelector('button').click(); }
-  out.dmgCostsPaid = costs; out.goldLeft = game.accounts.data.gold; out.dmgInfo = row(0).querySelector('.sinfo').textContent;
-  out.nextDmgButton = row(0).querySelector('button').textContent; out.nextDisabled = row(0).querySelector('button').disabled;
-  const mr = document.querySelector('[data-key=mana] button'); out.mana = { text: mr.textContent, disabled: mr.disabled };
-  document.getElementById('shop-back').click();
-  // applied in a run? +3+3+3+4 = 13% damage
-  game.accounts.data.upgrades = { dmg: 4, hp: 4, move: 4, aspd: 4, st: 4 }; game.accounts.save();
+  for (const id of ['s1-1', 's1-2', 's1-3', 's1-4']) { const g = game.accounts.data.gold; ui.buy(id); costs.push(g - game.accounts.data.gold); }
+  out.nodeCosts = costs; out.goldLeft = game.accounts.data.gold; out.owned = game.accounts.data.tree.knight;
+  document.getElementById('tree-back').click();
+  // applied in a run
   game.start('knight');
   const p = game.player;
-  out.applied = { dmgMul: +p.dmgMul.toFixed(2), maxHp: p.maxHp, moveMul: +p.moveMul.toFixed(2), aspdMul: +p.aspdMul.toFixed(2), maxSt: p.maxSt };
+  out.applied = { maxHp: p.maxHp, maxSt: p.maxSt, flatDmg: p.flatDmg, dmgMul: +p.dmgMul.toFixed(2) };
   return out;
 });
 log('6 shop', shop);
 
 // 7) persistence across a reload
 await page.reload(); await page.waitForTimeout(700);
-log('7 reload', await page.evaluate(() => ({ user: game.accounts.user, name: document.getElementById('acct-name').textContent, gold: document.getElementById('acct-gold').textContent, up: game.accounts.data.upgrades })));
+log('7 reload', await page.evaluate(() => ({ user: game.accounts.user, name: document.getElementById('acct-name').textContent, gold: document.getElementById('acct-gold').textContent, tree: game.accounts.data.tree })));
 
 if (errs.length) { console.log('ERRORS\n' + [...new Set(errs)].slice(0, 5).join('\n')); process.exitCode = 1; } else console.log('OK no errors');
 await b.close();

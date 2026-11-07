@@ -18,9 +18,10 @@ import { STATUS } from './status.js';
 import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
-import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, UPGRADES, SECTIONS, upgradeCost, upgradeTotal, stepValue, isMaxed, extraEnemyShare } from './progress.js';
-import { icon } from './icons.js';
+import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
 import { skinList, unlocked } from './skins.js';
+import { treeStats, migrateUpgrades } from './skilltree.js';
+import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
@@ -176,7 +177,7 @@ class Game {
     document.querySelectorAll('.char').forEach((b) => b.addEventListener('click', () => {
       this.audio.unlock();
       if (b.dataset.char === 'mage' && !this.accounts.data?.upgrades.mage) {
-        if (this.accounts.user) { this.renderShop(); this.ui.show('shop'); } else { $('acct-err').textContent = 'Sign in to unlock the Spellsword'; this.ui.show('account'); }
+        if (this.accounts.user) { this.treeUI.open('mage'); } else { $('acct-err').textContent = 'Sign in to unlock the Spellsword'; this.ui.show('account'); }
         return;
       }
       this.start(b.dataset.char);
@@ -236,8 +237,9 @@ class Game {
     $('lobby-joinbtn').addEventListener('click', () => tryNet(() => this.mp.join($('lobby-input').value.trim(), this.lobbyKind)));
     $('lobby-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('lobby-joinbtn').click(); });
     $('lobby-start').addEventListener('click', () => this.mp.startRun());
-    $('lobby-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
+    $('lobby-shop').addEventListener('click', () => { this.treeUI.open(); });
     this.skinMenu = new SkinMenu(this);
+    this.treeUI = new TreeUI(this);
     this.layoutEditor = new LayoutEditor(this);
     $('btn-skins').addEventListener('click', () => { this.audio.unlock(); this.skinMenu.open(); });
     $('lobby-skins').addEventListener('click', () => this.skinMenu.open(this.lobbyKind));
@@ -251,10 +253,10 @@ class Game {
     });
     document.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
       // a locked Spellsword opens Upgrades, where it can be bought without leaving the room
-      if (b.dataset.pick === 'mage' && !this.accounts.data?.upgrades.mage) { this.renderShop(); this.ui.show('shop'); return; }
+      if (b.dataset.pick === 'mage' && !this.accounts.data?.upgrades.mage) { this.treeUI.open('mage'); return; }
       this.lobbyKind = b.dataset.pick; if (this.mp.code) this.mp.setKind(this.lobbyKind); this.renderLobby();
     }));
-    $('btn-shop').addEventListener('click', () => { this.renderShop(); this.ui.show('shop'); });
+    $('btn-shop').addEventListener('click', () => { this.treeUI.open(); });
     $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); this.renderLobby(); });
     $('btn-acct').addEventListener('click', () => {
       if (this.accounts.user) { this.accounts.signOut(); this.refreshTitle(); return; }
@@ -304,7 +306,7 @@ class Game {
     if (party) this.buildRun(party.layout, party.seed, party.players); else this.buildRun();
     this.waitingOnParty = false; this.reviving = null;
     this.respawnAt = { x: 0, z: -2.5 };
-    this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.data?.upgrades);
+    this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.user ? treeStats(kind, this.accounts.data) : {});
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
     this.ui.setRunGold(0);
@@ -472,6 +474,12 @@ class Game {
   refreshTitle() {
     this.loadSettings();
     const A = this.accounts;
+    // the old upgrade shop became skill trees: its spending comes back once as gold
+    if (A.user && A.data && !A.data.treeMigrated) {
+      const back = migrateUpgrades(A.data);
+      A.save();
+      if (back) setTimeout(() => this.ui.toast(`SKILL TREES ARE HERE · ◆ ${back} REFUNDED`, 4), 300);
+    }
     $('acct-name').textContent = A.user ? A.displayName : 'Guest (gold is not saved)';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
     $('btn-acct').textContent = A.user ? 'Sign Out' : 'Sign In';
@@ -479,49 +487,10 @@ class Game {
     $('btn-mp').classList.toggle('hidden', !A.user);
     const open = !!A.data?.upgrades.mage;
     document.querySelector('.char[data-char="mage"]').classList.toggle('locked', !open);
-    $('mage-lock').textContent = open ? '' : 'Locked · unlock for ◆ 100 in Upgrades';
+    $('mage-lock').textContent = open ? '' : 'Locked · unlock for ◆ 100 in Skill Trees';
   }
 
-  renderShop() {
-    const d = this.accounts.data;
-    $('shop-gold').textContent = `◆ ${d.gold} gold`;
-    const wrap = $('shop-list');
-    wrap.innerHTML = '';
-    for (const sec of SECTIONS) {
-      const h = document.createElement('div');
-      h.className = 'shop-head'; h.textContent = sec;
-      wrap.appendChild(h);
-      for (const u of UPGRADES.filter((x) => x.section === sec)) {
-        const lv = d.upgrades[u.key] || 0, cost = upgradeCost(u, lv), maxed = isMaxed(u, lv);
-        const blocked = u.requires && !d.upgrades[u.requires];
-        const row = document.createElement('div');
-        row.className = 'shop-row'; row.dataset.key = u.key;
-        const capText = u.costs ? `${lv}/${u.costs.length}` : `Lv ${lv}`;
-        const info = blocked ? 'Unlock Spellsword first'
-          : u.desc ? (maxed ? 'Owned' : u.desc)
-            : `${capText} · now +${upgradeTotal(u, lv)}${u.unit}${maxed ? '' : ` · next +${stepValue(u, lv)}${u.unit}`}`;
-        row.innerHTML = `<div class="sicon">${icon(u.key)}</div><div class="stext"><div class="sname">${u.name}</div><div class="sinfo">${info}</div></div>`;
-        const b = document.createElement('button');
-        b.textContent = blocked ? 'Locked' : maxed ? (u.desc ? 'Owned' : 'Max') : `◆ ${cost}`;
-        b.disabled = !!blocked || maxed || d.gold < cost;
-        b.addEventListener('click', () => this.buyUpgrade(u.key));
-        row.appendChild(b);
-        wrap.appendChild(row);
-      }
-    }
-  }
 
-  buyUpgrade(key) {
-    const d = this.accounts.data, u = UPGRADES.find((x) => x.key === key);
-    if (!d || !u || (u.requires && !d.upgrades[u.requires])) return;
-    const lv = d.upgrades[key] || 0, cost = upgradeCost(u, lv);
-    if (isMaxed(u, lv) || d.gold < cost) return;
-    d.gold -= cost;
-    d.upgrades[key] = lv + 1;
-    this.accounts.save();
-    this.audio.play('heal');
-    this.renderShop();
-  }
 
   // gold goes into the current section of the run (sections end at each mini boss)
   addRunGold(n, a) {
@@ -716,7 +685,7 @@ class Game {
     $('retry').disabled = false;
     $('ready-status').textContent = '';
     $('again').textContent = party ? 'Ready Up' : 'Play Again';
-    $('go-lobby').textContent = $('victory-lobby').textContent = party ? 'Lobby & Upgrades' : 'Upgrades';
+    $('go-lobby').textContent = $('victory-lobby').textContent = party ? 'Lobby & Skill Trees' : 'Skill Trees';
     $('go-lobby').classList.toggle('hidden', !party && !this.accounts.user);
     $('victory-lobby').classList.toggle('hidden', !party && !this.accounts.user);
     $('again').disabled = false;
@@ -725,7 +694,7 @@ class Game {
   }
 
   afterRunLobby() {
-    if (!this.mp.active) { this.renderShop(); this.ui.show('shop'); return; }
+    if (!this.mp.active) { this.treeUI.open(this.kind); return; }
     this.mode = 'lobby';
     this.audio.stopMusic();
     for (const s of ['gameover', 'victory', 'death', 'reward', 'hud', 'touch']) this.ui.show(s, false);
@@ -772,7 +741,7 @@ class Game {
       b.setAttribute('aria-pressed', b.dataset.pick === this.lobbyKind);
     });
     const lock = document.querySelector('[data-pick="mage"] span');
-    lock.textContent = mageOpen ? 'Hits build mana · bolt & fireball' : 'Locked · tap to unlock in Upgrades';
+    lock.textContent = mageOpen ? 'Hits build mana · bolt & fireball' : 'Locked · tap to unlock in Skill Trees';
     this.renderChat();
   }
 
@@ -941,11 +910,17 @@ class Game {
       if (h.knockback && (r === 'hit' || r === 'block')) tg.kb.copy(dir).multiplyScalar(h.knockback);
       return;
     }
-    if (att === this.player) info.dmg *= att.dmgMul;
+    if (att === this.player) {
+      // skill tree: flat damage, knife and counter bonuses, stun buildup
+      const T = att.tree || {};
+      info.dmg = (info.dmg + (att.flatDmg || 0)) * att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1)
+        * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
+      info.poise *= 1 + (T.stun || 0) / 100;
+    }
     const r = tg.receive(info);
     if (r === 'none') return;
     const heavy = def.heavyHit;
-    if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT); // knife hits only
+    if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT + (att.tree?.manaHit || 0)); // knife hits only
     if (att === this.player && tg.alive) this.applyStatus(att, tg, heavy ? 1.5 : 1);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
     this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy });
@@ -960,7 +935,7 @@ class Game {
   applyStatus(p, tg, mul = 1) {
     if (!tg.status) return;
     const base = p.kind === 'knight' ? 34 : 26;
-    for (const [k, lv] of Object.entries(p.statusLv)) tg.status.add(k, base * (1 + 0.5 * (lv - 1)) * mul, this);
+    for (const [k, lv] of Object.entries(p.statusLv)) tg.status.add(k, base * (1 + 0.5 * (lv - 1)) * mul * (k === 'bleed' ? 1 + (p.tree?.bleed || 0) / 100 : 1), this);
   }
 
   // damage dealt by status effects (bleed/frost bursts, poison/fire ticks)
@@ -979,7 +954,7 @@ class Game {
   }
 
   riposteHit(p, tg, dmg) {
-    dmg *= p.dmgMul;
+    dmg *= p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100);
     if (tg.alive) this.applyStatus(p, tg, 2);
     this.mp.event({ k: 'rip', id: tg.netId });
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
@@ -1000,7 +975,7 @@ class Game {
 
   // evolved knight's shield charge meeting an enemy: a little damage and a hard shove
   shieldBash(p, e, dir) {
-    const push = e.isBoss ? 4 : e.type === 'brute' ? 7 : 12;
+    const push = (e.isBoss ? 4 : e.type === 'brute' ? 7 : 12) * (1 + (p.tree?.chargeKb || 0) / 100);
     const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
     if (e.puppet) {
       this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * p.dmgMul, poise: 12, kb: [dir.x * push, dir.z * push] });
@@ -1033,7 +1008,7 @@ class Game {
     for (const e of this.enemiesAll()) {
       if (!e.alive) continue;
       const np = e.nextParry();
-      const early = PARRY_EARLY + (p.evolved ? 0.05 : 0); // Red Riposte adds 50ms
+      const early = PARRY_EARLY + (p.evolved ? 0.05 : 0) + (p.tree?.parryWin || 0) / 1000; // Red Riposte adds 50ms
       if (!np || np.tth < PARRY_LATE - slack || np.tth > early + slack) continue;
       if (e.distTo(p) > (np.h.range ?? 3) + p.radius + 0.8) continue;
       if (Math.abs(angDiff(e.yaw, e.yawTo(p.pos))) > (np.h.arc ?? 2) / 2 + 0.5) continue;
@@ -1158,14 +1133,14 @@ class Game {
     // the sphere only carries the shot; what you see is the pixelfx bolt or fireball riding on it
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
     mesh.position.copy(pos); mesh.visible = false; this.scene.add(mesh);
-    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, noKnock: !!S.noKnock, aoe: S.aoe ? S.aoe * big : 0 };
+    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, noKnock: !!S.noKnock, aoe: S.aoe ? S.aoe * big * (1 + (p.tree?.fireRadius || 0) / 100) : 0 };
     q.pfx = this.pfx.play(kind === 'fire' ? (big > 1 ? 'bigFireball' : 'fireball') : 'bolt', pos, { follow: q });
     this.addProj(q);
     this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
   spellDamage(q, e, mul = 1) {
-    const r = e.receive({ dmg: q.dmg * mul * this.player.dmgMul, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
+    const r = e.receive({ dmg: q.dmg * mul * this.player.dmgMul * (1 + (this.player.tree?.spellDmg || 0) / 100), poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
     if (r === 'none') return;
     this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);

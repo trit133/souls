@@ -293,6 +293,37 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 
 /* ---------- settings ---------- */
 #settings { background: rgba(8,6,4,.97); z-index: 13; justify-content: flex-start; }
+#tree { background: #07060a; z-index: 13; justify-content: flex-start; padding: calc(6px + env(safe-area-inset-top)) 8px calc(6px + env(safe-area-inset-bottom)); gap: 4px; }
+#tree h2 { margin: 0; font-size: 22px; }
+#tree-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+#tree-tabs { display: flex; gap: 6px; }
+#tree-tabs .on { border-color: #e8c88a; color: #f2ead8; }
+#tree-gold { color: #e8c25a; font-size: 14px; }
+#tree-wrap { position: relative; flex: 1; width: 100%; min-height: 0; border: 1px solid #2e2618; background: radial-gradient(#141018, #07060a 70%); overflow: hidden; }
+#tree-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#tree-svg .te { stroke: #3a3428; stroke-width: .7; }
+#tree-svg .te.reach { stroke: #6a5c40; stroke-width: .8; }
+#tree-svg .te.own { stroke: #e8c25a; stroke-width: 1.2; }
+#tree-svg .tn circle, #tree-svg .tn polygon { fill: #16131a; stroke: #4a4232; stroke-width: .6; }
+#tree-svg .tn .ti { fill: none; stroke: #6e6454; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#tree-svg .tn.can circle, #tree-svg .tn.can polygon { stroke: var(--c); stroke-width: .9; fill: #1e1a24; }
+#tree-svg .tn.can .ti { stroke: #d8cfbf; }
+#tree-svg .tn.own circle, #tree-svg .tn.own polygon { fill: #3a2e14; stroke: #f0c860; stroke-width: 1; }
+#tree-svg .tn.own .ti { stroke: #fff2c8; }
+#tree-svg .tn.evo circle { stroke-width: 1.4; }
+#tree-svg .tn.socket polygon { fill: #0c0a10; stroke-dasharray: 1.4 .8; }
+#tree-svg .tn.start circle { fill: #2a2214; stroke: #f0c860; stroke-width: 1.2; }
+#tree-svg .tn.sel circle, #tree-svg .tn.sel polygon { stroke: #fff; stroke-width: 1.3; }
+#tree-svg .tn { cursor: pointer; }
+#tree-tip { position: absolute; max-width: 230px; background: rgba(16,12,8,.96); border: 1px solid #7a6440; padding: 8px 10px; font-family: Georgia, serif; font-size: 13px; color: #d8cfbf; pointer-events: auto; z-index: 2; }
+#tree-tip .tt-name { color: #f2d890; font-size: 14px; margin-bottom: 4px; }
+#tree-tip .tt-ring { font-size: 11px; opacity: .7; margin-top: 5px; letter-spacing: 1px; }
+#tree-tip .tt-status { font-size: 11px; color: #c8a070; }
+#tree-tip button { margin-top: 6px; }
+#tree-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
+#tree-lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(7,6,10,.7); font-size: 16px; }
+#tree-foot { display: flex; align-items: center; gap: 14px; }
+#tree-count { font-size: 12px; opacity: .7; letter-spacing: 1px; }
 #skins { background: rgba(8,6,4,.97); z-index: 13; justify-content: flex-start; padding-top: calc(10px + env(safe-area-inset-top)); }
 #skin-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
 #skin-tabs .on { border-color: #e8c88a; color: #f2ead8; }

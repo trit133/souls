@@ -60,7 +60,7 @@
     <div id="acct-bar">
       <span id="acct-name"></span>
       <span id="acct-gold"></span>
-      <button class="mini-btn" id="btn-shop">Upgrades</button>
+      <button class="mini-btn" id="btn-shop">Skill Trees</button>
       <button class="mini-btn" id="btn-mp">Multiplayer</button>
       <button class="mini-btn" id="btn-skins">Skins</button>
       <button class="mini-btn" id="btn-settings">Settings</button>
@@ -102,7 +102,7 @@
     <div id="gameover-stats"></div>
     <div>
       <button class="menu-btn" id="retry">Try Again</button>
-      <button class="menu-btn" id="go-lobby">Upgrades</button>
+      <button class="menu-btn" id="go-lobby">Skill Trees</button>
       <button class="menu-btn" id="go-title">Title</button>
     </div>
     <div id="ready-status"></div>
@@ -172,7 +172,7 @@
     <div id="lobby-wait"></div>
     <div id="lobby-err"></div>
     <div id="lobby-actions">
-      <button class="mini-btn" id="lobby-shop">Upgrades</button>
+      <button class="mini-btn" id="lobby-shop">Skill Trees</button>
       <button class="mini-btn" id="lobby-skins">Skins</button>
       <button class="mini-btn" id="lobby-settings">Settings</button>
       <button class="mini-btn" id="lobby-back">Back</button>
@@ -221,6 +221,24 @@
     <div id="skin-note"></div>
     <button class="menu-btn" id="skins-back">Back</button>
   </div>
+  <div id="tree" class="screen hidden">
+    <div id="tree-top">
+      <h2>Skill Trees</h2>
+      <div id="tree-tabs">
+        <button class="mini-btn" data-tree-kind="knight">Knight</button>
+        <button class="mini-btn" data-tree-kind="rogue">Rogue</button>
+        <button class="mini-btn" data-tree-kind="mage">Spellsword</button>
+      </div>
+      <div id="tree-gold"></div>
+    </div>
+    <div id="tree-wrap">
+      <svg id="tree-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="tree-tip" class="hidden"></div>
+      <div id="tree-zoom"><button class="mini-btn" data-tz="in">+</button><button class="mini-btn" data-tz="out">−</button><button class="mini-btn" data-tz="fit">Fit</button></div>
+      <div id="tree-lock" class="hidden"><div>The Spellsword is locked</div><button class="menu-btn" id="tree-unlock">Unlock</button></div>
+    </div>
+    <div id="tree-foot"><span id="tree-count"></span><button class="menu-btn" id="tree-back">Done</button></div>
+  </div>
   <div id="shop" class="screen hidden">
     <h2>Upgrades</h2>
     <div id="shop-gold"></div>
@@ -232,7 +250,7 @@
     <div id="victory-stats"></div>
     <div>
       <button class="menu-btn" id="again">Play Again</button>
-      <button class="menu-btn" id="victory-lobby">Upgrades</button>
+      <button class="menu-btn" id="victory-lobby">Skill Trees</button>
     </div>
     <div id="victory-ready"></div>
   </div>

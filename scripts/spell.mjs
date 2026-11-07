@@ -1,4 +1,4 @@
-// Potion upgrades, Spellsword (unlock, mana, spells) and the three evolutions.
+// Spellsword unlock (skill tree), potions, Spellsword spells and the three evolutions (bought in the trees).
 import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
@@ -12,23 +12,16 @@ const res = await page.evaluate(() => {
   const step = (sec, fn) => { for (let i = 0; i < sec * 60; i++) { fn && fn(); let dt = 1 / 60; if (game.freeze > 0) { game.freeze -= dt; dt = 0; } else if (game.slow > 0) { game.slow -= dt; dt *= 0.35; } game.step(dt, 1 / 60); } };
   const LAYOUT = ['ruins', 'camp', 'mini:hask', 'bridge', 'village', 'mini:vael', 'crypt', 'bog', 'mini:gorrath', 'gate', 'boss'];
   const fresh = (k) => { game.start(k); game.audio.play = () => {}; game.buildRun(LAYOUT); game.input.move = () => ({ x: 0, y: 0 }); return game.player; };
-  const btn = (k) => document.querySelector(`[data-key=${k}] button`);
-  const buyAll = (k, n) => { const c = []; for (let i = 0; i < n; i++) { c.push(btn(k).textContent); btn(k).click(); } return c; };
-
-  // 1) locks and shop prices
+  // 1) the Spellsword lock opens her skill tree; unlocking costs 100; each evolution sits 6 rings out
   A.data.gold = 1000; A.save(); game.refreshTitle();
   document.querySelector('.char[data-char="mage"]').click();
-  out.lockedClick = { mode: game.mode, shopOpen: !document.getElementById('shop').classList.contains('hidden') };
-  game.renderShop();
-  out.manaBeforeUnlock = btn('mana').textContent; out.evoMageBefore = btn('evo_mage').textContent;
-  out.flaskPrices = buyAll('flask', 3); out.flaskAfter = [btn('flask').textContent, btn('flask').disabled];
-  out.potionPrices = buyAll('potion', 3); out.potionAfter = btn('potion').textContent;
-  out.unlock = buyAll('mage', 1); out.manaAfterUnlock = btn('mana').textContent;
-  out.manaPrices = buyAll('mana', 4);
-  out.evoPrices = [buyAll('evo_knight', 1), buyAll('evo_rogue', 1), buyAll('evo_mage', 1)].flat();
-  out.goldLeft = A.data.gold;
-  out.icons = document.querySelectorAll('.sicon svg path').length > 12;
-  document.getElementById('shop-back').click();
+  out.lockedClick = { mode: game.mode, treeOpen: !document.getElementById('tree').classList.contains('hidden'), tab: game.treeUI.kind, lockShown: !document.getElementById('tree-lock').classList.contains('hidden') };
+  const g0 = A.data.gold; document.getElementById('tree-unlock').click();
+  out.unlock = { paid: g0 - A.data.gold, unlocked: !!A.data.upgrades.mage, lockHidden: document.getElementById('tree-lock').classList.contains('hidden') };
+  A.data.gold = 10000;
+  for (const k of ['knight', 'rogue', 'mage']) { game.treeUI.kind = k; for (let d = 1; d <= 6; d++) game.treeUI.buy(`s0-${d}`); }
+  out.evoOwned = ['knight', 'rogue', 'mage'].map((k) => (A.data.tree[k] || []).includes('s0-6'));
+  document.getElementById('tree-back').click();
   out.mageCardLocked = document.querySelector('.char[data-char="mage"]').classList.contains('locked');
 
   // 2) potions: 7 flasks (4+3); heal = 48% x 1.45
@@ -43,7 +36,7 @@ const res = await page.evaluate(() => {
   for (const e of game.enemies) if (e !== g) e.die();
   g.maxHp = g.hp = 5000; g.cd = 99;
   p.pos.set(g.pos.x, 0, g.pos.z + 6); p.yaw = Math.PI; p.lock = g; g.alert();
-  out.mana0 = [p.mana, p.maxMana];  // 100 + 10+10+10+15 = 145
+  out.mana0 = [p.mana, p.maxMana];
   game.input.pressed.add('heavy'); step(0.05);
   const afterBolt = p.mana; step(1.5, () => { g.cd = 99; });
   out.bolt = { manaSpent: out.mana0[0] - afterBolt, dmg: 5000 - g.hp };
@@ -52,9 +45,9 @@ const res = await page.evaluate(() => {
   let hp = g.hp;
   p.mana = 74; game.input.pressed.add('special'); step(0.1);
   out.fireTooLittleMana = { state: p.state, mana: p.mana };
-  p.setState('move'); p.mana = 145; p.pos.set(g.pos.x, 0, g.pos.z + 6); p.yaw = Math.PI;
+  p.setState('move'); p.mana = p.maxMana; p.pos.set(g.pos.x, 0, g.pos.z + 6); p.yaw = Math.PI;
   game.input.pressed.add('special'); step(2.2, () => { g.cd = 99; });
-  out.twinFire = { manaSpent: 145 - p.mana, dmg: hp - g.hp };  // two fireballs (evolved)
+  out.twinFire = { manaSpent: p.maxMana - p.mana, dmg: hp - g.hp };  // two fireballs (evolved)
   // knife hit gives mana
   p.setState('move'); p.st = p.maxSt; p.mana = 0; p.pos.set(g.pos.x, 0, g.pos.z + 1.4); p.yaw = Math.PI;
   game.input.pressed.add('attack'); step(0.6, () => { g.cd = 99; });

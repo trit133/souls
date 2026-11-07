@@ -39,19 +39,11 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
 - **Fights:** one enemy at a time fights each player. Others who have noticed you hover nearby with their weapon up, drifting in and out, and step in for one attack every 10-15s. Hitting one of them makes it your fight.
 - **Enemy tiers:** each mini boss passed gives everything after it +10% health, damage, move speed and attack speed (additive). In a party, regular enemies instead get +20% / +40% / +60% health and +15% / +20% / +25% damage per stage (speeds as solo).
 - **Boss stun:** a boss knocked to its knees by stun needs twice as much for every knockdown after the first. Eyes turn red, then orange, then white with a red halo.
-- **Upgrades** (title screen): costs start at 10 and go ×1.5 rounded up (10, 15, 23, 35, 53...), per upgrade.
-  - Damage: +3%, then +4% from the 4th level.
-  - Health: +5%, then +8%.
-  - Move speed: +2%, then +4%.
-  - Attack speed: +2%, then +4%.
-  - Stamina: +6%, then +8%.
-  - Extra Potion: +1 flask, 3 max (10, 20, 30 gold).
-  - Potion Strength: +15% healing, 3 max (10, 15, 30 gold).
-  - Spellsword: unlock for 100 gold. Then Mana: +10, then +15 from the 4th level.
-  - Evolutions (75 gold each):
-    - Knight, Shield Charge: block + heavy dashes 4 m behind a spectral shield, knocking enemies back for 10 damage (20 s cooldown); press attack within 0.6 s after it for a high leaping overhead (40) that lands in a ground pound.
-    - Rogue, Red Riposte: parry window +50ms, and a parry instantly triggers a fast critical with a red flash.
-    - Spellsword, Twin Inferno: two larger fireballs.
+- **Skill trees** (title screen, lobby and after a run; `src/skilltree.js`, screen in `src/treeui.js`): each character has its own web of about 80 nodes around a start node. The Knight's is a cross with octagon rings, the Rogue's a six-arm spiral, the Spellsword's a pentagram in a circle. A node can be bought when it touches one you own; price grows with the ring (8 gold at ring 1 up to 74 at ring 13; evolution 75; rune sockets 1.5x).
+  - Inner rings: small flat stats (+3 health, +2 stamina, +1 damage). Further out: bigger flat chunks (+8 health, +4 stamina), small percentages (2-3% health, damage, stamina; 1% move or attack speed; 5% potion healing) and two extra flasks.
+  - Character nodes, small and large: Knight damage reduction (cap 15%), block stamina drain, shield chip, stun buildup, guard counter damage, charge cooldown and knockback; Rogue parry cooldown, crit damage, roll invincibility, attack and roll stamina cost, bleed buildup, parry window; Spellsword max mana, mana per hit, bolt and fireball cost, spell damage, blast radius, knife damage.
+  - Evolution: 6 rings out. Three empty rune sockets at ring 10 (runes come later).
+  - A full tree is about 2,300-2,700 gold. The old shop's spending was refunded once; the Spellsword unlock (100) stays. `scripts/tree.mjs` tests it.
 - **Spellsword:** R1 knife hits (11 and 14 damage, 20% slower swings, 14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 8 damage, no stagger or knockback). L1 fires an exploding fireball (75 mana, 120 damage). Starts with 100 mana; the mana bar shows the exact amount.
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 

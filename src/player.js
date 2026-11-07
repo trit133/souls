@@ -4,7 +4,6 @@ import { buildHumanoid } from './models.js';
 import { skinModel } from './skins.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
-import { UPGRADES, upgradeTotal } from './progress.js';
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -309,14 +308,16 @@ export class Player extends Actor {
     this.dmgMul = 1; this.rollMul = 1; this.aspdMul = 1; this.moveMul = 1;
     this.statusLv = {};
     this.boonList = [];
-    const pct = (k) => upgradeTotal(UPGRADES.find((u) => u.key === k), upgrades[k] || 0) / 100;
-    this.dmgMul += pct('dmg'); this.aspdMul += pct('aspd'); this.moveMul += pct('move');
-    this.maxHp = this.hp = Math.round(c.hp * (1 + pct('hp')));
-    this.maxSt = this.st = Math.round(c.st * (1 + pct('st')));
-    this.flasks = this.maxFlasks = c.flasks + (upgrades.flask || 0);
+    // `upgrades`: this character's summed skill-tree stats (skilltree.js treeStats)
+    const T = (this.tree = upgrades || {}), pct = (k) => (T[k] || 0) / 100;
+    this.dmgMul += pct('dmgPct'); this.aspdMul += pct('aspd'); this.moveMul += pct('move');
+    this.flatDmg = T.dmg || 0;
+    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')));
+    this.maxSt = this.st = Math.round((c.st + (T.st || 0)) * (1 + pct('stPct')));
+    this.flasks = this.maxFlasks = c.flasks + (T.flask || 0);
     this.potionMul = 1 + pct('potion');
-    this.maxMana = this.mana = c.caster ? 100 + upgradeTotal(UPGRADES.find((u) => u.key === 'mana'), upgrades.mana || 0) : 0;
-    this.evolved = !!upgrades['evo_' + kind];
+    this.maxMana = this.mana = c.caster ? 100 + (T.mana || 0) : 0;
+    this.evolved = !!T.evolved;
     this.ripRate = 1;
     if (kind === 'knight' && this.evolved) this.buildSpectralShield();
     this.fatigueT = 0;
@@ -342,7 +343,7 @@ export class Player extends Actor {
   canSpend() { return this.st >= 1; }
 
   iframe() {
-    if (this.state === 'roll') return this.inWindow(this.c.roll.iframes, this.t);
+    if (this.state === 'roll') return this.inWindow([this.c.roll.iframes[0], this.c.roll.iframes[1] + (this.tree?.iframe || 0)], this.t);
     if (this.state === 'backstep') return this.t >= 0.02 && this.t <= 0.22;
     return this.state === 'knockdown' || this.state === 'riposte' || this.state === 'rest' || this.state === 'dead';
   }
@@ -428,7 +429,7 @@ export class Player extends Actor {
         if (this.blocking) Object.assign(pose, this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
         if (this.speed > 1 && (this.stepT -= dt) <= 0) { this.stepT = this.sprinting ? 0.28 : 0.38; if (this.sprinting) this.game.fx.dust(this.pos, 1, 0.3); }
         // holding the shield up drains stamina; regen resumes shortly after lowering it
-        if (this.blocking) { this.st = Math.max(0, this.st - 10 * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
+        if (this.blocking) { this.st = Math.max(0, this.st - 10 * (1 - (this.tree.blockDrain || 0) / 100) * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
         else this.regen(dt, 48);
         break;
       }
@@ -681,7 +682,7 @@ export class Player extends Actor {
       if (this.parryCd > 0) { this.buf = null; this.game.ui.toastSmall?.('Parry recharging'); return false; }
       if (!this.canSpend()) return false;
       this.buf = null;
-      this.parryCd = this.evolved ? PARRY_CD_EVO : PARRY_CD;
+      this.parryCd = Math.max(2, (this.evolved ? PARRY_CD_EVO : PARRY_CD) - (this.tree.parryCd || 0));
       this.spend(PARRY.cost);
       if (mag > 0.2 && !this.lock) this.yaw = Math.atan2(dir.x, dir.z);
       else if (this.lock) this.yaw = this.yawTo(this.lock.pos);
@@ -729,7 +730,7 @@ export class Player extends Actor {
 
   // ---------- evolved knight: shield charge ----------
   startCharge(dir, mag) {
-    this.chargeCd = CHARGE_CD;
+    this.chargeCd = CHARGE_CD - (this.tree.chargeCd || 0);
     this.spend(20);
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else if (mag > 0.2) this.yaw = Math.atan2(dir.x, dir.z);
@@ -771,7 +772,7 @@ export class Player extends Actor {
     this.aimAt(dir, mag);
     this.castDef = { dur: dur / this.aspdMul, fireAt: fireAt / this.aspdMul, fire, done: false };
     // visual: energy gathers in the casting hand until the spell leaves it
-    const big = cost >= MANA_FIRE;
+    const big = fireAt > 0.3; // the fireball
     this.game.vfx('cast', this.game.myRef(), big, this.castDef.fireAt + 0.05);
     this.vel.set(0, 0, 0);
     this.setState('cast');
@@ -779,11 +780,11 @@ export class Player extends Actor {
   }
 
   castBolt(dir, mag) {
-    return this.startCast(MANA_BOLT, 0.5, 0.16, () => this.game.spawnSpell(this, 'bolt'), dir, mag);
+    return this.startCast(Math.max(4, MANA_BOLT - (this.tree.boltCost || 0)), 0.5, 0.16, () => this.game.spawnSpell(this, 'bolt'), dir, mag);
   }
 
   castFire(dir, mag) {
-    return this.startCast(MANA_FIRE, 0.95, 0.45, () => {
+    return this.startCast(MANA_FIRE - (this.tree.fireCost || 0), 0.95, 0.45, () => {
       if (this.evolved) { this.game.spawnSpell(this, 'fire', -0.16); this.game.spawnSpell(this, 'fire', 0.16); }
       else this.game.spawnSpell(this, 'fire');
     }, dir, mag);
@@ -793,7 +794,7 @@ export class Player extends Actor {
     const def = this.c.attacks[name];
     this.atkKey = name;
     // repeated attacks cost more and push stamina regen further out
-    this.spend(def.cost * (1 + 0.9 * this.fatigue));
+    this.spend(def.cost * (1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100));
     this.stDelay = 0.6 + 0.7 * this.fatigue;
     this.fatigue = Math.min(1, this.fatigue + (name === 'heavy' ? 0.3 : 0.2));
     this.fatigueT = 1.0;
@@ -821,7 +822,7 @@ export class Player extends Actor {
   }
 
   startRoll(dir) {
-    this.spend(this.c.roll.cost);
+    this.spend(this.c.roll.cost * (1 - (this.tree.rollCost || 0) / 100));
     this.setDodgeRate();
     this.rollDir.copy(dir).setY(0).normalize();
     this.yaw = Math.atan2(this.rollDir.x, this.rollDir.z);
@@ -833,7 +834,7 @@ export class Player extends Actor {
   }
 
   startBackstep() {
-    this.spend(this.c.roll.cost * 0.6);
+    this.spend(this.c.roll.cost * 0.6 * (1 - (this.tree.rollCost || 0) / 100));
     this.setDodgeRate();
     this.fwd(this.rollDir).multiplyScalar(-1);
     this.setState('backstep');
@@ -845,6 +846,7 @@ export class Player extends Actor {
   receive(info) {
     if (!this.alive) return 'none';
     if (this.iframe()) return 'dodge';
+    if (this.tree?.dr) info = { ...info, dmg: info.dmg * (1 - this.tree.dr / 100) };
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;
@@ -863,7 +865,7 @@ export class Player extends Actor {
         if (this.hp <= 0) this.die();
         return 'guardbreak';
       }
-      this.hp -= info.dmg * 0.25; // a quarter of a blocked hit gets through
+      this.hp -= info.dmg * (25 - (this.tree.chip || 0)) / 100; // a quarter of a blocked hit gets through (less with the tree)
       if (this.hp <= 0) this.die();
       return 'block';
     }
