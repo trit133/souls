@@ -72,13 +72,26 @@ export const EVOS = {
 // [ring, nodes between], star links (to the spoke two over) [ring]
 const SHAPES = {
   knight: { spokes: 4, rings: 15, twist: 0, start: -Math.PI / 2, branches: [[4, 2], [8, 2]], links: [[3, 1], [6, 1], [9, 2], [12, 2], [15, 2]], star: [] },
-  rogue: { spokes: 6, rings: 13, twist: 0.12, start: -Math.PI / 2, branches: [[3, 1], [7, 1]], links: [[5, 1], [9, 1], [13, 1]], star: [] },
-  mage: { spokes: 5, rings: 14, twist: 0, start: -Math.PI / 2, branches: [[3, 1], [6, 1]], links: [[4, 1], [10, 1], [14, 2]], star: [8, 12] },
+  rogue: { spokes: 6, rings: 15, twist: 0.1, start: -Math.PI / 2, branches: [[7, 1]], links: [[5, 1], [9, 1], [13, 1]], star: [] },
+  mage: { spokes: 5, rings: 15, twist: 0, start: -Math.PI / 2, branches: [[3, 1], [6, 1]], links: [[4, 1], [10, 1], [14, 2]], star: [8, 12] },
 };
 
 export const RING = 10; // distance between rings in tree units
 // 10 gold at ring 1 up to 250 at ring 15 (x1.26 a ring), rounded to 5 from 20 up
-const COST = [0, ...Array.from({ length: 15 }, (_, i) => { const c = 10 * Math.pow(25, i / 14); return c < 20 ? Math.round(c) : Math.round(c / 5) * 5; })];
+// rings 1-5: 10 -> 80, rings 6-10: 100 -> 200, rings 11-15: 250 -> 350
+const COST = [0, 10, 15, 30, 50, 80, 100, 120, 140, 170, 200, 250, 275, 300, 325, 350];
+// every tree has the same number of nodes in each band of rings: [first ring, last ring, nodes]
+export const BANDS = [[1, 5, 40], [6, 10, 60], [11, 15, 80]];
+// the most nodes a tree can hold: 70 in the first section, 100 once that character beats it (Varek),
+// 120 in the second section, 130 once that is beaten (the second section is still to come)
+export function nodeCap(data, kind) {
+  const st = data?.stats || {};
+  if (st.section2WinsBy?.[kind]) return 130;
+  if (st.section2By?.[kind]) return 120;
+  if (st.winsBy?.[kind]) return 100;
+  return 70;
+}
+export const capHint = (cap) => (cap <= 70 ? 'Beat Varek with this character to raise the limit to 100' : cap <= 100 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
 export const EVO_RING = 6, SOCKET_RING = 10, SOCKET_GAP = 3;
 
 function build(kind) {
@@ -151,6 +164,30 @@ function build(kind) {
     ringIds.push(id);
   }
   ringIds.forEach((id, k) => link(id, ringIds[(k + 1) % steps]));
+  // even the rings out: short side chains off the spokes until each band holds its share
+  const inBand = (lo, hi) => [...nodes.values()].filter((n) => n.ring >= lo && n.ring <= hi).length;
+  const used = new Map();
+  for (const [lo, hi, want] of BANDS) {
+    let need = want - inBand(lo, hi);
+    const order = [lo + 1, lo + 3, lo, lo + 2, lo + 4].filter((r) => r >= lo && r <= hi);
+    for (let round = 0; need > 0 && round < 40; round++) {
+      for (const r of order) for (let i = 0; i < S.spokes && need > 0; i++) {
+        if (round !== Math.floor(order.indexOf(r) / order.length) && round < order.length) { /* spread rings first */ }
+        const key = `${i}-${r}`, n = used.get(key) || 0;
+        if (n >= 2 || (r === EVO_RING && i === 0)) continue;
+        used.set(key, n + 1);
+        const side = (i + n + round) % 2 ? 1 : -1, off = side * (0.17 + 0.07 * n);
+        const len = need >= 2 && r + 1 <= hi ? 2 : 1;
+        let prev = `s${i}-${r}`;
+        for (let k = 0; k < len; k++) {
+          const id = `f${i}-${r}-${n}-${k}`;
+          add({ id, ring: r + k, role: 'main', filler: true, ...at(ang(i, r + k) + off * (1 + k * 0.35), (r + k + 0.35) * RING) });
+          link(prev, id); prev = id; need--;
+        }
+      }
+      if (need <= 0) break;
+    }
+  }
   // extra flasks on two spokes
   nodes.get(`s${1 % S.spokes}-5`).flask = true;
   nodes.get(`s${(S.spokes - 1)}-9`).flask = true;
@@ -189,7 +226,7 @@ export const TREES = { knight: build('knight'), rogue: build('rogue'), mage: bui
 
 export function nodeCost(n) {
   if (n.role === 'start') return 0;
-  if (n.role === 'evo') return 75;
+  if (n.role === 'evo') return 150;
   const c = COST[Math.min(n.ring, COST.length - 1)];
   return n.role === 'socket' ? Math.round(c * 1.5) : c;
 }
@@ -236,18 +273,21 @@ export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo ? 'evo' : n.
 // v1: 80 nodes, cheap rings; v2: 120 nodes, sockets on the spokes at ring 10.
 const COST_V1 = [0, 8, 10, 12, 15, 18, 22, 26, 31, 37, 44, 52, 62, 74];
 const SOCKETS_V1 = { knight: ['s0-10', 's1-10', 's3-10'], rogue: ['s0-10', 's2-10', 's4-10'], mage: ['s0-10', 's2-10', 's3-10'] };
+const COST_V23 = [0, ...Array.from({ length: 15 }, (_, i) => { const c = 10 * Math.pow(25, i / 14); return c < 20 ? Math.round(c) : Math.round(c / 5) * 5; })];
 function costOld(v, kind, id) {
   if (id === 's0-6') return 75;
+  if (v === 3 && /^r\d+$/.test(id)) return Math.round(COST_V23[10] * 1.5);
+  if (v === 3 && /^ra\d+$/.test(id)) return COST_V23[10];
   const m = id.match(/^[slx](\d+)-(\d+)/), b = id.match(/^b\d+-(\d+)-(\d+)/);
   const ring = b ? +b[1] + +b[2] : m ? +m[2] : 0;
-  const table = v === 2 ? COST : COST_V1;
+  const table = v >= 2 ? COST_V23 : COST_V1;
   const c = table[Math.min(ring, table.length - 1)] || 0;
-  return SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
+  return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 3;
+export const TREE_VERSION = 4;
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
-  const v = data.treeV === 2 ? 2 : 1;
+  const v = data.treeV === 3 ? 3 : data.treeV === 2 ? 2 : 1;
   let refund = 0;
   for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costOld(v, kind, id);
   data.tree = {};

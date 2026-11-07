@@ -857,7 +857,12 @@ class Game {
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     const pay = this.bossPayout(enc, net);
     this.announceBossDeath(enc, pay);
-    if (this.accounts.data) { this.accounts.data.stats.wins++; this.accounts.save(); }
+    if (this.accounts.data) {
+      const st = this.accounts.data.stats;
+      st.wins++;
+      st.winsBy = st.winsBy || {}; st.winsBy[this.kind] = (st.winsBy[this.kind] || 0) + 1; // raises this tree's node limit
+      this.accounts.save();
+    }
     const goldLine = `Banked this run: ◆ ${this.runBanked}${pay.bonus ? ` (incl. ×3 bonus ◆ ${pay.bonus})` : ''}${this.accounts.user ? '' : ' (guest: not saved)'}`;
     setTimeout(() => {
       this.audio.play('victory');

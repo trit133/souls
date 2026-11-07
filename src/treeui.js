@@ -1,6 +1,6 @@
 // Skill tree screen: the selected character's web drawn in SVG. Hover (or tap) a node to see what it
 // gives; buy it from the tooltip. Drag to pan, wheel / pinch / buttons to zoom.
-import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours } from './skilltree.js';
+import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint } from './skilltree.js';
 import { iconPath } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -163,7 +163,8 @@ export class TreeUI {
     const gold = this.data?.gold ?? 0, col = THEME[this.kind];
     document.querySelectorAll('[data-tree-kind]').forEach((b) => b.classList.toggle('on', b.dataset.treeKind === this.kind));
     $('tree-gold').textContent = this.game.accounts.user ? `◆ ${gold} gold` : 'Sign in to grow your trees';
-    $('tree-count').textContent = `${NAMES[this.kind]} · ${have.size - 1} / ${T.nodes.size - 1} nodes`;
+    const cap = nodeCap(this.data, this.kind), full = have.size - 1 >= cap;
+    $('tree-count').textContent = `${NAMES[this.kind]} · ${have.size - 1} / ${cap} nodes${full ? ' · limit reached' : ''}`;
     $('tree-lock').classList.toggle('hidden', !this.locked);
     $('tree-unlock').textContent = `Unlock Spellsword · ◆ ${MAGE_UNLOCK}`;
     $('tree-unlock').disabled = !this.game.accounts.user || gold < MAGE_UNLOCK;
@@ -200,9 +201,11 @@ export class TreeUI {
     const have = this.data ? owned(this.data, this.kind) : new Set(['start']);
     const { name, lines } = describe(n), cost = nodeCost(n), got = have.has(id), can = canTake(this.tree, have, id);
     const gold = this.data?.gold ?? 0, signed = !!this.game.accounts.user;
+    const cap = nodeCap(this.data, this.kind), atCap = have.size - 1 >= cap;
     const status = got ? (this.resetting ? 'Click to mark for reset' : 'Owned')
       : this.locked ? 'Unlock the Spellsword first' : !signed ? 'Sign in to buy' : !can ? 'Connect to it from a node you own'
-        : gold >= cost ? 'Click to unlock' : `Need ◆ ${cost - gold} more`;
+        : atCap ? `Node limit ${cap} reached. ${capHint(cap)}.`
+          : gold >= cost ? 'Click to unlock' : `Need ◆ ${cost - gold} more`;
     tip.innerHTML = `<div class="tt-name"></div>${lines.map(() => '<div class="tt-line"></div>').join('')}<div class="tt-ring">Ring ${n.ring}${cost ? ` · ◆ ${cost}` : ''}</div><div class="tt-status"></div>`;
     tip.querySelector('.tt-name').textContent = name;
     tip.querySelectorAll('.tt-line').forEach((el, i) => { el.textContent = lines[i]; });
@@ -222,7 +225,7 @@ export class TreeUI {
     const d = this.data, n = this.tree.nodes.get(id);
     if (!d || !n || this.locked) return;
     const have = owned(d, this.kind), cost = nodeCost(n);
-    if (have.has(id) || !canTake(this.tree, have, id) || d.gold < cost) return;
+    if (have.has(id) || !canTake(this.tree, have, id) || d.gold < cost || have.size - 1 >= nodeCap(d, this.kind)) return;
     d.gold -= cost;
     d.tree = d.tree || {};
     (d.tree[this.kind] = d.tree[this.kind] || []).push(id);

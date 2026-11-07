@@ -18,6 +18,12 @@ out.refund = await page.evaluate(() => {
   return { gold: g1, again: d.gold, mageKept: !!d.upgrades.mage, oldGone: !d.upgrades.dmg, expected: 5 + (10 + 15 + 23) + (10 + 15) + 10 + 75 };
 });
 // 1b) trees bought on the old 80-node layout come back at what they cost: s0-1..s0-6 (8+10+12+15+18+75) + knight socket s1-10 (44*1.5)
+// 1d) trees bought on the 120-node socket-triangle layout (v3): old prices, sockets 120, ring-10 links 80
+out.refundV3 = await page.evaluate(() => {
+  const d = game.accounts.data; d.gold = 0; d.tree = { mage: ['s0-1', 's0-2', 's0-6', 'r0', 'ra1'] }; d.treeV = 3;
+  game.refreshTitle(); const g = d.gold; game.refreshTitle();
+  return { gold: g, again: d.gold, expected: 10 + 13 + 75 + 120 + 80, cleared: JSON.stringify(d.tree) };
+});
 // 1c) trees bought on the 120-node layout (v2): rings priced 10..250, sockets on spokes at 1.5x
 out.refundV2 = await page.evaluate(() => {
   const d = game.accounts.data; d.gold = 0; d.tree = { rogue: ['s0-1', 's0-2', 's0-6', 's2-10'] }; d.treeV = 2;
@@ -34,7 +40,7 @@ await page.click('#btn-shop'); await page.waitForTimeout(400);
 out.rules = await page.evaluate(() => {
   const ui = game.treeUI, d = game.accounts.data; d.gold = 100;
   ui.kind = 'knight'; ui.render();
-  ui.click('s0-3'); const far = (d.tree?.knight || []).length;
+  d.gold = 200; ui.click('s0-3'); const far = (d.tree?.knight || []).length;
   ui.click('s0-1'); const near = d.tree.knight.slice(); const gold1 = d.gold;
   ui.click('s0-2'); ui.click('s0-3'); ui.click('s0-4');
   const owned4 = d.tree.knight.slice(), g4 = d.gold;
@@ -43,7 +49,7 @@ out.rules = await page.evaluate(() => {
   ui.click('s0-2');
   const info = document.getElementById('tree-reset-info').textContent;
   document.getElementById('tree-reset-ok').click();
-  return { farRefused: far === 0, oneClickBought: near, cost1: 100 - gold1, owned4, resetInfo: info, afterReset: d.tree.knight, refunded: d.gold - g4 };
+  return { farRefused: far === 0, oneClickBought: near, cost1: 200 - gold1, owned4, resetInfo: info, afterReset: d.tree.knight, refunded: d.gold - g4, expectRefund: 15 + 30 + 50 };
 });
 // tooltip follows the hover: node A, node B, empty space; clicking does not pin it
 const center = async (id) => { const b = await page.locator(`[data-node="${id}"]`).boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
@@ -67,13 +73,19 @@ for (const kind of ['knight', 'rogue', 'mage']) {
   await page.waitForTimeout(200);
   await page.screenshot({ path: `/tmp/look/tree-${kind}.png` });
 }
-// 3) a whole knight tree, in a run
-out.run = await page.evaluate(() => {
-  const ui = game.treeUI, d = game.accounts.data; d.gold = 999999; ui.kind = 'knight';
-  for (let pass = 0; pass < 20; pass++) for (const id of ui.tree.nodes.keys()) ui.buy(id);
-  game.treeUI.close();
+// 3) node limit: 70, then 100 once this character beats Varek (other trees stay at 70), 130 after section 2
+out.cap = await page.evaluate(() => {
+  const ui = game.treeUI, d = game.accounts.data; d.gold = 9999999; ui.kind = 'knight'; d.tree = {}; d.stats.winsBy = {};
+  const fill = () => { for (let pass = 0; pass < 30; pass++) for (const id of ui.tree.nodes.keys()) ui.buy(id); return d.tree.knight.length; };
+  const first = fill(), count = document.getElementById('tree-count').textContent;
+  // Varek with the knight
+  game.treeUI.close(); game.start('knight'); const enc = game.encounters.find((x) => x.kind === 'boss'); enc.active = true; enc.boss.setState('neutral'); enc.boss.die();
+  ui.kind = 'knight'; ui.render(); const afterWin = fill();
+  ui.kind = 'rogue'; d.tree.rogue = []; for (let pass = 0; pass < 30; pass++) for (const id of ui.tree.nodes.keys()) ui.buy(id);
+  const rogue = d.tree.rogue.length;
+  d.stats.section2WinsBy = { knight: 1 }; ui.kind = 'knight'; const late = fill();
   game.start('knight'); const p = game.player;
-  return { owned: d.tree.knight.length, of: ui.tree.nodes.size - 1, maxHp: p.maxHp, maxSt: p.maxSt, flasks: p.maxFlasks, dmgMul: +p.dmgMul.toFixed(2), flat: p.flatDmg, evolved: p.evolved, dr: p.tree.dr, chargeCd: 20 - (p.tree.chargeCd || 0) };
+  return { first, count, winsBy: d.stats.winsBy, afterWin, rogueStill: rogue, afterSection2: late, maxHp: p.maxHp, maxSt: p.maxSt, dmgMul: +p.dmgMul.toFixed(2), flat: p.flatDmg, evolved: p.evolved };
 });
 await b.close();
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(7), JSON.stringify(v));
