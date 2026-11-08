@@ -4,7 +4,7 @@
 // node scripts/status.mjs [tag] [url] -> /tmp/look/<tag>-*.png
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
-const tag = process.argv[2] || 's', url = process.argv[3] || 'http://localhost:4173/';
+const tag = process.argv[2] || 's', url = process.argv[3] || 'http://localhost:4173/?chain';
 mkdirSync('/tmp/look', { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();

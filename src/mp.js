@@ -295,6 +295,13 @@ export class Multiplayer {
       case 'snap': for (const s of d.e) this.entity(s[0])?.applySnapshot(s); break;
       case 'gold': g.runGold = d.n; if (d.s) g.secGold = d.s; break;
       case 'room': g.openRoom(d.i, d.n, d.k); break;
+      // dungeons: seal events, enemies they call in, the clear count, the way down
+      case 'seal': g.seals.onNet(d); break;
+      case 'rsv': { const e = this.entity(d.id); if (e) g.activateReserve(e, d.x, d.z); break; }
+      case 'prog': g.clearKilled = d.k; break;
+      case 'clear100': g.fullClear(true); break;
+      case 'descend': if (this.isHost) g.descend(); break;
+      case 'act': g.enterAct(d.n); break;
       // ----- hits on this player, decided here -----
       case 'dmg': { const e = this.entity(d.id), def = e?.moves[d.k]; if (def) g.resolveHit(e, g.player, def.hits[d.i], def); break; }
       case 'pdmg': g.projectileHit(g.player, { dmg: d.dmg, knock: d.knock, src: d.src }); break;
@@ -341,11 +348,11 @@ export class Multiplayer {
     this.clock = 0;
     this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '' });
     if (this.isHost) {
-      const zs = g.allPlayers().map((x) => x.pos.z);
-      const near = (z) => zs.some((v) => Math.abs(v - z) < 46);
+      const ps = g.allPlayers().map((x) => x.pos);
+      const near = (o) => ps.some((v) => Math.abs(v.z - o.z) < 46 && Math.abs(v.x - o.x) < 46);
       const e = [];
       for (const x of Object.values(g.netMap)) {
-        if (!near(x.pos.z) || (x.state === 'dead' && x.t > 1.5)) continue;
+        if (x.reserve || !near(x.pos) || (x.state === 'dead' && x.t > 1.5)) continue;
         e.push([x.netId, r2(x.pos.x), r2(x.pos.z), r2(x.yaw), x.state, Math.round(x.hp), x.state === 'attack' ? x.atkKey || 0 : 0, r2(x.atk?.t || 0), r2(x.y || 0)]);
       }
       this.sendAll({ t: 'snap', e });

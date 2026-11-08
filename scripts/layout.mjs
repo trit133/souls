@@ -1,6 +1,6 @@
 // Touch layout editor: drag buttons / stick home on a phone, save, cancel, reset, survives reload, moved buttons still work.
 import { chromium } from 'playwright';
-const URL = 'http://localhost:4173/';
+const URL = 'http://localhost:4173/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
 const p = await ctx.newPage();

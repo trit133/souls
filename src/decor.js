@@ -27,13 +27,16 @@ function mats() {
 
 // ---------- placing things ----------
 // random points just outside the walkable area of the current module (on its rim), away from the doorways
+// (a dungeon chamber is a square cell: mod.cx, mod.half; a module in a chain spans x = ±xs)
+const spanX = (mod, xs) => Math.min(xs, mod.half ?? xs);
 function rimSpots(w, mod, n, inner = 0.35, outer = 2.6, xs = 18) {
   const out = [];
   for (let tries = 0; out.length < n && tries < n * 60; tries++) {
-    const x = (w.rand() * 2 - 1) * xs, z = mod.z0 - 2 - w.rand() * (mod.len - 4);
+    const x = mod.cx + (w.rand() * 2 - 1) * spanX(mod, xs), z = mod.z0 - 2 - w.rand() * (mod.len - 4);
     if (w.area(x, z, -inner) || !w.area(x, z, -outer)) continue;
-    if (Object.values(w.gates).some((g) => Math.abs(z - g.z) < 4.5 && Math.abs(x) < 6)) continue;
-    if (Math.abs(z - mod.z0) < 4 || Math.abs(z - mod.z1) < 4) continue;
+    if (Object.values(w.gates).some((g) => Math.abs(z - g.z) < 4.5 && Math.abs(x - g.x) < 6)) continue;
+    if (!mod.dungeon && (Math.abs(z - mod.z0) < 4 || Math.abs(z - mod.z1) < 4)) continue;
+    if (mod.dungeon && w.moduleAt(x, z) !== mod) continue;
     if (out.some((p) => Math.hypot(p.x - x, p.z - z) < 1.6)) continue;
     out.push({ x, z });
   }
@@ -43,8 +46,9 @@ function rimSpots(w, mod, n, inner = 0.35, outer = 2.6, xs = 18) {
 function floorSpots(w, mod, n) {
   const out = [];
   for (let tries = 0; out.length < n && tries < n * 40; tries++) {
-    const x = (w.rand() * 2 - 1) * 14, z = mod.z0 - 3 - w.rand() * (mod.len - 6);
+    const x = mod.cx + (w.rand() * 2 - 1) * spanX(mod, 14), z = mod.z0 - 3 - w.rand() * (mod.len - 6);
     if (!w.area(x, z, 1.0)) continue;
+    if (mod.dungeon && (w.moduleAt(x, z) !== mod || mod.lanes?.(x, z) < 1.4)) continue;
     out.push({ x, z });
   }
   return out;
@@ -53,9 +57,10 @@ function floorSpots(w, mod, n) {
 function wallSpots(w, mod, n, xs = 16) {
   const out = [];
   for (let tries = 0; out.length < n && tries < n * 80; tries++) {
-    const x = (w.rand() * 2 - 1) * xs, z = mod.z0 - 4 - w.rand() * (mod.len - 8);
+    const x = mod.cx + (w.rand() * 2 - 1) * spanX(mod, xs), z = mod.z0 - 4 - w.rand() * (mod.len - 8);
     if (!w.area(x, z, 0.35) || w.area(x, z, 1.3)) continue;
-    if (Object.values(w.gates).some((g) => Math.abs(z - g.z) < 5)) continue;
+    if (Object.values(w.gates).some((g) => Math.abs(z - g.z) < 5 && Math.abs(x - g.x) < 8)) continue;
+    if (mod.dungeon && (w.moduleAt(x, z) !== mod || mod.lanes?.(x, z) < 1.4)) continue;
     if (w.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 0.5)) continue;
     if (out.some((p) => Math.hypot(p.x - x, p.z - z) < 1.8)) continue;
     out.push({ x, z });
@@ -78,7 +83,8 @@ function litter(w, mod, n, kinds = ['bones', 'corpse', 'blade', 'sacks']) {
 }
 
 // the direction from a rim spot back toward the path (so figures face the action)
-const faceIn = (w, p) => Math.atan2(-p.x, 0.001);
+let FACE = { x: 0, z: null };
+const faceIn = (w, p) => Math.atan2(FACE.x - p.x, FACE.z === null ? 0.001 : FACE.z - p.z);
 
 // run fn (which adds props at x, z) and lift everything it added onto the terrain there: outside the walkable area
 // the ground steps up into walls, and props at y = 0 would be buried
@@ -283,7 +289,7 @@ const ROOMS = {
     for (const p of rimSpots(w, mod, 3, 0.3, 2.2, 14)) skullStake(w, p.x, p.z);
     for (const p of floorSpots(w, mod, 4)) bones(w, p.x, p.z, w.rand() < 0.4);
     const r = rimSpots(w, mod, 2, 0.3, 2.2, 14); if (r.length === 2) rat(w, r[0], r[1]);
-    drift(w, 0, mod.z0 - mod.len * 0.3, 'ember', 1.5, 10);
+    drift(w, mod.cx, mod.z0 - mod.len * 0.3, 'ember', 1.5, 10);
   },
   bridge: (w, mod) => {
     litter(w, mod, 4, ['bones', 'blade']);
@@ -291,7 +297,7 @@ const ROOMS = {
     for (const p of rimSpots(w, mod, 2, 0.05, 0.5, 8)) crows(w, p.x, p.z, 2);
     for (const p of rimSpots(w, mod, 2, 0.05, 0.5, 8)) corpse(w, p.x, p.z, w.rand() * 6);
     for (const p of rimSpots(w, mod, 2, 0.05, 0.5, 8)) lanternPost(w, p.x, p.z);
-    drift(w, 0, mod.z0 - mod.len / 2, 'dust', 2, 14);
+    drift(w, mod.cx, mod.z0 - mod.len / 2, 'dust', 2, 14);
   },
   village: (w, mod) => {
     litter(w, mod, 9, ['corpse', 'blade', 'blood', 'sacks']);
@@ -300,7 +306,7 @@ const ROOMS = {
     for (const p of rimSpots(w, mod, 3, 0.3, 2.4, 14)) robed(w, p.x, p.z, faceIn(w, p), { kneel: true, sway: true, mat: mats().ragDark });
     for (const p of rimSpots(w, mod, 2, 0.3, 2.4, 14)) crows(w, p.x, p.z, 4);
     for (const p of floorSpots(w, mod, 4)) bloodStain(w, p.x, p.z, 0.7);
-    drift(w, 0, mod.z0 - mod.len / 2, 'ash', 5, 26);
+    drift(w, mod.cx, mod.z0 - mod.len / 2, 'ash', 5, 26);
   },
   crypt: (w, mod) => {
     litter(w, mod, 10, ['bones', 'candles', 'bones']);
@@ -308,14 +314,14 @@ const ROOMS = {
     for (const p of rimSpots(w, mod, 3, 0.2, 1.6, 9)) candles(w, p.x, p.z, 5, true);
     for (const p of rimSpots(w, mod, 2, 0.2, 1.6, 9)) robed(w, p.x, p.z, faceIn(w, p), { pray: true, mat: w.mats.stoneDark, s: 1.15 }); // weeping statues
     const r = rimSpots(w, mod, 4, 0.2, 1.6, 9); if (r.length >= 2) rat(w, r[0], r[1]); if (r.length >= 4) rat(w, r[2], r[3]);
-    drift(w, 0, mod.z0 - mod.len / 2, 'dust', 4, 12);
+    drift(w, mod.cx, mod.z0 - mod.len / 2, 'dust', 4, 12);
   },
   bog: (w, mod) => {
     litter(w, mod, 7, ['bones', 'corpse', 'blade']);
     for (const p of rimSpots(w, mod, 3, 0.3, 2.4, 14)) corpse(w, p.x, p.z, w.rand() * 6);
     for (const p of rimSpots(w, mod, 2, 0.3, 2.4, 14)) cage(w, p.x, p.z, p.x < 0 ? 0 : PI);
     for (const p of rimSpots(w, mod, 3, 0.3, 2.4, 14)) skullStake(w, p.x, p.z);
-    for (const z of [0.25, 0.55, 0.85]) drift(w, 0, mod.z0 - mod.len * z, 'firefly', 3, 22);
+    for (const z of [0.25, 0.55, 0.85]) drift(w, mod.cx, mod.z0 - mod.len * z, 'firefly', 3, 22);
     for (const p of rimSpots(w, mod, 1, 0.3, 2.4, 14)) crows(w, p.x, p.z, 3);
   },
   gate: (w, mod) => {
@@ -346,9 +352,9 @@ const ARENAS = {
     // spikes round the rim
     for (const p of around(cx, cz, r + 1.6, 48)) at(w, p.x, p.z, () => { const s = new THREE.Mesh(new THREE.ConeGeometry(0.14, 1.7, 4), w.mats.logDark); s.position.set(p.x, 0.75, p.z); s.rotation.set(Math.cos(p.a) * 0.4, 0, -Math.sin(p.a) * 0.4); w.add(s); });
     // the block, the axe in it, a basket; gallows with cages; blood soaked into the sand
-    w.box(0.5, 0.06, 1.2, m.iron, 0.5, 0.85, cz - 7.5, 0.6); // the axe left in the block
-    w.box(0.7, 0.5, 0.7, m.straw, -1.6, 0.25, cz - 7.5); w.ob(-1.6, cz - 7.5, 0.5); // the basket
-    for (const [x, ry] of [[-11.5, 0], [11.5, PI]]) cage(w, x, cz + 2, ry);
+    w.box(0.5, 0.06, 1.2, m.iron, cx + 0.5, 0.85, cz - 7.5, 0.6); // the axe left in the block
+    w.box(0.7, 0.5, 0.7, m.straw, cx - 1.6, 0.25, cz - 7.5); w.ob(cx - 1.6, cz - 7.5, 0.5); // the basket
+    for (const [x, ry] of [[-11.5, 0], [11.5, PI]]) cage(w, cx + x, cz + 2, ry);
     for (let i = 0; i < 7; i++) bloodStain(w, cx + (w.rand() - 0.5) * r * 1.4, cz + (w.rand() - 0.5) * r * 1.4, 0.8 + w.rand() * 0.8);
     for (const p of around(cx, cz, r + 1.2, 6, PI + 0.3, PI * 2 - 0.3)) bones(w, p.x, p.z);
     for (const p of around(cx, cz, r + 2.4, 4, 0.5, PI - 0.5)) at(w, p.x, p.z, () => w.torch(p.x, p.z));
@@ -428,8 +434,10 @@ const ARENAS = {
 // called by World.build after each module's own build
 export function decorate(w, key, mod) {
   mats();
+  FACE = mod.dungeon ? { x: mod.cx, z: mod.cz } : { x: 0, z: null }; // figures face the room's middle
   if (ROOMS[key]) ROOMS[key](w, mod);
 }
+export { crows, candles, bones, corpse, robed, skullStake, lanternPost, bloodStain, cage, sacks, cart, drift };
 // called by the arena builders: theme is 'pit' | 'cloister' | 'forge' | 'throne'
 export function decorateArena(w, theme, cx, cz, r, enc) { mats(); W = w; ARENAS[theme]?.(w, cx, cz, r, enc); W = null; }
 

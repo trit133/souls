@@ -2,7 +2,7 @@
 // node scripts/look.mjs <tag> [url]  -> /tmp/look/<tag>-<size>-<scene>.png
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
-const tag = process.argv[2] || 'now', url = process.argv[3] || 'http://localhost:4173/';
+const tag = process.argv[2] || 'now', url = process.argv[3] || 'http://localhost:4173/?chain';
 mkdirSync('/tmp/look', { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const SIZES = { hd: [1920, 1080, 1], uw: [3440, 1440, 1], phone: [844, 390, 3] };

@@ -8,7 +8,10 @@ import { PFX } from './pfx.js';
 import { VFX, pack, unpack } from './vfx.js';
 import { WeaponFx } from './weaponfx.js';
 import { World } from './world.js';
+import { Dungeon, mix } from './dungeon.js';
 import { pickLayout } from './modules.js';
+import { Seals } from './seals.js';
+import { Minimap } from './minimap.js';
 import { Player } from './player.js';
 import { Enemy } from './enemies.js';
 import { Boss, BOSS_MOVES, BOSSES } from './boss.js';
@@ -20,9 +23,10 @@ import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
+const FULL_CLEAR_GOLD = 20, FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
 import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
 import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
-import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems } from './damage.js';
+import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems, mitigate } from './damage.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
@@ -101,6 +105,9 @@ class Game {
     this.runBanked = 0; this.bankedKeys = new Set();
     this.minisFelled = 0;
     this.deaths = 0;
+    this.reserves = [];
+    this.seals = new Seals(this);
+    this.minimap = new Minimap(this);
     this.buildRun();
 
     this.bindUI();
@@ -126,14 +133,15 @@ class Game {
     return enc && enc.boss.alive ? [...this.enemies, enc.boss] : this.enemies;
   }
 
-  // Assemble a new level from a fresh random module layout.
-  newLayout() { return pickLayout(); }
+  // A run: three dungeons, each ending in a mini boss (in a random order), then the approach to Varek.
+  // (?chain in the address plays the old chain of rooms instead: the older test scripts use it)
+  newLayout() { return new URLSearchParams(location.search).has('chain') ? pickLayout() : 'dungeon'; }
 
   // a party fights 30% / 60% more regular enemies, placed near the originals
   extraSpawns(players, seed) {
-    const share = extraEnemyShare(players), pool = this.world.spawns.filter((s) => s.type !== 'brute');
+    const share = extraEnemyShare(players), pool = this.world.spawns.filter((s) => s.type !== 'brute' && !s.o.reserve && !s.o.effigy && !s.o.elite);
     const r = rng(seed + 7), out = [];
-    for (let i = 0, n = Math.round(this.world.spawns.length * share); i < n; i++) {
+    for (let i = 0, n = Math.round(pool.length * share); i < n; i++) {
       const s = pool[Math.floor(r() * pool.length)];
       for (let tries = 0; tries < 12; tries++) {
         const a = r() * Math.PI * 2, d = 1.4 + r() * 1.6, x = s.x + Math.cos(a) * d, z = s.z + Math.sin(a) * d;
@@ -145,33 +153,114 @@ class Game {
     return out;
   }
 
-  buildRun(layout = pickLayout(), seed = (Math.random() * 1e9) | 0, players = 1) {
-    for (const e of this.enemies) e.remove();
+  // layout: 'dungeon' for a run of dungeons, or a list of module keys (a chain, as the tests use)
+  buildRun(layout = this.newLayout(), seed = (Math.random() * 1e9) | 0, players = 1) {
+    this.runSeed = seed; this.runPlayers = players;
+    if (layout === 'dungeon') {
+      const r = rng(mix(seed + 3)), minis = ['hask', 'vael', 'gorrath'];
+      for (let i = 2; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [minis[i], minis[j]] = [minis[j], minis[i]]; }
+      this.run = { minis };
+      return this.buildAct(0);
+    }
+    this.run = null; this.act = 0;
+    this.buildLevel(layout, seed, players);
+  }
+
+  // act 0-2: a dungeon ending in that act's mini boss; act 3: the approach and Varek's throne
+  buildAct(n) {
+    this.act = n;
+    const seed = this.runSeed + n * 7919;
+    this.buildLevel(n < 3 ? { dungeon: new Dungeon(seed, n, this.run.minis[n]) } : ['gate', 'boss'], seed, this.runPlayers);
+  }
+
+  buildLevel(layout, seed, players) {
+    for (const e of [...this.enemies, ...this.reserves]) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     this.layout = layout;
+    this.portal = null;
     this.world.build(layout, seed);
-    // tier = mini bosses passed before a module; everything after them is stronger
-    const tierAt = (i) => layout.slice(0, i).filter((k) => k.startsWith('mini:')).length;
+    // tier = mini bosses passed before a module (in a run of dungeons, the act); everything after them is stronger
+    const tierAt = this.run ? () => this.act : (i) => layout.slice(0, i).filter((k) => k.startsWith('mini:')).length;
     const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
-    this.enemies = spawns.map((s) => new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players }));
+    const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players })));
+    for (const e of all) e.roam = this.world.dungeon?.roam(e.mod) ?? null;
+    this.enemies = all.filter((e) => !e.reserve);
+    this.reserves = all.filter((e) => e.reserve); // seal events call these in (seals.js)
+    this.clearTotal = this.enemies.filter((e) => !e.event && !e.effigy).length; this.clearKilled = 0; this.clearPaid = false;
     this.encounters = this.world.encounters;
     this.bosses = this.encounters.map((enc) => {
       enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod, tierAt(enc.mod), players);
       enc.boss.enc = enc;
       return enc.boss;
     });
-    this.boss = this.encounters.find((e) => e.kind === 'boss').boss;
+    this.boss = this.encounters.find((e) => e.kind === 'boss')?.boss || null;
     // stable ids shared by every device in a party; guests' copies are host-driven puppets
     this.netMap = {};
     const puppet = this.mp?.active && !this.mp.isHost;
-    this.enemies.forEach((e, i) => { e.netId = i; e.puppet = puppet; this.netMap[i] = e; });
+    all.forEach((e, i) => { e.netId = i; e.puppet = puppet; this.netMap[i] = e; });
     this.bosses.forEach((b, i) => { b.netId = 1000 + i; b.puppet = puppet; this.netMap[1000 + i] = b; });
     // regular enemies carrying elemental damage: more of them the further into the run (same roll on every device)
     const er = rng(seed + 13);
-    for (const e of this.enemies) e.setElems(rollElems(e.tier, er));
+    for (const e of all) e.setElems(rollElems(e.tier, er));
     this.tokens = 0;
     this.resetEncounters();
+    this.seals.setup(this.world);
+    this.minimap.setup(this.world);
+  }
+
+  // the share of a dungeon's enemies killed (not counting ones called in by seals)
+  clearPct() { return this.clearTotal ? Math.min(100, Math.floor(this.clearKilled / this.clearTotal * 100)) : 0; }
+  get areaName() { return this.world.dungeon ? this.world.dungeon.def.name : this.world.mods[0]?.name || ''; }
+
+  // a seal calls in an enemy that was waiting off stage (the host tells the party which, and where)
+  activateReserve(e, x, z) {
+    if (!e.reserve) return;
+    e.reserve = false;
+    this.reserves = this.reserves.filter((r) => r !== e);
+    this.enemies.push(e);
+    e.pos.set(x, 0, z); e.home = { x, z, yaw: e.yaw }; e.rig.root.visible = true;
+    this.pfx?.play('poof', e.pos.clone().setY(0.4), { size: 1.3 });
+    this.fx.burst({ x, y: 1, z }, 16, [0.6, 0.2, 0.8], 3, 0.6, 0.25);
+    if (!this.isGuest) { e.alertDelay = 0.35; if (this.mp.active) this.mp.sendAll({ t: 'rsv', id: e.netId, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 }); }
+  }
+
+  // into the next act: the world is rebuilt round the party, who keep everything they carry
+  enterAct(n) {
+    if (!this.run || n === this.act || n > 3) return;
+    this.buildAct(n);
+    const p = this.player;
+    p.pos.set(this.world.start.x, 0, this.world.start.z); p.lock = null; p.kb.set(0, 0, 0);
+    if (!p.alive) p.revive(0.5);
+    this.lastGood = null;
+    this.roomGold = {}; this.roomKills = {};
+    this.seenMod = n;
+    this.camPos.set(p.pos.x, 14, p.pos.z + 12);
+    this.ui.setProgress(n + 1, 4);
+    this.audio.play('fog');
+    this.ui.toast(this.areaName.toUpperCase(), 3);
+  }
+
+  // the stair down out of a beaten mini boss's arena: anyone can take the party on
+  descend() {
+    if (!this.portal || this.act >= 3) return;
+    if (this.mp.active && this.isGuest) { this.mp.send({ t: 'descend' }); return; }
+    const n = this.act + 1;
+    if (this.mp.active) this.mp.sendAll({ t: 'act', n });
+    this.enterAct(n);
+  }
+
+  openPortal(enc) {
+    const A = enc.arena, group = this.world.mods[enc.mod].group;
+    const g = new THREE.Group(); g.position.set(A.x, 0, A.z);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.6, 24), new THREE.MeshBasicMaterial({ color: 0x050708 }));
+    disc.rotation.x = -Math.PI / 2; disc.position.y = 0.05; g.add(disc);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 1.95, 32), new THREE.MeshBasicMaterial({ color: 0x7ae0ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; g.add(ring);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0x7ae0ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.y = 3.5; g.add(beam);
+    group.add(g);
+    this.portal = { x: A.x, z: A.z, g, ring };
   }
 
   makeLockSprite() {
@@ -327,7 +416,7 @@ class Game {
     this.kind = kind;
     if (party) this.buildRun(party.layout, party.seed, party.players); else this.buildRun();
     this.waitingOnParty = false; this.reviving = null;
-    this.respawnAt = { x: 0, z: -2.5 };
+    this.respawnAt = this.run ? { ...this.world.start } : { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.user ? treeStats(kind, this.accounts.data) : {});
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
@@ -335,7 +424,8 @@ class Game {
     $('run-gold').title = 'Gold banked to your account this run';
     if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
     this.ui.setBoons([]);
-    this.ui.setProgress(1, this.world.mods.length);
+    this.ui.setProgress(1, this.run ? 4 : this.world.mods.length);
+    this.minimap.el.classList.toggle('touch', this.input.isTouch);
     this.ui.show('gameover', false); this.ui.show('reward', false);
     this.lastGood = null;
     this.seenMod = 0;
@@ -351,7 +441,7 @@ class Game {
     this.ui.show('menu', false); this.ui.show('hud'); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('touch', this.input.isTouch);
     this.camPos.set(this.player.pos.x, 14, this.player.pos.z + 12);
-    this.ui.toast(this.world.mods[0].name.toUpperCase(), 3);
+    this.ui.toast(this.areaName.toUpperCase(), 3);
     this.input.reset();
   }
 
@@ -389,7 +479,7 @@ class Game {
         continue;
       }
       enc.boss.reset();
-      this.world.setGate(enc.gateIn, true, true); // fog you can walk through
+      this.world.setGate(enc.gateIn, !enc.sealed, true); // fog you can walk through (a dungeon's door stays shut until its seals break)
       if (enc.gateOut) this.world.setGate(enc.gateOut, false, true);
     }
     this.ui.show('boss', false);
@@ -543,10 +633,35 @@ class Game {
     if (this.isGuest) return;
     // solo: your kill. A party shares each room's kills when it's cleared (see openRoom)
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
-    else this.creditKill(e);
-    const n = enemyGold(e.type);
+    else if (!e.effigy) this.creditKill(e);
+    // in a dungeon there are many more enemies: most drop nothing, brutes and elites always do
+    const n = !this.world.dungeon ? enemyGold(e.type) : e.effigy ? 0 : e.elite ? 3 : e.type === 'brute' ? 2 : Math.random() < 0.4 ? 1 : 0;
     this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
-    this.statusPopup(e, `+${n}`, '#a89060');
+    if (n) this.statusPopup(e, `+${n}`, '#a89060');
+    if (this.world.dungeon && !e.event && !e.effigy) {
+      this.clearKilled++;
+      if (this.mp.active) this.mp.sendAll({ t: 'prog', k: this.clearKilled });
+      if (this.clearKilled >= this.clearTotal) this.fullClear();
+    }
+  }
+
+  // every enemy in the dungeon dead: bonus gold and emeralds for everyone
+  fullClear(net = false) {
+    if (this.clearPaid) return;
+    this.clearPaid = true; this.clearKilled = this.clearTotal;
+    if (!net && this.mp.active) this.mp.sendAll({ t: 'clear100' });
+    const n = this.bankNow(FULL_CLEAR_GOLD, 'clear' + this.act);
+    this.addEmeralds(FULL_CLEAR_EMERALDS);
+    this.ui.toast(`DUNGEON CLEARED · ◆ +${n} · +${FULL_CLEAR_EMERALDS} EMERALDS`, 3.5);
+    this.audio.play('victory');
+  }
+
+  addEmeralds(n) {
+    const d = this.accounts.data;
+    if (!d || !this.accounts.user) return;
+    cosmetics(d).emeralds += n;
+    this.ui.emeralds?.(d.emeralds);
+    this.accounts.save();
   }
 
   // the killing blow earns that player emeralds (the host tells teammates about theirs); a boss is worth 2
@@ -569,10 +684,27 @@ class Game {
   // the outfit a character wears ({} for guests: the default look)
   equippedOutfit(kind) { return this.accounts.user && this.accounts.data ? wornOutfit(cosmetics(this.accounts.data), kind) : {}; }
 
-  sameRoom(e, p) { return this.world.moduleAt(p.pos.z).i === e.mod; }
+  sameRoom(e, p) {
+    const m = this.world.moduleAt(p.pos.x, p.pos.z).i;
+    return e.roam ? e.roam.has(m) : m === e.mod;
+  }
 
-  // open a room's exit once all of its enemies are dead (host / solo decide)
+  // open a room's exit once all of its enemies are dead (host / solo decide). In a dungeon there are no exits:
+  // each chamber pays its gold once everything in it (and anything its seal might still call in) is dead
   stepRooms() {
+    if (this.world.dungeon) {
+      for (const m of this.world.mods) {
+        if (m.cleared || !m.cell || this.enemies.some((e) => e.alive && e.mod === m.i) || this.reserves.some((e) => e.mod === m.i)) continue;
+        m.cleared = true;
+        const n = this.roomGold[m.i] || 0, k = this.roomKills[m.i] || 0;
+        this.roomGold[m.i] = 0; this.roomKills[m.i] = 0;
+        if (!n && !k) continue;
+        if (n) this.addRunGold(n);
+        this.openRoom(m.i, n, k);
+        if (this.mp.active) this.mp.sendAll({ t: 'room', i: m.i, n, k });
+      }
+      return;
+    }
     for (const m of this.world.mods) {
       const g = this.world.gates['exit' + m.i];
       if (!g || g.open || this.enemies.some((e) => e.alive && e.mod === m.i)) continue;
@@ -593,7 +725,8 @@ class Game {
       this.bankedKeys.add('kills' + i);
       this.addKill(Math.ceil(kills / Math.max(1, this.mp.members.length || this.allPlayers().length)));
     }
-    this.bankNow(n, 'room' + i);
+    this.bankNow(n, 'room' + this.act + ':' + i);
+    if (this.world.dungeon) { if (n) this.ui.toastSmall(`Chamber cleared · ◆ +${n}`); return; }
     this.ui.toast(`AREA CLEARED${n ? ` · ◆ +${n} ${this.accounts.user ? 'banked' : '(guest: not saved)'}` : ''}`, 2.5);
     this.audio.play('fog');
   }
@@ -665,7 +798,7 @@ class Game {
       if (this.accounts.data) { this.accounts.data.stats.bestArea = Math.max(this.accounts.data.stats.bestArea, this.seenMod + 1); this.accounts.save(); }
       $('gameover-stats').innerHTML = [
         `Banked this run: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
-        `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
+        this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
         `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
         `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
         `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
@@ -867,9 +1000,10 @@ class Game {
       const pay = this.bossPayout(enc, net);
       this.minisFelled++;
       this.announceBossDeath(enc, pay);
-      // the way on opens right away; fanfare, then the reward choice
+      // the way on opens right away (in a dungeon: a stair down in the arena); fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
-      this.world.setGate(enc.gateOut, true, false);
+      if (enc.gateOut) this.world.setGate(enc.gateOut, true, false);
+      if (enc.dungeon && this.act < 3) this.openPortal(enc);
       if (this.mp.active && !this.player.alive && this.mode === 'play') {
         this.player.revive(0.5);
         this.mp.sendAll({ t: 'up' });
@@ -1112,16 +1246,20 @@ class Game {
     return out.sort((a, b) => a.e.distTo(p) - b.e.distTo(p));
   }
 
-  // faint white ring on attackers during their parry window (rogue only: knights block)
+  // a bright white ring on attackers during their parry window (rogue only: knights block): a soft glow, a dark
+  // edge so it reads on light ground, and a thick white band that pulses
   makeParryCues() {
-    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
     const g = c.getContext('2d');
-    g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 5;
-    g.beginPath(); g.arc(32, 32, 24, 0, Math.PI * 2); g.stroke();
+    g.shadowColor = 'rgba(255,255,255,1)'; g.shadowBlur = 14;
+    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 22; g.beginPath(); g.arc(64, 64, 44, 0, Math.PI * 2); g.stroke();
+    g.shadowBlur = 0;
+    g.strokeStyle = 'rgba(20,16,12,0.9)'; g.lineWidth = 16; g.beginPath(); g.arc(64, 64, 44, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 11; g.beginPath(); g.arc(64, 64, 44, 0, Math.PI * 2); g.stroke();
     const tex = new THREE.CanvasTexture(c);
     this.parryCues = [];
     for (let i = 0; i < 4; i++) {
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.5, depthTest: false }));
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 1, depthTest: false }));
       s.renderOrder = 11; s.visible = false; this.scene.add(s); this.parryCues.push(s);
     }
   }
@@ -1129,13 +1267,14 @@ class Game {
   updateParryCues() {
     const p = this.player;
     const list = p && p.alive && p.kind === 'rogue' && !(p.parryCd > 0) && this.mode === 'play' ? this.parryTargets(p) : [];
+    const pulse = 1 + Math.sin(this.time * 30) * 0.06;
     this.parryCues.forEach((s, i) => {
       const t = list[i];
       s.visible = !!t;
       if (!t) return;
       const k = t.e.rig.root.scale.y;
       s.position.set(t.e.pos.x, t.e.y + 1.35 * k, t.e.pos.z);
-      s.scale.setScalar(0.32 + 0.12 * k);
+      s.scale.setScalar((0.6 + 0.2 * k) * pulse);
     });
   }
 
@@ -1362,25 +1501,29 @@ class Game {
     if (this.mode === 'play') {
       if (presses.has('pause')) { this.setPaused(true); return; }
       if (presses.has('lock') && p.alive) this.toggleLock();
+      if (presses.has('map')) this.minimap.toggle();
 
       if (dt > 0) {
         if (!this.isGuest) { this.assignEngagement(); this.stepRooms(); }
         p.update(dt, this.input, presses);
-        const zs = this.allPlayers().map((x) => x.pos.z);
+        const ps = this.allPlayers().map((x) => x.pos);
+        const close = (o, r) => ps.some((q) => Math.abs(o.pos.z - q.z) < r && Math.abs(o.pos.x - q.x) < r);
         for (const e of this.enemies) {
           // distance culling: far enemies neither think nor draw
-          const near = zs.some((z) => Math.abs(e.pos.z - z) < 42);
-          e.rig.root.visible = near && !(e.state === 'dead' && e.t > 4.5);
+          const near = close(e, 42);
+          e.rig.root.visible = near && !(e.state === 'dead' && e.t > (e.effigy ? 3 : 4.5));
           if (near) e.update(dt);
         }
+        this.blazeAura(dt);
         for (const b of this.bosses) {
-          const near = zs.some((z) => Math.abs(b.pos.z - z) < 50);
+          const near = close(b, 50);
           if (!near) b.rig.root.visible = false;
           else if (b.state !== 'dead') b.rig.root.visible = true;
           if (near) b.update(dt);
         }
         this.separate();
         this.updateProjectiles(dt);
+        this.seals.update(dt);
         this.mp.tick(dt);
         this.stepRevive(dt);
       } else {
@@ -1390,10 +1533,17 @@ class Game {
 
       // standing over a downed teammate
       const down = this.mp.active && p.alive && p.state === 'move' ? [...this.mp.peers.values()].find((x) => !x.alive && p.distTo(x) < 2.4) : null;
+      const atPortal = this.portal && p.alive && Math.hypot(p.pos.x - this.portal.x, p.pos.z - this.portal.z) < 2.2;
+      const sealLine = this.seals.promptFor(p);
       if (down) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Revive ${down.name} (all lose 10% max health)`);
         if (presses.has('interact')) this.startRevive(down);
-      } else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
+      } else if (atPortal) {
+        this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Descend${this.mp.active ? ' (takes the whole party)' : ''}`);
+        if (presses.has('interact')) this.descend();
+      } else if (sealLine) this.ui.prompt(sealLine);
+      else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
+      if (this.portal) this.portal.ring.material.opacity = 0.6 + Math.sin(this.time * 5) * 0.3;
       // trigger only once the player is fully inside the arena circle, so locking the
       // fog never leaves them standing on ground that just stopped being walkable
       if (!this.bossActive && !this.isGuest) for (const enc of this.encounters) {
@@ -1405,9 +1555,12 @@ class Game {
       if (this.world.walkable(p.pos.x, p.pos.z, p.radius)) { (this.lastGood ||= p.pos.clone()).copy(p.pos); }
       else if (this.lastGood && this.world.walkable(this.lastGood.x, this.lastGood.z, p.radius)) p.pos.copy(this.lastGood);
       else if (enc) { p.pos.x += (enc.arena.x - p.pos.x) * 0.2; p.pos.z += (enc.arena.z - p.pos.z) * 0.2; }
-      // area title when reaching a new module
-      const m = this.world.moduleAt(p.pos.z);
-      if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
+      // area title when reaching a new module (a chain of modules only)
+      if (!this.run) {
+        const m = this.world.moduleAt(p.pos.z);
+        if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
+      }
+      this.minimap.update(rdt);
 
       this.ui.update(rdt, p);
       this.ui.party(this.mp.active ? [...this.mp.peers.values()] : []);
@@ -1427,6 +1580,22 @@ class Game {
     this.updateCamera(rdt);
   }
 
+  // blazing elites burn anyone standing close (each device burns its own player)
+  blazeAura(dt) {
+    const p = this.player;
+    if (!p?.alive || (this.blazeT = (this.blazeT || 0) - dt) > 0) return;
+    for (const e of this.enemies) {
+      if (e.elite !== 'blazing' || !e.alive || p.distTo(e) > 2.6) continue;
+      this.blazeT = 0.5;
+      if (p.iframe()) return;
+      const mit = mitigate({ fire: 3 * (e.dmgScale || 1) }, p.tree, 1);
+      p.hp -= mit.total; p.rig.flash(1, 0.5, 0.2);
+      for (const [k, v] of Object.entries(mit.build)) if (v > 0) p.status.add(k, v, this);
+      if (p.hp <= 0) p.die();
+      return;
+    }
+  }
+
   toggleLock() {
     const p = this.player;
     if (p.lock) { p.lock = null; return; }
@@ -1444,7 +1613,7 @@ class Game {
   }
 
   separate() {
-    const all = [this.player, ...this.enemies.filter((e) => e.alive && Math.abs(e.pos.z - this.player.pos.z) < 30)];
+    const pp = this.player.pos, all = [this.player, ...this.enemies.filter((e) => e.alive && Math.abs(e.pos.z - pp.z) < 30 && Math.abs(e.pos.x - pp.x) < 30)];
     const enc = this.activeEnc;
     if (enc && enc.boss.alive && enc.boss.y < 1) all.push(enc.boss);
     const p = this.player;

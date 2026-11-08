@@ -46,8 +46,8 @@ export class Actor {
     const w = this.game.world;
     const slow = w.slowAt(this.pos.x, this.pos.z); // bog water
     const to = _to.set(this.pos.x + dx * slow, 0, this.pos.z + dz * slow);
-    // enemies and bosses are confined to the module they spawned in
-    w.resolve(this.pos, to, this.radius, this.mod ?? null);
+    // enemies and bosses are confined to the module they spawned in (in a dungeon, that chamber and its neighbours)
+    w.resolve(this.pos, to, this.radius, this.roam ?? this.mod ?? null);
     this.pos.x = to.x; this.pos.z = to.z;
   }
 

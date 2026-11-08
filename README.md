@@ -1,10 +1,20 @@
 # Ashen Vigil
 
-A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 areas assembled from modules. Every third area is a mini boss that rewards you with a power-up or a full rest, and the last is a two-phase boss. There are no bonfires: death ends the run.
+A pseudo-3D souls-like roguelite built with Three.js + Vite. A run is three open dungeons, each ending in a mini boss that rewards you with a power-up or a full rest, then the approach to a two-phase final boss. There are no bonfires: death ends the run.
 
 ## Run structure
-- **11 slots:** 1, 2, 4, 5, 7, 8 and 10 use all 7 regular modules in random order. Slots 3, 6 and 9 are the three mini bosses (shuffled). Slot 11 is **Varek** in the Throne of Ash.
-- **Regular modules:**
+- **Three dungeons, then Varek** (`src/dungeon.js`): The Ashen Warrens (camp, ruins and bridge chambers), The Hollow Deep (village, crypt, ruins), The Drowned Halls (bog, gate, crypt). Each ends in one of the three mini bosses (shuffled per run); after the third comes the Warden's Gate and **Varek** in the Throne of Ash.
+- **A dungeon:** 22-25 chambers on a 7 × 7 grid of 28 m cells, joined by corridors: a random tree with a few loops, so there are dead ends, circuits, small junctions and side rooms. Chambers vary in size and shape (wings, bays, round bog chambers, long crypt halls, platforms over the chasm with plank bridges) and are dressed by theme (palisades, tents, pillars, houses, coffins, pools, stone blocks) with the props kept off the paths between doorways, so every chamber can be crossed; a flood fill puts enemies only where you can reach them. About 55-70 enemies (30% / 60% more in a party). You start at a lit bonfire in the middle. Everything comes from the run's seed, so a party all gets the same map. `scripts/dungeon.mjs` builds many seeds and checks everything is reachable; `scripts/dungeon-look.mjs` takes screenshots.
+- **The sealed door:** the mini boss's arena is off one edge of the map, somewhere you have to find, behind a door that shows **SEALED 0/3**. Five seal shrines (a glowing crystal and a beam of light you can see over the walls) are spread far apart; break **three** to open the door (`src/seals.js`). Each is guarded:
+  - **Elite pack:** an elite and three others. Elites are bigger, glow in their trait's colour, have 2.6× health and hit 25% harder, with one trait: **Frenzied** (faster attacks and movement, shorter pauses), **Armoured** (takes a third less damage, hard to stagger) or **Blazing** (fire on every hit and a heat aura that burns anyone within 2.5 m). Kill the pack and the seal breaks.
+  - **Hold the circle:** stand in the ring round the shrine for 30 s. Time only runs with someone inside (it slips back slowly when nobody is) and waves of 3 come in from the edges every 7 s.
+  - **Cursed altar:** three cursed effigies stand round the shrine. Come near and enemies pour out of the altar (2 every 5 s, up to 8) until all three effigies are broken.
+- **Exploring pays:** the fourth and fifth seals bank 8 gold each; killing every enemy in a dungeon (the map shows % cleared; enemies called in by seals don't count) banks 20 gold and 5 emeralds.
+- **The map** (`src/minimap.js`): a corner map that fills in as you and your party explore; **M** (or a tap on it) opens the whole map. Unbroken seals always glow on it, even in unexplored dark; the boss door and arena show once seen. Under it: the dungeon's name, seals broken and % cleared.
+- **After the mini boss:** a stair down opens in the arena. Step on it and press interact to go on to the next dungeon (in a party it takes everyone). You keep your health, flasks and power-ups.
+- **Enemies in a dungeon** chase you into the chambers next to theirs, but no further. Regular enemies get stronger each dungeon (tier = dungeon number).
+- The old run of 11 rooms in a row still builds for the older test scripts (`?chain` in the address).
+- **Chamber themes** (from the old rooms):
   - The Broken Road: winding ruins.
   - The Ashen Camp: palisade war camp.
   - The Hanging Span: narrow bridge over a chasm.
@@ -37,10 +47,10 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
 `src/home.js`, pixel art in `src/pixelui.js`. You must be signed in to play: signed out, the title shows a big **Sign in to play** tile, Settings and Fullscreen. Signed in, it is a Smash-style menu of square tiles in reds and oranges, each in a riveted pixel-art frame with a pixel icon: big **Single Player** and **Multiplayer** tiles, then smaller **Skill Trees** (with your gold), **Skins** and **Settings**, and a Fullscreen bar. Labels use the title's pixel font, lit like hot metal with a sweeping shine; hovering a tile lights its frame, lifts it, sets its letters burning and sends up pixel embers. Arrow keys move between tiles. **Single Player** opens the character select: the class cards with their hover animations, and dark "?" tiles for the six characters still to come. Sign Out is in Settings. The sign-in box, Skins, Settings and the multiplayer lobby share the look (`src/pixelmenus.js`): pixel-font headings, buttons as riveted pixel tiles in reds and oranges (their labels redraw whenever the game changes the text), dark pixel-framed panels, a padlock on locked skins and classes, segmented progress bars and sliders, and the room code in big fiery letters. `scripts/menus.mjs` takes screenshots.
 
 ## Gold and permanent upgrades
-- **Earning:** enemies are worth 1 (a brute 3). A room's coins pay out when the room is cleared. Mini bosses drop 15, 20, then 25, and Varek 30.
+- **Earning:** in a dungeon, a regular enemy drops 1 gold 40% of the time, a brute always 2, an elite 3. A chamber's coins pay out once everything in it is dead. Seals past the third and a full clear pay bonuses (above). Mini bosses drop 15, 20, then 25, and Varek 30. (In the old chain of rooms, enemies are worth 1, a brute 3.)
 - **Banking:** a room's coins go to your account permanently the moment the room is cleared (×1). Boss drops bank when the boss dies. Dying keeps everything banked so far; there is no cash-out.
 - **Section bonus:** the run has four sections, ending at each mini boss and at Varek, with rates ×1, ×1.5, ×2, ×3. Beating the boss that closes a section banks the extra on that section's gold (+0%, +50%, +100%, +200%).
-- **Rooms:** each room's exit is fogged until every enemy in it is dead. Enemies never notice or chase you across rooms.
+- **Rooms (old chain only):** each room's exit is fogged until every enemy in it is dead. Enemies never notice or chase you across rooms.
 - **Fights:** one enemy at a time fights each player. Others who have noticed you hover nearby with their weapon up, drifting in and out, and step in for one attack every 10-15s. Hitting one of them makes it your fight.
 - **Enemy tiers:** each mini boss passed gives everything after it +10% health, damage, move speed and attack speed (additive). In a party, regular enemies instead get +20% / +40% / +60% health and +15% / +20% / +25% damage per stage (speeds as solo).
 - **Boss stun:** a boss knocked to its knees by stun needs twice as much for every knockdown after the first. Eyes turn red, then orange, then white with a red halo.
@@ -133,7 +143,8 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
 | Block / parry | Q / Ctrl | BLOCK / PARRY |
 | Heal | E | HEAL |
 | Lock-on | Tab / MMB | LOCK |
-| Rest at bonfire | F | tap the prompt |
+| Interact (revive, descend) | F | tap the prompt |
+| Map | M | tap the corner map |
 
 ## Combat notes
 - **Combos** (`src/combos.js`): start with a normal attack; at a set moment in each move the weapon glints and a little red mark shows over your head, and pressing the next input within **180 ms** continues the combo (a chime plays). Pressing outside the window does that button's normal move; doing nothing ends it. Combos branch from shared openings. Each class has three 3-move combos and one 4-move combo whose moves play 15% faster (the four evolution combos to come split the same way). Every attack costs 10% less stamina than its listed cost; combo moves cost a fixed, larger amount. The last move is always the combo's biggest hit. A hit during a combo's first move breaks it; from the second move on you are armoured: hits still hurt, but they don't stagger, knock down or shove you, and the combo carries on. A combo staggers each enemy at most once, so nothing gets stun-locked. Combo moves turn to an enemy right behind you (after the roll steps). The skill tree screen lists them under the stats. `scripts/combos.mjs` plays each one on time, early and late.
@@ -156,7 +167,7 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
   - Parry or poise-break him for a critical. He punishes healing at mid range.
 - Red glints and red ground circles mark unparryable attacks.
 - **Parry (Rogue):**
-  - Timing: press it within the 0.23s before a parryable hit lands. A faint white ring on the attacker shows exactly that window.
+  - Timing: press it within the 0.23s before a parryable hit lands. A bright, pulsing white ring (with a dark edge so it shows on any ground) on the attacker shows exactly that window.
   - What can be parried: only certain light attacks (grunt slashes, spear thrust and sweep, archer bash, Varek's sweeps, Hask's chop and flurry). Projectiles, slams, overheads, leaps, charges, lunges, spins and stomps never can.
   - A missed parry costs half your max stamina, and regen is delayed 1.6s.
 - **Critical hits** (on a parried enemy, or a boss knocked to its knees by a poise break): each character has its own.
@@ -176,4 +187,4 @@ All music is synthesized in `src/music.js`: songs are written as 16th-note patte
 - `jukebox.html` (dev server only: `npx vite --host`, then open `/jukebox.html`) plays each song. `scripts/music.mjs` renders them offline, reports peak and loudness for the whole mix and each instrument, and writes WAVs to `/tmp`.
 
 ## Tests
-`scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size), `scripts/stamina.mjs` (empty-stamina lockout, mana costs, grunt leap reach), `scripts/treebg.mjs` (skill tree background screenshots), `scripts/status.mjs` (damage types, status buildup, per-type damage numbers, enemy elements, armour and resistances, riposte per enemy, weapon effect and stats panel screenshots) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.
+`scripts/dungeon.mjs` (dungeon layouts: reachability, seals, the door), `scripts/seals.mjs` (a dungeon played through: the three seals, bonuses, the fight, the stair down, on to Varek), `scripts/party-dungeon.mjs` (a party in a dungeon: same map, seals, events, the clear count and the stair stay in step), `scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size), `scripts/stamina.mjs` (empty-stamina lockout, mana costs, grunt leap reach), `scripts/treebg.mjs` (skill tree background screenshots), `scripts/status.mjs` (damage types, status buildup, per-type damage numbers, enemy elements, armour and resistances, riposte per enemy, weapon effect and stats panel screenshots) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.

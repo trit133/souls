@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + '\n' + e.stack));
-await page.goto(process.argv[2] || 'http://localhost:4173/'); await page.waitForTimeout(600);
+await page.goto(process.argv[2] || 'http://localhost:4173/?chain'); await page.waitForTimeout(600);
 await page.click('#btn-acct'); await page.fill('#acct-user', 'spell_test'); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(500);
 const res = await page.evaluate(() => {
   game.loop = () => {};

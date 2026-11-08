@@ -150,6 +150,12 @@ export const TYPES = {
     cd: [1.2, 2.4], moves: ARCHER_MOVES, weights: { shoot: 1, bash: 1 }, ranged: true, backoff: 5,
     model: { cloth: 0x2e3a26, armor: 0x3e4a32, skin: 0x8a8576, head: 'hood', weapon: 'bow', accent: 0x3e4a32, eyes: 0xd8c060, kit: 'archer' },
   },
+  // a cursed effigy at an altar seal: it never moves or fights, it just has to be broken
+  effigy: {
+    hp: 150, poise: 999, scale: 1.15, radius: 0.55, run: 0, walk: 0, aggro: 0, prefer: 0, style: 'sword', turn: 0, still: true,
+    cd: [99, 99], moves: {}, weights: {}, superArmor: true,
+    model: { cloth: 0x2a2624, armor: 0x48423c, skin: 0x5a544e, head: 'horned', eyes: 0xff3a2a, bulk: 1.1 },
+  },
   brute: {
     hp: 280, poise: 80, scale: 1.45, radius: 0.75, run: 2.9, walk: 1.5, aggro: 12, prefer: 2.4, style: 'club', turn: 2.6,
     cd: [0.9, 1.9], moves: BRUTE_MOVES, weights: { slam: 2, sweep: 3, stomp: 3 }, superArmor: true,
@@ -157,15 +163,34 @@ export const TYPES = {
   },
 };
 
+// Elites lead the packs guarding seals: bigger, tougher, glowing in their trait's colour, with one trait.
+// frenzied: faster everything; armoured: takes a third less damage and hard to stagger; blazing: fire on every hit
+// and a heat aura that burns anyone close (main.js)
+export const ELITE = {
+  frenzied: { color: 0xff3a2a, rgb: [1, 0.25, 0.15], name: 'Frenzied' },
+  armoured: { color: 0x9ab8d8, rgb: [0.6, 0.75, 0.9], name: 'Armoured' },
+  blazing: { color: 0xff8a1a, rgb: [1, 0.55, 0.1], name: 'Blazing' },
+};
+
 export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {
-    const T = TYPES[type];
+    const T = TYPES[type], E = ELITE[opts.elite];
     // tier = mini bosses passed before this module
     const tier = opts.tier || 0, ts = tierStats(tier, opts.players || 1), party = partyScale(opts.players || 1, type === 'brute');
-    const rig = buildHumanoid({ ...T.model, scale: T.scale, eyes: TIER_EYES[tier] ?? T.model.eyes, eyeGlow: tier >= 3 ? 0xff1a10 : null });
-    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * ts.hp * party.hp), radius: T.radius, poise: T.poise });
+    const rig = buildHumanoid({ ...T.model, scale: T.scale * (E ? 1.2 : 1), eyes: E ? E.color : TIER_EYES[tier] ?? T.model.eyes, eyeGlow: E ? 0xffffff : tier >= 3 ? 0xff1a10 : null });
+    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * ts.hp * party.hp * (E ? 2.6 : 1)), radius: T.radius * (E ? 1.15 : 1), poise: T.poise * (E ? 2 : 1) });
     this.tier = tier; this.dmgScale = ts.dmg * party.dmg; this.spdScale = ts.spd * party.spd;
     this.atkScale = ts.atk * party.atk; this.gapScale = party.gap; this.moves = T.moves;
+    if (E) {
+      this.elite = opts.elite; this.dmgScale *= 1.25;
+      if (opts.elite === 'frenzied') { this.atkScale *= 1.3; this.spdScale *= 1.25; this.gapScale *= 0.6; }
+      if (opts.elite === 'armoured') { this.dmgTaken = 0.65; this.maxPoise = this.poise = this.maxPoise * 1.5; }
+      // a glowing ring under its feet
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.86, 24), new THREE.MeshBasicMaterial({ color: E.color, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; rig.root.add(ring); this.auraRing = ring;
+    }
+    this.event = !!opts.event; this.reserve = !!opts.reserve; this.effigy = !!T.still;
+    if (this.reserve) rig.root.visible = false; // waits off stage until its seal's event calls it in
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
     this.status = new StatusState(this, type === 'brute' ? 180 : 100);
@@ -198,11 +223,14 @@ export class Enemy extends Actor {
   // elemental damage this enemy carries (a share of each hit, taken out of the physical): { fire: 0.25 } or null.
   // Its weapon shows the element(s), like a player's.
   setElems(elems) {
+    if (this.elite === 'blazing') elems = { ...(elems || {}), fire: 0.5 };
+    if (this.effigy) elems = null;
     this.elems = elems; this.elemBuild = 1;
     this.wfxKey = elems ? ['bleed', 'fire', 'frost', 'poison'].filter((k) => elems[k]).join('+') : '';
   }
 
   alert() {
+    if (this.T.still) return;
     if (this.state !== 'idle' && this.state !== 'sit' && this.state !== 'return') return;
     this.setState('alert');
     for (const o of this.game.enemies) {
@@ -234,6 +262,11 @@ export class Enemy extends Actor {
   }
 
   update(dt) {
+    if (this.T.still) return this.stillUpdate(dt);
+    if (this.elite && this.alive && Math.random() < dt * 14) {
+      const c = ELITE[this.elite].rgb;
+      this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.9, y: 0.2 + Math.random() * 1.8, z: this.pos.z + (Math.random() - 0.5) * 0.9, vy: 1 + Math.random(), life: 0.7, size: 0.16, size1: 0.02, r: c[0], g: c[1], b: c[2] });
+    }
     if (this.puppet) return this.puppetUpdate(dt, this.T.style);
     this.t += dt;
     this.status.update(dt, this.game);
@@ -407,11 +440,33 @@ export class Enemy extends Actor {
     this.trail.update(dt, this.trailOn, this.rig.base, this.rig.tip);
   }
 
+  // an effigy: stands with its arms spread, shuddering when struck, and crumbles when broken
+  stillUpdate(dt) {
+    this.t += dt; this.hpShow -= dt;
+    if (!this.puppet) this.status.update(dt, this.game);
+    if (this.state === 'dead') {
+      if (this.t > 1.2) this.rig.root.position.y = -(this.t - 1.2) * 0.8;
+      if (this.t > 3) this.rig.root.visible = false;
+      this.rig.apply(P.dead, dt, 6);
+      return;
+    }
+    const shake = this.rig.flashT > 0 ? Math.sin(this.game.time * 60) * 0.08 : 0;
+    const pose = { ...locomotion('sword', 0, 0, false, 0), armL: [0, 0, 1.45], armR: [0, 0, -1.45], foreL: [0, 0, 0.3], foreR: [0, 0, -0.3], head: [0.35 + shake, 0, 0.2], torso: [0.1, shake, 0], by: 0.3 };
+    this.syncRig(dt, pose, 10);
+    if (Math.random() < dt * 6) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.6, y: 1.9, z: this.pos.z + (Math.random() - 0.5) * 0.6, vy: 0.8, life: 0.8, size: 0.14, size1: 0.02, r: 1, g: 0.2, b: 0.15 });
+  }
+
   // returns 'hit' etc. Called by game.resolveHit
   receive(info) {
     if (info.attacker) this.lastHitBy = info.attacker;
     if (!this.alive) return 'none';
     if (this.puppet) return this.puppetHit(info);
+    if (this.dmgTaken) info = { ...info, dmg: info.dmg * this.dmgTaken };
+    if (this.T.still) {
+      this.hp -= info.dmg; this.hpShow = 4; this.rig.flash(1, 0.4, 0.3);
+      if (this.hp <= 0) { this.die(); this.game.pfx?.play('poof', this.pos.clone().setY(0.6), { size: 1.4 }); return 'kill'; }
+      return 'hit';
+    }
     if (info.attacker?.uid) this.lastHitBy[info.attacker.uid] = this.game.time; // hitting a watcher makes it your fight
     this.hp -= info.dmg;
     this.hpShow = 4;

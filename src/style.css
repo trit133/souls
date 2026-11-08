@@ -699,3 +699,13 @@ button.pxbtn { justify-content: center; }
   #skin-body { gap: 6px; } #cz-slots button { width: 104px; } #cz-pieces { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
   .cz-swatch { width: 18px; height: 18px; border-width: 2px; }
 }
+
+/* ---------- dungeon map (minimap.js) ---------- */
+#minimap { position: absolute; right: calc(16px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: flex-end; }
+#minimap.touch { right: calc(66px + env(safe-area-inset-right)); }
+#minimap canvas { width: 168px; height: 168px; image-rendering: pixelated; border: 2px solid #5a4030; box-shadow: 0 0 0 2px #1a120c, 0 0 12px rgba(0,0,0,.6); border-radius: 2px; }
+#mm-info { margin-top: 4px; font: 11px monospace; letter-spacing: 1px; color: #e8dcc0; text-shadow: 0 1px 2px #000, 0 0 4px #000; text-align: right; max-width: 260px; }
+#bigmap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,.45); pointer-events: auto; z-index: 5; }
+#bigmap canvas { image-rendering: pixelated; border: 3px solid #6a4a30; box-shadow: 0 0 0 3px #1a120c, 0 0 30px rgba(0,0,0,.8); }
+.bm-hint { margin-top: 8px; font: 12px monospace; color: #c8b890; letter-spacing: 1px; }
+@media (max-width: 700px), (max-height: 450px) { #minimap canvas { width: 120px; height: 120px; } #mm-info { font-size: 9px; max-width: 200px; } }

@@ -3,10 +3,12 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MODULES, MINI_ARENAS, BOSS_ARENA } from './modules.js';
 
-// The level is a chain of modules laid out along -Z. Each module adds walkable
-// shapes (rects/circles, optionally gated), solid blockers, slow zones, obstacles,
-// props, enemy spawns and encounters. Module-local distance `d` maps to z = z0 - d.
+// The level is either a chain of modules laid out along -Z (the approach to Varek, and the old layouts the tests
+// use) or a dungeon (dungeon.js: chambers on a grid, built in world coordinates). Each module / chamber adds
+// walkable shapes (rects/circles, optionally gated), solid blockers, slow zones, obstacles, props, enemy spawns and
+// encounters. Module-local distance `d` maps to z = z0 - d (a dungeon uses world z directly).
 
+export { GROUND };
 export function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 const GROUND = {
@@ -73,12 +75,13 @@ export class World {
     this.clear();
     this.rand = rng(seed);
     this.layout = layout;
+    if (layout.dungeon) { layout.dungeon.build(this); return; } // a dungeon builds itself (dungeon.js)
     let z0 = 0;
     layout.forEach((key, i) => {
       const def = key.startsWith('mini:') ? MINI_ARENAS[key.slice(5)] : key === 'boss' ? BOSS_ARENA : MODULES[key];
       const group = new THREE.Group();
       this.root.add(group);
-      const mod = { i, key, name: def.name, z0, z1: z0 - def.len, len: def.len, group, ground: def.ground };
+      const mod = { i, key, name: def.name, z0, z1: z0 - def.len, len: def.len, cx: 0, cz: z0 - def.len / 2, group, ground: def.ground };
       this.mods.push(mod);
       this.cur = mod;
       this.Z = (d) => z0 - d;
@@ -97,7 +100,7 @@ export class World {
   }
 
   clear() {
-    for (const m of this.mods || []) {
+    for (const m of [...(this.mods || []), ...(this.tiles || [])]) {
       m.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
       this.root.remove(m.group);
     }
@@ -113,7 +116,30 @@ export class World {
     this.lights = [];
     this.fires = [];
     this.ambient = [];
+    this.tiles = [];
+    this.dungeon = null; this.cutaway = false; this.seals = [];
+    this.hash = null; this.hashN = -1;
     this.start = { x: 0, z: -3 };
+  }
+
+  // ---------- shape lookup ----------
+  // shapes bucketed on an 8 m grid (each in every bucket within 9 m of it), so a big dungeon tests only the few
+  // shapes near a point
+  bucket(x, z) {
+    if (this.hashN !== this.shapes.length) {
+      this.hash = new Map(); this.hashN = this.shapes.length;
+      for (const s of this.shapes) {
+        const b = s.t === 'r' ? [s.x0, s.x1, s.z0, s.z1] : [s.x - s.r, s.x + s.r, s.z - s.r, s.z + s.r];
+        for (let i = Math.floor((b[0] - 9) / 8); i <= Math.floor((b[1] + 9) / 8); i++) {
+          for (let j = Math.floor((b[2] - 9) / 8); j <= Math.floor((b[3] + 9) / 8); j++) {
+            const k = i * 100003 + j;
+            let l = this.hash.get(k); if (!l) this.hash.set(k, (l = []));
+            l.push(s);
+          }
+        }
+      }
+    }
+    return this.hash.get(Math.floor(x / 8) * 100003 + Math.floor(z / 8)) || [];
   }
 
   // ---------- collision primitives (module-aware) ----------
@@ -136,7 +162,24 @@ export class World {
     this.cur.group.add(fog);
     for (const s of [-1, 1]) this.box(1.2, 5.5, 1.4, this.mats.stone, s * (width / 2 + 0.7), 2.75, z);
     this.box(width + 2.6, 1, 1.4, this.mats.stone, 0, 5.6, z);
-    this.gates[id] = { id, z, open, fog };
+    this.gates[id] = { id, x: 0, z, open, fog };
+    return this.gates[id];
+  }
+  // a gate anywhere (world coords) across a corridor that runs along x (alongX) or along z
+  // (one across an east-west corridor is seen side on: its south post stays low and there is no lintel, so it never
+  // stands between you and the camera)
+  gateAt(id, x, z, alongX, width = 6, open = true) {
+    const fh = alongX ? 3.2 : 4.5;
+    const fog = new THREE.Mesh(new THREE.PlaneGeometry(width + 0.4, fh), this.fogMat);
+    fog.position.set(x, fh / 2, z); fog.userData.noMerge = true;
+    if (alongX) fog.rotation.y = Math.PI / 2;
+    this.cur.group.add(fog);
+    for (const s of [-1, 1]) {
+      const o = s * (width / 2 + 0.7), h = alongX && s > 0 ? 1.1 : 5.5;
+      this.box(alongX ? 1.4 : 1.2, h, alongX ? 1.2 : 1.4, this.mats.stone, x + (alongX ? 0 : o), h / 2, z + (alongX ? o : 0));
+    }
+    if (!alongX) this.box(width + 2.6, 1, 1.4, this.mats.stone, x, 5.6, z);
+    this.gates[id] = { id, x, z, alongX, open, fog };
     return this.gates[id];
   }
   setGate(id, open, fogVisible = !open) {
@@ -146,8 +189,8 @@ export class World {
 
   walkable(x, z, r = 0, mod = null, ignoreGates = false) {
     for (const s of this.solids) if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) return false;
-    for (const s of this.shapes) {
-      if (mod !== null && s.mod !== mod) continue;
+    for (const s of this.bucket(x, z)) {
+      if (mod !== null && (typeof mod === 'number' ? s.mod !== mod : !mod.has(s.mod))) continue; // a module, or a set of them
       if (s.gate && !ignoreGates && !this.gates[s.gate].open) continue;
       if (s.t === 'r') { if (x >= s.x0 + r && x <= s.x1 - r && z >= s.z0 + r && z <= s.z1 - r) return true; }
       else if (Math.hypot(x - s.x, z - s.z) <= s.r - r) return true;
@@ -157,7 +200,7 @@ export class World {
 
   // footprint test used for terrain/borders (ignores gates and solids)
   area(x, z, m = 0) {
-    for (const s of this.shapes) {
+    for (const s of this.bucket(x, z)) {
       if (s.t === 'r') { if (x >= s.x0 + m && x <= s.x1 - m && z >= s.z0 + m && z <= s.z1 - m) return true; }
       else if (Math.hypot(x - s.x, z - s.z) <= s.r - m) return true;
     }
@@ -165,14 +208,21 @@ export class World {
   }
 
   // the terrain height at a point, as buildGround raises it (walls step up away from the walkable area)
-  groundY(x, z) {
-    const st = GROUND[this.moduleAt(z)?.ground] || GROUND.dirt;
+  groundY(x, z) { return this.heightAt(x, z, GROUND[this.styleAt(x, z)] || GROUND.dirt); }
+
+  styleAt(x, z) { return this.dungeon ? this.dungeon.styleAt(x, z) : this.moduleAt(x, z)?.ground; }
+
+  // terrain steps up away from the walkable area. In a dungeon (cutaway) anything just south of a walkable space
+  // (between it and the camera) stays one step high, so walls never hide you
+  heightAt(x, z, st) {
     if (this.area(x, z, -0.6)) return 0;
     if (st.void) return this.area(x, z, -1.6) ? -1.5 : -9;
     let h = 0;
     for (const mm of [-1.5, -3, -5, -8]) if (!this.area(x, z, mm)) h += 1;
+    if (this.cutaway && h > 1 && this.southOf(x, z)) h = 1;
     return h * (st.wall ? 1.1 : 0.55);
   }
+  southOf(x, z, k = 8) { for (let d = 1.5; d <= k; d += 1.5) if (this.area(x, z - d, 0)) return true; return false; }
 
   slowAt(x, z) {
     let f = 1;
@@ -200,18 +250,23 @@ export class World {
     return to;
   }
 
-  moduleAt(z) {
+  // moduleAt(x, z), or moduleAt(z) along a chain of modules
+  moduleAt(x, z) {
+    if (z === undefined) { z = x; x = 0; }
+    if (this.dungeon) return this.dungeon.modAt(x, z);
     for (const m of this.mods) if (z <= m.z0 && z > m.z1) return m;
     return z > 0 ? this.mods[0] : this.mods[this.mods.length - 1];
   }
 
   // ---------- terrain ----------
-  buildGround(m) {
-    const st = GROUND[m.ground] || GROUND.dirt;
-    const W = 76, L = m.len;
+  buildGround(m) { m.group.add(this.groundMesh(0, m.z0 - m.len / 2, 76, m.len, m.ground)); }
+
+  // a patch of terrain centred on (cx, cz), w × l metres
+  groundMesh(cx, cz, W, L, ground) {
+    const st = GROUND[ground] || GROUND.dirt;
     const g = new THREE.PlaneGeometry(W, L, W, Math.round(L));
     g.rotateX(-Math.PI / 2);
-    g.translate(0, 0, m.z0 - L / 2);
+    g.translate(cx, 0, cz);
     const pos = g.attributes.position;
     const col = new Float32Array(pos.count * 3);
     const w0 = new THREE.Color(st.walk[0]), w1 = new THREE.Color(st.walk[1]), o0 = new THREE.Color(st.out[0]), o1 = new THREE.Color(st.out[1]), c = new THREE.Color();
@@ -224,8 +279,7 @@ export class World {
         pos.setY(i, edge ? -1.5 : -9);
         c.copy(edge ? o1 : o0);
       } else {
-        let h = 0;
-        for (const mm of [-1.5, -3, -5, -8]) if (!this.area(x, z, mm)) h += 1;
+        const h = this.heightAt(x, z, st) / (st.wall ? 1.1 : 0.55);
         pos.setY(i, h * (st.wall ? 1.1 : 0.55) + n * 0.1 * h);
         c.copy(o0).lerp(o1, Math.max(0, 0.6 - h * 0.15) + n * 0.15);
       }
@@ -235,26 +289,28 @@ export class World {
     g.computeVertexNormals();
     const mesh = new THREE.Mesh(g, this.mats.ground);
     mesh.userData.noMerge = true;
-    m.group.add(mesh);
+    return mesh;
   }
 
-  scatterBorders(m) {
-    const style = m.ground;
+  scatterBorders(m) { this.scatter(m.ground, -32, 32, m.z1, m.z0); }
+
+  // rocks, trees and crypt blocks on the raised ground around the walkable area, in the box x0..x1, z0..z1
+  scatter(style, X0, X1, Z0, Z1) {
     if (style === 'chasm') {
       // jagged cliff teeth along ledge edges only
-      for (let x = -20; x <= 20; x += 1.5) for (let z = m.z0; z > m.z1; z -= 1.5) {
+      for (let x = Math.max(X0, -20 + (X0 + X1) / 2); x <= Math.min(X1, 20 + (X0 + X1) / 2); x += 1.5) for (let z = Z1; z > Z0; z -= 1.5) {
         if (this.area(x, z, -0.3) || !this.area(x, z, -1.8)) continue;
         if (this.rand() < 0.5) this.rock(x, z, 0.3 + this.rand() * 0.4, true);
       }
       return;
     }
-    for (let x = -32; x <= 32; x += 1.6) {
-      for (let z = m.z0 - 0.8; z > m.z1; z -= 1.6) {
+    for (let x = X0; x <= X1; x += 1.6) {
+      for (let z = Z1 - 0.8; z > Z0; z -= 1.6) {
         const jx = x + (this.rand() - 0.5) * 1.2, jz = z + (this.rand() - 0.5) * 1.2;
         if (this.area(jx, jz, -0.5)) continue;
-        if (Object.values(this.gates).some((g) => Math.abs(jz - g.z) < 5 && Math.abs(jx) < 7)) continue;
+        if (Object.values(this.gates).some((g) => Math.abs(jz - g.z) < 5 && Math.abs(jx - g.x) < 7)) continue;
         const near = this.area(jx, jz, -2.2), mid = this.area(jx, jz, -6);
-        const southOfPath = this.area(jx, jz - 4, -0.5) && !this.area(jx, jz + 4, -0.5);
+        const southOfPath = this.cutaway ? this.southOf(jx, jz, 10) : this.area(jx, jz - 4, -0.5) && !this.area(jx, jz + 4, -0.5);
         const p = this.rand();
         if (style === 'crypt') {
           if (near && p < 0.5) this.box(1.6, southOfPath ? 0.8 : 3.5 + this.rand() * 1.5, 1.6, this.mats.stoneDark, jx, null, jz);
@@ -455,7 +511,7 @@ export class World {
   update(dt, time, fx, focus) {
     this.fogMat.uniforms.uT.value = time;
     updateAmbient(this, dt, time, fx, focus);
-    const near = (o) => !focus || Math.abs(o.z - focus.z) < 40;
+    const near = (o) => !focus || (Math.abs(o.z - focus.z) < 40 && Math.abs(o.x - focus.x) < 40);
     for (const f of this.fires) {
       if ((f.cond && !f.cond()) || !near(f)) continue;
       if (Math.random() < dt * 30 * f.scale) {
@@ -470,7 +526,11 @@ export class World {
       if (Math.random() < dt * 5) fx.ember({ x: b.x, y: 0.8, z: b.z });
     }
     // module culling: only the current module and its neighbours are drawn
-    if (focus) {
+    if (focus && this.dungeon) {
+      // a dungeon: chambers and terrain tiles near you
+      for (const m of this.mods) m.group.visible = Math.abs(m.cx - focus.x) < 46 + (m.r || 0) && Math.abs(m.cz - focus.z) < 46 + (m.r || 0);
+      for (const t of this.tiles) t.group.visible = Math.abs(t.x - focus.x) < 44 && Math.abs(t.z - focus.z) < 44;
+    } else if (focus) {
       const cur = this.moduleAt(focus.z).i;
       for (const m of this.mods) m.group.visible = Math.abs(m.i - cur) <= 1;
     }

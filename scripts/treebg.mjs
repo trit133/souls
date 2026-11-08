@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
-await page.goto('http://localhost:4173/'); await page.waitForTimeout(800);
+await page.goto('http://localhost:4173/?chain'); await page.waitForTimeout(800);
 for (const k of ['knight', 'rogue', 'mage']) {
   await page.evaluate((k) => { game.treeUI.open(k); game.treeUI.fit(); game.treeUI.applyView(); }, k);
   await page.waitForTimeout(1500);

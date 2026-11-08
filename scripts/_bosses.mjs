@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
-await page.goto('http://localhost:4173/'); await page.waitForTimeout(800);
+await page.goto('http://localhost:4173/?chain'); await page.waitForTimeout(800);
 await page.evaluate(() => { document.getElementById('hud').style.display = 'none'; game.loop = () => {}; game.start('knight'); game.audio.play = () => {};
   game.buildRun(['camp', 'mini:hask', 'mini:vael', 'mini:gorrath', 'ruins', 'bridge', 'village', 'crypt', 'bog', 'gate', 'boss']); game.input.move = () => ({ x: 0, y: 0 }); });
 const shots = [['grunt'], ['spear'], ['archer'], ['brute'], ['hask'], ['vael'], ['gorrath'], ['varek']];

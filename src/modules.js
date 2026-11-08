@@ -170,6 +170,43 @@ function arenaRing(w, Z, cx, cd, r, gapS, gapN) {
   }
 }
 
+// the fight's own furniture round a mini boss arena centred on (cx, cz): braziers that light when the fight starts,
+// and the theme's centrepieces (the block, the fountain, the anvils)
+export function arenaFurnish(w, theme, cx, cz, enc) {
+  const fire = theme === 'cloister' ? { color: 0x8ab4ff, cold: true } : {};
+  for (const [x, z] of [[-9, 8], [9, 8], [-9, -8], [9, -8]]) w.brazier(cx + x, cz + z, { cond: () => enc.active, power: 14, ...fire });
+  if (theme === 'pit') {
+    w.box(1.6, 0.8, 1.0, w.mats.wood, cx, 0.4, cz - 7.5); w.ob(cx, cz - 7.5, 0.8);
+    for (const [x, z] of [[-6, -9], [6, -9.5], [-11, 0], [11, 0]]) {
+      w.cyl(0.08, 0.1, 2.4, w.mats.logDark, cx + x, 1.2, cz + z, 5);
+      w.box(0.28, 0.28, 0.28, w.mats.bone, cx + x, 2.5, cz + z);
+    }
+  } else if (theme === 'cloister') {
+    // moonlit garden ring: low hedges and a dry fountain
+    w.cyl(1.6, 1.8, 0.6, w.mats.stone, cx, 0.3, cz - 6); w.ob(cx, cz - 6, 1.8);
+    w.cyl(0.25, 0.3, 1.6, w.mats.stone, cx, 0.8, cz - 6);
+    for (const [x, z] of [[-10.5, 4], [10.5, 4], [-10.5, -4], [10.5, -4]]) w.box(0.9, 0.8, 3, w.mats.leaf, cx + x, 0.4, cz + z);
+  } else {
+    // forge: anvils, slag heaps, glowing coals
+    for (const [x, z] of [[-6, -7], [6, 7]]) { w.box(1.2, 0.7, 0.6, w.mats.metal, cx + x, 0.35, cz + z); w.ob(cx + x, cz + z, 0.7); }
+    for (const [x, z] of [[-10.5, 2], [10.5, -3], [5, -9]]) { w.rock(cx + x, cz + z, 0.9, true, true); w.fires.push({ x: cx + x, z: cz + z, y: 0.4, scale: 0.5 }); }
+  }
+}
+
+// a ring of standing stones round an arena, open at the given angles (radians, 0 = +x, PI/2 = north); stones on the
+// south side (toward the camera) stay low
+export function stoneRing(w, cx, cz, r, gaps = []) {
+  const n = Math.round(r * 1.2);
+  for (let i = 0; i < n; i++) {
+    const a = i / n * PI * 2;
+    if (gaps.some((g) => Math.abs(Math.atan2(Math.sin(a - g), Math.cos(a - g))) < 0.36)) continue;
+    const px = cx + Math.cos(a) * (r + 0.9), pz = cz - Math.sin(a) * (r + 0.9);
+    const south = pz > cz + r * 0.2;
+    const h = south ? 0.8 + w.rand() * 0.5 : (i % 3 === 0 ? 1.5 + w.rand() : 4 + w.rand() * 2.5);
+    w.cyl(0.55, 0.65, h, w.mats.stone, px, h / 2, pz);
+  }
+}
+
 // Mini boss arena: fog in, fight, fog out, then a short alcove. `theme` picks decor.
 function miniArena(bossId, name, ground, theme) {
   return {
@@ -186,24 +223,7 @@ function miniArena(bossId, name, ground, theme) {
       arenaRing(w, Z, 0, 24, 13, true, true);
       const enc = { id: 'mini' + mod.i, kind: 'mini', bossId, arena: { x: 0, z: Z(24), r: 13 }, gateIn: 'in' + mod.i, gateOut: 'out' + mod.i, mod: mod.i, active: false, defeated: false };
       w.encounters.push(enc);
-      const fire = theme === 'cloister' ? { color: 0x8ab4ff, cold: true } : {};
-      for (const [x, d] of [[-9, 16], [9, 16], [-9, 32], [9, 32]]) w.brazier(x, Z(d), { cond: () => enc.active, power: 14, ...fire });
-      if (theme === 'pit') {
-        w.box(1.6, 0.8, 1.0, w.mats.wood, 0, 0.4, Z(31.5)); w.ob(0, Z(31.5), 0.8);
-        for (const [x, d] of [[-6, 33], [6, 33.5], [-11, 24], [11, 24]]) {
-          w.cyl(0.08, 0.1, 2.4, w.mats.logDark, x, 1.2, Z(d), 5);
-          w.box(0.28, 0.28, 0.28, w.mats.bone, x, 2.5, Z(d));
-        }
-      } else if (theme === 'cloister') {
-        // moonlit garden ring: low hedges and a dry fountain
-        w.cyl(1.6, 1.8, 0.6, w.mats.stone, 0, 0.3, Z(30)); w.ob(0, Z(30), 1.8);
-        w.cyl(0.25, 0.3, 1.6, w.mats.stone, 0, 0.8, Z(30));
-        for (const [x, d] of [[-10.5, 20], [10.5, 20], [-10.5, 28], [10.5, 28]]) w.box(0.9, 0.8, 3, w.mats.leaf, x, 0.4, Z(d));
-      } else {
-        // forge: anvils, slag heaps, glowing coals
-        for (const [x, d] of [[-6, 31], [6, 17]]) { w.box(1.2, 0.7, 0.6, w.mats.metal, x, 0.35, Z(d)); w.ob(x, Z(d), 0.7); }
-        for (const [x, d] of [[-10.5, 22], [10.5, 27], [5, 33]]) { w.rock(x, Z(d), 0.9, true, true); w.fires.push({ x, z: Z(d), y: 0.4, scale: 0.5 }); }
-      }
+      arenaFurnish(w, theme, 0, Z(24), enc);
       decorateArena(w, theme, 0, Z(24), 13, enc);
       w.rock(-5, Z(44), 0.7); w.rock(5, Z(48), 0.6);
     },
