@@ -1,3 +1,4 @@
+// Screenshots of the three skill tree backgrounds: node scripts/treebg.mjs -> /tmp/look/tbg-<kind>.png
 import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
