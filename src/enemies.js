@@ -1,3 +1,4 @@
+import { NUM } from './scale.js';
 import { comboHold, tickHold, HOLD_BURST } from './hold.js';
 import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
@@ -173,6 +174,8 @@ export const ELITE = {
   armoured: { color: 0x9ab8d8, rgb: [0.6, 0.75, 0.9], name: 'Armoured' },
   blazing: { color: 0xff8a1a, rgb: [1, 0.55, 0.1], name: 'Blazing' },
 };
+
+for (const T of Object.values(TYPES)) T.hp *= NUM; // (see scale.js)
 
 export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {

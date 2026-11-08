@@ -1,3 +1,4 @@
+import { NUM } from './scale.js';
 import { icon } from './icons.js';
 import { STATUS } from './status.js';
 const STATUS_ICON = { bleed: 'bleed', fire: 'fire', frost: 'frost', poison: 'poison' };
@@ -37,7 +38,7 @@ export class UI {
   show(id, v = true) { $(id).classList.toggle('hidden', !v); }
 
   setMaxHp(hp, st) {
-    document.querySelector('.bar.hp').style.width = Math.min(100, hp / 1.6) + '%';
+    document.querySelector('.bar.hp').style.width = Math.min(100, hp / 1.6 / NUM) + '%';
     document.querySelector('.bar.st').style.width = Math.min(100, st / 1.3) + '%';
   }
 

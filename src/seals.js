@@ -7,11 +7,12 @@
 //            seconds until all three are broken
 // The host (or a solo player) runs them and tells the party: 'seal' messages (event started, progress, broken) and
 // 'rsv' for each enemy called in (they were built with the dungeon and wait off stage, so ids match everywhere).
+import { NUM } from './scale.js';
 import * as THREE from 'three';
 import { SEALS_NEEDED } from './dungeon.js';
 
 const HOLD_TIME = 30, WAVES = [0, 7, 14, 21], ALTAR_EVERY = 5;
-export const SEAL_BONUS = 8; // gold for each seal past the third
+export const SEAL_BONUS = 8 * NUM; // gold for each seal past the third
 
 export class Seals {
   constructor(game) {
@@ -50,7 +51,7 @@ export class Seals {
       } else if (d.kind === 'altar') {
         const eff = d.effigies.map((sp) => sp.enemy);
         if (s.state === 'idle' && (this.playersNear(d.x, d.z, 10) || eff.some((e) => e.hp < e.maxHp))) this.start(s);
-        if (s.state === 'active' && (s.spawnT -= dt) <= 0) { s.spawnT = ALTAR_EVERY; this.callIn(s, 2, true); }
+        if (s.state === 'active' && (s.spawnT -= dt) <= 0) { s.spawnT = ALTAR_EVERY; this.callIn(s, 2, true); } // (until its 8 / 10 / 12 are out)
         if (eff.every((e) => !e.alive)) this.breakSeal(s);
       } else {
         const inside = this.playersNear(d.x, d.z, d.radius);
@@ -58,7 +59,7 @@ export class Seals {
         if (s.state !== 'active') continue;
         s.prog = inside ? s.prog + dt : Math.max(0, s.prog - dt * 0.25);
         const due = WAVES.filter((t) => s.prog >= t).length;
-        while (s.waves < due) { s.waves++; this.callIn(s, 3, false); }
+        while (s.waves < due) { s.waves++; this.callIn(s, 2 + this.world.dungeon.players, false); } // 3 / 4 / 5 a wave by party size
         if (s.prog >= HOLD_TIME) this.breakSeal(s);
         else if (this.sendT <= 0 && g.mp.active) g.mp.sendAll({ t: 'seal', i: d.i, s: 'p', p: Math.round(s.prog * 10) / 10 });
       }

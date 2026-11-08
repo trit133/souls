@@ -8,6 +8,7 @@
 // don't stagger or knock the player out of it.
 // A combo staggers each enemy at most once.
 // Inputs: 'attack' (R1), 'heavy' (R2), 'roll'. A step's move: an attack key, 'roll' (roll or backstep) or 'bolt'.
+import { NUM } from './scale.js';
 export const COMBO_WINDOW = 0.18;
 export const FAST = 1.15; // moves in a 4-move combo play this much faster
 
@@ -185,14 +186,14 @@ export function comboMoves(kind, base) {
         [0.34, { torso: [0.3, 0, 0], armR: [-0.4, 0, -1.4], foreR: [0, 0, 0], armL: [-0.4, 0, 1.4], foreL: [0, 0, 0], ...crouch(1.1) }],
         [0.6, { torso: [0.2, 0, 0], armR: [-0.5, 0, -1.1], armL: [-0.5, 0, 1.1], ...crouch(0.8) }],
       ],
-      onTime: [{ t: 0.32, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1)); g.comboBlast(p, 3.2, 34, 18, 'frost'); } }],
+      onTime: [{ t: 0.32, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1)); g.comboBlast(p, 3.2, 34 * NUM, 18, 'frost'); } }],
       finisher: 'Arc Step',
     },
     // Glacial Lance: (bolt, a cut) a fan of three ice lances
     sLances: {
       dur: 0.7, cost: 18, mana: 16, comboMove: true, track: 0.2, sfx: [0.26, 'bow'], cancel: 0.46,
       keys: [[0.16, { torso: [-0.1, -0.5, 0], armR: [-2.6, 0, -0.2], foreR: [0, 0, 0], handR: [1.5, 0, 0], legL: [-0.35, 0, 0], legR: [0.3, 0, 0] }], castPose(0.28), castPose(0.55)],
-      onTime: [{ t: 0.27, fn: (p, g) => { for (const s of [-0.22, 0, 0.22]) g.spawnSpell(p, 'bolt', s, 14); g.vfx('lanceFan', front(p, 1.0, 1.25)); } }],
+      onTime: [{ t: 0.27, fn: (p, g) => { for (const s of [-0.22, 0, 0.22]) g.spawnSpell(p, 'bolt', s, 14 * NUM); g.vfx('lanceFan', front(p, 1.0, 1.25)); } }],
       finisher: 'Glacial Lance',
     },
     // Shatter: (a cut, a bolt) a rune strike that detonates the frost

@@ -1,5 +1,6 @@
 // Skill tree screen: the selected character's web drawn in SVG. Hover (or tap) a node to see what it
 // gives; buy it from the tooltip. Drag to pan, wheel / pinch / buttons to zoom.
+import { NUM } from './scale.js';
 import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
 import { CHARS } from './player.js';
 import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
@@ -11,9 +12,9 @@ import { keyLabel } from './settings.js';
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const THEME = { knight: '#9ab4e8', rogue: '#e05a48', mage: '#b48aff' };
-const MAGE_UNLOCK = 100;
+const MAGE_UNLOCK = 100 * NUM;
 // light-hit damage each character's weapon starts from (Knight first swing, Rogue first stab, Spellsword knife)
-const LIGHT = { knight: 22, rogue: 16, mage: 11 };
+const LIGHT = { knight: 22 * NUM, rogue: 16 * NUM, mage: 11 * NUM };
 // stats the panel shows in its own sections; everything else is listed under the character
 const SHOWN = new Set(['hp', 'hpPct', 'st', 'stPct', 'flask', 'potion', 'move', 'aspd', 'armor', 'evolved',
   ...TYPES.flatMap((k) => [k + 'Dmg', k + 'Pct']), ...['fire', 'bleed', 'poison', 'frost'].map((k) => k + 'Res')]);

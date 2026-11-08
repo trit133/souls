@@ -1,3 +1,4 @@
+import { NUM } from './scale.js';
 import { comboHold, tickHold, HOLD_BURST } from './hold.js';
 import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
@@ -646,3 +647,6 @@ Object.assign(BOSSES, {
     model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true, kit: 'gorrath' },
   },
 });
+
+// every boss's health at the game's number size (see scale.js); last, once all of them are defined
+for (const B of Object.values(BOSSES)) B.hp *= NUM; // (see scale.js)

@@ -5,6 +5,7 @@
 // own: Knight physical, Rogue bleed, Spellsword frost), resistances to the four elements and the Knight's armour
 // are spread through it. The evolution sits 6 rings out; 3 rune sockets sit at ring 10 (empty for now). A node
 // can be bought when it touches one you own; price grows with the ring.
+import { NUM } from './scale.js';
 import { UPGRADES, upgradeCost } from './progress.js';
 import { LAYOUT } from './treelayout.js';
 import { COST_V5 } from './treecost-v5.js';
@@ -407,12 +408,15 @@ function typedNodes(kind, nodes) {
 }
 
 export const TREES = { knight: build('knight'), rogue: build('rogue'), mage: build('mage') };
+// flat health and flat damage per hit are NUM times bigger (scale.js); the give objects are shared, so copy them
+const FLAT = ['hp', 'physDmg', 'fireDmg', 'bleedDmg', 'poisonDmg', 'frostDmg'];
+for (const t of Object.values(TREES)) for (const n of t.nodes.values()) if (n.give && FLAT.some((k) => n.give[k])) n.give = Object.fromEntries(Object.entries(n.give).map(([k, v]) => [k, FLAT.includes(k) ? v * NUM : v]));
 
 export function nodeCost(n) {
   if (n.role === 'start') return 0;
-  if (n.role === 'evo') return 150;
+  if (n.role === 'evo') return 150 * NUM;
   const c = COST[Math.min(n.ring, COST.length - 1)];
-  return n.role === 'socket' ? Math.round(c * 1.5) : c;
+  return (n.role === 'socket' ? Math.round(c * 1.5) : c) * NUM;
 }
 
 export function neighbours(tree, id) {
@@ -488,6 +492,7 @@ export function migrateTree(data) {
   let refund = 0;
   for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costOld(v, kind, id);
   data.tree = {};
+  refund *= NUM; // old prices, in today's bigger gold
   data.gold = (data.gold || 0) + refund;
   data.treeV = TREE_VERSION;
   return refund;
@@ -503,6 +508,7 @@ export function migrateUpgrades(data) {
     for (let i = 0; i < lv; i++) refund += upgradeCost(u, i) || 0;
     if (data.upgrades) delete data.upgrades[u.key];
   }
+  refund *= NUM; // old prices, in today's bigger gold
   data.gold = (data.gold || 0) + refund;
   data.tree = data.tree || {};
   data.treeMigrated = true;

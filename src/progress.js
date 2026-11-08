@@ -1,9 +1,10 @@
 // Meta-progression rules: gold, cash-out multipliers, enemy tiers, permanent upgrades.
+import { NUM } from './scale.js';
 
 // Kills pay into the room's pot, which is banked into the run when the room is cleared.
-export const enemyGold = (type) => (type === 'brute' ? 3 : 1);
-export const MINI_GOLD = [15, 20, 25]; // by order of mini boss kills
-export const BOSS_GOLD = 30;
+export const enemyGold = (type) => (type === 'brute' ? 3 : 1) * NUM;
+export const MINI_GOLD = [15, 20, 25].map((g) => g * NUM); // by order of mini boss kills
+export const BOSS_GOLD = 30 * NUM;
 
 // Gold is kept per section of the run (start → 1st mini, → 2nd mini, → 3rd mini, → Varek),
 // and each section only ever gets its own multiplier.

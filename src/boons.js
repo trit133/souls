@@ -1,8 +1,9 @@
+import { NUM } from './scale.js';
 import { STATUS, STATUS_KEYS } from './status.js';
 
 // Power-ups offered after each mini boss. All stack; levels track repeat picks.
 export const BOONS = {
-  vigor: { name: 'Vigor', tag: '+HP', color: '#c84a3a', desc: () => '+25 max health (and heals 25).', apply: (p) => { p.maxHp += 25; p.hp = Math.min(p.maxHp, p.hp + 25); } },
+  vigor: { name: 'Vigor', tag: '+HP', color: '#c84a3a', desc: () => `+${25 * NUM} max health (and heals ${25 * NUM}).`, apply: (p) => { p.maxHp += 25 * NUM; p.hp = Math.min(p.maxHp, p.hp + 25 * NUM); } },
   endurance: { name: 'Endurance', tag: '+STA', color: '#4f9a4a', desc: () => '+15 max stamina.', apply: (p) => { p.maxSt += 15; p.st = Math.min(p.maxSt, p.st + 15); } },
   might: { name: 'Might', tag: 'DMG', color: '#d8b04a', desc: () => '+15% damage on every attack.', apply: (p) => { p.dmgMul += 0.15; } },
   evasion: { name: 'Fleetfoot', tag: 'ROLL', color: '#9ab0c8', desc: () => '+15% roll and backstep distance.', apply: (p) => { p.rollMul += 0.15; } },

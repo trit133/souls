@@ -1,3 +1,4 @@
+import { NUM } from './scale.js';
 import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
@@ -167,13 +168,13 @@ const MANA_BOLT = 8, MANA_FIRE = 75;
 
 export const CHARS = {
   knight: {
-    hp: 150, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
+    hp: 150 * NUM, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
     roll: { dur: 0.6, dist: 4.6, iframes: [0.03, 0.4], cost: 22 },
     attacks: KNIGHT_ATTACKS, light: 'k1', critDmg: 110, trail: 0xdfe8ff,
     model: { cloth: 0x2c3e66, armor: 0x8d939c, accent: 0x2d4a7a, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08, kit: 'knight' },
   },
   rogue: {
-    hp: 105, st: 85, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',
+    hp: 105 * NUM, st: 85, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',
     roll: { dur: 0.5, dist: 4.9, iframes: [0.02, 0.4], cost: 16 },
     attacks: ROGUE_ATTACKS, light: 'r1', critDmg: 170, trail: 0xffd0a0, dual: true,
     model: { cloth: 0x2e2a28, armor: 0x4a3a2c, accent: 0x9a2a22, skin: 0xc49a7a, head: 'none', weapon: 'daggers', bulk: 0.95, kit: 'rogue' },
@@ -181,7 +182,7 @@ export const CHARS = {
 };
 
 CHARS.mage = {
-  hp: 95, st: 85, walk: 4.6, sprint: 7.0, flasks: 4, style: 'daggers', caster: true, dual: true,
+  hp: 95 * NUM, st: 85, walk: 4.6, sprint: 7.0, flasks: 4, style: 'daggers', caster: true, dual: true,
   roll: { dur: 0.55, dist: 4.6, iframes: [0.03, 0.4], cost: 18 },
   attacks: MAGE_ATTACKS, light: 's1', critDmg: 130, trail: 0x8ab4ff, meleeRate: 0.8, // knife swings 20% slower
   model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'none', weapon: 'spellknife', bulk: 0.9, kit: 'mage' },
@@ -614,7 +615,7 @@ export class Player extends Actor {
         if (!this.ripHit && rt >= C.hitAt && tg) {
           this.ripHit = true;
           // parry crits hit like three light attacks (more against bosses); others use their own number
-          this.game.riposteHit(this, tg, C.dmg * (tg.isBoss ? C.bossMul || 1 : 1), C.flatHits || 1);
+          this.game.riposteHit(this, tg, C.dmg * NUM * (tg.isBoss ? C.bossMul || 1 : 1), C.flatHits || 1);
         }
         if (rt >= C.dur) this.endCrit();
         break;
@@ -963,7 +964,7 @@ export class Player extends Actor {
     const A = info.attacker;
     if (this.state === 'parry' && A?.parryMark && A.parryMark.h === info.hit && (A.puppet || A.parryMark.atk === A.atk)) { A.parryMark = null; return 'parry'; }
     if (this.blocking && facing && !info.unblockable) {
-      const cost = info.dmg * (info.knock === 'heavy' ? 1.6 : 1.15);
+      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15); // stamina isn't scaled
       this.st -= cost; this.stDelay = 0.6;
       this.lastBlockT = this.game.time;
       this.blockHitT = 0.25;
@@ -985,7 +986,7 @@ export class Player extends Actor {
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
-    if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30)) {
+    if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30 * NUM)) {
       this.kb.copy(away).multiplyScalar(11);
       this.yaw = toSrc;
       this.setState('knockdown');

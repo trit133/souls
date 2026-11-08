@@ -36,8 +36,9 @@ function shuffle(a, r) { for (let i = a.length - 1; i > 0; i--) { const j = Math
 
 export class Dungeon {
   // act 0..2, bossId: the mini boss waiting at the end
-  constructor(seed, act, bossId) {
-    this.seed = seed; this.act = act; this.bossId = bossId; this.def = ACTS[act];
+  // players: party size (seal guards and events grow with it)
+  constructor(seed, act, bossId, players = 1) {
+    this.seed = seed; this.act = act; this.bossId = bossId; this.players = Math.max(1, players); this.def = ACTS[act];
     this.plan(rng(mix(seed * 7 + act * 1013 + 11)));
   }
 
@@ -347,7 +348,7 @@ export class Dungeon {
       if (c.seal === 'elite') {
         const base = this.act > 0 && r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']);
         S.guards.push(add(base, { elite: c.trait, near: true }));
-        for (let k = 0; k < 3; k++) S.guards.push(add(regular(true)));
+        for (let k = 0; k < 2 + this.players; k++) S.guards.push(add(regular(true))); // 3 more with the elite, +1 a player
       } else if (c.seal === 'altar') {
         // three cursed effigies round the shrine; enemies pour out of it until they fall
         for (let k = 0; k < 3; k++) {
@@ -358,11 +359,11 @@ export class Dungeon {
           w.spawn('effigy', ex, ez, Math.atan2(S.x - ex, S.z - ez), { effigy: true });
           S.effigies.push(w.spawns[w.spawns.length - 1]);
         }
-        for (let k = 0; k < 8; k++) { w.spawn(regular(true), S.x, S.z, 0, { reserve: true, event: true }); S.reserves.push(w.spawns[w.spawns.length - 1]); }
+        for (let k = 0; k < 6 + 2 * this.players; k++) { w.spawn(regular(true), S.x, S.z, 0, { reserve: true, event: true }); S.reserves.push(w.spawns[w.spawns.length - 1]); }
         add(regular(true));
       } else {
         // hold the circle: waves come in from the edges
-        for (let k = 0; k < 12; k++) { w.spawn(regular(true), S.x, S.z, 0, { reserve: true, event: true }); S.reserves.push(w.spawns[w.spawns.length - 1]); }
+        for (let k = 0; k < 4 * (2 + this.players); k++) { w.spawn(regular(true), S.x, S.z, 0, { reserve: true, event: true }); S.reserves.push(w.spawns[w.spawns.length - 1]); }
       }
       return;
     }

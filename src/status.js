@@ -1,6 +1,7 @@
 // Elden Ring-style status buildup. Elemental damage adds buildup to a meter (enemies show an icon while a status
 // is building, players see theirs over the health bar); when the meter passes the threshold the effect procs and
 // the meter resets. After its first proc, a status takes twice the buildup on that enemy or player.
+import { NUM } from './scale.js';
 
 export const STATUS = {
   bleed: { name: 'Bleed', color: '#c0262a', rgb: [0.85, 0.08, 0.08], desc: 'Bleed damage builds it up. When full: a burst of blood dealing a big chunk of max HP.' },
@@ -12,10 +13,10 @@ export const STATUS_KEYS = Object.keys(STATUS);
 
 // fraction of max HP (normal enemies / bosses) + flat
 const FX = {
-  bleed: { pct: 0.15, bossPct: 0.08, flat: 45 },
-  frost: { pct: 0.1, bossPct: 0.06, flat: 25, slowDur: 6, slow: 0.65 },
-  poison: { dur: 10, pct: 0.2, bossPct: 0.1, flat: 60 },
-  fire: { dur: 3.5, pct: 0.25, bossPct: 0.105, flat: 50 },
+  bleed: { pct: 0.15, bossPct: 0.08, flat: 45 * NUM },
+  frost: { pct: 0.1, bossPct: 0.06, flat: 25 * NUM, slowDur: 6, slow: 0.65 },
+  poison: { dur: 10, pct: 0.2, bossPct: 0.1, flat: 60 * NUM },
+  fire: { dur: 3.5, pct: 0.25, bossPct: 0.105, flat: 50 * NUM },
 };
 // on players: share of max HP
 const PFX = {

@@ -4,14 +4,16 @@
 // each hit's physical damage as their element. Enemies: an `elems` share of their hit is elemental (taken out
 // of the physical, so the total stays the same). On players, armour (Knight) cuts physical damage, and each 1%
 // of an element's resistance cuts its build-up by 1% and its damage by 0.5%.
+import { NUM } from './scale.js';
 export const TYPES = ['phys', 'fire', 'bleed', 'poison', 'frost'];
 export const ELEMS = ['bleed', 'fire', 'frost', 'poison'];
 export const TYPE_NAME = { phys: 'Physical', fire: 'Fire', bleed: 'Bleed', poison: 'Poison', frost: 'Frost' };
 export const TYPE_COLOR = { phys: '#ffffff', fire: '#ff8a2a', bleed: '#e8343c', poison: '#8ad848', frost: '#9ad8ff' };
 
-export const BUILD_PER_DMG = 3.5; // a player's melee: status build-up per point of elemental damage
-export const SPELL_BUILD = 1.5; // spells are all one element, so they build less per point
-export const ENEMY_BUILD = 4; // enemies' hits on players
+// (per point of damage: damage is NUM times bigger, the meters are not)
+export const BUILD_PER_DMG = 3.5 / NUM; // a player's melee: status build-up per point of elemental damage
+export const SPELL_BUILD = 1.5 / NUM; // spells are all one element, so they build less per point
+export const ENEMY_BUILD = 4 / NUM; // enemies' hits on players
 export const RES_CAP = 50, ARMOR_CAP = 20;
 
 // Infusion share of physical damage added as the element: 15% for the first, +8% for each more
@@ -50,10 +52,10 @@ export function mitigate(parts, tree = {}, buildMul = 1) {
   return { taken, build, total: sumParts(taken) };
 }
 
-// which elements show on the weapon: at least 1.5 of that element on a light hit
-export function weaponElems(tree, statusLv, base = 15) {
+// which elements show on the weapon: at least 1.5 (× NUM) of that element on a light hit
+export function weaponElems(tree, statusLv, base = 15 * NUM) {
   const p = playerParts(tree, statusLv, base);
-  return ELEMS.filter((k) => (p[k] || 0) >= 1.5).join('+');
+  return ELEMS.filter((k) => (p[k] || 0) >= 1.5 * NUM).join('+');
 }
 
 // regular enemies carrying an element, by part of the run (mini bosses passed): chance, then the chance of a

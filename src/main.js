@@ -1,3 +1,4 @@
+import { NUM, migrateNumbers } from './scale.js';
 import { PixelPass, PIXEL_H } from './pixel.js';
 import * as THREE from 'three';
 import './style.css';
@@ -23,7 +24,7 @@ import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
-const FULL_CLEAR_GOLD = 20, FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
+const FULL_CLEAR_GOLD = 20 * NUM, FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
 import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
 import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
 import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems, mitigate } from './damage.js';
@@ -44,8 +45,8 @@ const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const MANA_PER_HIT = 10;
 // player spells: little blue bolts, and exploding fireballs (bigger once evolved)
 const SPELLS = {
-  bolt: { dmg: 8, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 0, noKnock: true },
-  fire: { dmg: 120, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 69, aoe: 3 },
+  bolt: { dmg: 8 * NUM, speed: 17, life: 1.3, r: 0.35, size: 0.2, color: 0x5ab0ff, poise: 0, noKnock: true },
+  fire: { dmg: 120 * NUM, speed: 12, life: 1.6, r: 0.7, size: 0.5, color: 0xff7a1a, poise: 69, aoe: 3 },
 };
 
 
@@ -222,7 +223,7 @@ class Game {
   buildAct(n) {
     this.act = n;
     const seed = this.runSeed + n * 7919;
-    this.buildLevel(n < 3 ? { dungeon: new Dungeon(seed, n, this.run.minis[n]) } : ['gate', 'boss'], seed, this.runPlayers);
+    this.buildLevel(n < 3 ? { dungeon: new Dungeon(seed, n, this.run.minis[n], this.runPlayers) } : ['gate', 'boss'], seed, this.runPlayers);
   }
 
   buildLevel(layout, seed, players) {
@@ -646,6 +647,8 @@ class Game {
     this.loadSettings();
     const A = this.accounts;
     // the old upgrade shop became skill trees: its spending comes back once as gold
+    // gold from before the numbers grew ×10 (scale.js): first, so later refunds are already in the new size
+    if (A.user && A.data && migrateNumbers(A.data)) A.save();
     if (A.user && A.data && !A.data.treeMigrated) {
       const back = migrateUpgrades(A.data);
       A.save();
@@ -692,7 +695,7 @@ class Game {
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
     else if (!e.effigy) this.creditKill(e);
     // in a dungeon there are many more enemies: most drop nothing, brutes and elites always do
-    let n = !this.world.dungeon ? enemyGold(e.type) : e.effigy ? 0 : e.elite ? 3 : e.type === 'brute' ? 2 : Math.random() < 0.4 ? 1 : 0;
+    let n = !this.world.dungeon ? enemyGold(e.type) : (e.effigy ? 0 : e.elite ? 3 : e.type === 'brute' ? 2 : Math.random() < 0.4 ? 1 : 0) * NUM;
     if (this.night && n && Math.random() < 0.5) n *= 2; // Night Raid: half the drops are doubled
     this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
     if (n) this.statusPopup(e, `+${n}`, '#a89060');
@@ -1109,8 +1112,8 @@ class Game {
 
   // ---------- combat resolution ----------
   resolveHit(att, tg, h, def) {
-    const info = {
-      dmg: h.dmg, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att, hit: h,
+    const info = { // (moves are written at the old size: scale.js)
+      dmg: h.dmg * NUM, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att, hit: h,
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
     if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
@@ -1270,10 +1273,10 @@ class Game {
     const push = (e.isBoss ? 4 : e.type === 'brute' ? 7 : 12) * (1 + (p.tree?.chargeKb || 0) / 100);
     const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
     if (e.puppet) {
-      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * p.dmgMul, poise: 12, kb: [dir.x * push, dir.z * push] });
-      e.hp = Math.max(1, e.hp - 10 * p.dmgMul); e.hpShow = 4;
+      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * NUM * p.dmgMul, poise: 12, kb: [dir.x * push, dir.z * push] });
+      e.hp = Math.max(1, e.hp - 10 * NUM * p.dmgMul); e.hpShow = 4;
     } else {
-      const r = e.receive({ dmg: 10 * p.dmgMul, poise: 12, srcPos: p.pos, attacker: p, noKnock: true });
+      const r = e.receive({ dmg: 10 * NUM * p.dmgMul, poise: 12, srcPos: p.pos, attacker: p, noKnock: true });
       if (r !== 'none') e.kb.copy(dir).multiplyScalar(push);
     }
     this.vfx('bash', hp, dir.clone());
@@ -1365,7 +1368,7 @@ class Game {
     mesh.position.copy(from);
     mesh.lookAt(from.clone().add(dir));
     this.scene.add(mesh);
-    this.addProj({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * e.dmgScale, elems: e.elems });
+    this.addProj({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * NUM * e.dmgScale, elems: e.elems });
   }
 
   spawnFireWave(b, off) {
@@ -1373,7 +1376,7 @@ class Game {
     for (const a of [-0.3, 0, 0.3]) {
       const d = f.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
       const pos = new THREE.Vector3(b.pos.x + f.x * off, 0.3, b.pos.z + f.z * off);
-      this.addProj({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * b.dmgScale, mesh: null, elems: { fire: 0.4 } });
+      this.addProj({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * NUM * b.dmgScale, mesh: null, elems: { fire: 0.4 } });
     }
     this.audio.play('fire');
   }
@@ -1387,7 +1390,7 @@ class Game {
     const dir = to.clone().sub(from).normalize();
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
     mesh.position.copy(from); this.scene.add(mesh);
-    this.addProj({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * b.dmgScale, knock: 'heavy', elems: b.elems, buildMul: b.elemBuild });
+    this.addProj({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * NUM * b.dmgScale, knock: 'heavy', elems: b.elems, buildMul: b.elemBuild });
     this.audio.play('heavySwing', 1);
   }
 
@@ -1476,7 +1479,7 @@ class Game {
 
   spawnFireRing(x, z, maxR, dur, dmg) {
     if (this.mp.active) this.mp.sendAll({ t: 'ring', x, z, maxR, dur });
-    this.rings.push({ x, z, maxR, dur, dmg: dmg * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: new Set() });
+    this.rings.push({ x, z, maxR, dur, dmg: dmg * NUM * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: new Set() });
     this.audio.play('fire');
   }
 
@@ -1652,7 +1655,7 @@ class Game {
       if (e.elite !== 'blazing' || !e.alive || p.distTo(e) > 2.6) continue;
       this.blazeT = 0.5;
       if (p.iframe()) return;
-      const mit = mitigate({ fire: 3 * (e.dmgScale || 1) }, p.tree, 1);
+      const mit = mitigate({ fire: 3 * NUM * (e.dmgScale || 1) }, p.tree, 1);
       p.hp -= mit.total; p.rig.flash(1, 0.5, 0.2);
       for (const [k, v] of Object.entries(mit.build)) if (v > 0) p.status.add(k, v, this);
       if (p.hp <= 0) p.die();
