@@ -50,11 +50,11 @@ for (const [w, h] of [[1920, 1080], [2560, 1080], [3440, 1440], [5120, 1440]]) {
   log(`${w}x${h}`, r);
   if (w === 3440) {
     for (const q of ['chunky', 'fine']) {
-      await P.click('#btn-settings'); await P.selectOption('#set-quality', q); await P.waitForTimeout(100); await P.click('#set-back');
+      await P.click('#btn-settings-out'); await P.selectOption('#set-quality', q); await P.waitForTimeout(100); await P.click('#set-back');
       log(' ' + q, await P.evaluate(() => game.pixel.size.x + 'x' + game.pixel.size.y));
     }
-    await P.click('#btn-settings'); await P.selectOption('#set-quality', 'medium');
-    await P.click('#set-back'); await P.click('.char[data-char="knight"]'); await P.waitForTimeout(700);
+    await P.click('#btn-settings-out'); await P.selectOption('#set-quality', 'medium');
+    await P.click('#set-back'); await P.evaluate(() => game.start('knight')); await P.waitForTimeout(700);
     await P.screenshot({ path: '.shots/ultrawide.png' });
   }
   await P.context().close();

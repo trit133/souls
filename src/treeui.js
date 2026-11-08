@@ -4,6 +4,7 @@ import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, n
 import { CHARS } from './player.js';
 import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
 import { iconPath } from './icons.js';
+import { TreeBackground } from './treebg.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
@@ -35,6 +36,8 @@ export class TreeUI {
       this.applyView();
     }));
     this.bindPan();
+    this.bg = new TreeBackground($('tree-wrap'));
+    addEventListener('resize', () => { if (!$('tree').classList.contains('hidden')) this.bg.start(this.kind); });
   }
 
   get data() { return this.game.accounts.data; }
@@ -201,6 +204,7 @@ export class TreeUI {
     $('tree-svg').innerHTML = s;
     this.applyView();
     this.renderStats();
+    this.bg.start(this.kind);
     if (this.sel || this.hover) this.showTip(this.sel || this.hover); else this.hideTip();
   }
 

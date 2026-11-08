@@ -22,7 +22,7 @@ R.badName = await form('a', 'secret1', '#acct-signup');
 R.shortPass = await form('tester', '123', '#acct-signup');
 R.signup = await form(NAME, 'secret123', '#acct-signup');
 R.name = await page.textContent('#acct-name');
-await page.click('#btn-acct'); // sign out
+await page.click('#btn-settings'); await page.click('#set-signout'); // sign out (in Settings now)
 R.afterOut = await page.textContent('#acct-name');
 R.duplicate = await form(NAME.toLowerCase(), 'other123', '#acct-signup');
 R.wrongPass = await form(NAME, 'nope1234', '#acct-submit' === 0 ? '' : '#acct-signin');

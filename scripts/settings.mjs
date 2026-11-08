@@ -24,7 +24,7 @@ await A.waitForTimeout(500);
 log('help text', await A.textContent('#kb-help'));
 // the new binding drives the game
 await A.click('#set-back');
-await A.click('.char[data-char="knight"]'); await A.waitForTimeout(600);
+await A.click('#btn-solo'); await A.click('.char[data-char="knight"]'); await A.waitForTimeout(600);
 const r = await A.evaluate(async () => {
   game.loop = () => {}; game.audio.play = () => {};
   const p = game.player; p.setState('move');
@@ -42,7 +42,7 @@ log('other device', await B.evaluate(() => [game.settings.binds.attack, game.set
 const C = await dev(); await auth(C, u + 'x', '#acct-signup');
 log('other account', await C.evaluate(() => [game.settings.binds.attack, game.settings.music]));
 // pause menu has settings
-await C.click('.char[data-char="knight"]'); await C.waitForTimeout(500); await C.keyboard.press('Escape'); await C.waitForTimeout(200);
+await C.click('#btn-solo'); await C.click('.char[data-char="knight"]'); await C.waitForTimeout(500); await C.keyboard.press('Escape'); await C.waitForTimeout(200);
 await C.click('#pause-settings'); log('from pause', await C.isVisible('#settings'));
 if (errs.length) { console.log('ERRORS', errs.slice(0, 4)); process.exitCode = 1; } else console.log('OK no errors');
 await b.close();

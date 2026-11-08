@@ -410,7 +410,7 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 
 /* the title: a low-res canvas (the pixelfx fire-title effect, which does its own 3D turn) scaled up crisp */
 h1.fire-title { margin: 0; line-height: 0; text-shadow: none; }
-#title-fire { width: min(90vw, 840px, 110vh); image-rendering: pixelated; image-rendering: crisp-edges; }
+#title-fire { width: min(80vw, 600px, 75vh); image-rendering: pixelated; image-rendering: crisp-edges; }
 #menu .sub { margin-top: -10px; }
 
 /* bigger text: a slow sweep of light across gold, with a hard retro drop shadow */
@@ -469,7 +469,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
   h2, .cname, #lobby-code, #toast, .chat-line { animation: none; }
   .banner { animation: bannerIn .01s both; }
 }
-@media (max-height: 500px) { #title-fire { width: min(80vw, 72vh); } }
+@media (max-height: 500px) { #title-fire { width: min(60vw, 52vh); } }
 
 /* class card hover animations (cardfx.js): a pixel-art canvas behind the card's text */
 .char, .pick { position: relative; overflow: hidden; }
@@ -485,7 +485,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
 .psicon i { position: absolute; left: 0; right: 0; bottom: -3px; height: 2px; transform-origin: left; }
 .psicon.proc { animation: stproc .6s ease-out; }
 /* skill tree stats breakdown */
-#tree-stats { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 230px; overflow-y: auto; background: rgba(8,7,10,.88); border: 1px solid #3a3020; padding: 6px 8px; font-size: 12px; color: #d8d0c0; z-index: 2; }
+#tree-stats { position: absolute; left: 6px; top: 6px; bottom: auto; max-height: calc(100% - 12px); width: 215px; overflow-y: auto; background: rgba(8,7,10,.74); border: 1px solid #3a3020; padding: 6px 8px; font-size: 12px; color: #d8d0c0; z-index: 2; }
 #tree-stats-btn { position: absolute; left: 6px; top: 6px; z-index: 3; display: none; }
 .ts-head { color: #e8c88a; font-size: 12px; margin: 8px 0 3px; border-bottom: 1px solid #3a3020; padding-bottom: 2px; }
 .ts-head:first-child { margin-top: 0; }
@@ -501,3 +501,87 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
   #tree-stats.open { display: block; }
   #tree-stats-btn { display: block; }
 }
+
+/* ---------- home screen (home.js): Smash-style tiles ---------- */
+#menu { isolation: isolate; }
+#home-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+#home-bg canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+.home-view { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: min(860px, 94vw); }
+.tiles-row { display: flex; gap: 14px; justify-content: center; }
+.tile {
+  --c1: #5a2410; --c2: #1c0c06; --edge: #ff8a3a; --glow: rgba(255,120,40,.55);
+  position: relative; overflow: hidden; isolation: isolate; cursor: pointer; color: #fff4e0;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 2px; text-align: left;
+  padding: 14px 18px; border: 2px solid color-mix(in srgb, var(--edge) 45%, #000); border-radius: 3px;
+  background: linear-gradient(135deg, var(--c1), var(--c2) 70%);
+  clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -40px 60px rgba(0,0,0,.45);
+  font-family: 'Cinzel', Georgia, serif; transition: transform .18s cubic-bezier(.2,.9,.3,1.4), filter .18s, border-color .18s;
+}
+.tile[data-tile="frost"] { --c1: #13345e; --c2: #060c1c; --edge: #6ab4ff; --glow: rgba(90,170,255,.55); }
+.tile[data-tile="gold"] { --c1: #5a4410; --c2: #1a1206; --edge: #ffd060; --glow: rgba(255,200,80,.5); }
+.tile[data-tile="violet"] { --c1: #3e1a5e; --c2: #12081c; --edge: #c08aff; --glow: rgba(180,120,255,.5); }
+.tile[data-tile="steel"] { --c1: #2e323c; --c2: #0e1014; --edge: #c8d0dc; --glow: rgba(200,210,230,.35); }
+.tile > :not(.tilefx) { position: relative; z-index: 2; pointer-events: none; }
+.tile-ic { position: absolute !important; right: 6%; top: 50%; width: 46%; max-width: 150px; aspect-ratio: 1; transform: translateY(-50%); opacity: .22; color: var(--edge); transition: opacity .2s, transform .25s; }
+.tile-ic svg { width: 100%; height: 100%; }
+.tile-t { font-size: 20px; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 2px 0 #000, 0 0 12px var(--glow); }
+.tile-s { font: italic 12px Georgia, serif; opacity: .7; letter-spacing: 1px; }
+/* a light running round the edge, and a shine sweeping across, on hover / focus */
+.tile::before {
+  content: ''; position: absolute; inset: -2px; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: conic-gradient(from var(--a, 0deg), transparent 0 70%, var(--edge) 85%, #fff 88%, transparent 92%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; padding: 2px;
+  animation: tileEdge 1.6s linear infinite paused;
+}
+.tile::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.28) 48%, transparent 60%); transform: translateX(-120%);
+}
+.tile:hover, .tile:focus-visible { transform: translateY(-4px) scale(1.035); filter: brightness(1.18) saturate(1.15); border-color: var(--edge); outline: none; z-index: 3; }
+.tile:hover::before, .tile:focus-visible::before { opacity: 1; animation-play-state: running; }
+.tile:hover::after, .tile:focus-visible::after { animation: tileShine .7s ease-out; }
+.tile:hover .tile-ic, .tile:focus-visible .tile-ic { opacity: .5; transform: translateY(-50%) scale(1.08) rotate(-4deg); }
+.tile:active { transform: translateY(-1px) scale(.99); }
+@property --a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes tileEdge { to { --a: 360deg; } }
+@keyframes tileShine { to { transform: translateX(120%); } }
+.tilefx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; }
+/* sizes: two big tiles across the top, then a wide one and two small ones */
+.tile-big { grid-column: span 2; min-height: clamp(130px, 30vh, 230px); }
+.tile-big .tile-t { font-size: clamp(24px, 3.4vw, 38px); }
+.tile-wide { grid-column: span 2; min-height: 96px; }
+.tile-small { min-height: 96px; }
+.tile-small .tile-t, .tile-wide .tile-t { font-size: 17px; }
+.tile-signin { width: min(560px, 90vw); min-height: clamp(120px, 26vh, 200px); }
+.tile-signin .tile-t { font-size: clamp(24px, 3.4vw, 36px); }
+#home-out .tile-small { width: 200px; }
+.tile-back { min-height: 0; padding: 8px 30px; clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%); }
+.tile-back .tile-t { font-size: 15px; }
+.tile-fs { margin-top: 16px; width: min(860px, 94vw); min-height: 0; padding: 7px; align-items: center; font-size: 13px; letter-spacing: 4px; text-transform: uppercase; clip-path: none; }
+#home-in #acct-bar { margin: 0; font-size: 15px; }
+#menu .sub { margin-bottom: 12px; }
+/* character select: the class cards in a grid of nine; characters still to come are dark with a "?" */
+#home-chars #chars { display: grid; grid-template-columns: repeat(3, min(270px, calc((100vw - 90px) / 3))); gap: 12px; justify-content: center; }
+#home-chars .char { width: auto; }
+.char.unknown { background: #07070a; border-color: #1e1c22; display: flex; align-items: center; justify-content: center; min-height: 92px; cursor: default; box-shadow: inset 0 0 30px #000; }
+.char.unknown .qmark { font: 44px Georgia, serif; color: #fff; opacity: .85; text-shadow: 0 0 14px rgba(255,255,255,.25); }
+#home-chars #controls-help { margin-top: 6px; }
+@media (max-width: 760px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tile-big { min-height: 110px; }
+  .tile-wide { grid-column: span 2; min-height: 70px; }
+  .tile-small { min-height: 70px; }
+}
+@media (max-height: 500px) {
+  .tile-big { min-height: 96px; } .tile-wide, .tile-small { min-height: 56px; } .tile-fs { margin-top: 8px; }
+  .home-view { gap: 8px; } .tiles { gap: 8px; } .tile-s { display: none; }
+  .char.unknown { min-height: 60px; } #home-chars .cdesc { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .tile, .tile::before, .tile::after { animation: none !important; transition: none; } }
+/* skill tree background scenes (treebg.js) behind the web */
+.tree-bg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+#tree-svg { position: relative; z-index: 1; }
+#tree-wrap { background: #030305; }
+@media (max-height: 500px) { #menu[data-view="chars"] h1, #menu[data-view="chars"] .sub { display: none; } #menu[data-view="chars"] .char.unknown { min-height: 46px; } #menu[data-view="chars"] .qmark { font-size: 30px; } }

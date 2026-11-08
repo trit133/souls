@@ -43,6 +43,12 @@ const P = {
   resBleed: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8s3 3.5 3 5.5a3 3 0 0 1-6 0C9 11.5 12 8 12 8z"/>',
   resPoison: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8s3 3.5 3 5.5a3 3 0 0 1-6 0C9 11.5 12 8 12 8z"/><circle cx="12" cy="14" r=".8"/>',
   resFrost: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v9M8.5 10l7 5M15.5 10l-7 5"/>',
+  // home screen tiles
+  solo: '<path d="M14.5 3l6.5 0 0 6.5-9 9-3-3zM8 13l3 3M5 16l3 3M3.5 20.5l2-2"/>',
+  party: '<path d="M3 3l6 0 9 9-3 3-9-9zM21 3l-6 0-9 9 3 3 9-9zM5 19l3-3M19 19l-3-3M3.5 20.5l1.5-1.5M20.5 20.5l-1.5-1.5"/>',
+  tree: '<circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="4" r="1.6"/><circle cx="19" cy="16" r="1.6"/><circle cx="5" cy="16" r="1.6"/><circle cx="18" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><path d="M12 9.8V5.6M13.9 13.1l3.7 2.1M10.1 13.1l-3.7 2.1M13.6 10.4l3.5-3.6M10.4 10.4L6.9 6.8"/>',
+  skins: '<path d="M5 4c3 1 11 1 14 0 0 7-1 13-7 16C6 17 5 11 5 4z"/><path d="M8.5 9.5l2 .8M15.5 9.5l-2 .8M9.5 14.5c1.5 1 3.5 1 5 0"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/><circle cx="12" cy="12" r="6.5"/>',
 };
 export const iconPath = (k) => P[k] || '';
 export const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${P[k] || ''}</svg>`;

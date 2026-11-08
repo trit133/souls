@@ -27,6 +27,7 @@ import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
+import { Home } from './home.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
@@ -104,6 +105,7 @@ class Game {
     this.bindUI();
     new FireTitle($('title-fire'), 'ASHEN VIGIL');
     document.querySelectorAll('.char[data-char]').forEach((el) => attachCardFx(el, el.dataset.char));
+    this.home ||= new Home(this);
     document.querySelectorAll('.pick[data-pick]').forEach((el) => attachCardFx(el, el.dataset.pick));
     this.resize();
     addEventListener('resize', () => this.resize());
@@ -183,12 +185,11 @@ class Game {
 
   // ---------- UI / flow ----------
   bindUI() {
-    document.querySelectorAll('.char').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.char[data-char]').forEach((b) => b.addEventListener('click', () => {
       this.audio.unlock();
-      if (b.dataset.char === 'mage' && !this.accounts.data?.upgrades.mage) {
-        if (this.accounts.user) { this.treeUI.open('mage'); } else { $('acct-err').textContent = 'Sign in to unlock the Spellsword'; this.ui.show('account'); }
-        return;
-      }
+      // you must be signed in to play
+      if (!this.accounts.user) { $('acct-err').textContent = 'Sign in to play'; this.ui.show('account'); return; }
+      if (b.dataset.char === 'mage' && !this.accounts.data?.upgrades.mage) { this.treeUI.open('mage'); return; }
       this.start(b.dataset.char);
     }));
     $('resume').addEventListener('click', () => this.setPaused(false));
@@ -205,6 +206,10 @@ class Game {
     for (const id of ['go-lobby', 'victory-lobby']) $(id).addEventListener('click', () => this.afterRunLobby());
     $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
     $('btn-settings').addEventListener('click', () => this.openSettings());
+    $('btn-settings-out').addEventListener('click', () => this.openSettings());
+    $('btn-solo').addEventListener('click', () => { this.audio.unlock(); this.home.show('chars'); document.querySelector('.char[data-char]')?.focus({ preventScroll: true }); });
+    $('chars-back').addEventListener('click', () => this.home.show('in'));
+    $('set-signout').addEventListener('click', () => { this.accounts.signOut(); this.closeSettings(); this.refreshTitle(); });
     // fullscreen has to start from a click; phones that support it also lock to landscape. Hidden where the
     // browser can't (iPhone Safari), and the label follows Esc / F11 too
     const fsOn = () => document.fullscreenElement || document.webkitFullscreenElement;
@@ -267,10 +272,7 @@ class Game {
     }));
     $('btn-shop').addEventListener('click', () => { this.treeUI.open(); });
     $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); this.renderLobby(); });
-    $('btn-acct').addEventListener('click', () => {
-      if (this.accounts.user) { this.accounts.signOut(); this.refreshTitle(); return; }
-      $('acct-err').textContent = ''; this.ui.show('account');
-    });
+    $('btn-acct').addEventListener('click', () => { this.audio.unlock(); $('acct-err').textContent = ''; this.ui.show('account'); });
     $('acct-back').addEventListener('click', () => this.ui.show('account', false));
     const auth = async (fn) => {
       try {
@@ -428,6 +430,7 @@ class Game {
 
   openSettings() {
     this.renderSettings();
+    $('set-signout').classList.toggle('hidden', !this.accounts.user || this.mode !== 'title');
     this.ui.show('settings');
   }
 
@@ -494,11 +497,12 @@ class Game {
       A.save();
       if (back) setTimeout(() => this.ui.toast(`SKILL TREES REBUILT · ◆ ${back} REFUNDED`, 4), 300);
     }
-    $('acct-name').textContent = A.user ? A.displayName : 'Guest (gold is not saved)';
+    $('acct-name').textContent = A.user ? A.displayName : '';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
-    $('btn-acct').textContent = A.user ? 'Sign Out' : 'Sign In';
-    $('btn-shop').classList.toggle('hidden', !A.user);
-    $('btn-mp').classList.toggle('hidden', !A.user);
+    $('tile-gold').textContent = A.user ? `◆ ${A.data.gold} to spend` : '';
+    // signed out: only the sign-in tile; signed in: the menu (or the character select, if that was open)
+    this.home ||= new Home(this); // (bindUI refreshes the title before the constructor gets here)
+    this.home.show(!A.user ? 'out' : this.home.view === 'out' ? 'in' : this.home.view);
     const open = !!A.data?.upgrades.mage;
     document.querySelector('.char[data-char="mage"]').classList.toggle('locked', !open);
     $('mage-lock').textContent = open ? '' : 'Locked · unlock for ◆ 100 in Skill Trees';

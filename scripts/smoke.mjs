@@ -2,7 +2,7 @@
 import { chromium, devices } from 'playwright';
 import { mkdirSync } from 'fs';
 
-const URL = process.argv[2] || 'http://localhost:4173/';
+const URL = process.argv[2] || 'http://localhost:4173/?server=' + encodeURIComponent('http://127.0.0.1:4111');
 const OUT = '.shots';
 mkdirSync(OUT, { recursive: true });
 const errors = [];
@@ -15,6 +15,11 @@ async function run(name, ctxOpts, fn) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(`[${name}] console: ${m.text()}`); });
   await page.goto(URL);
   await page.waitForTimeout(800);
+  if (name === 'desktop') await shot(page, '00-signed-out');
+  // you must be signed in to play: sign up, then Single Player
+  await page.click('#btn-acct'); await page.fill('#acct-user', 'smk' + name.slice(0, 2) + (Date.now() % 100000)); await page.fill('#acct-pass', 'secret123');
+  await page.click('#acct-signup'); await page.waitForTimeout(700);
+  await page.click('#btn-solo'); await page.waitForTimeout(200);
   await fn(page);
   await browser.close();
 }
@@ -84,7 +89,7 @@ await run('desktop', { viewport: { width: 1280, height: 720 } }, async (page) =>
 });
 
 await run('iphone', { ...devices['iPhone 13 landscape'] }, async (page) => {
-  await page.tap('.char[data-char="rogue"]');
+  await page.click('.char[data-char="rogue"]');
   await page.waitForTimeout(1200);
   // drag the stick
   const cdp = await page.context().newCDPSession(page);

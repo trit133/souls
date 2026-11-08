@@ -47,13 +47,13 @@ check('A sees B switch to Rogue', (await text(A, '#lobby-members')).includes('Ro
 
 // Spellsword is locked for a new account: it opens Upgrades on top of the lobby
 await B.click('[data-pick="mage"]'); await B.waitForTimeout(200);
-check('locked class opens Upgrades', await visible(B, '#shop'));
-await B.click('#shop-back'); await B.waitForTimeout(200);
-check('back in the lobby after Upgrades', await visible(B, '#lobby') && (await text(B, '#lobby-code')).trim() === code);
+check('locked class opens its skill tree', await visible(B, '#tree'));
+await B.click('#tree-back'); await B.waitForTimeout(200);
+check('back in the lobby after the tree', await visible(B, '#lobby') && (await text(B, '#lobby-code')).trim() === code);
 
 await B.click('#lobby-shop'); await B.waitForTimeout(200);
-check('Upgrades button opens shop', await visible(B, '#shop'));
-await B.click('#shop-back');
+check('Skill Trees button opens the tree', await visible(B, '#tree'));
+await B.click('#tree-back');
 await B.click('#lobby-settings'); await B.waitForTimeout(200);
 check('Settings button opens settings', await visible(B, '#settings'));
 await B.click('#set-back'); await B.waitForTimeout(200);
