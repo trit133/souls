@@ -6,7 +6,7 @@ import { weaponElems, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
-import { comboMoves, comboTree, COMBO_WINDOW } from './combos.js';
+import { comboMoves, comboTree, COMBO_WINDOW, FAST } from './combos.js';
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -334,7 +334,7 @@ export class Player extends Actor {
     this.setState('move');
   }
 
-  remove() { super.remove(); this.trailL?.dispose(this.game.scene); }
+  remove() { super.remove(); this.trailL?.dispose(this.game.scene); if (this.mark) this.game.scene.remove(this.mark); }
 
   // Evolved: the spectral shield the knight charges behind, 20% wider than his torso
   buildSpectralShield() {
@@ -791,11 +791,12 @@ export class Player extends Actor {
   // each frame: open the window (the weapon flashes) at its moment; drop the combo if it was missed or broken off
   comboTick() {
     const C = this.cmb;
-    if (!C) return;
+    if (!C) { this.comboMark(false); return; }
     if (!this.comboIn(C.node) || !Object.keys(C.node.next).length) { this.cmb = null; return; }
     const now = this.game.time;
     if (C.openAt == null && this.comboTime() >= C.node.at) { C.openAt = now; this.comboFlash(); }
     else if (C.openAt != null && now > C.openAt + COMBO_WINDOW) this.cmb = null;
+    this.comboMark(this.cmb?.openAt != null);
   }
   // a press while following a combo: in the window and the right input continues it; anything else ends it
   // (and the press does its normal thing)
@@ -815,6 +816,7 @@ export class Player extends Actor {
     if (node.move === 'roll') {
       if (!this.canSpend()) return false;
       if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
+      if (node.fast) this.rollRate *= FAST;
       return true;
     }
     if (node.move === 'bolt') return this.castBolt(dir, mag);
@@ -825,8 +827,27 @@ export class Player extends Actor {
       this.mana -= def.mana;
     }
     this.doAttack(node.move, dir, mag);
+    if (node.fast) this.atkRate *= FAST; // the longer combos play faster
     return true;
   }
+  // the other cue: a little red pixel mark over the player's head while the window is open
+  comboMark(on) {
+    if (!this.mark) {
+      if (!on) return;
+      const c = document.createElement('canvas'); c.width = c.height = 7;
+      const g = c.getContext('2d');
+      // a downward chevron with a dark outline
+      const rows = ['.ooooo.', 'orrrrro', 'oRrrrRo', '.oRrRo.', '..oRo..', '...o...', '.......'];
+      rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = ch === 'o' ? '#200404' : ch === 'R' ? '#ff6a4a' : '#d4141c'; g.fillRect(x, y, 1, 1); } }));
+      const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+      this.mark = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+      this.mark.scale.setScalar(0.32); this.mark.renderOrder = 12;
+      this.game.scene.add(this.mark);
+    }
+    this.mark.visible = on;
+    if (on) this.mark.position.set(this.pos.x, 2.35 + (this.y || 0) + Math.sin(this.game.time * 30) * 0.03, this.pos.z);
+  }
+
   // the cue: a glint along the blade(s) that lasts the window
   comboFlash() {
     const r = this.rig, fx = this.game.fx, a = new THREE.Vector3(), b = new THREE.Vector3();
@@ -876,7 +897,7 @@ export class Player extends Actor {
     const def = this.c.attacks[name];
     this.atkKey = name;
     // repeated attacks cost more and push stamina regen further out (combo moves cost a fixed, larger amount)
-    this.spend(def.cost * (def.comboMove ? 1 : 1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100));
+    this.spend(0.9 * def.cost * (def.comboMove ? 1 : 1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100)); // (every attack costs 10% less than listed)
     this.stDelay = 0.6 + 0.7 * this.fatigue;
     this.fatigue = Math.min(1, this.fatigue + (name === 'heavy' ? 0.3 : 0.2));
     this.fatigueT = 1.0;

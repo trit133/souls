@@ -1,5 +1,5 @@
-// Combos: every combo of every class played with exact timing (inside the 110 ms window), then pressed early and
-// late (normal attacks instead), with damage, stamina, staggers per enemy and an interruption check.
+// Combos: every combo of every class played with exact timing (inside the 180 ms window), then pressed early and
+// late (normal attacks instead; the window is 180 ms), with damage, stamina, staggers per enemy and an interruption check.
 // node scripts/combos.mjs [shotsTag]  (shots of each finisher -> /tmp/look/<tag>-combo-<id>.png)
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
@@ -38,7 +38,7 @@ for (const [kind, ids] of Object.entries(kinds)) for (const id of ids) for (cons
       let guard = 0;
       while (!(p.cmb && p.cmb.openAt != null) && guard++ < 120) { step(); record(); if (mode === 'early' && p.cmb && p.comboTime() >= p.cmb.node.at - 0.07) break; }
       if (mode === 'early') { press(input); step(); record(); }
-      else if (mode === 'late') { const t0 = game.time; while (game.time - t0 < 0.17) { step(); record(); } press(input); step(); record(); }
+      else if (mode === 'late') { const t0 = game.time; while (game.time - t0 < 0.25) { step(); record(); } press(input); step(); record(); }
       else { step(2); press(input); step(); record(); }
       stick = { x: 0, y: 0 };
       if (mode !== 'combo') break; // after a miss the combo is over: one normal move is enough to check

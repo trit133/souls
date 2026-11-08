@@ -1,12 +1,13 @@
 // Combos. Each class has 4 to start with (one 3-move, three 4-move; 4 more come later with the evolution).
 // A combo starts with a normal attack. At a set moment in each move (`at`, in that move's own time) the weapon
-// flashes, and for 110 ms the next input of a combo continues it with a combo move; a press outside that window
+// flashes (and a red mark shows over the player), and for 180 ms the next input of a combo continues it with a combo move; a press outside that window
 // does the button's normal action instead, and doing nothing ends it. Combos branch: after a move, each input
 // that some combo continues with leads on (they share the window). Combo moves cost a fixed amount of stamina
-// (more than the normal moves) and hit a little harder: a full combo deals ~20% more than its normal inputs.
+// (more than the normal moves; every attack costs 10% less than its listed cost) and hit a little harder: a full combo deals ~20% more than its normal inputs.
 // Every combo move can be interrupted, and a combo staggers each enemy at most once.
 // Inputs: 'attack' (R1), 'heavy' (R2), 'roll'. A step's move: an attack key, 'roll' (roll or backstep) or 'bolt'.
-export const COMBO_WINDOW = 0.11;
+export const COMBO_WINDOW = 0.18;
+export const FAST = 1.15; // moves in a 4-move combo play this much faster
 
 // ---------- pose helpers ----------
 const lunge = (l = 1) => ({ legL: [-0.5 * l, 0, 0.05], legR: [0.4 * l, 0, -0.05], shinL: [0.2, 0, 0], shinR: [0.45 * l, 0, 0], by: -0.1 * l });
@@ -36,7 +37,7 @@ export function comboMoves(kind, base) {
       onTime: [{ t: 0.43, fn: (p, g) => { g.vfx('crownCleave', front(p, 1.3)); g.hitstop(0.05); } }],
       onHitShake: 0.55, heavyHit: true, finisher: 'Crown Cleave',
     },
-    // Bulwark Breaker: shield bash, rising cut, leaping slam
+    // Bulwark Breaker: (slash) shield bash, leaping slam; Vanguard's rising cut
     kBash: {
       dur: 0.55, cost: 18, comboMove: true, track: 0.1, sfx: [0.12, 'swing'], cancel: 0.36,
       keys: [
@@ -58,8 +59,8 @@ export function comboMoves(kind, base) {
       hits: [{ t0: 0.16, t1: 0.27, range: 2.4, arc: 1.6, dmg: 30, poise: 18 }],
       move: [[0.06, 0.22, 0.7]],
     },
-    kLeapSlam: withDmg(base.chargeSlam, [52], { cost: 24, finisher: 'Bulwark Breaker', next: null, combo: null }),
-    // Iron Tempest: two full spins, then a lunging thrust
+    kLeapSlam: withDmg(base.chargeSlam, [55], { cost: 24, finisher: 'Bulwark Breaker', next: null, combo: null, move: [[0.05, 0.42, 0.5]] }), // a short hop: the bash leaves them close
+    // Iron Tempest: (heavy) a full spin, then a lunging thrust
     kSpin: {
       dur: 0.6, cost: 12, comboMove: true, track: 0.08, trail: [0.12, 0.38], sfx: [0.12, 'heavySwing'], cancel: 0.42,
       keys: [
@@ -68,13 +69,8 @@ export function comboMoves(kind, base) {
         [0.36, { hips: [0, -3.2, 0], torso: [0.2, -0.6, 0], armR: [-1.4, 0, -1.2], foreR: [0, 0, 0], handR: [1.4, 0, 0], by: -0.12 }],
         [0.5, { hips: [0, -0.3, 0], torso: [0.15, -0.3, 0], armR: [-1.0, 0, -0.6], foreR: [-0.3, 0, 0], ...lunge(0.7) }],
       ],
-      hits: [{ t0: 0.16, t1: 0.36, range: 2.4, arc: 6.3, dmg: 18, poise: 10 }],
+      hits: [{ t0: 0.16, t1: 0.36, range: 2.4, arc: 6.3, dmg: 16, poise: 10 }],
       move: [[0.08, 0.34, 0.6]],
-    },
-    // the second spin turns the other way
-    get kSpin2() {
-      const flip = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]) => [k, (k === 'hips' || k === 'torso') && Array.isArray(v) ? [v[0], -v[1], v[2]] : v]));
-      return { ...this.kSpin, keys: this.kSpin.keys.map(([t, pz]) => [t, flip(pz)]) };
     },
     kThrust: {
       dur: 0.75, cost: 16, comboMove: true, track: 0.16, trail: [0.26, 0.38], sfx: [0.26, 'heavySwing'], cancel: 0.5,
@@ -83,7 +79,7 @@ export function comboMoves(kind, base) {
         [0.32, { torso: [0.45, 0.35, 0], armR: [-1.55, 0, 0], foreR: [0, 0, 0], handR: [1.55, 0, 0], armL: [-0.5, 0, 0.6], ...lunge(1.6) }],
         [0.58, { torso: [0.35, 0.25, 0], armR: [-1.45, 0, 0], foreR: [-0.1, 0, 0], handR: [1.5, 0, 0], ...lunge(1.3) }],
       ],
-      hits: [{ t0: 0.27, t1: 0.37, range: 3.1, arc: 0.8, dmg: 32, poise: 25 }],
+      hits: [{ t0: 0.27, t1: 0.37, range: 3.1, arc: 0.8, dmg: 28, poise: 25 }],
       move: [[0.24, 0.36, 1.7]],
       onTime: [{ t: 0.32, fn: (p, g) => g.vfx('steelFlash', front(p, 2.0, 1.1), p.fwd().clone()) }],
       onHitShake: 0.45, heavyHit: true, finisher: 'Iron Tempest',
@@ -117,8 +113,7 @@ export function comboMoves(kind, base) {
         onTime: [{ t: 0.46, fn: (p, g) => g.vfx('flurryEnd', front(p, 1.2, 1.1), p.fwd().clone()) }],
         finisher: 'Thousand Cuts',
       },
-      // Viper's Dance: (stab, roll) a flank cut and a spinning cross-cut
-      rFlank: withDmg(mirror(R.r1), [26], { cost: 18, dur: 0.46 }),
+      // Viper's Dance: (stab, roll round the flank) a spinning cross-cut
       rSpinX: {
         dur: 0.74, cost: 22, comboMove: true, track: 0.1, trail: [0.1, 0.42], hand: 'B', sfx: [0.1, 'heavySwing'], cancel: 0.5,
         keys: [
@@ -127,14 +122,13 @@ export function comboMoves(kind, base) {
           [0.4, { hips: [0, 3.1, 0], torso: [0.3, 0, 0], armR: [-1.6, 0, 0.5], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-1.6, 0, -0.5], foreL: [0, 0, 0], handL: [1.5, 0, 0], ...lunge(1) }],
           [0.58, { hips: [0, 0.2, 0], torso: [0.2, 0, 0], armR: [-0.9, 0, -0.6], armL: [-0.9, 0, 0.6], ...lunge(0.7) }],
         ],
-        hits: [{ t0: 0.14, t1: 0.26, range: 2.2, arc: 4.2, dmg: 28, poise: 8 }, { t0: 0.3, t1: 0.4, range: 2.2, arc: 4.2, dmg: 28, poise: 10 }],
+        hits: [{ t0: 0.14, t1: 0.26, range: 2.2, arc: 4.2, dmg: 24, poise: 8 }, { t0: 0.3, t1: 0.4, range: 2.2, arc: 4.2, dmg: 24, poise: 10 }],
         move: [[0.08, 0.38, 0.9]],
         onTime: [{ t: 0.38, fn: (p, g) => g.vfx('xSlash', front(p, 1.1, 1.1), p.fwd().clone(), false) }],
         finisher: "Viper's Dance",
       },
-      // Hemorrhage: (lunge) two quick cuts, then an X slash that bursts blood
-      rCut1: withDmg(R.r1, [14], { cost: 12 }),
-      rCut2: withDmg(R.r2, [14], { cost: 12 }),
+      // Hemorrhage: (lunge, a quick cut) an X slash that bursts blood
+      rCut1: withDmg(R.r1, [10], { cost: 12 }),
       rXSlash: {
         dur: 0.78, cost: 22, comboMove: true, track: 0.16, trail: [0.26, 0.42], hand: 'B', sfx: [0.26, 'heavySwing'], cancel: 0.55,
         keys: [
@@ -142,7 +136,7 @@ export function comboMoves(kind, base) {
           [0.36, { torso: [0.55, 0, 0], armR: [-0.6, 0, -1.2], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-0.6, 0, 1.2], foreL: [0, 0, 0], handL: [1.5, 0, 0], ...crouch(1) }],
           [0.6, { torso: [0.4, 0, 0], armR: [-0.7, 0, -1.0], foreR: [-0.2, 0, 0], armL: [-0.7, 0, 1.0], foreL: [-0.2, 0, 0], ...crouch(0.8) }],
         ],
-        hits: [{ t0: 0.28, t1: 0.34, range: 2.1, arc: 1.8, dmg: 15, poise: 10 }, { t0: 0.34, t1: 0.41, range: 2.1, arc: 1.8, dmg: 15, poise: 10 }],
+        hits: [{ t0: 0.28, t1: 0.34, range: 2.1, arc: 1.8, dmg: 9, poise: 10 }, { t0: 0.34, t1: 0.41, range: 2.1, arc: 1.8, dmg: 9, poise: 10 }],
         move: [[0.2, 0.36, 0.9]],
         onTime: [{ t: 0.36, fn: (p, g) => g.vfx('xSlash', front(p, 1.1, 1.1), p.fwd().clone(), true) }],
         onHitShake: 0.4, finisher: 'Hemorrhage',
@@ -192,14 +186,14 @@ export function comboMoves(kind, base) {
       onTime: [{ t: 0.32, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1)); g.comboBlast(p, 3.2, 34, 18, 'frost'); } }],
       finisher: 'Arc Step',
     },
-    // Glacial Lance: (bolt, two cuts) a fan of three ice lances
+    // Glacial Lance: (bolt, a cut) a fan of three ice lances
     sLances: {
       dur: 0.7, cost: 18, mana: 16, comboMove: true, track: 0.2, sfx: [0.26, 'bow'], cancel: 0.46,
       keys: [[0.16, { torso: [-0.1, -0.5, 0], armR: [-2.6, 0, -0.2], foreR: [0, 0, 0], handR: [1.5, 0, 0], legL: [-0.35, 0, 0], legR: [0.3, 0, 0] }], castPose(0.28), castPose(0.55)],
       onTime: [{ t: 0.27, fn: (p, g) => { for (const s of [-0.22, 0, 0.22]) g.spawnSpell(p, 'bolt', s, 1); g.vfx('lanceFan', front(p, 1.0, 1.25)); } }],
       finisher: 'Glacial Lance',
     },
-    // Shatter: (two cuts, a bolt) a rune strike that detonates the frost
+    // Shatter: (a cut, a bolt) a rune strike that detonates the frost
     sShatter: {
       dur: 0.75, cost: 24, comboMove: true, hand: 'L', track: 0.16, trail: [0.26, 0.4], sfx: [0.26, 'heavySwing'], cancel: 0.5,
       keys: [
@@ -222,21 +216,21 @@ const A = 'attack', H = 'heavy', R = 'roll';
 export const COMBOS = {
   knight: [
     { id: 'crown', name: 'Crown Cleave', desc: 'Two cuts, then a two-handed overhead that cracks the floor in a gold shockwave.', steps: [[A, 'k1', 0.34], [A, 'kc2', 0.33], [A, 'kCrown']] },
-    { id: 'bulwark', name: 'Bulwark Breaker', desc: 'Slash, shield bash, rising cut, then a leaping slam.', steps: [[A, 'k1', 0.34], [H, 'kBash', 0.34], [A, 'kRise', 0.36], [H, 'kLeapSlam']] },
-    { id: 'tempest', name: 'Iron Tempest', desc: 'A heavy, two full spins, then a lunging thrust.', steps: [[H, 'heavy', 0.66], [A, 'kSpin', 0.44], [A, 'kSpin2', 0.44], [H, 'kThrust']] },
-    { id: 'vanguard', name: 'Vanguard', desc: 'Slash, a forward roll, a rising cut, then an impaling stab.', steps: [[A, 'k1', 0.34], [R, 'roll', 0.42], [A, 'kRise', 0.36], [H, 'kImpale']] },
+    { id: 'bulwark', name: 'Bulwark Breaker', desc: 'Slash, shield bash, then a leaping slam.', steps: [[A, 'k1', 0.34], [H, 'kBash', 0.34], [H, 'kLeapSlam']] },
+    { id: 'tempest', name: 'Iron Tempest', desc: 'A heavy, a full spin, then a lunging thrust.', steps: [[H, 'heavy', 0.66], [A, 'kSpin', 0.44], [H, 'kThrust']] },
+    { id: 'vanguard', name: 'Vanguard', desc: 'Slash, a forward roll, a rising cut, then an impaling stab. Plays faster.', steps: [[A, 'k1', 0.34], [R, 'roll', 0.42], [A, 'kRise', 0.36], [H, 'kImpale']] },
   ],
   rogue: [
     { id: 'cuts', name: 'Thousand Cuts', desc: 'Two stabs, then a blur of four rapid cuts.', steps: [[A, 'r1', 0.24], [A, 'rc2', 0.24], [A, 'rFlurry']] },
-    { id: 'viper', name: "Viper's Dance", desc: 'Stab, a roll round the flank, a cut, then a spinning cross-cut.', steps: [[A, 'r1', 0.24], [R, 'roll', 0.34], [A, 'rFlank', 0.27], [A, 'rSpinX']] },
-    { id: 'hemorrhage', name: 'Hemorrhage', desc: 'A lunge, two quick cuts, then an X slash that bursts blood.', steps: [[H, 'heavy', 0.52], [A, 'rCut1', 0.24], [A, 'rCut2', 0.24], [H, 'rXSlash']] },
-    { id: 'reel', name: 'Shadow Reel', desc: 'Two cuts, a back-flip roll, then a leaping dive stab.', steps: [[A, 'r1', 0.24], [A, 'rc2', 0.24], [R, 'roll', 0.3], [H, 'rDive']] },
+    { id: 'viper', name: "Viper's Dance", desc: 'Stab, a roll round the flank, then a spinning cross-cut.', steps: [[A, 'r1', 0.24], [R, 'roll', 0.34], [A, 'rSpinX']] },
+    { id: 'hemorrhage', name: 'Hemorrhage', desc: 'A lunge, a quick cut, then an X slash that bursts blood.', steps: [[H, 'heavy', 0.52], [A, 'rCut1', 0.24], [H, 'rXSlash']] },
+    { id: 'reel', name: 'Shadow Reel', desc: 'Two cuts, a back-flip roll, then a leaping dive stab. Plays faster.', steps: [[A, 'r1', 0.24], [A, 'rc2', 0.24], [R, 'roll', 0.3], [H, 'rDive']] },
   ],
   mage: [
     { id: 'rime', name: 'Rimeblade', desc: 'Two knife cuts, then a frost-charged thrust that bursts into ice shards.', steps: [[A, 's1', 0.25], [A, 'sc2', 0.28], [A, 'sRime']] },
-    { id: 'arc', name: 'Arc Step', desc: 'Cut, a blink roll, a cut, then a point-blank frost nova (12 mana).', steps: [[A, 's1', 0.25], [R, 'roll', 0.38], [A, 'sc2', 0.28], [H, 'sNova']] },
-    { id: 'lance', name: 'Glacial Lance', desc: 'A bolt, two cuts, then a fan of three ice lances (16 mana).', steps: [[H, 'bolt', 0.3], [A, 'sc1', 0.25], [A, 'sc2', 0.28], [H, 'sLances']] },
-    { id: 'shatter', name: 'Shatter', desc: 'Two cuts, a bolt, then a rune strike that detonates the frost.', steps: [[A, 's1', 0.25], [A, 'sc2', 0.28], [H, 'bolt', 0.3], [A, 'sShatter']] },
+    { id: 'arc', name: 'Arc Step', desc: 'Cut, a blink roll, a cut, then a point-blank frost nova (12 mana). Plays faster.', steps: [[A, 's1', 0.25], [R, 'roll', 0.38], [A, 'sc2', 0.28], [H, 'sNova']] },
+    { id: 'lance', name: 'Glacial Lance', desc: 'A bolt, a cut, then a fan of three ice lances (16 mana).', steps: [[H, 'bolt', 0.3], [A, 'sc1', 0.25], [H, 'sLances']] },
+    { id: 'shatter', name: 'Shatter', desc: 'A cut, a bolt, then a rune strike that detonates the frost.', steps: [[A, 's1', 0.25], [H, 'bolt', 0.3], [A, 'sShatter']] },
   ],
 };
 
@@ -246,8 +240,9 @@ export function comboTree(kind) {
   for (const c of COMBOS[kind] || []) {
     let level = root, node = null;
     c.steps.forEach(([input, move, at], i) => {
-      node = level[input] ||= { move, at, next: {}, names: [] };
+      node = level[input] ||= { move, at, next: {}, names: [], fast: true };
       node.names.push(c.name);
+      if (c.steps.length < 4) node.fast = false; // only moves that just lead into 4-move combos speed up
       if (at != null && node.at == null) node.at = at;
       if (i === c.steps.length - 1) node.combo = c;
       level = node.next;
