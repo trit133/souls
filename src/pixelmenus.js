@@ -71,8 +71,8 @@ export function pixelMenus() {
   for (const h of q('#lobby .panel-head, #settings .shop-head')) pxText(h, { font: 'mini', px: 3 });
   pxText(document.getElementById('lobby-code'), { px: 5 });
   // buttons, by role
-  const tone = { 'lobby-start': 'ember', 'lobby-create': 'ember', 'acct-signin': 'ember', 'acct-signup': 'rust', 'lobby-back': 'blood', 'set-signout': 'blood', 'set-back': 'ember', 'skins-back': 'ash', 'acct-back': 'ash' };
-  for (const b of q('#account button, #skins > button, #skins #skin-tabs button, #settings > button, #settings #set-layout, #lobby button.menu-btn, #lobby button.mini-btn')) {
+  const tone = { 'cz-buy': 'ember', 'lobby-start': 'ember', 'lobby-create': 'ember', 'acct-signin': 'ember', 'acct-signup': 'rust', 'lobby-back': 'blood', 'set-signout': 'blood', 'set-back': 'ember', 'skins-back': 'ash', 'acct-back': 'ash' };
+  for (const b of q('#account button, #skins > button, #skins #skin-tabs button, #skins #cz-outfits button, #cz-buy, #settings > button, #settings #set-layout, #lobby button.menu-btn, #lobby button.mini-btn')) {
     pxButton(b, tone[b.id] || (b.closest('#skin-tabs') ? 'scarlet' : 'rust'), b.classList.contains('menu-btn') ? 3 : 2);
   }
   // the lobby's class picks: framed tiles with their names in the pixel font
@@ -80,17 +80,10 @@ export function pixelMenus() {
     p.classList.add('pxpick'); const n = p.querySelector('b'); if (n) pxText(n, { font: 'big', px: 2, hover: p });
     const pad = document.createElement('i'); pad.className = 'pxpad'; pixelIcon(pad, 'lock', 2); p.appendChild(pad); // shown while locked
   }
-  // skin cards are rebuilt on every change: dress their buttons and padlocks as they appear
-  const dressSkins = () => {
-    for (const b of q('#skin-list button')) pxButton(b, b.textContent.includes('Equipped') ? 'ember' : 'rust', 2);
-    for (const c of q('#skin-list > *')) {
-      const locked = !!c.querySelector('button')?.textContent.includes('Locked');
-      c.classList.toggle('pxlocked', locked);
-      if (locked && !c.querySelector('.pxpad')) { const i = document.createElement('span'); i.className = 'pxpad'; pixelIcon(i, 'lock', 2); c.appendChild(i); }
-    }
-  };
-  new MutationObserver(dressSkins).observe(document.getElementById('skin-list'), { childList: true });
-  dressSkins();
+  // the customizer's slot list is rebuilt on every change: dress its buttons as they appear
+  const dressSlots = () => { for (const b of q('#cz-slots button')) pxButton(b, 'rust', 2); };
+  new MutationObserver(dressSlots).observe(document.getElementById('cz-slots'), { childList: true });
+  dressSlots();
   // sliders
   document.addEventListener('input', (e) => { if (e.target.matches?.('#settings input[type=range]')) syncRange(e.target); });
   syncRanges();

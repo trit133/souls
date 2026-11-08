@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
-import { skinModel } from './skins.js';
+import { outfitModel } from './playerkits.js';
 import { weaponElems, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
@@ -283,10 +283,10 @@ export class Player extends Actor {
   // `upgrades`: permanent upgrade levels from the player's account ({ dmg: 2, hp: 1, ... })
   constructor(game, kind, x, z, upgrades = {}) {
     const c = CHARS[kind];
-    const skin = game.equippedSkin?.(kind) || 'default';
-    const rig = buildHumanoid({ ...skinModel(c.model, kind, skin), scale: 1 });
+    const outfit = game.equippedOutfit?.(kind) || {};
+    const rig = buildHumanoid({ ...outfitModel(c.model, kind, outfit), scale: 1 });
     super(game, rig, { x, z, hp: c.hp, radius: 0.42, team: 'player', yaw: Math.PI, poise: 0 });
-    this.skin = skin;
+    this.outfit = outfit;
     // the knight's plates clink on every step (louder when sprinting)
     if (kind === 'knight') rig.onStep = (v) => game.audio.play('rattle', Math.min(1, v / 7));
     this.uid = 'P';

@@ -20,7 +20,7 @@ import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
 import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
-import { skinList, unlocked } from './skins.js';
+import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
 import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
 import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems } from './damage.js';
 import { TreeUI } from './treeui.js';
@@ -501,6 +501,12 @@ class Game {
       A.save();
       if (back) setTimeout(() => this.ui.toast(`SKILL TREES REBUILT · ◆ ${back} REFUNDED`, 4), 300);
     }
+    // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
+    if (A.user && A.data && !A.data.cosmeticsV1) {
+      const em = migrateCosmetics(A.data);
+      A.save();
+      if (em) setTimeout(() => this.ui.toast(`THE CUSTOMIZER IS HERE · ${em} EMERALDS FROM YOUR KILLS`, 4.5), 900);
+    }
     $('acct-name').textContent = A.user ? A.displayName : '';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
     // signed out: only the sign-in tile; signed in: the menu (or the character select, if that was open)
@@ -534,26 +540,25 @@ class Game {
     this.statusPopup(e, `+${n}`, '#a89060');
   }
 
-  // the killing blow counts toward that player's skins (the host tells teammates about theirs)
+  // the killing blow earns that player emeralds (the host tells teammates about theirs); a boss is worth 2
   creditKill(e) {
     const k = e.lastHitBy;
-    if (k === this.player) this.addKill();
-    else if (k?.pid && this.mp.active) this.mp.send({ t: 'kill' }, k.pid);
+    if (k === this.player) this.addKill(1, !!e.isBoss);
+    else if (k?.pid && this.mp.active) this.mp.send({ t: 'kill', boss: !!e.isBoss }, k.pid);
   }
 
-  addKill(add = 1) {
+  // kills: counted per character, and each one is an emerald (a boss, 2) to spend in the customizer
+  addKill(add = 1, boss = false) {
     const d = this.accounts.data, kind = this.kind;
     if (!d || !this.accounts.user || add <= 0) return;
     d.kills = d.kills || {};
-    const was = d.kills[kind] || 0, n = (d.kills[kind] = was + add);
-    const s = skinList(kind).find((x) => x.kills > was && x.kills <= n);
-    if (s) { this.ui.toast(`NEW SKIN UNLOCKED · ${s.name.toUpperCase()}`, 3); this.accounts.save(); }
+    d.kills[kind] = (d.kills[kind] || 0) + add;
+    cosmetics(d).emeralds += add * (boss ? 2 : 1);
+    this.ui.emeralds?.(d.emeralds);
   }
 
-  equippedSkin(kind) {
-    const d = this.accounts.data, id = d?.skins?.[kind] || 'default';
-    return this.accounts.user && unlocked(kind, id, d?.kills?.[kind]) ? id : 'default';
-  }
+  // the outfit a character wears ({} for guests: the default look)
+  equippedOutfit(kind) { return this.accounts.user && this.accounts.data ? wornOutfit(cosmetics(this.accounts.data), kind) : {}; }
 
   sameRoom(e, p) { return this.world.moduleAt(p.pos.z).i === e.mod; }
 
@@ -842,7 +847,7 @@ class Game {
   onBossDeath(boss, net = null) {
     const enc = boss.enc;
     if (enc.defeated) return;
-    if (this.mp.active) this.addKill(1); // a boss counts once for everyone in the party
+    if (this.mp.active) this.addKill(1, true); // a boss counts once for everyone in the party (2 emeralds each)
     else this.creditKill(boss);
     enc.defeated = true;
     enc.active = false;
@@ -1406,6 +1411,7 @@ class Game {
     this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
     this.pfx.update(dt);
+    tickOutfitColors(this.time); // effect colours on outfits (molten, frost, void, gilded)
     if (this.mode === 'play' || this.mode === 'wait') this.weaponFx.update(dt);
     this.updateCamera(rdt);
   }

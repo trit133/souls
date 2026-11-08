@@ -348,18 +348,9 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 #skin-tabs .on { border-color: #e8c88a; color: #f2ead8; }
 #skin-body { display: flex; gap: 16px; align-items: flex-start; width: min(900px, 96vw); }
 #skin-view { width: 240px; height: 300px; flex: none; image-rendering: pixelated; border: 1px solid #5a4c32; background: #0e0c0a; }
-#skin-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; flex: 1; }
-.skin { text-align: left; padding: 10px 12px; border: 1px solid #4a3e2c; background: rgba(30,24,18,.8); cursor: pointer; font-family: Georgia, serif; color: #d8cfbf; }
-.skin.sel { border-color: #e8c88a; }
-.skin.locked { opacity: .6; }
-.skin .sname { font-size: 15px; color: #f2ead8; font-family: inherit; }
-.skin .sdesc { font-size: 12px; opacity: .8; margin: 4px 0 6px; line-height: 1.35; }
-.skin .sprog { font-size: 11px; letter-spacing: 1px; color: #e8c25a; }
-.skin .sbar { height: 4px; background: #2a241c; margin-top: 4px; }
-.skin .sbar i { display: block; height: 100%; background: #e8c25a; }
 .skin button { margin-top: 6px; }
 #skin-note { font-size: 12px; opacity: .7; margin: 8px 0; }
-@media (max-height: 500px) { #skin-view { width: 150px; height: 190px; } #skin-list { grid-template-columns: repeat(2, 1fr); } .skin .sdesc { display: none; } }
+@media (max-height: 500px) { #skin-view { width: 150px; height: 190px; } .cz-pdesc { display: none; } }
 #settings > :first-child { margin-top: auto; }
 #settings > :last-child { margin-bottom: auto; }
 #settings h2 { margin: 4px 0 4px; }
@@ -601,17 +592,11 @@ button.pxbtn:active:not(:disabled) { transform: translateY(0); }
 button.pxbtn > :not(.pxlab) { display: none; }
 #lobby-start.pxbtn { padding: 6px 20px; }
 /* panels: a dark pixel frame */
-#lobby .panel, #settings .set-group, #skin-list > *, #skin-view, #account #acct-form, .pxpick {
+#lobby .panel, #settings .set-group, .cz-piece, #skin-view, #account #acct-form, .pxpick {
   border: 12px solid transparent !important; border-image: var(--pxf-panel) 4 / 12px / 0 stretch !important; border-radius: 0 !important;
   background: linear-gradient(170deg, #1e0c08, #0c0504 85%) padding-box !important; box-shadow: none !important;
 }
-#skin-list > * { position: relative; cursor: pointer; }
-#skin-list > .sel, #skin-list > .on, #skin-list > .equipped { border-image-source: var(--pxf-ember) !important; }
-#skin-list > *:hover { border-image-source: var(--pxf-panel-hot) !important; }
-#skin-list > .pxlocked { filter: saturate(.6) brightness(.8); }
 .pxpad { position: absolute; right: 6px; top: 6px; line-height: 0; opacity: .9; }
-.sbar { height: 8px !important; border-radius: 0 !important; background: repeating-linear-gradient(90deg, #2a0e08 0 6px, #0c0403 6px 8px) !important; }
-.sbar i { border-radius: 0 !important; background: repeating-linear-gradient(90deg, #ff8a2a 0 6px, transparent 6px 8px) !important; }
 /* the lobby's class picks */
 .pxpick { text-align: left; cursor: pointer; padding: 2px 8px !important; border-width: 9px !important; border-image-width: 9px !important; margin-bottom: 4px; }
 #lobby .panel { border-width: 10px !important; border-image-width: 10px !important; }
@@ -671,3 +656,46 @@ button.pxbtn { justify-content: center; }
 /* the skin preview sizes its renderer from its own client size: keep the pixel frame outside that size, or it
    shrinks by the frame's width on every redraw */
 #skin-view { box-sizing: content-box !important; }
+
+/* ---------- the customizer (skinmenu.js) ---------- */
+#skins { justify-content: flex-start; }
+#cz-top { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; justify-content: center; margin-bottom: 6px; }
+#cz-outfits { display: flex; gap: 2px; }
+#cz-emeralds { color: #5ae08a; font: bold 15px Georgia, serif; text-shadow: 0 0 6px rgba(60,220,120,.4); }
+#cz-emeralds::before { content: ''; display: inline-block; width: 10px; height: 12px; margin-right: 6px; background: #3ad070; clip-path: polygon(50% 0, 100% 35%, 80% 100%, 20% 100%, 0 35%); vertical-align: -1px; }
+#skin-body { display: flex; gap: 12px; align-items: flex-start; width: min(1000px, 96vw); }
+#cz-slots { display: flex; flex-direction: column; gap: 0; flex: none; }
+#cz-slots button { width: 140px; margin: 2px 0; }
+#cz-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+#cz-pieces { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cz-piece { position: relative; cursor: pointer; padding: 4px 6px !important; text-align: left; border-width: 9px !important; border-image-width: 9px !important; }
+.cz-piece:hover { border-image-source: var(--pxf-panel-hot) !important; }
+.cz-piece.on { border-image-source: var(--pxf-ember-hot) !important; }
+.cz-piece.trying { border-image-source: var(--pxf-scarlet-hot) !important; }
+.cz-piece.locked { filter: saturate(.7) brightness(.85); }
+.cz-piece.special .cz-pname { color: #ffd870; }
+.cz-pname { font: 14px Georgia, serif; color: #f0e2c8; }
+.cz-pdesc { font: 11px/1.3 Georgia, serif; opacity: .7; margin: 2px 0; }
+.cz-pprice { font: bold 11px Georgia, serif; color: #5ae08a; }
+.cz-piece.on .cz-pprice { color: #ffc23d; }
+#cz-colors { display: flex; flex-direction: column; gap: 4px; }
+.cz-crow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.cz-clabel { width: 42px; font: 12px Georgia, serif; opacity: .8; text-align: left; }
+.cz-swatch { width: 24px; height: 24px; padding: 0; cursor: pointer; border: 3px solid #1a0806; box-shadow: inset 2px 2px 0 rgba(255,255,255,.25), inset -2px -2px 0 rgba(0,0,0,.35); position: relative; }
+.cz-swatch.dflt { background: repeating-linear-gradient(45deg, #5a4a3a 0 4px, #2a221a 4px 8px); }
+.cz-swatch.on { border-color: #ffc23d; outline: 2px solid #120403; }
+.cz-swatch.trying { border-color: #ff6a4a; }
+.cz-swatch.locked::after { content: ''; position: absolute; right: -3px; bottom: -3px; width: 8px; height: 8px; background: #120403; box-shadow: inset 0 0 0 2px #8a4a22; }
+.cz-swatch.fx-molten { animation: czMolten 1.4s ease-in-out infinite; }
+.cz-swatch.fx-frost { animation: czFrost 2s ease-in-out infinite; }
+.cz-swatch.fx-void { background-image: radial-gradient(circle at 30% 30%, #fff 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #c8b8ff 0 1px, transparent 2px) !important; animation: czVoid 3s linear infinite; }
+.cz-swatch.fx-gilded { animation: czGild 1.8s ease-in-out infinite; }
+@keyframes czMolten { 50% { box-shadow: inset 0 0 10px #ff6a1a, 0 0 6px #ff4a10; } }
+@keyframes czFrost { 50% { box-shadow: inset 0 0 8px #e8f8ff, 0 0 6px #6ab4ff; } }
+@keyframes czVoid { to { background-position: 24px 12px, -12px 24px; } }
+@keyframes czGild { 0%, 70%, 100% { filter: none; } 80% { filter: brightness(1.8); } }
+#cz-buy { align-self: flex-start; }
+@media (max-width: 760px), (max-height: 500px) {
+  #skin-body { gap: 6px; } #cz-slots button { width: 104px; } #cz-pieces { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .cz-swatch { width: 18px; height: 18px; border-width: 2px; }
+}

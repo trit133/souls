@@ -230,15 +230,28 @@
     </div>
   </div>
   <div id="skins" class="screen hidden">
-    <h2>Skins</h2>
-    <div id="skin-tabs">
-      <button class="mini-btn" data-skin-kind="knight">Knight</button>
-      <button class="mini-btn" data-skin-kind="rogue">Rogue</button>
-      <button class="mini-btn" data-skin-kind="mage">Spellsword</button>
+    <h2>Customize</h2>
+    <div id="cz-top">
+      <div id="skin-tabs">
+        <button class="mini-btn" data-skin-kind="knight">Knight</button>
+        <button class="mini-btn" data-skin-kind="rogue">Rogue</button>
+        <button class="mini-btn" data-skin-kind="mage">Spellsword</button>
+      </div>
+      <div id="cz-outfits">
+        <button class="mini-btn" data-outfit="0">Outfit 1</button>
+        <button class="mini-btn" data-outfit="1">Outfit 2</button>
+        <button class="mini-btn" data-outfit="2">Outfit 3</button>
+      </div>
+      <div id="cz-emeralds"></div>
     </div>
     <div id="skin-body">
       <canvas id="skin-view" width="240" height="300"></canvas>
-      <div id="skin-list"></div>
+      <div id="cz-slots"></div>
+      <div id="cz-panel">
+        <div id="cz-pieces"></div>
+        <div id="cz-colors"></div>
+        <button class="mini-btn hidden" id="cz-buy">Buy</button>
+      </div>
     </div>
     <div id="skin-note"></div>
     <button class="menu-btn" id="skins-back">Back</button>

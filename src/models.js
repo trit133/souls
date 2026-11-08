@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, cyl } from './mesh.js';
+import './playerkits.js'; // the player characters' kits (pieces from their outfits)
 import { KITS } from './kits.js';
 
 // Low-poly procedural humanoids. Every model faces +Z; the character's right
@@ -230,9 +231,9 @@ export function buildHumanoid(o) {
 
   for (const side of [1, -1]) {
     const leg = new THREE.Group(); leg.position.set(hw * side, -0.04, 0); hips.add(leg);
-    leg.add(box(0.15 * bulk, thigh, 0.17 * bulk, cloth, 0, -thigh / 2, 0));
+    leg.add(box(0.15 * bulk, thigh, 0.17 * bulk, o.legs ? r.m(o.legs.thigh) : cloth, 0, -thigh / 2, 0));
     const sh = new THREE.Group(); sh.position.y = -thigh; leg.add(sh);
-    sh.add(box(0.13 * bulk, shin, 0.15 * bulk, armor, 0, -shin / 2, 0));
+    sh.add(box(0.13 * bulk, shin, 0.15 * bulk, o.legs ? r.m(o.legs.shin) : armor, 0, -shin / 2, 0));
     sh.add(box(0.15 * bulk, 0.08, 0.26 * bulk, dark, 0, -shin + 0.0, 0.05));
     r.j[side > 0 ? 'legL' : 'legR'] = leg;
     r.j[side > 0 ? 'shinL' : 'shinR'] = sh;

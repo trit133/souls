@@ -59,14 +59,21 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
 - **Spellsword:** R1 knife hits (11 and 14 damage, 20% slower swings, 14-15 stamina) give 10 mana (the only mana source). R2 fires a blue bolt (8 mana, 8 frost damage, no stagger or knockback). L1 fires an exploding fireball (75 mana, 120 fire damage). Starts with 100 mana; the mana bar shows the exact amount.
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 
-## Skins
-Each character unlocks skins from their own kills (saved on the account; solo counts killing blows, a party splits each cleared room's kills evenly, rounded up, and every boss counts for everyone): **100** and **250** kills are recolours, **500** is a new look with its own pieces. Pick them in **Skins** on the title screen or in the lobby; teammates see your skin. Defined in `src/skins.js`; the 500-kill builds are `paladin`, `wraith` and `starborn` in `src/kits.js`. `scripts/skins.mjs` tests unlocking and takes preview shots.
+## Customizer
+`src/outfits.js` (catalogue, prices, ownership, outfits), `src/playerkits.js` (the pieces), screen in `src/skinmenu.js`. Each character is dressed from swappable pieces, one per slot, each with its own **main and trim colour**:
 
-| | 100 | 250 | 500 |
-|---|---|---|---|
-| Knight | Ember Guard (crimson, gold) | Nightguard (black steel, violet) | Radiant Paladin: winged helm, halo, flowing cape, sun kite shield, glowing blade |
-| Rogue | Ashwalker (pale grey, white scarf) | Viper (black, venom green) | Wraith: bone mask with burning eyes, ghostly wisps, spectral red blades |
-| Spellsword | Ember Mage (crimson, fire runes) | Verdant (emerald, green runes) | Starborn: crystal shoulders, star-flecked cape, crown of orbiting crystals, violet blade |
+| | Slots |
+|---|---|
+| Knight | helmet, left shoulder, right shoulder, chest, legs, sword, shield |
+| Rogue | mask, cloak, shirt, left arm band, right arm band, knives |
+| Spellsword | shoulder, shirt, pants, wand (casting hand), sword (fighting hand) |
+
+- **Emeralds** buy pieces and colours: 1 per kill, 2 per boss (in a party, each cleared room's kills are shared and a boss counts for everyone). Prices: pieces 80, special pieces (✦) 400, colours 30, effect colours 300. The first piece of every slot and the Default colour are free.
+- **Colours:** 11 plain (Iron, Charcoal, Bone, Ivory, Crimson, Rust, Gold, Forest, Teal, Royal Blue, Violet) and 4 that move: Molten (glowing, pulsing), Frostbound (an icy shimmer), Voidcloth (drifting stars), Gilded (a gold flash).
+- **Outfits:** 3 saved per character on the account; the selected one is worn, in runs and on teammates' screens (it rides in the room roster).
+- Anything not owned yet can be tried on in the preview, with a Buy button.
+- **From the old skins** (once per account): every past kill became an emerald, and skins already unlocked became their colours and pieces (Radiant Paladin: winged helm, radiant mantle, dawnblade, sun kite; Wraith: bone mask, wraith shroud, spectral blades; Starborn: crystal crown, star cape). The equipped skin became outfit 1.
+- `scripts/skins.mjs` tests it; `scripts/outfits-look.mjs` takes preview shots.
 
 ## Multiplayer (2-3 players)
 Create a room, share the 4-letter code, and the host starts the run. The host's browser runs the enemies; each player runs their own character, so dodges are judged on that player's device. Code is in `src/mp.js`.
