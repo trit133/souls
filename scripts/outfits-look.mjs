@@ -1,5 +1,5 @@
-// Close-ups of each character in the customizer preview: default, every second piece, and the special pieces with
-// effect colours. node scripts/outfits-look.mjs -> /tmp/look/fit-<kind>-<look>.png
+// Close-ups of each character in the customizer preview: default, every second piece, the second special of every
+// slot, and the first specials with effect colours. node scripts/outfits-look.mjs -> /tmp/look/fit-<kind>-<look>.png
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 import { PIECES, COLORS } from '../src/outfits.js';
@@ -12,6 +12,7 @@ await page.click('#btn-acct'); await page.fill('#acct-user', 'fit' + (Date.now()
 const LOOKS = {
   default: () => ({}),
   second: (kind, P) => ({ pieces: Object.fromEntries(Object.entries(P[kind]).map(([s, l]) => [s, l[1]?.id])), colors: {} }),
+  special2: (kind, P) => ({ pieces: Object.fromEntries(Object.entries(P[kind]).map(([s, l]) => [s, l.filter((p) => p.special)[1].id])), colors: {} }),
   special: (kind, P, fx) => ({ pieces: Object.fromEntries(Object.entries(P[kind]).map(([s, l]) => [s, (l.find((p) => p.special) || l[1]).id])), colors: Object.fromEntries(Object.keys(P[kind]).map((s, i) => [s, [fx[i % fx.length], 'gold']])) }),
 };
 for (const kind of ['knight', 'rogue', 'mage']) for (const look of Object.keys(LOOKS)) {
