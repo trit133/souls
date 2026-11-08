@@ -148,7 +148,7 @@ export class Boss extends Actor {
     this.basePoise = this.basePoise || this.maxPoise; this.maxPoise = this.basePoise; this.breaks = 0;
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise; this.poiseT = 0;
     this.pos.set(this.arena.x, 0, this.arena.z - 3); this.yaw = 0; this.y = 0;
-    this.phase2 = false; this.ignited = false; this.atkSpeed = 1; this.trackMul = 1;
+    this.phase2 = false; this.ignited = false; this.atkSpeed = this.cfg.atkSpeed || 1; this.trackMul = 1;
     // elemental share of each hit (taken out of the physical); fast hitters build status slower per hit
     this.elems = this.cfg.elems || null; this.elemBuild = this.cfg.elemBuild ?? 1;
     this.leapCd = 4; this.emberCd = 0; this.gap = 1; this.evadeCd = 0; this.seenAtk = null;
@@ -550,8 +550,9 @@ const VAEL_WEIGHTS = (b, d, behind) => {
 };
 
 // ---------- Gorrath, the Slag Colossus (mini boss) ----------
-// Slow giant: huge unparryable slams and sweeps, a rear stomp, and thrown boulders at range.
-// His quick backhand swat is the one parryable move.
+// A heavy giant, still the slowest mini boss but no longer sluggish: huge unparryable slams and sweeps, a rear
+// stomp, thrown boulders at range, and a leaping maul drop that sends out a ring of slag and swings straight into a
+// sweep if you are still close. His quick backhand swat is the one parryable move.
 export const GORRATH_MOVES = {
   swat: {
     parry: true, dur: 1.4, track: [0.42, 3.2], sfx: [0.42, 'heavySwing'], trail: [0.44, 0.6],
@@ -583,6 +584,22 @@ export const GORRATH_MOVES = {
       { t: 0.68, fn: (b, g) => g.impact(b.pos.x, b.pos.z, 3.6, 0.5) },
     ],
   },
+  // the maul drop: he crouches, launches, lands maul-first on where you stood (a red ring marks it), the slag
+  // splashes out in a burning ring, and he wrenches the maul round into a sweep
+  leap: {
+    dur: 2.5, unparryable: true, track: [0.5, 4], tracks: [[1.3, 1.52, 3]], trail: [1.02, 1.2], leap: [0.5, 1.15], sfx: [1.5, 'heavySwing'],
+    keys: [[0.45, CROUCH], [0.7, AIR], [1.08, AIR], [1.18, OH_STRIKE], [1.36, OH_STRIKE], [1.5, SW_WIND], [1.66, SW_STRIKE], [2.1, SW_STRIKE]],
+    hits: [
+      { t0: 1.15, t1: 1.24, shape: 'circle', offset: 0.9, radius: 3.2, dmg: 38, poise: 70, knock: 'heavy' },
+      { t0: 1.6, t1: 1.74, range: 4.3, arc: 3.0, dmg: 22, poise: 40, knockback: 10 },
+    ],
+    onTime: [
+      { t: 0.05, fn: (b) => b.glint(true) },
+      { t: 0.5, fn: (b) => b.beginLeap() },
+      { t: 1.16, fn: (b, g) => { const f = b.fwd(); g.impact(b.pos.x + f.x * 0.9, b.pos.z + f.z * 0.9, 4.2, 0.9); g.spawnFireRing(b.pos.x + f.x * 0.9, b.pos.z + f.z * 0.9, 5.5, 0.9, 12); } },
+      { t: 1.38, fn: (b) => b.glint(true) },
+    ],
+  },
   hurl: {
     dur: 2.0, unparryable: true, track: [0.95, 3],
     keys: [[0.8, { ...OH_RAISE, armL: [-3.0, 0, 0.3] }], [1.02, { ...TH_STRIKE, armL: [-1.5, 0, 0.2], armR: [-1.5, 0, -0.2] }], [1.5, TH_STRIKE]],
@@ -598,6 +615,7 @@ const GORRATH_WEIGHTS = (b, d, behind) => {
   if (d < 3.2) { w.push(['swat', 3]); w.push(['slam', 2.2]); w.push(['sweep', 2.2]); }
   if (d >= 3.2 && d < 6) w.push(['slam', 1.2]);
   if (d >= 4.5) w.push(['hurl', b.lastMove === 'hurl' ? 1 : 3.5]);
+  if (d >= 5 && b.leapCd <= 0) w.push(['leap', d > 8 ? 5 : 2.5]);
   return w.map(([n, x]) => [n, n === b.lastMove ? x * 0.3 : x]);
 };
 
@@ -609,9 +627,10 @@ Object.assign(BOSSES, {
     model: { scale: 1.25, cloth: 0x1e2032, armor: 0x2c2e44, accent: 0x5a5a9a, skin: 0xb8a090, head: 'none', weapon: 'daggers', eyes: 0xa0c8ff, eyeZ: 0.17, cape: true, bulk: 0.95, kit: 'vael' },
   },
   gorrath: {
-    id: 'gorrath', name: 'Gorrath, the Slag Colossus', elems: { fire: 0.3 }, hp: 980, poise: 230, radius: 1.15, walk: 1.9, gap: [0.6, 1.4],
-    phase2: false, kneels: false, moves: GORRATH_MOVES, weights: GORRATH_WEIGHTS,
-    punish: (b, dist) => (dist > 4 ? 'hurl' : 'swat'),
+    // faster than he was (walk 1.9, attacks 1x), still slower than Hask (3.0) and Vael (3.6)
+    id: 'gorrath', name: 'Gorrath, the Slag Colossus', elems: { fire: 0.3 }, hp: 980, poise: 230, radius: 1.15, walk: 2.5, gap: [0.4, 1.0], atkSpeed: 1.25,
+    phase2: false, kneels: false, moves: GORRATH_MOVES, weights: GORRATH_WEIGHTS, leapH: 4.2, leapR: 3.4, leapAir: 0.75, leapCd: 8,
+    punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'hurl') : 'swat'),
     model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true, kit: 'gorrath' },
   },
 });

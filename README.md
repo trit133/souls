@@ -15,7 +15,7 @@ A pseudo-3D souls-like roguelite built with Three.js + Vite. Each run is 11 area
 - **Mini bosses:**
   - **Brother Hask** (Executioner's Pit): axe; flurry, delayed chop, charge, hop slam.
   - **Sister Vael** (Moonlit Cloister): a moon-masked assassin with a swinging silver braid, a split cloak and two crescent daggers; sidesteps your swings, lunges and dives.
-  - **Gorrath** (Slag Forge): giant maul; slams, sweeps, rear stomp, thrown boulders.
+  - **Gorrath** (Slag Forge): giant maul; slams, sweeps, rear stomp, thrown boulders, and a leaping maul drop (a red ring marks the landing) that splashes out a ring of burning slag and swings into a sweep. Still the slowest of the three, but 25% quicker to attack than he was, with shorter pauses and a faster walk. `scripts/gorrath.mjs` checks it.
 - **After each mini boss:** pick 1 of 3 random power-ups, or **Rest** (full HP and flasks refilled). Power-ups stack:
   - +25 max HP
   - +15 max stamina
