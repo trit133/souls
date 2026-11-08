@@ -87,7 +87,7 @@ function compileSection(S, bar) {
     const ap = pat('arp');
     if (ap) for (const e of parse(ap)) {
       const v = voicing(chordAt[o + e.at], 4), all = [...v, ...v.map((x) => x + 12)];
-      add(o + e.at, { i: 'arp', m: all[+e.sym], len: e.len, v: 1 });
+      add(o + e.at, { i: 'arp', m: all[+e.sym], len: e.len, v: S.arpVel || 1 });
     }
     // stabs on the chord (x, X accented): brass, or plucked strings with stab: 'pizz'
     const br = pat('brass');
@@ -297,7 +297,49 @@ const gorrA = (extra = {}) => ({
   ...extra,
 });
 
+// ---------- the title: Varek's motif slowed to a lament, harp, choir and bells ----------
+const TITLE_A = [
+  'D5 - - - - - - - A4 - - - Bb4 - A4 -',
+  'F4 - - - - - - - - - - - . . . .',
+  'G4 - - - Bb4 - - - D5 - - - C5 - Bb4 -',
+  'A4 - - - - - - - - - - - . . . .',
+  'D5 - - - - - - - A4 - - - Bb4 - A4 -',
+  'F5 - - - - - - - E5 - D5 - C5 - D5 -',
+  'Bb4 - - - - - - - A4 - - - G4 - - -',
+  'A4 - - - - - - - C#5 - - - E5 - - -',
+];
+const TITLE_B = [ // the warmer middle
+  'D5 - - - F5 - - - Bb5 - - - - - - -',
+  'A5 - - - - - - - G5 - F5 - - - - -',
+  'E5 - - - G5 - - - C6 - - - - - - -',
+  'A5 - - - - - - - - - - - . . . .',
+  'D6 - - - - - - - C6 - Bb5 - - - - -',
+  'A5 - - - - - - - F5 - - - C5 - - -',
+  'D5 - - - - - - - G5 - - - Bb5 - - -',
+  'A5 - - - - - - - - - - - . . . .',
+];
+const HARP = '0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1';
+const SLOW_BASS = 'r - - - - - - - f - - - - - - -';
+const TOLL = ['R . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .'];
+
 const SONGS = {
+  title: {
+    bpm: 76,
+    intro: [{
+      bars: 2, chords: ['Dm', 'Bb'], strings: 0.6, choir: 0.7,
+      bell: ['D5 - - - - - - - A4 - - - - - - -', 'Bb4 - - - - - - - F4 - - - - - - -'],
+      bass: 'r - - - - - - - - - - - - - - -',
+    }],
+    loop: [
+      { bars: 8, chords: ['Dm', 'Bb', 'Gm', 'A', 'Dm', 'Bb', 'Gm', 'A'], lead: TITLE_A, strings: 0.7, arp: HARP, arpVel: 2, bass: SLOW_BASS, drums: { timp: TOLL } },
+      { bars: 8, chords: ['Bb', 'F', 'C', 'Dm', 'Bb', 'F', 'Gm', 'A'], lead: TITLE_B, strings: 1, choir: 0.8, arp: HARP, arpVel: 2, bass: SLOW_BASS, drums: { timp: TOLL } },
+      { // only the bells and the choir
+        bars: 4, chords: ['Dm', 'Bb', 'Gm', 'A'], strings: 0.6, choir: 1,
+        bell: ['D5 - - - - - - - A4 - - - - - - -', 'Bb4 - - - - - - - F4 - - - - - - -', 'G4 - - - - - - - D5 - - - - - - -', 'C#5 - - - - - - - A4 - - - - - - -'],
+        bass: 'r - - - - - - - - - - - - - - -',
+      },
+    ],
+  },
   hask: {
     bpm: 112,
     intro: [{

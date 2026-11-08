@@ -24,6 +24,8 @@
   <main>
     <h1>ASHEN VIGIL · JUKEBOX</h1>
     <p>Varek's phase 2 is what plays once he ignites. Press it while phase 1 is playing and it switches on the next bar, the same way it does in the fight.</p>
+    <h2>Menus</h2>
+    <button data-song="title">Title screen</button>
     <h2>Mini bosses</h2>
     <button data-song="hask">Brother Hask · The Executioner's Pit</button>
     <button data-song="vael">Sister Vael · The Moonlit Cloister</button>
@@ -42,7 +44,7 @@
     import { Music } from './src/music.js';
     let ctx, vol, band;
     const now = document.getElementById('now');
-    const NAMES = { hask: 'Brother Hask', vael: 'Sister Vael', gorrath: 'Gorrath', varek1: 'Varek, phase 1', varek2: 'Varek, phase 2' };
+    const NAMES = { title: 'the title theme', hask: 'Brother Hask', vael: 'Sister Vael', gorrath: 'Gorrath', varek1: 'Varek, phase 1', varek2: 'Varek, phase 2' };
     const mark = () => document.querySelectorAll('[data-song]').forEach((b) => b.classList.toggle('on', b.dataset.song === band?.playing));
     const state = document.getElementById('state');
     setInterval(() => { state.textContent = ctx ? `Audio ${ctx.state}, ${ctx.sampleRate} Hz` : 'Audio not started yet: press a button'; }, 250);

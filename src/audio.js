@@ -123,4 +123,10 @@ export class Audio {
   stopMusic(fade = 1.2) {
     this.band?.stop(fade);
   }
+  // the menus' theme: fades in fresh rather than waiting for the bar line
+  titleMusic() {
+    if (!this.ctx || this.band.playing === 'title') return;
+    this.band.stop(1.5);
+    this.band.play('title', 3);
+  }
 }

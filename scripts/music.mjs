@@ -50,6 +50,7 @@ const wav = (file, b64) => {
 const runs = {
   varek1: { plan: [[0, 'varek1']], dur: 60 },
   'varek1-2': { plan: [[0, 'varek1'], [20, 'varek2']], dur: 70 },
+  title: { plan: [[0, 'title']], dur: 70 },
   hask: { plan: [[0, 'hask']], dur: 50 },
   vael: { plan: [[0, 'vael']], dur: 45 },
   gorrath: { plan: [[0, 'gorrath']], dur: 45 },

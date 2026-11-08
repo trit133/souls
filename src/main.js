@@ -292,6 +292,14 @@ class Game {
     pr.addEventListener('touchstart', tapPrompt, { passive: false });
     pr.addEventListener('click', tapPrompt);
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.mode === 'play') this.setPaused(true); });
+    // browsers hold sound back until the first tap or key: the title theme starts there
+    const firstGesture = () => {
+      this.audio.unlock();
+      if (!this.audio.ctx) return;
+      if (this.mode === 'title' || this.mode === 'lobby') this.audio.titleMusic();
+      for (const ev of ['click', 'touchend', 'keydown']) removeEventListener(ev, firstGesture, true);
+    };
+    for (const ev of ['click', 'touchend', 'keydown']) addEventListener(ev, firstGesture, true);
     // resume audio on any touch (iOS suspends it when backgrounded)
     addEventListener('touchstart', () => this.audio.ctx && this.audio.ctx.state !== 'running' && this.audio.unlock(), { passive: true });
   }
@@ -334,6 +342,7 @@ class Game {
     this.deaths = 0;
     this.startTime = this.time;
     this.mode = 'play';
+    this.audio.stopMusic(2);
     this.ui.setMaxHp(this.player.maxHp, this.player.maxSt);
     this.ui.hp.snap(1); this.ui.st.snap(1);
     $('b-special').textContent = { knight: 'BLOCK', rogue: 'PARRY', mage: 'FIRE' }[kind];
@@ -350,7 +359,7 @@ class Game {
     this.mode = 'title';
     $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
     if (this.mp.active || this.mp.code) this.mp.leave();
-    this.audio.stopMusic();
+    this.audio.titleMusic();
     this.ui.show('pause', false); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('gameover', false); this.ui.show('reward', false);
     this.ui.show('hud', false); this.ui.show('touch', false); this.ui.show('menu');
@@ -721,9 +730,9 @@ class Game {
   }
 
   afterRunLobby() {
+    this.audio.titleMusic();
     if (!this.mp.active) { this.treeUI.open(this.kind); return; }
     this.mode = 'lobby';
-    this.audio.stopMusic();
     for (const s of ['gameover', 'victory', 'death', 'reward', 'hud', 'touch']) this.ui.show(s, false);
     this.ui.prompt(null); this.ui.enemyBars([]);
     this.ui.show('menu');

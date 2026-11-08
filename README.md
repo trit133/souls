@@ -167,6 +167,7 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
 
 ## Music
 All music is synthesized in `src/music.js`: songs are written as 16th-note patterns and played by a 16-bit style band (pulse-wave leads, triangle bass, noise drums) over an orchestral layer (strings, choir, brass stabs, timpani, a bell) in a cathedral reverb.
+- **Title (all the menus):** Varek's motif slowed to a lament at 76 BPM: a harp arpeggio, choir and bells, with a warmer major middle. It starts on the first tap or key (browsers hold sound until then), fades out when a run starts and comes back on the title, lobby or skill trees after a run.
 - **Varek, Throne of Ash:** D minor, 132 BPM with a bell and choir intro. When he ignites in his second phase it switches on the next bar line into a faster 148 BPM version with a new melody.
 - **Brother Hask, the Executioner's Pit:** an E Phrygian march at 112 BPM: war drums, a low "oh" chant and a blade clang on every fourth beat, with a faster flurry section.
 - **Sister Vael, the Moonlit Cloister:** a quick A minor waltz in 3/4 at 152 BPM, plucked strings on the off beats and a break of cloister bells.
