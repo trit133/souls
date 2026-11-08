@@ -168,7 +168,9 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
 ## Music
 All music is synthesized in `src/music.js`: songs are written as 16th-note patterns and played by a 16-bit style band (pulse-wave leads, triangle bass, noise drums) over an orchestral layer (strings, choir, brass stabs, timpani, a bell) in a cathedral reverb.
 - **Varek, Throne of Ash:** D minor, 132 BPM with a bell and choir intro. When he ignites in his second phase it switches on the next bar line into a faster 148 BPM version with a new melody.
-- The mini bosses still use the old low drone.
+- **Brother Hask, the Executioner's Pit:** an E Phrygian march at 112 BPM: war drums, a low "oh" chant and a blade clang on every fourth beat, with a faster flurry section.
+- **Sister Vael, the Moonlit Cloister:** a quick A minor waltz in 3/4 at 152 BPM, plucked strings on the off beats and a break of cloister bells.
+- **Gorrath, the Slag Forge:** G minor at 156 BPM, a chugging bass, hammer-on-anvil hits on the off beats and a half-time section for the maul.
 - `jukebox.html` (dev server only: `npx vite --host`, then open `/jukebox.html`) plays each song. `scripts/music.mjs` renders them offline, reports peak and loudness for the whole mix and each instrument, and writes WAVs to `/tmp`.
 
 ## Tests

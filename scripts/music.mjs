@@ -50,13 +50,16 @@ const wav = (file, b64) => {
 const runs = {
   varek1: { plan: [[0, 'varek1']], dur: 60 },
   'varek1-2': { plan: [[0, 'varek1'], [20, 'varek2']], dur: 70 },
+  hask: { plan: [[0, 'hask']], dur: 50 },
+  vael: { plan: [[0, 'vael']], dur: 45 },
+  gorrath: { plan: [[0, 'gorrath']], dur: 45 },
 };
 for (const name of process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(runs)) {
   const r = runs[name];
   const full = await render(r.plan, r.dur);
   console.log(`${name}: peak ${full.peak} dB, loudness per 2 s:`, full.rms.join(' '));
   wav(`/tmp/${name}.wav`, full.pcm);
-  for (const inst of ['lead', 'harm', 'arp', 'bass', 'strings', 'choir', 'brass', 'bell', 'timp', 'kick', 'snare', 'hat', 'crash']) {
+  for (const inst of ['lead', 'harm', 'arp', 'bass', 'strings', 'choir', 'brass', 'pizz', 'bell', 'timp', 'kick', 'snare', 'hat', 'crash', 'anvil']) {
     const s = await render(r.plan, r.dur, [inst]);
     const loud = s.rms.filter((x) => x > -80);
     if (loud.length) console.log('  ' + inst.padEnd(8), 'peak', String(s.peak).padStart(6), ' avg', (loud.reduce((a, x) => a + x, 0) / loud.length).toFixed(1));

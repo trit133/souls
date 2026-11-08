@@ -3,7 +3,7 @@ import { Music } from './music.js';
 
 export class Audio {
   constructor() {
-    this.ctx = null; this.master = null; this.music = null; this.muted = false;
+    this.ctx = null; this.master = null; this.muted = false;
     this.vol = { master: 0.7, music: 1, sfx: 1, team: 0.5 };
   }
 
@@ -114,34 +114,13 @@ export class Audio {
     }
   }
 
-  // 'varek' starts Varek's theme; 2 moves it into his second phase on the next bar line.
-  // 1 is the old low drone the mini bosses still use.
-  startMusic(which = 1) {
+  // a boss's theme by id ('hask', 'vael', 'gorrath', 'varek'); 2 moves Varek's into his
+  // second phase on the next bar line
+  startMusic(song) {
     if (!this.ctx) return;
-    const song = which === 'varek' ? 'varek1' : which === 2 ? 'varek2' : null;
-    if (song) { this._stopDrone(); this.band.play(song); return; }
-    this.stopMusic();
-    const ctx = this.ctx, out = ctx.createGain(); out.gain.value = 0; out.connect(this.musicBus);
-    out.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 2);
-    const nodes = [];
-    for (const f of [55, 82.4, 65.4]) {
-      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
-      const lf = ctx.createOscillator(); lf.frequency.value = 0.1 + Math.random() * 0.2;
-      const lg = ctx.createGain(); lg.gain.value = 1.5; lf.connect(lg); lg.connect(o.detune);
-      const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 380;
-      o.connect(flt); flt.connect(out); o.start(); lf.start(); nodes.push(o, lf);
-    }
-    this.music = { out, nodes };
+    this.band.play(song === 'varek' ? 'varek1' : song === 2 ? 'varek2' : song);
   }
   stopMusic(fade = 1.2) {
     this.band?.stop(fade);
-    this._stopDrone(fade);
-  }
-  _stopDrone(fade = 1.2) {
-    if (!this.music || !this.ctx) return;
-    const { out, nodes } = this.music; this.music = null;
-    const t = this.ctx.currentTime;
-    out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value, t); out.gain.linearRampToValueAtTime(0, t + fade);
-    setTimeout(() => { nodes.forEach((n) => { try { n.stop(); } catch {} }); out.disconnect(); }, fade * 1000 + 100);
   }
 }

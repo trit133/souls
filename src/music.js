@@ -17,6 +17,8 @@ const hz = (m) => 440 * 2 ** ((m - 69) / 12);
 const CHORDS = {
   Dm: ['D', 'F', 'A'], Bb: ['Bb', 'D', 'F'], Gm: ['G', 'Bb', 'D'], A: ['A', 'C#', 'E'],
   C: ['C', 'E', 'G'], Eb: ['Eb', 'G', 'Bb'], F: ['F', 'A', 'C'],
+  Em: ['E', 'G', 'B'], Am: ['A', 'C', 'E'], Cm: ['C', 'Eb', 'G'],
+  D: ['D', 'F#', 'A'], E: ['E', 'G#', 'B'], G: ['G', 'B', 'D'], B: ['B', 'D#', 'F#'],
 };
 // the chord's tones stacked upward from its root in octave `oct`
 const voicing = (name, oct) => {
@@ -44,30 +46,35 @@ function parse(s) {
 const barPat = (p, bar) => (Array.isArray(p) ? p[bar % p.length] : p);
 
 // ---------- compile a song into a flat list of steps, each a list of note events ----------
-function compileSection(S) {
-  const steps = Array.from({ length: S.bars * 16 }, () => []);
+function compileSection(S, bar) {
+  // every bar of every pattern must be exactly one bar long
+  const check = (k, p) => [].concat(p).forEach((x, i) => { if (toks(x).length !== bar) throw new Error(`music: ${k}[${i}] has ${toks(x).length} steps, not ${bar}: ${x}`); });
+  for (const k of ['lead', 'harm', 'bell', 'bassLine', 'bass', 'arp', 'brass']) if (S[k]) check(k, S[k]);
+  for (const [k, p] of Object.entries({ ...S.drums, ...S.fill })) check(k, p);
+  const steps = Array.from({ length: S.bars * bar }, () => []);
   const add = (at, e) => at < steps.length && steps[at].push(e);
   // chord at each step ("Gm A" splits the bar evenly)
   const chordAt = [];
   const segs = []; // { at, len, name }
   S.chords.forEach((c, b) => {
-    const parts = c.split(' '), w = 16 / parts.length;
+    const parts = c.split(' '), w = bar / parts.length;
     parts.forEach((name, k) => {
-      segs.push({ at: b * 16 + k * w, len: w, name });
-      for (let i = 0; i < w; i++) chordAt[b * 16 + k * w + i] = name;
+      segs.push({ at: b * bar + k * w, len: w, name });
+      for (let i = 0; i < w; i++) chordAt[b * bar + k * w + i] = name;
     });
   });
 
   // melodic lines: whole-section strings so notes can tie across bar lines
   for (const [inst, key] of [['lead', 'lead'], ['harm', 'harm'], ['bell', 'bell'], ['bass', 'bassLine']]) {
     if (!S[key]) continue;
-    for (const e of parse(S[key].join(' '))) add(e.at, { i: inst, m: midi(e.sym), len: e.len, v: 1 });
+    const shift = inst === 'lead' ? S.shift || 0 : 0;
+    for (const e of parse(S[key].join(' '))) add(e.at, { i: inst, m: midi(e.sym) + shift, len: e.len, v: 1 });
   }
   if (S.strings) for (const g of segs) add(g.at, { i: 'strings', m: voicing(g.name, 3), len: g.len, v: S.strings });
-  if (S.choir) for (const g of segs) { const v = voicing(g.name, 4); add(g.at, { i: 'choir', m: [v[0] - 12, v[2], v[0] + 12], len: g.len, v: S.choir }); }
+  if (S.choir) for (const g of segs) { const v = voicing(g.name, 4); add(g.at, { i: 'choir', m: [v[0] - 12, v[2], v[0] + 12], len: g.len, v: S.choir, vowel: S.vowel }); }
 
   for (let b = 0; b < S.bars; b++) {
-    const last = b === S.bars - 1, o = b * 16;
+    const last = b === S.bars - 1, o = b * bar;
     const pat = (k) => (last && S.fill?.[k] != null ? S.fill[k] : S[k] != null ? barPat(S[k], b) : null);
     // bass: r root, o root an octave up, f fifth, t third
     const bp = pat('bass');
@@ -82,12 +89,12 @@ function compileSection(S) {
       const v = voicing(chordAt[o + e.at], 4), all = [...v, ...v.map((x) => x + 12)];
       add(o + e.at, { i: 'arp', m: all[+e.sym], len: e.len, v: 1 });
     }
-    // brass stabs on the chord (x, X accented)
+    // stabs on the chord (x, X accented): brass, or plucked strings with stab: 'pizz'
     const br = pat('brass');
-    if (br) for (const e of parse(br)) add(o + e.at, { i: 'brass', m: voicing(chordAt[o + e.at], 4), len: e.len, v: e.sym === 'X' ? 1 : 0.7 });
+    if (br) for (const e of parse(br)) add(o + e.at, { i: S.stab || 'brass', m: voicing(chordAt[o + e.at], S.stab === 'pizz' ? 3 : 4), len: e.len, v: e.sym === 'X' ? 1 : 0.7 });
     // drums: X accent, x normal, o ghost; timpani r root / f fifth (upper case accented)
     const D = S.drums || {};
-    for (const k of ['kick', 'snare', 'hat', 'crash', 'timp']) {
+    for (const k of ['kick', 'snare', 'hat', 'crash', 'timp', 'anvil']) {
       const p = last && S.fill?.[k] != null ? S.fill[k] : D[k] != null ? barPat(D[k], b) : null;
       if (!p) continue;
       toks(p).forEach((t, i) => {
@@ -102,11 +109,10 @@ function compileSection(S) {
   }
   return steps;
 }
-const compile = (song) => ({
-  ...song,
-  intro: (song.intro || []).flatMap(compileSection),
-  loop: song.loop.flatMap(compileSection),
-});
+const compile = (song) => {
+  const bar = song.bar || 16;
+  return { ...song, bar, intro: (song.intro || []).flatMap((S) => compileSection(S, bar)), loop: song.loop.flatMap((S) => compileSection(S, bar)) };
+};
 
 // ---------- Varek, the Throne of Ash: D minor, 16-bit lead over a dark orchestra ----------
 const A_LEAD = [
@@ -186,7 +192,188 @@ const varekB = (drums) => ({
   drums, fill: { snare: 'X . X . X . X X X X X X X X X X', timp: 'R . . . r . . . r . r . R R R R', brass: 'X - - - - - - - . . . . . . . .' },
 });
 
+// ---------- Brother Hask, the Executioner's Pit: an E Phrygian march, chant and clanging blade ----------
+const HASK_A = [
+  'E4 - - - - - - - B3 - - - E4 - G4 -',
+  'F#4 - - - E4 - - - D4 - - - E4 - - -',
+  'F4 - - - - - - - A4 - - - G4 - F4 -',
+  'E4 - - - - - - - - - - - . . . .',
+  'G4 - - - - - E4 - C5 - - - B4 - A4 -',
+  'A4 - - - - - F#4 - D4 - - - E4 - F#4 -',
+  'A4 - - - G4 - F4 - E4 - - - F4 - G4 -',
+  'F#4 - - - - - - - D#4 - - - B3 - - -',
+];
+const HASK_B = [ // the flurry
+  'A4 - - - C5 - B4 - A4 - - - E4 - - -',
+  'A4 B4 C5 D5 E5 - - - D5 - C5 - B4 - - -',
+  'G4 - - - - - - - F#4 - E4 - F#4 - G4 -',
+  'E4 - - - - - - - - - - - . . . .',
+  'F4 G4 A4 B4 C5 - - - B4 - A4 - G4 - - -',
+  'A4 - - - - - - - F4 - - - C5 - - -',
+  'B4 - - - A4 - - - G4 - - - F#4 - - -',
+  'D#5 - - - - - - - B4 - - - . . . .',
+];
+const DRH = { // the executioner's tread: a blade clang on beat four
+  kick: 'X . . . . . X . X . . . . . . .',
+  snare: '. . . . . . . . X . . . . . . .',
+  hat: 'x . . . x . . . x . . . x . . .',
+  timp: 'R . . . . . . . R . . . . . . .',
+  anvil: '. . . . . . . . . . . . x . . .',
+};
+const haskA = (extra = {}) => ({
+  bars: 8, chords: ['Em', 'Em', 'F', 'Em', 'C', 'D', 'F', 'B'], lead: HASK_A, strings: 1, crash: 0.8,
+  bass: 'r - - - . . r . r - - - . . . .',
+  brass: ['X - - - . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .'],
+  drums: DRH, fill: { snare: 'X . . . X . . . X . X . X X X X', timp: 'R . . . R . . . R . R . R R R R' },
+  ...extra,
+});
+
+// ---------- Sister Vael, the Moonlit Cloister: a quick A minor waltz in 3/4 ----------
+const VAEL_A = [
+  'E5 - - - A5 - - - C6 - B5 -',
+  'G#5 - - - - - - - E5 - - -',
+  'A5 - B5 - C6 - D6 - E6 - - -',
+  'F6 - - - E6 - - - D6 - - -',
+  'C6 - - - A5 - - - F5 - A5 -',
+  'B5 - - - G#5 - - - E5 - - -',
+  'A5 - C6 - B5 - A5 - G#5 - A5 -',
+  'B5 - - - - - - - . . . .',
+];
+const VAEL_B = [
+  'D5 - - - F5 - - - A5 - G5 -',
+  'F5 - - - E5 - - - D5 - - -',
+  'C5 - - - E5 - - - A5 - G#5 -',
+  'A5 - - - - - - - . . . .',
+  'A5 - - - C6 - - - F6 - E6 -',
+  'D6 - - - B5 - - - G5 - - -',
+  'G#5 - A5 - B5 - C6 - D6 - E6 -',
+  'E6 - - - - - - - - - - -',
+];
+const DRV = {
+  kick: 'X . . . . . . . . . . .',
+  snare: '. . . . . . . . o . . .',
+  hat: 'x . o . x . o . x . o .',
+};
+const vaelA = (extra = {}) => ({
+  bars: 8, chords: ['Am', 'E', 'Am', 'Dm', 'F', 'E', 'Am', 'E'], lead: VAEL_A, strings: 0.7, crash: 0.7,
+  bass: 'r - - - . . . . . . . .', stab: 'pizz', brass: '. . . . x . . . x . . .',
+  drums: DRV, fill: { snare: '. . . . x . x . X X X X' },
+  ...extra,
+});
+
+// ---------- Gorrath, the Slag Forge: G minor, chugging bass and hammer on anvil ----------
+const GORR_A = [
+  'G4 - - - D5 - - - Bb4 - A4 - G4 - - -',
+  'D5 - - - - - - - C5 - Bb4 - A4 - Bb4 -',
+  'G5 - - - - - Eb5 - Bb4 - - - Eb5 - G5 -',
+  'F5 - - - - - - - - - - - . . . .',
+  'G4 - - - D5 - - - Bb4 - A4 - G4 - - -',
+  'D5 - - - G5 - - - F5 - D5 - Bb4 - - -',
+  'C5 - - - Eb5 - - - G5 - F5 - Eb5 - D5 -',
+  'F#5 - - - - - - - A5 - - - D6 - - -',
+];
+const GORR_B = [ // half time: the maul comes down
+  'Bb4 - - - - - - - Eb5 - - - G5 - - -',
+  'Bb5 - - - - - - - - - - - G5 - - -',
+  'C6 - - - - - - - Bb5 - - - G5 - - -',
+  'Eb5 - - - - - - - - - - - . . . .',
+  'D5 - - - - - - - G5 - - - Bb5 - - -',
+  'D6 - - - - - - - C6 - - - Bb5 - - -',
+  'A5 - - - - - - - F#5 - - - D5 - - -',
+  'F#5 - - - - - - - A5 - - - C6 - - -',
+];
+const DRG = {
+  kick: 'X . . x X . . . X . . x X . x .',
+  snare: '. . . . X . . . . . . . X . . .',
+  hat: 'x o x o x o x o x o x o x o x o',
+  anvil: '. . . . . . x . . . . . . . x .',
+};
+const GORR_BASS = 'r r o r r r o r r r o r o r o r';
+const gorrA = (extra = {}) => ({
+  bars: 8, chords: ['Gm', 'Gm', 'Eb', 'F', 'Gm', 'Gm', 'Cm', 'D'], lead: GORR_A, strings: 0.8, crash: 0.9,
+  bass: GORR_BASS,
+  brass: 'X - . . . . . . X - . . . . . .',
+  drums: DRG, fill: { snare: SNARE_ROLL },
+  ...extra,
+});
+
 const SONGS = {
+  hask: {
+    bpm: 112,
+    intro: [{
+      bars: 2, chords: ['Em', 'F'], strings: 0.8, choir: 0.8, vowel: 'oh',
+      bass: 'r - - - - - - - - - - - - - - -',
+      drums: { timp: ['R . . . . . . . R . . R . . . .', 'R . . . R . . . R . R . R R R R'], anvil: ['. . . . . . . . . . . . x . . .', '. . . . . . . . . . . . . . . .'] },
+    }],
+    loop: [
+      haskA(),
+      {
+        bars: 8, chords: ['Am', 'Am', 'Em', 'Em', 'F', 'F', 'B', 'B'], lead: HASK_B, strings: 1, choir: 0.7, vowel: 'oh', crash: 1,
+        bass: 'r - r r . . r . r - r r . . o .',
+        brass: 'X - . . . . X - . . . . X - . .',
+        drums: { kick: 'X . X X . . X . X . X X . . X .', snare: '. . . . X . . . . . . . X . . .', hat: 'x . x . x . x . x . x . x . x .', timp: 'R . . . . . r . R . . . . . . .', anvil: '. . . . x . . . . . . . x . . .' },
+        fill: { snare: 'X . X . X . X X X X X X X X X X', timp: 'R . . . r . . . r . r . R R R R' },
+      },
+      { // war drums and the chant
+        bars: 4, chords: ['Em', 'F', 'Em', 'F'], strings: 0.6, choir: 1, vowel: 'oh', crash: 0.6,
+        bass: 'r - - - . . r . r - - - . . . .',
+        drums: { kick: 'X . . . . . X . X . . . . . . .', timp: 'R . . R . . R . R . . . R . . .', anvil: '. . . . . . . . . . . . x . . .' },
+        fill: { snare: '. . . . x . . . X . X . X X X X' },
+      },
+      haskA({ choir: 0.6, vowel: 'oh', shift: 12 }),
+    ],
+  },
+  vael: {
+    bpm: 152, bar: 12, gain: 1.3,
+    intro: [{
+      bars: 2, chords: ['Am', 'E'], strings: 0.6, choir: 0.6,
+      bell: ['A5 - - - - - - - - - - -', 'E5 - - - - - - - - - - -'],
+      bass: 'r - - - - - - - - - - -',
+    }],
+    loop: [
+      vaelA(),
+      {
+        bars: 8, chords: ['Dm', 'Dm', 'Am', 'Am', 'F', 'G', 'E', 'E'], lead: VAEL_B, strings: 1, choir: 0.6, crash: 0.8,
+        bass: 'r - - - o - - - f - - -',
+        arp: '0 1 2 3 2 1 0 1 2 3 2 1',
+        drums: { kick: 'X . . . . . X . . . . .', snare: '. . . . . . . . x . . .', hat: 'x o x o x o x o x o x o', timp: ['R . . . . . . . . . . .', '. . . . . . . . . . . .'] },
+        fill: { snare: 'x . x . X . X . X X X X', timp: 'R . . . r . r . R R R R' },
+      },
+      { // the cloister bells
+        bars: 4, chords: ['Am', 'F', 'E', 'E'], strings: 0.8, choir: 1,
+        bell: ['A5 - - - E5 - - - C5 - - -', 'F5 - - - C5 - - - A4 - - -', 'G#5 - - - E5 - - - B4 - - -', 'E5 - - - - - - - . . . .'],
+        bass: 'r - - - - - - - - - - -',
+        drums: { timp: ['R . . . . . . . . . . .', '. . . . . . . . . . . .', 'R . . . . . . . . . . .', 'r . r . r . r r R R R R'] },
+      },
+      vaelA({ choir: 0.5, arp: '4 . 3 . 2 . 1 . 2 . 3 .' }),
+    ],
+  },
+  gorrath: {
+    bpm: 156,
+    intro: [{
+      bars: 2, chords: ['Gm', 'D'], strings: 0.8,
+      bass: GORR_BASS,
+      drums: { anvil: ['x . . . . . x . . . x . . . x .', 'x . . . x . . . x . x . x x x x'], kick: 'X . . . . . . . X . . . . . . .' },
+    }],
+    loop: [
+      gorrA(),
+      {
+        bars: 8, chords: ['Eb', 'Eb', 'Cm', 'Cm', 'Gm', 'Gm', 'D', 'D'], lead: GORR_B, strings: 1, choir: 0.8, crash: 1,
+        bass: 'r - - - r - - - o - - - r - r -',
+        brass: 'X - - - . . . . X - . . . . . .',
+        drums: { kick: 'X . . . . . . . X . . . . . . .', snare: '. . . . . . . . X . . . . . . .', hat: 'x . x . x . x . x . x . x . x .', timp: 'R . . . . . . . R . . . . . . .', anvil: 'x . . . . . . . x . . . . . . .' },
+        fill: { snare: 'X . . . X . . . X . X . X X X X', timp: 'R . . . R . . . R . R . R R R R' },
+      },
+      { // just the forge: riff, hammer and arpeggio
+        bars: 4, chords: ['Gm', 'Gm', 'Gm', 'D'], strings: 0.5, crash: 0.6,
+        bass: GORR_BASS,
+        arp: '0 1 2 3 0 1 2 3 0 1 2 3 4 3 2 1',
+        drums: { kick: 'X . . x X . . . X . . x X . x .', anvil: 'x . . . . . x . . . x . . . x .' },
+        fill: { snare: SNARE_ROLL },
+      },
+      gorrA({ choir: 0.7, arp: '0 . 1 . 2 . 3 . 4 . 3 . 2 . 1 .' }),
+    ],
+  },
   varek1: {
     bpm: 132,
     intro: [{
@@ -319,11 +506,11 @@ export class Music {
     if (until == null) until = now + (typeof document !== 'undefined' && document.hidden ? 1.5 : 0.3);
     let c = this.cur;
     while (c && c.t < until) {
-      if (c.pending && c.pos % 16 === 0) { c = this.cur = this._song(c.pending, c.t, c.out, c.wet); }
+      if (c.pending && c.pos % c.s.bar === 0) { c = this.cur = this._song(c.pending, c.t, c.out, c.wet); }
       if (c.t >= now - 0.02) {
         const { intro, loop } = c.s;
         const step = c.pos < intro.length ? intro[c.pos] : loop[(c.pos - intro.length) % loop.length];
-        for (const e of step) if (!this.solo || this.solo.has(e.i)) this[e.i](c.t, e.len * c.dt, e.m, e.v, c);
+        for (const e of step) if (!this.solo || this.solo.has(e.i)) this[e.i](c.t, e.len * c.dt, e.m, e.v * (c.s.gain || 1), c, e);
       }
       c.t += c.dt; c.pos++;
     }
@@ -411,11 +598,12 @@ export class Music {
     lp.connect(g);
     this._out(g, c, 0.5);
   }
-  choir(t, d, ms, v, c) {
+  choir(t, d, ms, v, c, e) {
     const end = t + d + 1.6;
     const sum = this.ctx.createGain(); sum.gain.value = 1;
-    // "aah": formant band-passes over a buzzy source
-    const f1 = this._filter('bandpass', 760, 5), f2 = this._filter('bandpass', 1150, 7), f3 = this._filter('bandpass', 2800, 8);
+    // "aah" (or a darker "oh"): formant band-passes over a buzzy source
+    const [a1, a2] = e?.vowel === 'oh' ? [480, 820] : [760, 1150];
+    const f1 = this._filter('bandpass', a1, 5), f2 = this._filter('bandpass', a2, 7), f3 = this._filter('bandpass', 2800, 8);
     const g2 = this.ctx.createGain(); g2.gain.value = 0.55; const g3 = this.ctx.createGain(); g3.gain.value = 0.25;
     sum.connect(f1); sum.connect(f2); sum.connect(f3); f2.connect(g2); f3.connect(g3);
     const g = this._env(t, d, 0.2 * v, { a: 0.45, rel: 1.0 });
@@ -433,6 +621,29 @@ export class Music {
     for (const m of ms) for (const det of [-6, 6]) this._osc('sawtooth', hz(m), t, end, det).connect(lp);
     lp.connect(g);
     this._out(g, c, 0.35);
+  }
+  pizz(t, d, ms, v, c) {
+    const end = t + 0.6;
+    const lp = this._filter('lowpass', 2600, 1), fq = lp.frequency;
+    fq.setValueAtTime(2600, t); fq.setTargetAtTime(500, t, 0.05);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.2 * v, t); g.gain.setTargetAtTime(0, t + 0.004, 0.09);
+    for (const m of ms) this._osc('sawtooth', hz(m), t, end).connect(lp);
+    lp.connect(g);
+    this._out(g, c, 0.35, 0.2);
+  }
+  // a hammer on an anvil (or an axe on a chain): inharmonic ringing partials and a click
+  anvil(t, d, m, v, c) {
+    const end = t + 1;
+    const g = this.ctx.createGain(); g.gain.value = 1;
+    [[1, 1, 0.16], [2.76, 0.6, 0.09], [5.4, 0.35, 0.05], [8.9, 0.2, 0.03]].forEach(([r, a, dec]) => {
+      const o = this._osc('triangle', 830 * r, t, end);
+      const og = this.ctx.createGain(); og.gain.setValueAtTime(0.07 * a * v, t); og.gain.setTargetAtTime(0, t + 0.002, dec);
+      o.connect(og); og.connect(g);
+    });
+    const n = this._noiseSrc(t, t + 0.03), hp = this._filter('highpass', 3000);
+    const ng = this.ctx.createGain(); ng.gain.setValueAtTime(0.15 * v, t); ng.gain.setTargetAtTime(0, t, 0.006);
+    n.connect(hp); hp.connect(ng); ng.connect(g);
+    this._out(g, c, 0.4, -0.15);
   }
   bell(t, d, m, v, c) {
     const f = hz(m);
