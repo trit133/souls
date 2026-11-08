@@ -1,3 +1,4 @@
+import { comboHold, tickHold, HOLD_BURST } from './hold.js';
 import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
@@ -136,6 +137,7 @@ export class Boss extends Actor {
     this.name = cfg.name;
     this.trail = new Trail(game.scene, 0xd8d8e8, 18, 0.5);
     this.status = new StatusState(this, 260);
+    if (!this.moves.holdBurst) this.moves.holdBurst = HOLD_BURST; // breaks out of a combo lock
     this.sfxVol = 1.2;
     this.reset();
   }
@@ -212,6 +214,7 @@ export class Boss extends Actor {
     let pose = null, rate = 10;
     this.leapCd -= dt; this.emberCd -= dt; this.evadeCd -= dt;
     this.status.update(dt, this.game);
+    tickHold(this, dt);
     const loco = (s) => locomotion('greatsword', this.phase, s, false, this.game.time);
 
     switch (this.state) {
@@ -311,6 +314,12 @@ export class Boss extends Actor {
         }
         break;
       }
+      case 'held': {
+        // held by a combo: reeling in place, can't act
+        pose = { ...loco(0), ...P.stagger, torso: [0.25 + Math.sin(this.t * 8) * 0.05, Math.sin(this.t * 4) * 0.08, 0] };
+        rate = 14;
+        break;
+      }
       case 'broken': {
         pose = { ...P.rest, armR: [-0.9, 0, -0.1], foreR: [-0.5, 0, 0], handR: [2.4, 0, 0], head: [0.5, 0, 0], torso: [0.6, 0, 0] };
         rate = 9;
@@ -371,6 +380,7 @@ export class Boss extends Actor {
       return 'kill';
     }
     if (this.state === 'broken' || this.state === 'parried' || this.state === 'riposted') return 'hit';
+    if (info.combo && comboHold(this)) return 'held'; // a combo caught him while weak
     // being hit makes him retaliate sooner and a bit faster
     if (this.state === 'neutral') { this.gap = Math.min(this.gap, 0.3); this.counter = true; }
     this.poise -= info.poise || 0;
@@ -390,6 +400,8 @@ export class Boss extends Actor {
     }
     return 'hit';
   }
+
+  endHold() { this.setState('neutral'); this.gap = 0.3; }
 
   onParried() {
     if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId }); this.state = 'parried'; this.t = 0; this.atk = null; return; }

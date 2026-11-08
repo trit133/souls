@@ -299,7 +299,7 @@ export class Multiplayer {
       case 'dmg': { const e = this.entity(d.id), def = e?.moves[d.k]; if (def) g.resolveHit(e, g.player, def.hits[d.i], def); break; }
       case 'pdmg': g.projectileHit(g.player, { dmg: d.dmg, knock: d.knock, src: d.src }); break;
       // ----- what the host needs to apply -----
-      case 'hit': { const e = this.entity(d.id), p = this.peers.get(from); if (e?.alive && p) { e.receive({ dmg: d.dmg, poise: d.poise, srcPos: p.pos, attacker: p, noKnock: !!d.kb }); if (d.kb) e.kb.set(d.kb[0], 0, d.kb[1]); } break; }
+      case 'hit': { const e = this.entity(d.id), p = this.peers.get(from); if (e?.alive && p) { e.receive({ dmg: d.dmg, poise: d.poise, srcPos: p.pos, attacker: p, noKnock: !!d.kb, combo: !!d.c }); if (d.kb) e.kb.set(d.kb[0], 0, d.kb[1]); } break; }
       case 'status': this.entity(d.id)?.status.add(d.kind, d.amount, g); break;
       case 'parried': { const e = this.entity(d.id); if (e?.alive) e.onParried(); break; }
       case 'riposted': this.entity(d.id)?.beginRiposted(null, d.at); break;

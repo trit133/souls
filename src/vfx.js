@@ -82,6 +82,13 @@ export const VFX = {
   frostNova(g, at) { g.pfx.play('iceCircle', at); g.fx.burst({ x: at.x, y: 0.6, z: at.z }, 60, [0.75, 0.92, 1], 7, 0.7, 0.24); },
   lanceFan(g, at) { g.pfx.play('chargeIce', at); },
   shatter(g, at) { g.pfx.play('iceBlast', at); g.fx.burst({ x: at.x, y: 0.8, z: at.z }, 40, [0.8, 0.95, 1], 6, 0.7, 0.26); },
+  // a boss or brute breaking out of a combo lock
+  holdBurst(g, at, r, own) {
+    g.fx.shockwave(at.x, at.z, r, 0xffe0a0, 0.5);
+    g.fx.burst({ x: at.x, y: 1.0, z: at.z }, 60, [1, 0.85, 0.5], 9, 0.6, 0.3);
+    g.pfx.play('blast', at, { size: 0.8 });
+    g.audio.play('roar', 0.6); g.fx.addShake(own ? 0.7 : 0.4);
+  },
   emberBlast(g, at) {
     g.pfx.play('blast', at);
     g.fx.burst({ x: at.x, y: 0.5, z: at.z }, 80, [1, 0.5, 0.1], 9, 1.0, 0.5);

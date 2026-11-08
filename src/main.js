@@ -917,6 +917,8 @@ class Game {
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
     if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
+    if (h.pctHp) { info.dmg = (tg.maxHp || 100) * h.pctHp; info.elems = null; } // a share of the target's health, pure force (the hold burst)
+    if (att === this.player && def.comboMove) info.combo = true; // a combo hit: can hold a weak enemy (hold.js)
     if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h) }, tg.pid); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
@@ -1036,7 +1038,7 @@ class Game {
   comboBlast(p, r, dmg, poise, elem = 'frost') {
     for (const e of this.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < r + e.radius) {
       const st0 = e.state, staggered = p.cmbStag?.has(e); // (a combo staggers each enemy once)
-      this.spellDamage({ dmg, poise: staggered ? 0 : poise, pos: p.pos.clone(), kind: elem === 'fire' ? 'fire' : 'bolt' }, e);
+      this.spellDamage({ dmg, poise: staggered ? 0 : poise, pos: p.pos.clone(), kind: elem === 'fire' ? 'fire' : 'bolt', combo: true }, e);
       if (e.state === 'hurt' && st0 !== 'hurt') p.cmbStag?.add(e);
     }
   }
@@ -1234,7 +1236,7 @@ class Game {
 
   spellDamage(q, e, mul = 1) {
     const hp0 = e.hp, sd = q.dmg * mul * this.player.dmgMul * (1 + (this.player.tree?.spellDmg || 0) / 100);
-    const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock });
+    const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo });
     if (r === 'none') return;
     // the bolt is frost, the fireball fire
     const el = q.kind === 'fire' ? 'fire' : 'frost', dealt = e.puppet ? sd : hp0 - e.hp;

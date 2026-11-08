@@ -90,14 +90,14 @@ export class Actor {
     if (this.state === 'attack' && this.atk) pose = this.attackPose(base);
     else if (this.state === 'dead') pose = P.dead;
     else if (this.state === 'sit' || this.state === 'dormant' || this.state === 'broken') pose = P.rest;
-    else if (this.state === 'hurt' || this.state === 'parried' || this.state === 'riposted') pose = { ...base, ...P.stagger };
+    else if (this.state === 'hurt' || this.state === 'parried' || this.state === 'riposted' || this.state === 'held') pose = { ...base, ...P.stagger };
     if (this.state === 'dead') { this.rig.apply(pose, dt, 8); if (this.t > 4) this.rig.root.visible = false; } else this.syncRig(dt, pose, 18);
     this.trail?.update(dt, !!(this.atk && this.inWindow(this.atk.def.trail)), this.rig.base, this.rig.tip);
   }
 
   // a guest's hit on a puppet: the host applies the real damage
   puppetHit(info) {
-    this.game.mp.send({ t: 'hit', id: this.netId, dmg: info.dmg, poise: info.poise || 0 });
+    this.game.mp.send({ t: 'hit', id: this.netId, dmg: info.dmg, poise: info.poise || 0, c: info.combo ? 1 : 0 });
     this.hp = Math.max(1, this.hp - info.dmg);
     this.hitAt = performance.now();
     this.hpShow = 4;

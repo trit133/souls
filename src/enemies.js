@@ -1,3 +1,4 @@
+import { comboHold, tickHold, HOLD_BURST } from './hold.js';
 import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
@@ -168,6 +169,7 @@ export class Enemy extends Actor {
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
     this.status = new StatusState(this, type === 'brute' ? 180 : 100);
+    if (type === 'brute' && !this.moves.holdBurst) this.moves.holdBurst = HOLD_BURST; // breaks out of a combo lock
     this.type = type;
     this.T = T;
     this.home = { x, z, yaw };
@@ -235,6 +237,7 @@ export class Enemy extends Actor {
     if (this.puppet) return this.puppetUpdate(dt, this.T.style);
     this.t += dt;
     this.status.update(dt, this.game);
+    tickHold(this, dt);
     const p = this.game.targetOf(this);
     const dist = this.distTo(p);
     const toP = this.yawTo(p.pos);
@@ -347,6 +350,12 @@ export class Enemy extends Actor {
         if (this.t >= this.recoverT) this.setState('chase');
         break;
       }
+      case 'held': {
+        // held by a combo: reeling in place, can't act
+        pose = { ...locomotion(T.style, 0, 0, false, 0), ...P.stagger, torso: [0.25 + Math.sin(this.t * 9) * 0.06, Math.sin(this.t * 5) * 0.1, 0] };
+        rate = 18;
+        break;
+      }
       case 'hurt': {
         pose = { ...locomotion(T.style, 0, 0, false, 0), ...P.hurt };
         rate = 20;
@@ -409,6 +418,7 @@ export class Enemy extends Actor {
     this.rig.flash(1, 0.9, 0.8);
     if (this.state === 'idle' || this.state === 'sit' || this.state === 'return') { this.alert(); }
     if (this.hp <= 0) { this.die(); return 'kill'; }
+    if (info.combo && comboHold(this)) return 'held'; // a combo caught it while weak
     this.poise -= info.poise || 0;
     this.poiseT = 2.0;
     const armored = this.armorT > 0 || (this.state === 'attack' && (this.atk.def.armor || this.T.superArmor));
@@ -444,6 +454,8 @@ export class Enemy extends Actor {
     }
     return 'hit';
   }
+
+  endHold() { this.setState('chase'); this.counter(0.2); }
 
   // queue a quick retaliation (used after flinching / being hit)
   counter(delay = 0) {
