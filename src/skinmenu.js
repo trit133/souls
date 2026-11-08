@@ -61,7 +61,7 @@ export class SkinMenu {
 
   priceOf(t) {
     if (!t) return 0;
-    if (t.type === 'piece') { const list = pieceList(this.kind, this.slot), i = list.findIndex((p) => p.id === t.id); return piecePrice(list[i], i); }
+    if (t.type === 'piece') { const list = pieceList(this.kind, this.slot), i = list.findIndex((p) => p.id === t.id); return piecePrice(list[i], i, this.slot); }
     return colorPrice(COLORS.find((c) => c.id === t.id));
   }
 
@@ -110,7 +110,7 @@ export class SkinMenu {
       el.innerHTML = '<div class="cz-pname"></div><div class="cz-pdesc"></div><div class="cz-pprice"></div>';
       el.querySelector('.cz-pname').textContent = p.name + (p.special ? ' ✦' : '');
       el.querySelector('.cz-pdesc').textContent = p.desc;
-      el.querySelector('.cz-pprice').textContent = on ? 'Worn' : own ? 'Owned' : `${piecePrice(p, i)} emeralds`;
+      el.querySelector('.cz-pprice').textContent = on ? 'Worn' : own ? 'Owned' : `${piecePrice(p, i, this.slot)} emeralds`;
       el.addEventListener('click', () => this.pick('piece', p.id));
       return el;
     }));

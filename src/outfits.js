@@ -4,7 +4,10 @@
 // prices, what an account owns and wears, and the one-time move from the old kill-unlocked skins.
 import * as THREE from 'three';
 
-export const PRICE = { piece: 80, special: 400, color: 30, specialColor: 300 };
+// big pieces (chest, legs, shield, cloak, shirt, pants) cost half as much as the small ones' old price did; small
+// pieces (helmets, shoulders, masks, bands, weapons) a quarter
+export const PRICE = { piece: 40, special: 200, smallPiece: 20, smallSpecial: 100, color: 30, specialColor: 300 };
+const BIG = new Set(['chest', 'legs', 'shield', 'cloak', 'shirt', 'pants']);
 export const OUTFIT_SLOTS = 3;
 
 // ---------- colours: 11 plain, 4 with an effect ----------
@@ -73,7 +76,7 @@ export const PIECES = {
 };
 export const pieceList = (kind, slot) => PIECES[kind]?.[slot] || [];
 export const pieceById = (kind, slot, id) => pieceList(kind, slot).find((p) => p.id === id) || pieceList(kind, slot)[0];
-export const piecePrice = (p, i) => (i === 0 ? 0 : p.special ? PRICE.special : PRICE.piece);
+export const piecePrice = (p, i, slot) => (i === 0 ? 0 : BIG.has(slot) ? (p.special ? PRICE.special : PRICE.piece) : (p.special ? PRICE.smallSpecial : PRICE.smallPiece));
 export const pieceKey = (kind, slot, id) => `${kind}.${slot}.${id}`;
 
 // ---------- an account's emeralds, what it owns, what it wears ----------
