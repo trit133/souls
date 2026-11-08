@@ -77,10 +77,10 @@ export class Minimap {
     const g = this.game;
     if ((this.t -= dt) <= 0) {
       this.t = 0.15;
-      for (const p of g.allPlayers()) this.reveal(p.pos.x, p.pos.z);
+      for (const p of g.allPlayers()) this.reveal(p.pos.x, p.pos.z, g.night ? 7 : 13); // you see less at night
       if (this.dirty) { this.octx.putImageData(this.img, 0, 0); this.dirty = false; }
       const s = g.seals;
-      this.info.textContent = `${this.world.dungeon.def.name.toUpperCase()} · SEALS ${Math.min(3, s.broken)}/3 · ${g.clearPct()}% CLEARED`;
+      this.info.textContent = `${g.night ? 'NIGHT RAID · ' : ''}${this.world.dungeon.def.name.toUpperCase()} · SEALS ${Math.min(3, s.broken)}/3 · ${g.clearPct()}% CLEARED`;
       const p = g.player;
       this.draw(this.cv, p.pos.x, p.pos.z, this.cv.width / VIEW);
       if (this.on) {

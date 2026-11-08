@@ -166,6 +166,8 @@ export const TYPES = {
 // Elites lead the packs guarding seals: bigger, tougher, glowing in their trait's colour, with one trait.
 // frenzied: faster everything; armoured: takes a third less damage and hard to stagger; blazing: fire on every hit
 // and a heat aura that burns anyone close (main.js)
+export const NIGHT = { hp: 1.4, dmg: 1.3, spd: 1.2, gap: 0.7, aggro: 1.3, watch: 5 };
+
 export const ELITE = {
   frenzied: { color: 0xff3a2a, rgb: [1, 0.25, 0.15], name: 'Frenzied' },
   armoured: { color: 0x9ab8d8, rgb: [0.6, 0.75, 0.9], name: 'Armoured' },
@@ -191,6 +193,12 @@ export class Enemy extends Actor {
     }
     this.event = !!opts.event; this.reserve = !!opts.reserve; this.effigy = !!T.still;
     if (this.reserve) rig.root.visible = false; // waits off stage until its seal's event calls it in
+    // Night Raid: tougher, harder hitting, faster, quicker to notice you and to attack; watchers step in every 5 s
+    this.night = !!opts.night; this.aggroMul = 1;
+    if (this.night && !this.effigy) {
+      this.maxHp = this.hp = Math.round(this.maxHp * NIGHT.hp); this.dmgScale *= NIGHT.dmg; this.spdScale *= NIGHT.spd;
+      this.gapScale *= NIGHT.gap; this.aggroMul = NIGHT.aggro;
+    }
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
     this.status = new StatusState(this, type === 'brute' ? 180 : 100);
@@ -211,11 +219,13 @@ export class Enemy extends Actor {
     this.hpShow = 0;
     this.lastMove = null;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
-    this.engaged = false; this.engagedTo = null; this.watchCd = 10 + Math.random() * 5; this.lastHitBy = {};
+    this.engaged = false; this.engagedTo = null; this.watchCd = this.watchGap(); this.lastHitBy = {};
     this.setState(this.sitting ? 'sit' : 'idle');
   }
 
   get target() { return this.game.targetOf(this); }
+  // how long an enemy waiting its turn holds back before stepping in for one attack
+  watchGap() { return this.night ? NIGHT.watch : 10 + Math.random() * 5; }
 
   critable() { return this.state === 'parried'; }
   attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.atkScale; }
@@ -298,7 +308,7 @@ export class Enemy extends Actor {
           this.phase += dt * (2 + s * 6);
           pose = locomotion(T.style, this.phase, s, false, this.game.time + this.phase);
         }
-        const sense = this.state === 'sit' ? T.aggro * 0.6 : T.aggro;
+        const sense = (this.state === 'sit' ? T.aggro * 0.6 : T.aggro) * this.aggroMul;
         if (p.alive && dist < sense && this.game.sameRoom(this, p)) this.alert();
         break;
       }
@@ -321,7 +331,7 @@ export class Enemy extends Actor {
         if (this.cd <= 0 && (this.engaged || this.watchCd <= 0)) {
           const m = this.chooseMove(dist, behind);
           if (m) {
-            if (!this.engaged) this.watchCd = 10 + Math.random() * 5;
+            if (!this.engaged) this.watchCd = this.watchGap();
             this.atkSpeed = this.urgent ? 1.3 : 1;
             this.urgent = false;
             this.lastMove = m;
@@ -424,7 +434,7 @@ export class Enemy extends Actor {
         pose = locomotion(T.style, this.phase, d > 0.5 ? 0.9 : 0, false, this.game.time);
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * dt * 0.3);
         if (d <= 0.5) { this.setState(this.sitting ? 'sit' : 'idle'); this.yaw = this.home.yaw; }
-        if (p.alive && dist < T.aggro * 0.7 && this.t > 1.0 && this.game.sameRoom(this, p)) this.setState('chase');
+        if (p.alive && dist < T.aggro * 0.7 * this.aggroMul && this.t > 1.0 && this.game.sameRoom(this, p)) this.setState('chase');
         break;
       }
     }
@@ -560,7 +570,7 @@ export class Enemy extends Actor {
     this.rig.root.visible = true; this.rig.root.position.y = 0;
     this.alertDelay = undefined; this.patrolIdx = false;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
-    this.engaged = false; this.engagedTo = null; this.watchCd = 10 + Math.random() * 5; this.lastHitBy = {};
+    this.engaged = false; this.engagedTo = null; this.watchCd = this.watchGap(); this.lastHitBy = {};
     this.status.reset();
     this.setState(this.sitting ? 'sit' : 'idle');
   }

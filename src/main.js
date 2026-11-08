@@ -13,7 +13,7 @@ import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
 import { Minimap } from './minimap.js';
 import { Player } from './player.js';
-import { Enemy } from './enemies.js';
+import { Enemy, NIGHT } from './enemies.js';
 import { Boss, BOSS_MOVES, BOSSES } from './boss.js';
 import { UI } from './ui.js';
 import { angDiff } from './actor.js';
@@ -66,9 +66,10 @@ class Game {
     this.camPos = new THREE.Vector3(0, 14, 14);
     this.camLook = new THREE.Vector3();
 
-    this.scene.add(new THREE.HemisphereLight(0x9aa6c8, 0x4a3a28, 2.0));
+    this.hemi = new THREE.HemisphereLight(0x9aa6c8, 0x4a3a28, 2.0); this.scene.add(this.hemi);
     const sun = new THREE.DirectionalLight(0xffd8a8, 2.0);
-    sun.position.set(-8, 14, 6); this.scene.add(sun);
+    sun.position.set(-8, 14, 6); this.scene.add(sun); this.sun = sun;
+    this.nightLights = null;
 
     this.input = new Input();
     this.audio = new Audio();
@@ -135,7 +136,58 @@ class Game {
 
   // A run: three dungeons, each ending in a mini boss (in a random order), then the approach to Varek.
   // (?chain in the address plays the old chain of rooms instead: the older test scripts use it)
-  newLayout() { return new URLSearchParams(location.search).has('chain') ? pickLayout() : 'dungeon'; }
+  newLayout() {
+    if (new URLSearchParams(location.search).has('chain')) return pickLayout();
+    return this.nightRaid && this.nightUnlocked ? 'night' : 'dungeon';
+  }
+
+  // Night Raid unlocks (for the whole account) once you beat the second mini boss of a run
+  get nightUnlocked() { return !!(this.accounts.user && this.accounts.data?.nightRaid); }
+  refreshNight() {
+    const on = this.nightUnlocked, label = `Night Raid: ${this.nightRaid && on ? 'On' : 'Off'}`;
+    if (!on) this.nightRaid = false;
+    for (const id of ['night-toggle', 'lobby-night']) {
+      const b = $(id); if (!b) continue;
+      b.classList.toggle('hidden', !on || (id === 'lobby-night' && !this.mp.isHost));
+      b.classList.toggle('on', !!this.nightRaid);
+      const lab = b.querySelector('.tile-t');
+      if (lab?.plabel) lab.plabel.set(label); else if (lab) lab.textContent = label; else b.textContent = label;
+    }
+  }
+
+  // Night Raid: near darkness; each player sees a 5 m cone ahead (and a faint glow round them), torches light
+  // their surroundings, glowing eyes and fires show in the dark
+  setNight(on) {
+    // a faint cold moonlight: walls show as dark blue shapes, nothing more
+    this.hemi.intensity = on ? 0.3 : 2.0;
+    this.hemi.color.set(on ? 0x40507a : 0x9aa6c8); this.hemi.groundColor.set(on ? 0x08080a : 0x4a3a28);
+    this.sun.intensity = on ? 0 : 2.0;
+    this.scene.background.set(on ? 0x040508 : 0x15130f);
+    this.scene.fog.color.set(on ? 0x040508 : 0x1a1712);
+    if (on && !this.nightLights) {
+      // one cone and one glow per player (up to 3); added once, so shaders compile once
+      this.nightLights = [0, 1, 2].map(() => {
+        const cone = new THREE.SpotLight(0xffdcae, 0, 8, 1.05, 0.45, 1.2), glow = new THREE.PointLight(0xffc890, 0, 2.4, 1.5);
+        this.scene.add(cone, cone.target, glow);
+        return { cone, glow };
+      });
+    }
+    if (!on && this.nightLights) { for (const L of this.nightLights) this.scene.remove(L.cone, L.cone.target, L.glow); this.nightLights = null; }
+  }
+
+  updateNightLights() {
+    if (!this.nightLights) return;
+    const players = this.mode === 'title' ? [] : this.allPlayers();
+    this.nightLights.forEach((L, i) => {
+      const p = players[i];
+      L.cone.intensity = p && p.alive !== false ? 26 : 0; L.glow.intensity = p ? 1.2 : 0;
+      if (!p) return;
+      const f = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
+      L.cone.position.set(p.pos.x - f.x * 1.2, 3.4, p.pos.z - f.z * 1.2); // from above and behind: lights the ground ahead, not you
+      L.cone.target.position.set(p.pos.x + f.x * 4, 0, p.pos.z + f.z * 4);
+      L.glow.position.set(p.pos.x, 1.4, p.pos.z);
+    });
+  }
 
   // a party fights 30% / 60% more regular enemies, placed near the originals
   extraSpawns(players, seed) {
@@ -156,13 +208,13 @@ class Game {
   // layout: 'dungeon' for a run of dungeons, or a list of module keys (a chain, as the tests use)
   buildRun(layout = this.newLayout(), seed = (Math.random() * 1e9) | 0, players = 1) {
     this.runSeed = seed; this.runPlayers = players;
-    if (layout === 'dungeon') {
+    if (layout === 'dungeon' || layout === 'night') {
       const r = rng(mix(seed + 3)), minis = ['hask', 'vael', 'gorrath'];
       for (let i = 2; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [minis[i], minis[j]] = [minis[j], minis[i]]; }
-      this.run = { minis };
+      this.run = { minis, night: layout === 'night' };
       return this.buildAct(0);
     }
-    this.run = null; this.act = 0;
+    this.run = null; this.act = 0; this.night = false;
     this.buildLevel(layout, seed, players);
   }
 
@@ -179,11 +231,13 @@ class Game {
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     this.layout = layout;
     this.portal = null;
+    this.night = !!this.run?.night;
+    this.setNight(this.night);
     this.world.build(layout, seed);
     // tier = mini bosses passed before a module (in a run of dungeons, the act); everything after them is stronger
     const tierAt = this.run ? () => this.act : (i) => layout.slice(0, i).filter((k) => k.startsWith('mini:')).length;
     const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
-    const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players })));
+    const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players, night: this.night })));
     for (const e of all) e.roam = this.world.dungeon?.roam(e.mod) ?? null;
     this.enemies = all.filter((e) => !e.reserve);
     this.reserves = all.filter((e) => e.reserve); // seal events call these in (seals.js)
@@ -192,6 +246,7 @@ class Game {
     this.bosses = this.encounters.map((enc) => {
       enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod, tierAt(enc.mod), players);
       enc.boss.enc = enc;
+      if (this.night) { enc.boss.maxHp = enc.boss.hp = Math.round(enc.boss.maxHp * NIGHT.hp); enc.boss.dmgScale *= NIGHT.dmg; } // bosses too, at night
       return enc.boss;
     });
     this.boss = this.encounters.find((e) => e.kind === 'boss')?.boss || null;
@@ -300,6 +355,7 @@ class Game {
     $('btn-settings-out').addEventListener('click', () => this.openSettings());
     $('btn-solo').addEventListener('click', () => { this.audio.unlock(); this.home.show('chars'); document.querySelector('.char[data-char]')?.focus({ preventScroll: true }); });
     $('chars-back').addEventListener('click', () => this.home.show('in'));
+    for (const id of ['night-toggle', 'lobby-night']) $(id).addEventListener('click', () => { this.nightRaid = !this.nightRaid; this.refreshNight(); });
     $('set-signout').addEventListener('click', () => { this.accounts.signOut(); this.closeSettings(); this.refreshTitle(); });
     // fullscreen has to start from a click; phones that support it also lock to landscape. Hidden where the
     // browser can't (iPhone Safari), and the label follows Esc / F11 too
@@ -441,7 +497,7 @@ class Game {
     this.ui.show('menu', false); this.ui.show('hud'); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('touch', this.input.isTouch);
     this.camPos.set(this.player.pos.x, 14, this.player.pos.z + 12);
-    this.ui.toast(this.areaName.toUpperCase(), 3);
+    this.ui.toast((this.night ? 'NIGHT RAID · ' : '') + this.areaName.toUpperCase(), 3);
     this.input.reset();
   }
 
@@ -608,6 +664,7 @@ class Game {
     }
     $('acct-name').textContent = A.user ? A.displayName : '';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
+    this.refreshNight();
     // signed out: only the sign-in tile; signed in: the menu (or the character select, if that was open)
     this.home ||= new Home(this); // (bindUI refreshes the title before the constructor gets here)
     this.home.setGold(A.user ? A.data.gold : null);
@@ -635,7 +692,8 @@ class Game {
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
     else if (!e.effigy) this.creditKill(e);
     // in a dungeon there are many more enemies: most drop nothing, brutes and elites always do
-    const n = !this.world.dungeon ? enemyGold(e.type) : e.effigy ? 0 : e.elite ? 3 : e.type === 'brute' ? 2 : Math.random() < 0.4 ? 1 : 0;
+    let n = !this.world.dungeon ? enemyGold(e.type) : e.effigy ? 0 : e.elite ? 3 : e.type === 'brute' ? 2 : Math.random() < 0.4 ? 1 : 0;
+    if (this.night && n && Math.random() < 0.5) n *= 2; // Night Raid: half the drops are doubled
     this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
     if (n) this.statusPopup(e, `+${n}`, '#a89060');
     if (this.world.dungeon && !e.event && !e.effigy) {
@@ -764,7 +822,7 @@ class Game {
     for (const e of this.enemies) {
       const was = e.engaged;
       e.engaged = taken.has(e);
-      if (!e.engaged) { e.engagedTo = null; if (was) e.watchCd = 10 + Math.random() * 5; }
+      if (!e.engaged) { e.engagedTo = null; if (was) e.watchCd = e.watchGap(); }
     }
   }
 
@@ -900,6 +958,7 @@ class Game {
     while (inRoom && slots.length < 3) slots.push('<div class="member open"><span class="mname">Open slot</span></div>');
     $('lobby-members').innerHTML = slots.join('');
     $('lobby-start').classList.toggle('hidden', !m.isHost);
+    this.refreshNight();
     $('lobby-start').disabled = m.members.length < 2;
     $('lobby-back').textContent = inRoom ? 'Leave Room' : 'Back';
     $('lobby-wait').textContent = !inRoom ? '' : m.isHost ? (m.members.length < 2 ? 'Share the code. Needs 2 or 3 players.' : 'Everyone ready? Start when you are.') : 'Waiting for the host to start';
@@ -976,7 +1035,7 @@ class Game {
     const section = enc.kind === 'mini' ? this.minisFelled : 3;
     let drop, bonus;
     if (net && this.isGuest) { drop = net.drop || 0; bonus = net.bonus || 0; } else {
-      drop = enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD;
+      drop = (enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD) * (this.night ? 2 : 1); // double at night
       this.addRunGold(drop, enc.boss); // counts toward the section this boss closes
       bonus = sectionBonus(this.secGold, section);
     }
@@ -999,6 +1058,10 @@ class Game {
     if (enc.kind === 'mini') {
       const pay = this.bossPayout(enc, net);
       this.minisFelled++;
+      if (this.minisFelled >= 2 && this.accounts.user && this.accounts.data && !this.accounts.data.nightRaid) {
+        this.accounts.data.nightRaid = true; this.accounts.save();
+        setTimeout(() => this.ui.toast('NIGHT RAID UNLOCKED', 3), 4800);
+      }
       this.announceBossDeath(enc, pay);
       // the way on opens right away (in a dungeon: a stair down in the arena); fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
@@ -1572,6 +1635,7 @@ class Game {
     }
 
     this.updateParryCues();
+    this.updateNightLights();
     this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
     this.pfx.update(dt);
