@@ -3,8 +3,10 @@
 // flashes (and a red mark shows over the player), and for 180 ms the next input of a combo continues it with a combo move; a press outside that window
 // does the button's normal action instead, and doing nothing ends it. Combos branch: after a move, each input
 // that some combo continues with leads on (they share the window). Combo moves cost a fixed amount of stamina
-// (more than the normal moves; every attack costs 10% less than its listed cost) and hit a little harder: a full combo deals ~20% more than its normal inputs.
-// Every combo move can be interrupted, and a combo staggers each enemy at most once.
+// (more than the normal moves; every attack costs 10% less than its listed cost) and hit harder: the last move is
+// always the combo's biggest hit. From the second move on, a combo can't be interrupted: hits still hurt, but they
+// don't stagger or knock the player out of it.
+// A combo staggers each enemy at most once.
 // Inputs: 'attack' (R1), 'heavy' (R2), 'roll'. A step's move: an attack key, 'roll' (roll or backstep) or 'bolt'.
 export const COMBO_WINDOW = 0.18;
 export const FAST = 1.15; // moves in a 4-move combo play this much faster
@@ -69,7 +71,7 @@ export function comboMoves(kind, base) {
         [0.36, { hips: [0, -3.2, 0], torso: [0.2, -0.6, 0], armR: [-1.4, 0, -1.2], foreR: [0, 0, 0], handR: [1.4, 0, 0], by: -0.12 }],
         [0.5, { hips: [0, -0.3, 0], torso: [0.15, -0.3, 0], armR: [-1.0, 0, -0.6], foreR: [-0.3, 0, 0], ...lunge(0.7) }],
       ],
-      hits: [{ t0: 0.16, t1: 0.36, range: 2.4, arc: 6.3, dmg: 16, poise: 10 }],
+      hits: [{ t0: 0.16, t1: 0.36, range: 2.4, arc: 6.3, dmg: 14, poise: 10 }],
       move: [[0.08, 0.34, 0.6]],
     },
     kThrust: {
@@ -79,7 +81,7 @@ export function comboMoves(kind, base) {
         [0.32, { torso: [0.45, 0.35, 0], armR: [-1.55, 0, 0], foreR: [0, 0, 0], handR: [1.55, 0, 0], armL: [-0.5, 0, 0.6], ...lunge(1.6) }],
         [0.58, { torso: [0.35, 0.25, 0], armR: [-1.45, 0, 0], foreR: [-0.1, 0, 0], handR: [1.5, 0, 0], ...lunge(1.3) }],
       ],
-      hits: [{ t0: 0.27, t1: 0.37, range: 3.1, arc: 0.8, dmg: 28, poise: 25 }],
+      hits: [{ t0: 0.27, t1: 0.37, range: 3.1, arc: 0.8, dmg: 58, poise: 25 }],
       move: [[0.24, 0.36, 1.7]],
       onTime: [{ t: 0.32, fn: (p, g) => g.vfx('steelFlash', front(p, 2.0, 1.1), p.fwd().clone()) }],
       onHitShake: 0.45, heavyHit: true, finisher: 'Iron Tempest',
@@ -108,7 +110,7 @@ export function comboMoves(kind, base) {
         keys: [0.08, 0.2, 0.32, 0.44].map((t, i) => [t, i % 2
           ? { torso: [0.25, -0.4, 0], armL: [-1.6, 0, 0.1], foreL: [0, 0, 0], handL: [1.5, 0, 0], armR: [-0.7, 0, -0.3], foreR: [-1.2, 0, 0], ...lunge(1) }
           : { torso: [0.25, 0.4, 0], armR: [-1.6, 0, -0.1], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-0.7, 0, 0.3], foreL: [-1.2, 0, 0], ...lunge(1.1) }]).concat([[0.6, { torso: [0.2, 0, 0], armR: [-1.2, 0, -0.3], armL: [-1.2, 0, 0.3], ...lunge(0.8) }]]),
-        hits: [0.09, 0.21, 0.33, 0.45].map((t) => ({ t0: t, t1: t + 0.07, range: 2.0, arc: 1.4, dmg: 7, poise: 3 })),
+        hits: [0.09, 0.21, 0.33, 0.45].map((t, i) => ({ t0: t, t1: t + 0.07, range: 2.0, arc: 1.4, dmg: i < 3 ? 4 : 18, poise: 3 })), // the last stab drives in
         move: [[0.05, 0.45, 0.8]],
         onTime: [{ t: 0.46, fn: (p, g) => g.vfx('flurryEnd', front(p, 1.2, 1.1), p.fwd().clone()) }],
         finisher: 'Thousand Cuts',
@@ -122,7 +124,7 @@ export function comboMoves(kind, base) {
           [0.4, { hips: [0, 3.1, 0], torso: [0.3, 0, 0], armR: [-1.6, 0, 0.5], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-1.6, 0, -0.5], foreL: [0, 0, 0], handL: [1.5, 0, 0], ...lunge(1) }],
           [0.58, { hips: [0, 0.2, 0], torso: [0.2, 0, 0], armR: [-0.9, 0, -0.6], armL: [-0.9, 0, 0.6], ...lunge(0.7) }],
         ],
-        hits: [{ t0: 0.14, t1: 0.26, range: 2.2, arc: 4.2, dmg: 24, poise: 8 }, { t0: 0.3, t1: 0.4, range: 2.2, arc: 4.2, dmg: 24, poise: 10 }],
+        hits: [{ t0: 0.14, t1: 0.26, range: 2.2, arc: 4.2, dmg: 20, poise: 8 }, { t0: 0.3, t1: 0.4, range: 2.2, arc: 4.2, dmg: 30, poise: 10 }],
         move: [[0.08, 0.38, 0.9]],
         onTime: [{ t: 0.38, fn: (p, g) => g.vfx('xSlash', front(p, 1.1, 1.1), p.fwd().clone(), false) }],
         finisher: "Viper's Dance",
@@ -136,7 +138,7 @@ export function comboMoves(kind, base) {
           [0.36, { torso: [0.55, 0, 0], armR: [-0.6, 0, -1.2], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-0.6, 0, 1.2], foreL: [0, 0, 0], handL: [1.5, 0, 0], ...crouch(1) }],
           [0.6, { torso: [0.4, 0, 0], armR: [-0.7, 0, -1.0], foreR: [-0.2, 0, 0], armL: [-0.7, 0, 1.0], foreL: [-0.2, 0, 0], ...crouch(0.8) }],
         ],
-        hits: [{ t0: 0.28, t1: 0.34, range: 2.1, arc: 1.8, dmg: 9, poise: 10 }, { t0: 0.34, t1: 0.41, range: 2.1, arc: 1.8, dmg: 9, poise: 10 }],
+        hits: [{ t0: 0.28, t1: 0.34, range: 2.1, arc: 1.8, dmg: 12, poise: 10 }, { t0: 0.34, t1: 0.41, range: 2.1, arc: 1.8, dmg: 40, poise: 10 }],
         move: [[0.2, 0.36, 0.9]],
         onTime: [{ t: 0.36, fn: (p, g) => g.vfx('xSlash', front(p, 1.1, 1.1), p.fwd().clone(), true) }],
         onHitShake: 0.4, finisher: 'Hemorrhage',
@@ -190,7 +192,7 @@ export function comboMoves(kind, base) {
     sLances: {
       dur: 0.7, cost: 18, mana: 16, comboMove: true, track: 0.2, sfx: [0.26, 'bow'], cancel: 0.46,
       keys: [[0.16, { torso: [-0.1, -0.5, 0], armR: [-2.6, 0, -0.2], foreR: [0, 0, 0], handR: [1.5, 0, 0], legL: [-0.35, 0, 0], legR: [0.3, 0, 0] }], castPose(0.28), castPose(0.55)],
-      onTime: [{ t: 0.27, fn: (p, g) => { for (const s of [-0.22, 0, 0.22]) g.spawnSpell(p, 'bolt', s, 1); g.vfx('lanceFan', front(p, 1.0, 1.25)); } }],
+      onTime: [{ t: 0.27, fn: (p, g) => { for (const s of [-0.22, 0, 0.22]) g.spawnSpell(p, 'bolt', s, 14); g.vfx('lanceFan', front(p, 1.0, 1.25)); } }],
       finisher: 'Glacial Lance',
     },
     // Shatter: (a cut, a bolt) a rune strike that detonates the frost

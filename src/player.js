@@ -358,7 +358,10 @@ export class Player extends Actor {
     return this.state === 'knockdown' || this.state === 'riposte' || this.state === 'rest' || this.state === 'dead';
   }
 
-  hyperArmor() { return this.state === 'attack' && this.inWindow(this.atk.def.armor); }
+  hyperArmor() { return this.comboArmored() || (this.state === 'attack' && this.inWindow(this.atk.def.armor)); }
+  // from a combo's second move on, hits hurt but can't stagger or knock the player out of it
+  comboArmored() { return this.armorSeq != null && this.armorSeq === this.stateSeq && this.alive; }
+  setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; }
 
   worldDir(mv) { return new THREE.Vector3(mv.x, 0, -mv.y); }
 
@@ -807,6 +810,7 @@ export class Player extends Actor {
     this.cmb = null;
     if (C.openAt == null || now > C.openAt + COMBO_WINDOW || !next) return false;
     if (!this.comboStep(next, dir, mag)) return false;
+    this.armorSeq = this.stateSeq; // this move is armoured until it ends
     this.game.audio.play('comboHit');
     if (Object.keys(next.next).length) this.cmb = { node: next, openAt: null };
     else if (next.combo) this.game.statusPopup(this, next.combo.name.toUpperCase(), '#ffc23d'); // the finisher
@@ -976,12 +980,12 @@ export class Player extends Actor {
       return 'block';
     }
     this.hp -= info.dmg;
-    this.cmb = null; // a hit breaks any combo
+    if (!this.comboArmored()) this.cmb = null; // a hit breaks a combo, unless it is two moves in
     this.rig.flash(1, 0.3, 0.2);
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
-    if (info.knock === 'heavy' && !(this.hyperArmor() && info.dmg < 30)) {
+    if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30)) {
       this.kb.copy(away).multiplyScalar(11);
       this.yaw = toSrc;
       this.setState('knockdown');

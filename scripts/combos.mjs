@@ -54,18 +54,32 @@ for (const [kind, ids] of Object.entries(kinds)) for (const id of ids) for (cons
   }
   out.push([kind, r]);
 }
-// an enemy hit in the middle of a combo cancels it
+// a hit during a combo's first move breaks it; from the second move on the player is armoured: hurt, but the combo
+// goes on to its finisher
 const interrupt = await page.evaluate(() => {
-  game.start('knight'); game.audio.play = () => {};
-  game.buildRun(['ruins', 'camp', 'mini:hask', 'bridge', 'village', 'mini:vael', 'crypt', 'bog', 'mini:gorrath', 'gate', 'boss'], 7);
-  const p = game.player, e = game.enemies.find((x) => x.type === 'grunt');
-  p.pos.set(e.pos.x, 0, e.pos.z + 1.7); p.yaw = Math.PI; p.setState('move'); game.input.move = () => ({ x: 0, y: 0 });
-  game.input.pressed.add('attack'); game.step(1 / 60, 1 / 60);
+  const setup = () => {
+    game.start('knight'); game.audio.play = () => {};
+    game.buildRun(['ruins', 'camp', 'mini:hask', 'bridge', 'village', 'mini:vael', 'crypt', 'bog', 'mini:gorrath', 'gate', 'boss'], 7);
+    const p = game.player, e = game.enemies.find((x) => x.type === 'grunt');
+    p.pos.set(e.pos.x, 0, e.pos.z + 1.7); p.yaw = Math.PI; p.setState('move'); game.input.move = () => ({ x: 0, y: 0 });
+    game.input.pressed.add('attack'); game.step(1 / 60, 1 / 60);
+    return [p, e];
+  };
+  const out = {};
+  let [p, e] = setup();
+  e.resolve = () => game.resolveHit(e, p, e.moves.slash.hits[0], e.moves.slash);
+  e.resolve();
+  out.firstMove = { state: p.state, combo: !!p.cmb };
+  [p, e] = setup();
   while (!(p.cmb && p.cmb.openAt != null)) game.step(1 / 60, 1 / 60);
   game.input.pressed.add('attack'); game.step(1 / 60, 1 / 60);
-  const during = p.atkKey;
-  const def = e.moves.slash; game.resolveHit(e, p, def.hits[0], def);
-  return { during, after: p.state, combo: !!p.cmb };
+  const hp0 = p.hp;
+  game.resolveHit(e, p, e.moves.leap.hits[0], e.moves.leap); // a heavy hit too
+  out.secondMove = { move: p.atkKey, state: p.state, hpLost: Math.round(hp0 - p.hp), combo: !!p.cmb };
+  while (!(p.cmb && p.cmb.openAt != null) && p.state === 'attack') game.step(1 / 60, 1 / 60);
+  game.input.pressed.add('attack'); game.step(1 / 60, 1 / 60);
+  out.finisher = p.atkKey;
+  return out;
 });
 await b.close();
 for (const [k, r] of out) console.log(k.padEnd(7), r.id.padEnd(11), r.mode.padEnd(6), `dmg ${String(r.dmg).padStart(5)}  st ${String(r.stamina).padStart(5)}  stag ${r.staggers}  `, r.moves.join(' > '));

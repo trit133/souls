@@ -934,7 +934,7 @@ class Game {
         this.hitstop(h.knock === 'heavy' ? 0.1 : 0.07);
         this.fx.addShake(h.knock === 'heavy' ? 0.7 : 0.4);
       }
-      if (h.knockback && (r === 'hit' || r === 'block')) tg.kb.copy(dir).multiplyScalar(h.knockback);
+      if (h.knockback && (r === 'hit' || r === 'block') && !tg.comboArmored()) tg.kb.copy(dir).multiplyScalar(h.knockback); // (no shove mid-combo)
       return;
     }
     if (att === this.player) {
@@ -1205,14 +1205,14 @@ class Game {
     return r;
   }
 
-  spawnSpell(p, kind, spread = 0) {
+  spawnSpell(p, kind, spread = 0, dmg = null) { // dmg: override (combo finishers' lances)
     const S = SPELLS[kind], big = kind === 'fire' && p.evolved ? 1.45 : 1;
     const f = p.fwd().clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
     const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25, p.pos.z + f.z * 0.8);
     // the sphere only carries the shot; what you see is the pixelfx bolt or fireball riding on it
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
     mesh.position.copy(pos); mesh.visible = false; this.scene.add(mesh);
-    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: S.dmg, poise: S.poise, noKnock: !!S.noKnock, aoe: S.aoe ? S.aoe * big * (1 + (p.tree?.fireRadius || 0) / 100) : 0 };
+    const q = { kind, friendly: true, pos, vel: f.multiplyScalar(S.speed), life: S.life, mesh, r: S.r * big, dmg: dmg ?? S.dmg, poise: S.poise, noKnock: !!S.noKnock, aoe: S.aoe ? S.aoe * big * (1 + (p.tree?.fireRadius || 0) / 100) : 0 };
     q.pfx = this.pfx.play(kind === 'fire' ? (big > 1 ? 'bigFireball' : 'fireball') : 'bolt', pos, { follow: q });
     this.addProj(q);
     this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
