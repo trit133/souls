@@ -71,6 +71,7 @@ export class TreeUI {
     const base = (2 * R) / Math.min(w, h), s = base / this.view.z;
     svg.setAttribute('viewBox', `${this.view.x - (w * s) / 2} ${this.view.y - (h * s) / 2} ${w * s} ${h * s}`);
     this.unitPx = 1 / s;
+    this.bg?.setView(-this.view.x / s, -this.view.y / s, this.view.z);
   }
   toTree(px, py) {
     const svg = $('tree-svg'), r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;

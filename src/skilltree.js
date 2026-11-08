@@ -70,7 +70,7 @@ const SPECIAL = {
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
-export const CAPS = { armor: 20, physPct: 25, firePct: 45, bleedPct: 45, poisonPct: 45, frostPct: 45, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
+export const CAPS = { armor: 20, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
   parryWin: 10, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
 
 const INNER = [{ hp: 3 }, { st: 2 }];
@@ -368,13 +368,20 @@ const TIER_RINGS = { 1: [2, 5], 2: [6, 8], 3: [9, 12], 4: [13, 16], 5: [17, 22] 
 export const EMPHASIS = { knight: 'phys', rogue: 'bleed', mage: 'frost' };
 function typedSet(kind) {
   const own = EMPHASIS[kind], out = [];
-  // the character's own type: flat damage 1,1,1,1,1,2 and +5/8/12% (physical) or +10/15/20% (an element)
-  for (const [v, t] of [[1, 1], [1, 1], [1, 2], [1, 3], [1, 4], [2, 5]]) out.push([own + 'Dmg', v, t]);
-  for (const [v, t] of own === 'phys' ? [[5, 2], [8, 4], [12, 5]] : [[10, 2], [15, 4], [20, 5]]) out.push([own + 'Pct', v, t]);
-  // every other element: +1 and +2 flat, +10%
-  for (const k of ['bleed', 'fire', 'frost', 'poison']) if (k !== own) out.push([k + 'Dmg', 1, 1], [k + 'Dmg', 2, 3], [k + 'Pct', 10, 4]);
-  // a little physical for the elemental characters
-  if (own !== 'phys') out.push(['physDmg', 1, 1], ['physDmg', 1, 2]);
+  if (own === 'phys') {
+    // Knight: the most and biggest physical: flat 1,1,1,1,1,2 + 1,2,2,3 (15) and 5/8/10/12/15% (50%)
+    for (const [v, t] of [[1, 1], [1, 1], [1, 2], [1, 3], [1, 4], [2, 5], [1, 1], [2, 2], [2, 3], [3, 5]]) out.push(['physDmg', v, t]);
+    for (const [v, t] of [[5, 2], [8, 3], [10, 4], [12, 5], [15, 5]]) out.push(['physPct', v, t]);
+  } else {
+    // the character's element: flat 1,1,1,1,1,2 and +15/20/25/30/35% (125%)
+    for (const [v, t] of [[1, 1], [1, 1], [1, 2], [1, 3], [1, 4], [2, 5]]) out.push([own + 'Dmg', v, t]);
+    for (const [v, t] of [[15, 2], [20, 3], [25, 4], [30, 4], [35, 5]]) out.push([own + 'Pct', v, t]);
+    // some physical too: flat 1,1,1,1,2 (6) and 5/8% (13%)
+    for (const [v, t] of [[1, 1], [1, 2], [1, 2], [1, 3], [2, 4]]) out.push(['physDmg', v, t]);
+    out.push(['physPct', 5, 3], ['physPct', 8, 5]);
+  }
+  // every other element: +1 and +2 flat, +15/20/25% (60%)
+  for (const k of ['bleed', 'fire', 'frost', 'poison']) if (k !== own) out.push([k + 'Dmg', 1, 1], [k + 'Dmg', 2, 3], [k + 'Pct', 15, 3], [k + 'Pct', 20, 4], [k + 'Pct', 25, 5]);
   // resistances: 6/8/10/12/14 = 50% for each element
   for (const k of ['fire', 'bleed', 'poison', 'frost']) [6, 8, 10, 12, 14].forEach((v, i) => out.push([k + 'Res', v, i + 1]));
   // Knight armour: up to 20%

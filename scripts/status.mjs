@@ -27,8 +27,8 @@ const out = await page.evaluate((LAYOUT) => {
   const at = g.status.procAt.bleed; g.status.meter.bleed = 0;
   while (g.status.procAt.bleed === at && n2 < 600) { swing(p, g); n2++; }
   o.infusion = { hit: +infHit.toFixed(2), hitsFirst: n1, hitsSecond: n2, resistAfter: g.status.resist.bleed };
-  // 3) rogue with a full bleed line from the tree (9 flat, +45%)
-  p = fresh('rogue', { bleedDmg: 9, bleedPct: 45 }); g = grunt();
+  // 3) rogue with the full bleed line from the tree (7 flat, +125%)
+  p = fresh('rogue', { bleedDmg: 7, bleedPct: 125 }); g = grunt();
   let n3 = 0; while (!g.status.procd.bleed && n3 < 300) { swing(p, g); n3++; }
   o.treeBleed = { hitsToProc: n3 };
   // 4) damage numbers: one per type, in its colour

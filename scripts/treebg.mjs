@@ -8,5 +8,6 @@ for (const k of ['knight', 'rogue', 'mage']) {
   await page.evaluate((k) => { game.treeUI.open(k); game.treeUI.fit(); game.treeUI.applyView(); }, k);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `/tmp/look/tbg-${k}.png` });
+  if (k === 'knight') { await page.evaluate(() => { game.treeUI.view.x = -120; game.treeUI.view.z = 1.6; game.treeUI.applyView(); }); await page.waitForTimeout(500); await page.screenshot({ path: '/tmp/look/tbg-knight-panned.png' }); }
 }
 await b.close(); console.log(errs.length ? errs.join('\n') : 'OK');

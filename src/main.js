@@ -215,7 +215,8 @@ class Game {
     const fsOn = () => document.fullscreenElement || document.webkitFullscreenElement;
     const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
     const fsLabel = () => document.querySelectorAll('[data-fs]').forEach((b) => {
-      b.textContent = fsOn() ? 'Exit Fullscreen' : 'Fullscreen';
+      const text = fsOn() ? 'Exit Fullscreen' : 'Fullscreen', lab = b.querySelector('.tile-t'); // the home tile's label is pixel art
+      if (lab?.plabel) lab.plabel.set(text); else if (lab) lab.textContent = text; else b.textContent = text;
       b.classList.toggle('hidden', !fsOk);
     });
     const toggleFs = () => {
@@ -499,9 +500,9 @@ class Game {
     }
     $('acct-name').textContent = A.user ? A.displayName : '';
     $('acct-gold').textContent = A.user ? `◆ ${A.data.gold}` : '';
-    $('tile-gold').textContent = A.user ? `◆ ${A.data.gold} to spend` : '';
     // signed out: only the sign-in tile; signed in: the menu (or the character select, if that was open)
     this.home ||= new Home(this); // (bindUI refreshes the title before the constructor gets here)
+    this.home.setGold(A.user ? A.data.gold : null);
     this.home.show(!A.user ? 'out' : this.home.view === 'out' ? 'in' : this.home.view);
     const open = !!A.data?.upgrades.mage;
     document.querySelector('.char[data-char="mage"]').classList.toggle('locked', !open);

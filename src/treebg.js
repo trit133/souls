@@ -1,6 +1,6 @@
 // Skill tree backgrounds: one pixel-art scene per character, painted in code at about the game's resolution
 // (~270 pixels tall) and scaled up crisp behind the tree. Detail runs along both edges; the middle stays near
-// black with only faint circular engravings so the nodes read clearly. A static layer is painted once per size;
+// black so the nodes read clearly (the tree draws its own rings). A static layer is painted once per size;
 // every frame adds the moving parts (embers, dust, smoke, runes, flicker). pixelfx effects (braziers, shadow
 // flames, spirit flames, a rune circle, moonbeams) play on a second canvas at twice the resolution, like the
 // game's own effects. Everything stops while the tree screen is closed.
@@ -76,24 +76,6 @@ function centreDark(p, W, H, col, r0, r1) {
   const cx = W / 2, cy = H / 2;
   p.dither(0, 0, W, H, null, col, (x, y) => { const d = Math.hypot((x - cx) / 1.12, y - cy); return d < r0 ? 1 : d > r1 ? 0 : 1 - (d - r0) / (r1 - r0); });
 }
-// faint concentric engravings behind the tree
-function engravings(p, W, H, col, col2, R, seed) {
-  const cx = W / 2, cy = H / 2, r = rng(seed);
-  p.ring(cx, cy, R, col);
-  p.ring(cx, cy, R * 0.94, col2, 3);
-  p.ring(cx, cy, R * 0.72, col2, 5);
-  p.ring(cx, cy, R * 0.45, col2, 2);
-  for (let i = 0; i < 48; i++) { // tick marks round the outer ring
-    const a = (i / 48) * Math.PI * 2, l = i % 4 === 0 ? 4 : 2;
-    p.line(cx + Math.cos(a) * R, cy + Math.sin(a) * R, cx + Math.cos(a) * (R - l), cy + Math.sin(a) * (R - l), col2);
-  }
-  for (let i = 0; i < 16; i++) { // little glyph blocks between the rings
-    const a = (i / 16) * Math.PI * 2 + r() * 0.1, rr = R * 0.83;
-    const gx = cx + Math.cos(a) * rr, gy = cy + Math.sin(a) * rr;
-    for (let k = 0; k < 5; k++) if (r() < 0.6) p.px(gx + ((k % 3) - 1), gy + ((k / 3) | 0) - 1, col2);
-  }
-}
-
 // particles drawn on the low-res canvas each frame
 class Motes {
   constructor() { this.ps = []; }
@@ -207,17 +189,14 @@ function paintKnight(p, W, H) {
   const fy = H * 0.86;
   p.rect(0, fy, W, H - fy, KN.char2);
   p.dither(0, fy, W, H - fy, null, KN.slate, (x, y) => 0.25 + 0.4 * ((y - fy) / (H - fy)));
-  p.ellipse(W / 2, fy + (H - fy) * 0.6, W * 0.46, (H - fy) * 0.5, KN.goldDk);
-  p.ellipse(W / 2, fy + (H - fy) * 0.6, W * 0.38, (H - fy) * 0.38, KN.slate2);
   // the left half, then mirror it for the right
   const side = document.createElement('canvas'); side.width = W; side.height = H;
   const sp = new Pix(side.getContext('2d'), W, H);
   const info = knightHalf(sp, W, H);
   p.c.drawImage(side, 0, 0);
   p.c.save(); p.c.translate(W, 0); p.c.scale(-1, 1); p.c.drawImage(side, 0, 0); p.c.restore();
-  // the middle stays dark, with the hall's old engravings
+  // the middle stays dark
   centreDark(p, W, H, KN.void, H * 0.36, H * 0.6);
-  engravings(p, W, H, '#2a2418', '#1e1a14', H * 0.44, 4);
   return info;
 }
 
@@ -297,9 +276,8 @@ function paintRogue(p, W, H) {
   // shadow figures trapped in the stone (faint)
   const ghost = (x, y, h) => { p.ellipse(x, y, 3 * s, 4 * s, RG.v4, true); p.poly([[x - 6 * s, y + 4 * s], [x + 6 * s, y + 4 * s], [x + 9 * s, y + h], [x - 9 * s, y + h]], RG.v3); p.rect(x - 10 * s, y + 8 * s, 4 * s, 2, RG.v4); };
   ghost(sw * 0.54, H * 0.16, 26 * s); ghost(W - sw * 0.55, H * 0.2, 24 * s); ghost(sw * 0.12, H * 0.3, 20 * s);
-  // the vortex: barely-there rings in the dark middle
+  // the middle stays dark
   centreDark(p, W, H, RG.void, H * 0.34, H * 0.6);
-  for (let i = 0; i < 6; i++) p.ring(W / 2, H / 2, H * (0.12 + i * 0.065), i % 2 ? RG.v1 : RG.v2, 2 + i);
   return { crystal: [kx, kb - 160 * s], hood: [hx, hb - 172 * s], sw, s };
 }
 
@@ -375,14 +353,8 @@ function paintMage(p, W, H) {
   for (const f of [1, 0.82, 0.6]) p.ring(kx, ky, kr * f, MG.gold, f === 0.82 ? 2 : 0);
   for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; p.line(kx + Math.cos(a) * kr * 0.84, ky + Math.sin(a) * kr * 0.84, kx + Math.cos(a) * kr * 0.96, ky + Math.sin(a) * kr * 0.96, i % 6 ? MG.wood3 : MG.gold2); }
   p.line(kx, ky, kx + kr * 0.5, ky + kr * 0.55, MG.gold2);
-  // dark middle with faint arcane diagrams
+  // the middle stays dark
   centreDark(p, W, H, MG.void, H * 0.36, H * 0.6);
-  const R = H * 0.44;
-  p.ring(W / 2, H / 2, R, '#141a3a'); p.ring(W / 2, H / 2, R * 0.9, '#10142c', 3);
-  for (let k = 0; k < 2; k++) { // two overlapping triangles: a hexagram
-    const pts = [0, 1, 2].map((i) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 3 + k * Math.PI; return [W / 2 + Math.cos(a) * R * 0.9, H / 2 + Math.sin(a) * R * 0.9]; });
-    for (let i = 0; i < 3; i++) p.line(...pts[i], ...pts[(i + 1) % 3], '#0e1228');
-  }
   return { book: [px0, pb - 74 * s], staff: [cx0, cb - 50 * s], clock: [kx, ky, kr], sw, s, wins: [[sw * 0.62, H * 0.12, sw * 0.28, H * 0.5], [W - sw * 0.9, H * 0.12, sw * 0.28, H * 0.5]] };
 }
 
@@ -420,7 +392,7 @@ export class TreeBackground {
 
   // paint the scene for `kind` at the wrap's size (about 270 pixels tall)
   setup(kind) {
-    const r = this.wrap.getBoundingClientRect();
+    const r = this.cv.getBoundingClientRect(); // a little bigger than the wrap, so it can drift (parallax)
     const S = Math.max(1, Math.round(r.height / 270)), W = Math.max(160, Math.round(r.width / S)), H = Math.max(120, Math.round(r.height / S));
     if (this.kind === kind && this.W === W && this.H === H) return;
     this.kind = kind; this.W = W; this.H = H;
@@ -459,6 +431,14 @@ export class TreeBackground {
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
+  }
+
+  // parallax: drift a tenth of the way with the tree as it is dragged, and scale a touch with the zoom
+  // (dx, dy: how far the tree has moved on screen, px; z: its zoom)
+  setView(dx, dy, z) {
+    const r = this.wrap.getBoundingClientRect(), mx = r.width * 0.05, my = r.height * 0.05;
+    const tx = Math.max(-mx, Math.min(mx, dx * 0.1)), ty = Math.max(-my, Math.min(my, dy * 0.1)), k = 1 + Math.min(0.05, Math.max(-0.03, (z - 1) * 0.02));
+    for (const c of [this.cv, this.fxc]) c.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(3)})`;
   }
 
   every(key, rate, dt, fn) { this.spawn[key] = (this.spawn[key] || 0) + rate * dt; while (this.spawn[key] >= 1) { this.spawn[key]--; fn(); } }

@@ -9,7 +9,7 @@ export const ELEMS = ['bleed', 'fire', 'frost', 'poison'];
 export const TYPE_NAME = { phys: 'Physical', fire: 'Fire', bleed: 'Bleed', poison: 'Poison', frost: 'Frost' };
 export const TYPE_COLOR = { phys: '#ffffff', fire: '#ff8a2a', bleed: '#e8343c', poison: '#8ad848', frost: '#9ad8ff' };
 
-export const BUILD_PER_DMG = 5; // a player's melee: status build-up per point of elemental damage
+export const BUILD_PER_DMG = 3.5; // a player's melee: status build-up per point of elemental damage
 export const SPELL_BUILD = 1.5; // spells are all one element, so they build less per point
 export const ENEMY_BUILD = 4; // enemies' hits on players
 export const RES_CAP = 50, ARMOR_CAP = 20;

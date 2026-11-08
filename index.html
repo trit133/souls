@@ -61,20 +61,20 @@
     <div id="home-bg" aria-hidden="true"></div>
     <!-- signed out: sign in to play -->
     <div id="home-out" class="home-view">
-      <button class="tile tile-signin" id="btn-acct" data-tile="ember"><span class="tile-ic" data-icon="solo"></span><span class="tile-t">Sign in to play</span><span class="tile-s">An account keeps your gold, trees and skins</span></button>
+      <button class="tile tile-signin" id="btn-acct" data-tile="ember"><span class="tile-ic" data-icon="key"></span><span class="tile-t">Sign in to play</span></button>
       <div class="tiles-row">
-        <button class="tile tile-small" id="btn-settings-out" data-tile="steel"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
+        <button class="tile tile-small" id="btn-settings-out" data-tile="ash"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
       </div>
     </div>
     <!-- signed in: the main menu -->
     <div id="home-in" class="home-view hidden">
       <div id="acct-bar"><span id="acct-name"></span><span id="acct-gold"></span></div>
       <div class="tiles">
-        <button class="tile tile-big" id="btn-solo" data-tile="ember"><span class="tile-ic" data-icon="solo"></span><span class="tile-t">Single Player</span><span class="tile-s">Face the Vigil alone</span></button>
-        <button class="tile tile-big" id="btn-mp" data-tile="frost"><span class="tile-ic" data-icon="party"></span><span class="tile-t">Multiplayer</span><span class="tile-s">Two or three, one room code</span></button>
-        <button class="tile tile-wide" id="btn-shop" data-tile="gold"><span class="tile-ic" data-icon="tree"></span><span class="tile-t">Skill Trees</span><span class="tile-s" id="tile-gold"></span></button>
-        <button class="tile tile-small" id="btn-skins" data-tile="violet"><span class="tile-ic" data-icon="skins"></span><span class="tile-t">Skins</span></button>
-        <button class="tile tile-small" id="btn-settings" data-tile="steel"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
+        <button class="tile tile-big" id="btn-solo" data-tile="ember"><span class="tile-ic" data-icon="solo"></span><span class="tile-t">Single Player</span></button>
+        <button class="tile tile-big" id="btn-mp" data-tile="blood"><span class="tile-ic" data-icon="party"></span><span class="tile-t">Multiplayer</span></button>
+        <button class="tile tile-wide" id="btn-shop" data-tile="rust"><span class="tile-ic" data-icon="tree"></span><span class="tile-t">Skill Trees</span><span class="tile-s" id="tile-gold"></span></button>
+        <button class="tile tile-small" id="btn-skins" data-tile="scarlet"><span class="tile-ic" data-icon="skins"></span><span class="tile-t">Skins</span></button>
+        <button class="tile tile-small" id="btn-settings" data-tile="ash"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
       </div>
     </div>
     <!-- single player: pick a character -->
@@ -100,13 +100,13 @@
         <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
         <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
       </div>
-      <button class="tile tile-back" id="chars-back" data-tile="steel"><span class="tile-t">Back</span></button>
+      <button class="tile tile-back" id="chars-back" data-tile="ash"><span class="tile-t">Back</span></button>
       <div id="controls-help">
         <div id="kb-help"></div>
         <div><b>Touch:</b> left side = move stick · R1 light · R2 heavy · tap ROLL to dodge (no direction = backstep), hold it to sprint · tap the prompt to rest</div>
       </div>
     </div>
-    <button class="tile tile-fs" id="btn-fs" data-fs data-tile="steel">Fullscreen</button>
+    <button class="tile tile-fs" id="btn-fs" data-fs data-tile="ash"><span class="tile-t">Fullscreen</span></button>
   </div>
 
   <div id="pause" class="screen hidden">
