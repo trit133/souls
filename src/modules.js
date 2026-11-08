@@ -1,3 +1,5 @@
+import { decorateArena } from './decor.js';
+
 // Level modules. build(w, Z, mod) receives the World, Z(d) (module distance -> world z)
 // and the module record. Coordinates: x across, d along the module (0 = entry, len = exit).
 // Every module connects through a 5-wide opening centred on x = 0 at both ends.
@@ -202,6 +204,7 @@ function miniArena(bossId, name, ground, theme) {
         for (const [x, d] of [[-6, 31], [6, 17]]) { w.box(1.2, 0.7, 0.6, w.mats.metal, x, 0.35, Z(d)); w.ob(x, Z(d), 0.7); }
         for (const [x, d] of [[-10.5, 22], [10.5, 27], [5, 33]]) { w.rock(x, Z(d), 0.9, true, true); w.fires.push({ x, z: Z(d), y: 0.4, scale: 0.5 }); }
       }
+      decorateArena(w, theme, 0, Z(24), 13, enc);
       w.rock(-5, Z(44), 0.7); w.rock(5, Z(48), 0.6);
     },
   };
@@ -230,6 +233,7 @@ export const BOSS_ARENA = {
     w.cyl(1.0, 1.6, 6, w.mats.stone, 0, 5, Z(55), 6);
     const hd = w.rock(0, Z(55), 0.9); hd.position.y = 8.6; hd.material = w.mats.stone;
     w.box(0.3, 7, 0.8, w.mats.stone, 0, 4.5, Z(53.2));
+    decorateArena(w, 'throne', 0, Z(31), 19, enc);
   },
 };
 

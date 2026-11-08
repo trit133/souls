@@ -1,3 +1,4 @@
+import { decorate, updateAmbient } from './decor.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MODULES, MINI_ARENAS, BOSS_ARENA } from './modules.js';
@@ -82,6 +83,7 @@ export class World {
       this.cur = mod;
       this.Z = (d) => z0 - d;
       def.build(this, this.Z, mod);
+      decorate(this, key, mod); // set dressing and ambient life (never in the walkable area)
       z0 -= def.len;
     });
     // terrain + borders need every module's walkable space, so they go second
@@ -110,6 +112,7 @@ export class World {
     this.bonfires = [];
     this.lights = [];
     this.fires = [];
+    this.ambient = [];
     this.start = { x: 0, z: -3 };
   }
 
@@ -159,6 +162,16 @@ export class World {
       else if (Math.hypot(x - s.x, z - s.z) <= s.r - m) return true;
     }
     return false;
+  }
+
+  // the terrain height at a point, as buildGround raises it (walls step up away from the walkable area)
+  groundY(x, z) {
+    const st = GROUND[this.moduleAt(z)?.ground] || GROUND.dirt;
+    if (this.area(x, z, -0.6)) return 0;
+    if (st.void) return this.area(x, z, -1.6) ? -1.5 : -9;
+    let h = 0;
+    for (const mm of [-1.5, -3, -5, -8]) if (!this.area(x, z, mm)) h += 1;
+    return h * (st.wall ? 1.1 : 0.55);
   }
 
   slowAt(x, z) {
@@ -441,6 +454,7 @@ export class World {
   // ---------- per-frame ----------
   update(dt, time, fx, focus) {
     this.fogMat.uniforms.uT.value = time;
+    updateAmbient(this, dt, time, fx, focus);
     const near = (o) => !focus || Math.abs(o.z - focus.z) < 40;
     for (const f of this.fires) {
       if ((f.cond && !f.cond()) || !near(f)) continue;
