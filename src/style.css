@@ -668,3 +668,6 @@ button.pxbtn { justify-content: center; }
 .cb-arrow { color: #8a4a22; font-weight: normal; }
 .ts-cdesc { font-size: 11px; opacity: .75; line-height: 1.35; }
 .ts-keys { font-size: 11px; opacity: .6; margin-top: 4px; }
+/* the skin preview sizes its renderer from its own client size: keep the pixel frame outside that size, or it
+   shrinks by the frame's width on every redraw */
+#skin-view { box-sizing: content-box !important; }
