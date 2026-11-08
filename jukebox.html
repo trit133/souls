@@ -26,22 +26,38 @@
     <button data-song="varek1">Phase 1</button>
     <button data-song="varek2">Phase 2: he ignites</button>
     <button id="stop">Stop</button>
+    <button id="beep">Test beep</button>
     <label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8" /></label>
     <div id="now"></div>
+    <div id="state" style="margin-top:6px;font-size:12px;color:#8a6a52"></div>
   </main>
   <script type="module">
     import { Music } from './src/music.js';
     let ctx, vol, band;
     const now = document.getElementById('now');
     const mark = () => document.querySelectorAll('[data-song]').forEach((b) => b.classList.toggle('on', b.dataset.song === band?.playing));
-    setInterval(() => { mark(); now.textContent = band?.playing ? `Playing ${band.playing === 'varek1' ? 'phase 1' : 'phase 2'} · bar ${Math.floor(band.cur.pos / 16) + 1}` : ''; }, 100);
-    document.querySelectorAll('[data-song]').forEach((b) => b.addEventListener('click', async () => {
+    const state = document.getElementById('state');
+    setInterval(() => { state.textContent = ctx ? `Audio ${ctx.state}, ${ctx.sampleRate} Hz` : 'Audio not started yet: press a button'; }, 250);
+    // iPhone/iPad: play through the mute switch, and wake the audio inside the tap
+    const start = () => {
+      if (navigator.audioSession) try { navigator.audioSession.type = 'playback'; } catch {}
       if (!ctx) {
-        ctx = new AudioContext();
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
         vol = ctx.createGain(); vol.gain.value = +document.getElementById('vol').value; vol.connect(ctx.destination);
         band = new Music(ctx, vol);
       }
-      await ctx.resume();
+      ctx.resume();
+      const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start();
+    };
+    document.getElementById('beep').addEventListener('click', () => {
+      start();
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+      o.frequency.value = 660; g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.5);
+    });
+    setInterval(() => { mark(); now.textContent = band?.playing ? `Playing ${band.playing === 'varek1' ? 'phase 1' : 'phase 2'} · bar ${Math.floor(band.cur.pos / 16) + 1}` : ''; }, 100);
+    document.querySelectorAll('[data-song]').forEach((b) => b.addEventListener('click', () => {
+      start();
       band.play(b.dataset.song);
     }));
     document.getElementById('stop').addEventListener('click', () => band?.stop(1));
