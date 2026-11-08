@@ -6,6 +6,7 @@ import { weaponElems, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
+import { comboMoves, comboTree, COMBO_WINDOW } from './combos.js';
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -185,6 +186,9 @@ CHARS.mage = {
   attacks: MAGE_ATTACKS, light: 's1', critDmg: 130, trail: 0x8ab4ff, meleeRate: 0.8, // knife swings 20% slower
   model: { cloth: 0x2c3a66, armor: 0x7a86b0, accent: 0x4a7aff, skin: 0xd0a888, head: 'none', weapon: 'spellknife', bulk: 0.9, kit: 'mage' },
 };
+
+// each class's combo moves join its attacks (so teammates can play them too), and its combos as a tree of inputs
+for (const k of Object.keys(CHARS)) { Object.assign(CHARS[k].attacks, comboMoves(k, CHARS[k].attacks)); CHARS[k].combos = comboTree(k); }
 
 // ---------- critical hits ----------
 // One per character and situation (see critFor). Times are in crit time (rt = t * rate); `hitAt` is when the
@@ -393,12 +397,12 @@ export class Player extends Actor {
     this.parryCd = Math.max(0, (this.parryCd || 0) - dt);
     this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
-    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') this.push(a);
-    if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
-
     const mv = input.move();
     const dir = this.worldDir(mv);
     const mag = Math.min(1, dir.length());
+    this.comboTick();
+    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && !this.comboPress(a, dir, mag)) this.push(a);
+    if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
     if (this.lock && (!this.lock.alive || this.distTo(this.lock) > 22)) this.lock = null;
 
     this.stDelay -= dt;
@@ -656,7 +660,7 @@ export class Player extends Actor {
       if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
       return true;
     }
-    if (a === 'heavy' && this.c.caster) { this.buf = null; return this.castBolt(dir, mag); }
+    if (a === 'heavy' && this.c.caster) { this.buf = null; return this.castBolt(dir, mag) && this.comboBegin('heavy'); }
     if (a === 'attack' || a === 'heavy') {
       if (!this.canSpend()) return false;
       this.buf = null;
@@ -677,6 +681,7 @@ export class Player extends Actor {
         else { this.startCharge(dir, mag); return true; }
       }
       this.doAttack(a === 'heavy' ? 'heavy' : this.c.light, dir, mag);
+      this.comboBegin(a);
       return true;
     }
     if (a === 'heal') {
@@ -767,6 +772,74 @@ export class Player extends Actor {
     this.startRiposte(tg, 2.8, CRITS.backstab);
   }
 
+  // ---------- combos (combos.js) ----------
+  // a normal move that starts some combo: follow it
+  comboBegin(input) {
+    const node = this.c.combos?.[input];
+    this.cmb = node && this.comboIn(node) ? { node, openAt: null } : null;
+    this.cmbStag = new Set(); // enemies this combo has staggered (once each)
+    return true;
+  }
+  // is the player doing that node's move right now?
+  comboIn(node) {
+    if (node.move === 'roll') return this.state === 'roll' || this.state === 'backstep';
+    if (node.move === 'bolt') return this.state === 'cast';
+    return this.state === 'attack' && this.atkKey === node.move;
+  }
+  // time into the current move, in the move's own time
+  comboTime() { return this.state === 'attack' ? this.atk.t : this.t * (this.state === 'roll' || this.state === 'backstep' ? this.rollRate : 1); }
+  // each frame: open the window (the weapon flashes) at its moment; drop the combo if it was missed or broken off
+  comboTick() {
+    const C = this.cmb;
+    if (!C) return;
+    if (!this.comboIn(C.node) || !Object.keys(C.node.next).length) { this.cmb = null; return; }
+    const now = this.game.time;
+    if (C.openAt == null && this.comboTime() >= C.node.at) { C.openAt = now; this.comboFlash(); }
+    else if (C.openAt != null && now > C.openAt + COMBO_WINDOW) this.cmb = null;
+  }
+  // a press while following a combo: in the window and the right input continues it; anything else ends it
+  // (and the press does its normal thing)
+  comboPress(a, dir, mag) {
+    const C = this.cmb;
+    if (!C || (a !== 'attack' && a !== 'heavy' && a !== 'roll')) return false;
+    const now = this.game.time, next = C.node.next[a];
+    this.cmb = null;
+    if (C.openAt == null || now > C.openAt + COMBO_WINDOW || !next) return false;
+    if (!this.comboStep(next, dir, mag)) return false;
+    this.game.audio.play('comboHit');
+    if (Object.keys(next.next).length) this.cmb = { node: next, openAt: null };
+    else if (next.combo) this.game.statusPopup(this, next.combo.name.toUpperCase(), '#ffc23d'); // the finisher
+    return true;
+  }
+  comboStep(node, dir, mag) {
+    if (node.move === 'roll') {
+      if (!this.canSpend()) return false;
+      if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
+      return true;
+    }
+    if (node.move === 'bolt') return this.castBolt(dir, mag);
+    const def = this.c.attacks[node.move];
+    if (!def || !this.canSpend()) return false;
+    if (def.mana) {
+      if (this.mana < def.mana) { this.game.ui.toastSmall?.('Not enough mana'); return false; }
+      this.mana -= def.mana;
+    }
+    this.doAttack(node.move, dir, mag);
+    return true;
+  }
+  // the cue: a glint along the blade(s) that lasts the window
+  comboFlash() {
+    const r = this.rig, fx = this.game.fx, a = new THREE.Vector3(), b = new THREE.Vector3();
+    for (const [u, v] of [[r.base, r.tip], [r.baseL, r.tipL]]) {
+      if (!u || !v) continue;
+      u.getWorldPosition(a); v.getWorldPosition(b);
+      for (let i = 0; i <= 5; i++) {
+        const q = a.clone().lerp(b, 0.3 + i * 0.14);
+        fx.add.spawn({ x: q.x, y: q.y, z: q.z, life: COMBO_WINDOW + 0.04, size: i === 5 ? 0.34 : 0.16, size1: 0.04, r: 1, g: 0.95, b: 0.75, alpha: 1 });
+      }
+    }
+  }
+
   // ---------- Spellsword ----------
   aimAt(dir, mag) {
     if (this.lock) { this.yaw = this.yawTo(this.lock.pos); return; }
@@ -802,8 +875,8 @@ export class Player extends Actor {
   doAttack(name, dir, mag) {
     const def = this.c.attacks[name];
     this.atkKey = name;
-    // repeated attacks cost more and push stamina regen further out
-    this.spend(def.cost * (1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100));
+    // repeated attacks cost more and push stamina regen further out (combo moves cost a fixed, larger amount)
+    this.spend(def.cost * (def.comboMove ? 1 : 1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100));
     this.stDelay = 0.6 + 0.7 * this.fatigue;
     this.fatigue = Math.min(1, this.fatigue + (name === 'heavy' ? 0.3 : 0.2));
     this.fatigueT = 1.0;
@@ -815,10 +888,11 @@ export class Player extends Actor {
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else {
       const aim = mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw;
-      const tg = this.findTarget(3.6, 1.0, aim);
+      const tg = this.findTarget(3.6, def.comboMove ? Math.PI : 1.0, aim); // a combo move turns to an enemy behind you too (after a roll)
       this.yaw = tg ? this.yawTo(tg.pos) : aim;
     }
     this.startAttack(def);
+    this.atkKey = name; // (startAttack looks it up among enemy move sets)
     this.vel.set(0, 0, 0);
     this.game.mp.event({ k: 'swing', a: name, r: this.atkRate });
   }
@@ -881,6 +955,7 @@ export class Player extends Actor {
       return 'block';
     }
     this.hp -= info.dmg;
+    this.cmb = null; // a hit breaks any combo
     this.rig.flash(1, 0.3, 0.2);
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);

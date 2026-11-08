@@ -5,6 +5,8 @@ import { CHARS } from './player.js';
 import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
 import { iconPath } from './icons.js';
 import { TreeBackground } from './treebg.js';
+import { COMBOS } from './combos.js';
+import { keyLabel } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
@@ -248,6 +250,16 @@ export class TreeUI {
     for (const k of keys) h += row(STATS[k].name, (S) => (S[k] ? STATS[k].fmt(+fmt(S[k])) + (CAPS[k] && S[k] >= CAPS[k] ? ' (max)' : '') : '—'));
     if (!keys.length) h += '<div class="ts-none">None yet</div>';
     h += row('Evolution', (S) => (S.evolved ? 'Owned' : '—'));
+    // the combos: inputs as pixel badges (with this player's keys), and the four still to come
+    const binds = this.game.settings?.binds || {}, key = (a) => (binds[a]?.[0] ? keyLabel(binds[a][0]) : '');
+    const BADGE = { attack: ['R1', 'attack'], heavy: ['R2', 'heavy'], roll: ['ROLL', 'roll'] };
+    h += head('Combos · hit the next input as the weapon flashes');
+    for (const c of COMBOS[kind] || []) {
+      const ins = c.steps.map(([a]) => `<i class="cb cb-${a}" title="${key(BADGE[a][1])}">${BADGE[a][0]}</i>`).join('<b class="cb-arrow">›</b>');
+      h += `<div class="ts-combo"><div class="ts-cname">${c.name}</div><div class="ts-cins">${ins}</div><div class="ts-cdesc">${c.desc}</div></div>`;
+    }
+    for (let i = 0; i < 4; i++) h += '<div class="ts-combo locked"><div class="ts-cname">???</div><div class="ts-cdesc">Unlocked in the skill tree; needs the Evolution.</div></div>';
+    h += `<div class="ts-keys">Keys: R1 ${key('attack')} · R2 ${key('heavy')} · Roll ${key('roll')}</div>`;
     el.innerHTML = h;
   }
 

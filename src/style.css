@@ -656,3 +656,15 @@ button.pxbtn { justify-content: center; }
 #lobby:has(#lobby-coderow:not(.hidden)) .pxpick { padding: 0 8px !important; }
 #lobby:has(#lobby-coderow:not(.hidden)) > h2 { display: none; } /* in a room the code is the heading */
 #lobby:has(#lobby-coderow:not(.hidden)) .pxpick { margin-bottom: 2px; }
+/* the combos list under the tree's stats */
+.ts-combo { margin: 6px 0 8px; padding: 5px 6px; border: 4px solid transparent; border-image: var(--pxf-panel) 4 / 4px / 0 stretch; background: #140806 padding-box; }
+.ts-combo.locked { opacity: .45; }
+.ts-cname { color: #ffc23d; font-size: 12px; letter-spacing: 1px; }
+.ts-cins { display: flex; align-items: center; gap: 3px; margin: 3px 0; flex-wrap: wrap; }
+.cb { font: bold 10px monospace; font-style: normal; padding: 1px 4px; border: 2px solid; box-shadow: 2px 2px 0 #000; }
+.cb-attack { color: #ffe26b; border-color: #c9281f; background: #3a1208; }
+.cb-heavy { color: #ffb08a; border-color: #e04a30; background: #4a0c0c; }
+.cb-roll { color: #f0d8b0; border-color: #8a3e22; background: #2a140a; }
+.cb-arrow { color: #8a4a22; font-weight: normal; }
+.ts-cdesc { font-size: 11px; opacity: .75; line-height: 1.35; }
+.ts-keys { font-size: 11px; opacity: .6; margin-top: 4px; }

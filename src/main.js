@@ -943,12 +943,17 @@ class Game {
       const T = att.tree || {};
       const mul = att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1) * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
       info.parts = scaleParts(playerParts(T, att.statusLv, info.dmg), mul);
+      // some combo moves turn part of the weapon's physical damage into an element (Rimeblade, Shatter: frost)
+      if (def.convert) for (const [k, sh] of Object.entries(def.convert)) { info.parts[k] = (info.parts[k] || 0) + info.parts.phys * sh; info.parts.phys *= 1 - sh; }
       info.dmg = sumParts(info.parts);
+      // a combo staggers each enemy at most once
+      if ((def.comboMove || att.cmb) && att.cmbStag?.has(tg)) info.poise = 0;
       info.poise *= 1 + (T.stun || 0) / 100;
     }
     const hp0 = tg.hp;
     const r = tg.receive(info);
     if (r === 'none') return;
+    if (r === 'stagger' && att === this.player && (def.comboMove || att.cmb)) att.cmbStag?.add(tg);
     const heavy = def.heavyHit, dealt = tg.puppet ? info.dmg : Math.max(0, hp0 - tg.hp);
     const shown = scaleParts(info.parts || { phys: info.dmg }, info.dmg > 0 ? dealt / info.dmg : 0);
     this.dmgPops(tg, shown, heavy ? 'heavy' : 'me');
@@ -1011,6 +1016,15 @@ class Game {
     const v = new THREE.Vector3(a.pos.x, 2.6 * a.rig.root.scale.y + a.y, a.pos.z).project(this.camera);
     if (v.z > 1) return;
     this.ui.popup((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight, text, color);
+  }
+
+  // a combo finisher's burst round the player (Arc Step's frost nova): spell damage to everything within `r`
+  comboBlast(p, r, dmg, poise, elem = 'frost') {
+    for (const e of this.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < r + e.radius) {
+      const st0 = e.state, staggered = p.cmbStag?.has(e); // (a combo staggers each enemy once)
+      this.spellDamage({ dmg, poise: staggered ? 0 : poise, pos: p.pos.clone(), kind: elem === 'fire' ? 'fire' : 'bolt' }, e);
+      if (e.state === 'hurt' && st0 !== 'hurt') p.cmbStag?.add(e);
+    }
   }
 
   // a critical hit: `base` physical, flat tree damage counted `flatHits` times (a parry stab hits like three lights)

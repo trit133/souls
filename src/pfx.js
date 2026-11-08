@@ -23,6 +23,7 @@ const BLOOD = ['#2a0808', '#5a1010', '#8a1a14', '#c42a1e', '#ff5a3a', '#ffb08a',
 const STEEL = ['#3a3a44', '#6a6e7a', '#9aa0aa', '#c8ccd4', '#e8ecf2', '#f8faff', '#ffffff'];
 const RED = ['#1a0404', '#4a0808', '#8a1010', '#c41a14', '#ff3a2a', '#ff8a6a', '#ffd8c8', '#ffffff'];
 const BLACK = ['#020202', '#080708', '#100e10', '#1a171a', '#262226', '#332e33', '#403a40', '#4e474e'];
+const GOLD = ['#1a1206', '#3a2810', '#6a4a18', '#a87a28', '#e0b040', '#ffd870', '#fff0b0', '#ffffff'];
 const ASH = ['#1a1612', '#2e2822', '#4a423a', '#6e655a', '#948a7c', '#b8ae9e', '#d8d0c0', '#f0ead8'];
 
 // name -> effect, options, size on screen (game px per effect px), how long a loop lasts before it fades
@@ -50,6 +51,11 @@ export const PRESETS = {
   chargeIce: { mod: spellCharge, scale: 0.3, opts: { palette: ICE } },
   circle: { mod: magicCircle, scale: 0.36, cut: 1.6 },
   blast: { mod: explosion, scale: 0.55, cut: 3 },
+  // combo finishers
+  goldSlam: { mod: groundSlam, scale: 0.5, cut: 1.5, opts: { palette: GOLD } },
+  iceBlast: { mod: explosion, scale: 0.42, cut: 2, opts: { palette: ICE } },
+  iceCircle: { mod: magicCircle, scale: 0.42, cut: 1.4, opts: { palette: ICE } },
+  iceBurst: { mod: manaBurst, scale: 0.45, opts: { palette: ICE } },
 };
 
 const MAX = 48;

@@ -126,6 +126,14 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
 | Rest at bonfire | F | tap the prompt |
 
 ## Combat notes
+- **Combos** (`src/combos.js`): start with a normal attack; at a set moment in each move the weapon flashes, and pressing the next input within **110 ms** continues the combo (a chime plays). Pressing outside the window does that button's normal move; doing nothing ends it. Combos branch from shared openings. Combo moves cost a fixed, larger amount of stamina (a 4-move combo takes almost a full bar) and a full combo deals about 20% more than its normal inputs; combos with more hits deal slightly less. Every combo move can be interrupted (a hit cancels the combo), and a combo staggers each enemy at most once, so nothing gets stun-locked. Combo moves turn to an enemy right behind you (after the roll steps). Four per class to start; four more will come with the Evolution. The skill tree screen lists them under the stats. `scripts/combos.mjs` plays each one on time, early and late.
+
+| | Knight | Rogue | Spellsword |
+|---|---|---|---|
+| 3-move | **Crown Cleave** R1 R1 R1: two cuts, a two-handed overhead with a gold shockwave (95) | **Thousand Cuts** R1 R1 R1: two stabs, four rapid cuts (61) | **Rimeblade** R1 R1 R1: two cuts, a frost thrust bursting into ice (45) |
+| 4-move | **Bulwark Breaker** R1 R2 R1 R2: slash, shield bash, rising cut, leaping slam (122) | **Viper's Dance** R1 Roll R1 R1: stab, flank roll, cut, spinning cross-cut (98) | **Arc Step** R1 Roll R1 R2: cut, roll, cut, frost nova (59, 12 mana) |
+| 4-move | **Iron Tempest** R2 R1 R1 R2: heavy, two spins, lunging thrust (120) | **Hemorrhage** R2 R1 R1 R2: lunge, two cuts, X slash that bursts blood (96) | **Glacial Lance** R2 R1 R1 R2: bolt, two cuts, three ice lances (58, 16 mana) |
+| 4-move | **Vanguard** R1 Roll R1 R2: slash, roll, rising cut, impaling stab (120) | **Shadow Reel** R1 R1 Roll R2: two cuts, back-flip, diving stab (99) | **Shatter** R1 R1 R2 R1: two cuts, bolt, rune strike detonating frost (61) |
 - **Stamina:** at 0 you can't attack, roll, backstep or parry (combos stop too) until it refills a little. Long attack strings slow walking by at most 10%.
 - Inputs are buffered (0.4s). Combos chain inside a window. Rolls can cancel attack recovery after a set point.
 - Hitstop, camera shake, weapon trails, and poise/stagger on both sides.

@@ -68,6 +68,20 @@ export const VFX = {
     else g.fx.burst(chest, 22, STATUS[kind].rgb, 3.5, 0.8, 0.28);
     g.statusPopup(a, STATUS[kind].name.toUpperCase(), STATUS[kind].color);
   },
+  // ---------- combo finishers ----------
+  crownCleave(g, at, own) { g.pfx.play('goldSlam', at); g.fx.burst({ x: at.x, y: 0.3, z: at.z }, 40, [1, 0.8, 0.3], 6, 0.7, 0.3); g.fx.addShake(own ? 0.6 : 0.3); },
+  steelFlash(g, at, dir) { g.pfx.play('crit', at); g.fx.sparks(at, dir, 18, [1, 0.95, 0.8]); },
+  impaleSteel(g, at, own) { g.pfx.play('bigCrit', at); g.fx.blood(at, null, 24); g.fx.addShake(own ? 0.6 : 0.3); },
+  flurryEnd(g, at, dir) { g.pfx.play('redSlash', at, { dir }); g.pfx.play('redCrit', at, { size: 0.7 }); },
+  xSlash(g, at, dir, blood) {
+    const up = new THREE.Vector3(0, 1, 0);
+    for (const s of [0.8, -0.8]) g.pfx.play('redSlash', at, { dir: dir.clone().applyAxisAngle(up, s).add(new THREE.Vector3(0, s * 0.6, 0)) });
+    if (blood) { g.fx.blood(at, null, 34); g.pfx.play('redCrit', at); }
+  },
+  rimeBurst(g, at) { g.pfx.play('iceBurst', at); g.fx.burst(at, 30, [0.7, 0.9, 1], 5, 0.6, 0.22); },
+  frostNova(g, at) { g.pfx.play('iceCircle', at); g.fx.burst({ x: at.x, y: 0.6, z: at.z }, 60, [0.75, 0.92, 1], 7, 0.7, 0.24); },
+  lanceFan(g, at) { g.pfx.play('chargeIce', at); },
+  shatter(g, at) { g.pfx.play('iceBlast', at); g.fx.burst({ x: at.x, y: 0.8, z: at.z }, 40, [0.8, 0.95, 1], 6, 0.7, 0.26); },
   emberBlast(g, at) {
     g.pfx.play('blast', at);
     g.fx.burst({ x: at.x, y: 0.5, z: at.z }, 80, [1, 0.5, 0.1], 9, 1.0, 0.5);
