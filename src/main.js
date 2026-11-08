@@ -401,7 +401,7 @@ class Game {
     $('boss-name').textContent = enc.boss.name;
     this.ui.show('boss');
     this.ui.boss.snap(1);
-    this.audio.startMusic(1);
+    this.audio.startMusic(enc.kind === 'mini' ? 1 : 'varek');
     setTimeout(() => enc.active && this.audio.play('roar', enc.kind === 'mini' ? 0.5 : 0.8), 1200);
   }
 

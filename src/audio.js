@@ -1,4 +1,6 @@
 // Tiny procedural sound kit (WebAudio). Must be unlocked by a user gesture (iOS).
+import { Music } from './music.js';
+
 export class Audio {
   constructor() {
     this.ctx = null; this.master = null; this.music = null; this.muted = false;
@@ -32,6 +34,7 @@ export class Audio {
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.band = new Music(this.ctx, this.musicBus);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     // iOS: play a silent buffer inside the gesture
@@ -111,28 +114,30 @@ export class Audio {
     }
   }
 
-  // Low ominous loop for the boss fight. phase 2 adds a pulsing higher voice.
-  startMusic(phase = 1) {
+  // 'varek' starts Varek's theme; 2 moves it into his second phase on the next bar line.
+  // 1 is the old low drone the mini bosses still use.
+  startMusic(which = 1) {
     if (!this.ctx) return;
+    const song = which === 'varek' ? 'varek1' : which === 2 ? 'varek2' : null;
+    if (song) { this._stopDrone(); this.band.play(song); return; }
     this.stopMusic();
     const ctx = this.ctx, out = ctx.createGain(); out.gain.value = 0; out.connect(this.musicBus);
     out.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 2);
     const nodes = [];
-    const notes = phase === 1 ? [55, 82.4, 65.4] : [55, 82.4, 103.8, 130.8];
-    for (const f of notes) {
+    for (const f of [55, 82.4, 65.4]) {
       const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
       const lf = ctx.createOscillator(); lf.frequency.value = 0.1 + Math.random() * 0.2;
       const lg = ctx.createGain(); lg.gain.value = 1.5; lf.connect(lg); lg.connect(o.detune);
-      const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = phase === 1 ? 380 : 700;
+      const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 380;
       o.connect(flt); flt.connect(out); o.start(); lf.start(); nodes.push(o, lf);
-    }
-    if (phase === 2) {
-      const pulse = ctx.createOscillator(); pulse.frequency.value = 2.2;
-      const pg = ctx.createGain(); pg.gain.value = 0.05; pulse.connect(pg); pg.connect(out.gain); pulse.start(); nodes.push(pulse);
     }
     this.music = { out, nodes };
   }
   stopMusic(fade = 1.2) {
+    this.band?.stop(fade);
+    this._stopDrone(fade);
+  }
+  _stopDrone(fade = 1.2) {
     if (!this.music || !this.ctx) return;
     const { out, nodes } = this.music; this.music = null;
     const t = this.ctx.currentTime;

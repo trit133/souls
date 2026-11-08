@@ -165,5 +165,11 @@ Every keyboard and mouse binding can be changed in **Settings** (title screen or
   - Spellsword, Rune Impale: 130. Hops up and drives the rune blade down into a burst of runes.
   - Code: `CRITS` in `src/player.js`; `scripts/crits.mjs` checks damage, timing and positions; `scripts/balance.mjs` checks stun counts, the parry cooldown, the shield charge, party stage scaling and the after-run buttons.
 
+## Music
+All music is synthesized in `src/music.js`: songs are written as 16th-note patterns and played by a 16-bit style band (pulse-wave leads, triangle bass, noise drums) over an orchestral layer (strings, choir, brass stabs, timpani, a bell) in a cathedral reverb.
+- **Varek, Throne of Ash:** D minor, 132 BPM with a bell and choir intro. When he ignites in his second phase it switches on the next bar line into a faster 148 BPM version with a new melody.
+- The mini bosses still use the old low drone.
+- `jukebox.html` (dev server only: `npx vite --host`, then open `/jukebox.html`) plays each song. `scripts/music.mjs` renders them offline, reports peak and loudness for the whole mix and each instrument, and writes WAVs to `/tmp`.
+
 ## Tests
 `scripts/smoke.mjs` (screenshots + runtime errors), `scripts/sim.mjs` (mechanics + bot fights), `scripts/modules.mjs` (layout connectivity, mini bosses, rewards, status, run over), `scripts/economy.mjs` (accounts, gold, tiers, shop), `scripts/spell.mjs` (potions, Spellsword, evolutions), `scripts/party.mjs` (online accounts and a 3-player run) and `scripts/settings.mjs` (rebinding, volumes, per-account settings), `scripts/rooms.mjs` (fight engagement, room gates, section gold), `scripts/bank.mjs` (per-room banking, boss bonuses, ultrawide render size), `scripts/stamina.mjs` (empty-stamina lockout, mana costs, grunt leap reach), `scripts/treebg.mjs` (skill tree background screenshots), `scripts/status.mjs` (damage types, status buildup, per-type damage numbers, enemy elements, armour and resistances, riposte per enemy, weapon effect and stats panel screenshots) and `scripts/parry.mjs` run against `npx vite preview --port 4173`. Add `?server=` to the URL to use a test server.
