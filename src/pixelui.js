@@ -90,6 +90,9 @@ const ICONS = {
   skins: [ // a mask
     '................', '..oooooooooooo..', '.ohhhhhhhhhhhho.', '.ohllllllllllho.', '.ohlooolloooolho'.slice(0, 16), '.ohlodolloodolo.', '.ohllooolloooll.'.slice(0, 16), '.ohlllllllllllo.',
     '.omllllllllllmo.', '..omlllooolllmo.'.slice(0, 16), '..omllo...ollmo.'.slice(0, 16), '...omllllllmo...', '....ommmmmmo....', '.....oddddo.....', '......oooo......', '................'],
+  lock: [
+    '................', '.....oooooo.....', '....odmmmmdo....', '...odo....odo...', '...omo....omo...', '...omo....omo...', '..oooooooooooo..', '..ohhhhhhhhhhho.',
+    '..ohllllollllmo.', '..ohlllooolllmo.', '..ohllllollllmo.', '..ohllllollllmo.', '..omllllllllldo.', '..odmmmmmmmmddo.', '..oooooooooooo..', '................'],
   key: [
     '................', '...oooo.........', '..ohhhho........', '.ohlooolo.......', '.ohlo..olo......', '.ohlo..olo......', '.omlooolmoooooo.', '..omllllmmmmmmmo',
     '...ommmmoooomdmo', '....oooo....odo.', '.............oo.', '................', '................', '................', '................', '................'],
@@ -151,3 +154,14 @@ export function frameImage([dark, mid, light, rivet]) {
   for (const [x, y] of [[2, 2], [9, 2], [2, 9], [9, 9]]) { p(x, y, rivet); }
   return cv.toDataURL();
 }
+
+// frame colours per tone, at rest and lit: [dark, mid, light, rivet]. Every tone is a red or orange; `panel` is the
+// dark frame round menu panels.
+export const FRAME = {
+  ember: [['#4a1608', '#9a3a12', '#d86a24', '#ffc23d'], ['#7a2a0c', '#e0601c', '#ffb050', '#fff3a6']],
+  blood: [['#3a0608', '#8a1418', '#c42a24', '#e8a040'], ['#6a0c10', '#d4282a', '#ff6a4a', '#ffe26b']],
+  rust: [['#3a1806', '#7a3a14', '#b8642a', '#e8b04a'], ['#5e2a0c', '#c0602a', '#f09a4a', '#fff3a6']],
+  scarlet: [['#40080a', '#a01e1c', '#e04a30', '#ffc23d'], ['#701010', '#e0402a', '#ff8a5a', '#fff3a6']],
+  ash: [['#2a0e08', '#5a2414', '#8a3e22', '#c8823a'], ['#4a1a0c', '#9a3e1e', '#d0703a', '#ffc23d']],
+  panel: [['#1a0806', '#3a160c', '#5a2614', '#8a4a22'], ['#2a0e08', '#5a2414', '#8a3e22', '#c8823a']],
+};

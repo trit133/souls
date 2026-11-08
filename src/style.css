@@ -569,3 +569,90 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
 #tree-svg { position: relative; z-index: 1; }
 #tree-wrap { background: #030305; }
 @media (max-height: 500px) { #menu[data-view="chars"] h1, #menu[data-view="chars"] .sub { display: none; } #menu[data-view="chars"] .char.unknown { min-height: 46px; } #menu[data-view="chars"] .qmark { font-size: 30px; } }
+
+/* ---------- the other menus in the title's style (pixelmenus.js) ---------- */
+.pxtext { font-size: 0 !important; color: transparent !important; text-shadow: none !important; letter-spacing: 0 !important; line-height: 0; }
+.pxlab { display: inline-block; line-height: 0; }
+#account > h2, #skins > h2, #settings > h2, #lobby > h2 { margin: 6px 0 10px; animation: none; }
+.panel-head.pxtext, .shop-head.pxtext { border: 0; padding: 0 0 6px; margin: 0 0 6px; background: linear-gradient(90deg, #5a2414, transparent) bottom / 100% 2px no-repeat; }
+#lobby-code.pxtext { margin: 0 10px; }
+/* buttons: square tiles in a riveted pixel frame, tone per role */
+button.pxbtn {
+  --c1: #5e2a0c; --c2: #1c0a04;
+  font-size: 0 !important; color: transparent !important; text-shadow: none !important; letter-spacing: 0 !important; line-height: 0;
+  border: 9px solid transparent; border-image: var(--pxf-rust) 4 / 9px / 0 stretch; border-radius: 0;
+  background: linear-gradient(160deg, var(--c1), var(--c2) 80%) padding-box; box-shadow: none;
+  padding: 5px 10px; margin: 4px; image-rendering: pixelated; position: relative; cursor: pointer;
+  transition: transform .12s steps(2), filter .12s;
+}
+button.pxbtn.mini-btn { border-width: 6px; border-image-width: 6px; padding: 3px 7px; }
+button.pxbtn[data-tone="ember"] { --c1: #7a2a0c; --c2: #1e0804; border-image-source: var(--pxf-ember); }
+button.pxbtn[data-tone="blood"] { --c1: #6a0c10; --c2: #1a0306; border-image-source: var(--pxf-blood); }
+button.pxbtn[data-tone="scarlet"] { --c1: #8a1a14; --c2: #200604; border-image-source: var(--pxf-scarlet); }
+button.pxbtn[data-tone="ash"] { --c1: #3e160c; --c2: #140604; border-image-source: var(--pxf-ash); }
+button.pxbtn:hover:not(:disabled), button.pxbtn:focus-visible { transform: translateY(-2px); filter: brightness(1.15); outline: none; border-image-source: var(--pxf-rust-hot); }
+button.pxbtn[data-tone="ember"]:hover:not(:disabled), button.pxbtn[data-tone="ember"]:focus-visible, button.pxbtn.on[data-tone] { border-image-source: var(--pxf-ember-hot); }
+button.pxbtn[data-tone="blood"]:hover:not(:disabled), button.pxbtn[data-tone="blood"]:focus-visible { border-image-source: var(--pxf-blood-hot); }
+button.pxbtn[data-tone="scarlet"]:hover:not(:disabled), button.pxbtn[data-tone="scarlet"]:focus-visible { border-image-source: var(--pxf-scarlet-hot); }
+button.pxbtn[data-tone="ash"]:hover:not(:disabled), button.pxbtn[data-tone="ash"]:focus-visible { border-image-source: var(--pxf-ash-hot); }
+button.pxbtn.on { filter: brightness(1.2); }
+button.pxbtn:disabled { filter: grayscale(.75) brightness(.55); cursor: default; }
+button.pxbtn:active:not(:disabled) { transform: translateY(0); }
+button.pxbtn > :not(.pxlab) { display: none; }
+#lobby-start.pxbtn { padding: 6px 20px; }
+/* panels: a dark pixel frame */
+#lobby .panel, #settings .set-group, #skin-list > *, #skin-view, #account #acct-form, .pxpick {
+  border: 12px solid transparent !important; border-image: var(--pxf-panel) 4 / 12px / 0 stretch !important; border-radius: 0 !important;
+  background: linear-gradient(170deg, #1e0c08, #0c0504 85%) padding-box !important; box-shadow: none !important;
+}
+#skin-list > * { position: relative; cursor: pointer; }
+#skin-list > .sel, #skin-list > .on, #skin-list > .equipped { border-image-source: var(--pxf-ember) !important; }
+#skin-list > *:hover { border-image-source: var(--pxf-panel-hot) !important; }
+#skin-list > .pxlocked { filter: saturate(.6) brightness(.8); }
+.pxpad { position: absolute; right: 6px; top: 6px; line-height: 0; opacity: .9; }
+.sbar { height: 8px !important; border-radius: 0 !important; background: repeating-linear-gradient(90deg, #2a0e08 0 6px, #0c0403 6px 8px) !important; }
+.sbar i { border-radius: 0 !important; background: repeating-linear-gradient(90deg, #ff8a2a 0 6px, transparent 6px 8px) !important; }
+/* the lobby's class picks */
+.pxpick { text-align: left; cursor: pointer; padding: 2px 8px !important; border-width: 9px !important; border-image-width: 9px !important; margin-bottom: 4px; }
+#lobby .panel { border-width: 10px !important; border-image-width: 10px !important; }
+.pxpick.on { border-image-source: var(--pxf-ember-hot) !important; }
+.pxpick:hover { border-image-source: var(--pxf-panel-hot) !important; }
+.pxpick.on:hover { border-image-source: var(--pxf-ember-hot) !important; }
+.pxpick b.pxtext { display: block; margin: 2px 0; }
+.pxpick::before { display: none !important; }
+/* party list: framed strips, pixel badges */
+#lobby .member { border: 6px solid transparent !important; border-image: var(--pxf-panel) 4 / 6px / 0 stretch !important; background: #160806 padding-box !important; border-radius: 0 !important; }
+#lobby .member.open { opacity: .45; border-image-source: none !important; border: 2px dashed #3a1a0c !important; }
+#lobby .member .tag { border-radius: 0; border: 2px solid #c8823a; background: #3a1208; color: #ffc23d; font: bold 10px monospace; letter-spacing: 1px; box-shadow: 2px 2px 0 #000; }
+#lobby .member .tag.you { border-color: #e04a30; color: #ffb08a; }
+/* text fields, the dropdown and key buttons: small pixel frames */
+#acct-form input, #lobby-input, #chat-input, #set-quality, #binds button {
+  border: 6px solid transparent !important; border-image: var(--pxf-ash) 4 / 6px / 0 stretch !important; border-radius: 0 !important;
+  background: #0e0503 padding-box !important; box-shadow: none !important;
+}
+#acct-form input:focus, #lobby-input:focus, #chat-input:focus, #binds button:hover, #binds button.listen { border-image-source: var(--pxf-ember-hot) !important; }
+#lobby-input { font-family: monospace; font-weight: bold; letter-spacing: 6px; color: #ffc23d; }
+/* sliders: a segmented pixel track filling in orange, a square riveted handle */
+#settings input[type=range] {
+  -webkit-appearance: none; appearance: none; height: 12px; border-radius: 0; cursor: pointer; box-shadow: none; border: 0;
+  background: repeating-linear-gradient(90deg, #ff8a2a 0 6px, #0c0403 6px 8px) 0 0 / var(--v, 50%) 100% no-repeat, repeating-linear-gradient(90deg, #3a1208 0 6px, #0c0403 6px 8px);
+}
+#settings label:has(input[type=range]) { position: relative; }
+#settings input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 18px; border-radius: 0; background: #ffc23d; box-shadow: inset -3px -3px 0 #c9281f, inset 3px 3px 0 #fff3a6, 0 0 0 2px #120403; }
+#settings input[type=range]::-moz-range-thumb { width: 14px; height: 18px; border-radius: 0; border: 0; background: #ffc23d; box-shadow: inset -3px -3px 0 #c9281f, inset 3px 3px 0 #fff3a6, 0 0 0 2px #120403; }
+#lobby .pxpick .pxpad { display: none; } #lobby .pxpick.locked .pxpad { display: block; }
+#lobby .pxpick.locked b.pxtext { opacity: .6; }
+/* the sign-in box: buttons stacked inside the frame */
+#acct-form { width: min(380px, 90vw); display: flex; flex-direction: column; gap: 8px; padding: 6px !important; }
+#acct-form > div:last-child { display: flex; flex-direction: column; gap: 4px; }
+#acct-form button.pxbtn { width: 100%; margin: 0; display: flex; justify-content: center; }
+/* the lobby is taller in frames: tighter heading and code */
+#lobby > h2 { margin: 0 0 6px; }
+#lobby-coderow { margin-bottom: 4px; }
+button.pxbtn { justify-content: center; }
+#lobby .pxpick .pxpad { position: absolute !important; right: 6px; top: 6px; }
+/* in a room: class picks shrink to just their names so the lobby fits on one screen */
+#lobby:has(#lobby-coderow:not(.hidden)) .pxpick > span { display: none; }
+#lobby:has(#lobby-coderow:not(.hidden)) .pxpick { padding: 0 8px !important; }
+#lobby:has(#lobby-coderow:not(.hidden)) > h2 { display: none; } /* in a room the code is the heading */
+#lobby:has(#lobby-coderow:not(.hidden)) .pxpick { margin-bottom: 2px; }

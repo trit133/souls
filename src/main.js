@@ -28,6 +28,7 @@ import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
+import { pixelMenus, syncRanges } from './pixelmenus.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
@@ -106,6 +107,7 @@ class Game {
     new FireTitle($('title-fire'), 'ASHEN VIGIL');
     document.querySelectorAll('.char[data-char]').forEach((el) => attachCardFx(el, el.dataset.char));
     this.home ||= new Home(this);
+    pixelMenus();
     document.querySelectorAll('.pick[data-pick]').forEach((el) => attachCardFx(el, el.dataset.pick));
     this.resize();
     addEventListener('resize', () => this.resize());
@@ -431,6 +433,7 @@ class Game {
 
   openSettings() {
     this.renderSettings();
+    syncRanges();
     $('set-signout').classList.toggle('hidden', !this.accounts.user || this.mode !== 'title');
     this.ui.show('settings');
   }
@@ -759,7 +762,7 @@ class Game {
       b.classList.toggle('locked', b.dataset.pick === 'mage' && !mageOpen);
       b.setAttribute('aria-pressed', b.dataset.pick === this.lobbyKind);
     });
-    const lock = document.querySelector('[data-pick="mage"] span');
+    const lock = document.querySelector('[data-pick="mage"] > span'); // (the name above is a pixel label)
     lock.textContent = mageOpen ? 'Hits build mana · bolt & fireball' : 'Locked · tap to unlock in Skill Trees';
     this.renderChat();
   }

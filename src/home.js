@@ -3,7 +3,7 @@
 // character select (the class cards, plus dark "?" tiles for characters still to come). Hovering a tile lifts it,
 // runs a light around its edge, sweeps a shine across and sends pixel embers up in its colour. Slow embers drift
 // behind the whole screen. Arrow keys move between tiles.
-import { PixelLabel, pixelIcon, frameImage } from './pixelui.js';
+import { PixelLabel, pixelIcon, frameImage, FRAME } from './pixelui.js';
 
 const $ = (id) => document.getElementById(id);
 const PX = 3; // screen px per pixel of the ember canvases
@@ -11,13 +11,6 @@ const PX = 3; // screen px per pixel of the ember canvases
 const EMBER = {
   ember: [[255, 196, 110], [255, 90, 30]], blood: [[255, 150, 120], [200, 30, 30]], rust: [[255, 200, 120], [200, 90, 30]],
   scarlet: [[255, 170, 140], [230, 50, 40]], ash: [[255, 180, 120], [160, 60, 30]],
-};
-const FRAME = {
-  ember: [['#4a1608', '#9a3a12', '#d86a24', '#ffc23d'], ['#7a2a0c', '#e0601c', '#ffb050', '#fff3a6']],
-  blood: [['#3a0608', '#8a1418', '#c42a24', '#e8a040'], ['#6a0c10', '#d4282a', '#ff6a4a', '#ffe26b']],
-  rust: [['#3a1806', '#7a3a14', '#b8642a', '#e8b04a'], ['#5e2a0c', '#c0602a', '#f09a4a', '#fff3a6']],
-  scarlet: [['#40080a', '#a01e1c', '#e04a30', '#ffc23d'], ['#701010', '#e0402a', '#ff8a5a', '#fff3a6']],
-  ash: [['#2a0e08', '#5a2414', '#8a3e22', '#c8823a'], ['#4a1a0c', '#9a3e1e', '#d0703a', '#ffc23d']],
 };
 
 // a low-res canvas of rising ember pixels; `rate` new embers a second
