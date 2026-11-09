@@ -6,7 +6,7 @@ const errs = [];
 const dev = async (vp = { width: 900, height: 500 }) => { const p = await (await b.newContext({ viewport: vp })).newPage(); p.on('pageerror', (e) => errs.push(e.message)); await p.goto(URL); await p.waitForTimeout(500); return p; };
 const log = (k, v) => console.log(k.padEnd(16), JSON.stringify(v));
 const A = await dev(), u = 'bk' + Date.now() % 100000;
-await A.click('#btn-acct'); await A.fill('#acct-user', u); await A.fill('#acct-pass', 'secret123'); await A.click('#acct-signup'); await A.waitForTimeout(700);
+await A.click('#btn-herm'); await A.fill('#acct-user', u); await A.fill('#acct-pass', 'secret123'); await A.click('#acct-signup'); await A.waitForTimeout(700);
 log('run', await A.evaluate(async () => {
   game.loop = () => {}; game.audio.play = () => {}; game.audio.remote = () => {};
   const out = {}, acc = game.accounts.data, step = (n) => { for (let i = 0; i < n; i++) game.step(1 / 60, 1 / 60); };
@@ -50,10 +50,10 @@ for (const [w, h] of [[1920, 1080], [2560, 1080], [3440, 1440], [5120, 1440]]) {
   log(`${w}x${h}`, r);
   if (w === 3440) {
     for (const q of ['chunky', 'fine']) {
-      await P.click('#btn-settings-out'); await P.selectOption('#set-quality', q); await P.waitForTimeout(100); await P.click('#set-back');
+      await P.evaluate(() => game.hermitage.active && game.hermitage.close()).then(() => P.click('#btn-settings')); await P.selectOption('#set-quality', q); await P.waitForTimeout(100); await P.click('#set-back');
       log(' ' + q, await P.evaluate(() => game.pixel.size.x + 'x' + game.pixel.size.y));
     }
-    await P.click('#btn-settings-out'); await P.selectOption('#set-quality', 'medium');
+    await P.evaluate(() => game.hermitage.active && game.hermitage.close()).then(() => P.click('#btn-settings')); await P.selectOption('#set-quality', 'medium');
     await P.click('#set-back'); await P.evaluate(() => game.start('knight')); await P.waitForTimeout(700);
     await P.screenshot({ path: '.shots/ultrawide.png' });
   }

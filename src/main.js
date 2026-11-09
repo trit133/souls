@@ -33,6 +33,7 @@ import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
+import { Hermitage } from './hermitage.js';
 import { pixelMenus, syncRanges } from './pixelmenus.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
@@ -114,7 +115,6 @@ class Game {
 
     this.bindUI();
     new FireTitle($('title-fire'), 'ASHEN VIGIL');
-    document.querySelectorAll('.char[data-char]').forEach((el) => attachCardFx(el, el.dataset.char));
     this.home ||= new Home(this);
     pixelMenus();
     document.querySelectorAll('.pick[data-pick]').forEach((el) => attachCardFx(el, el.dataset.pick));
@@ -147,7 +147,7 @@ class Game {
   refreshNight() {
     const on = this.nightUnlocked, label = `Night Raid: ${this.nightRaid && on ? 'On' : 'Off'}`;
     if (!on) this.nightRaid = false;
-    for (const id of ['night-toggle', 'lobby-night']) {
+    for (const id of ['hm-night', 'lobby-night']) {
       const b = $(id); if (!b) continue;
       b.classList.toggle('hidden', !on || (id === 'lobby-night' && !this.mp.isHost));
       b.classList.toggle('on', !!this.nightRaid);
@@ -332,13 +332,6 @@ class Game {
 
   // ---------- UI / flow ----------
   bindUI() {
-    document.querySelectorAll('.char[data-char]').forEach((b) => b.addEventListener('click', () => {
-      this.audio.unlock();
-      // you must be signed in to play
-      if (!this.accounts.user) { $('acct-err').textContent = 'Sign in to play'; this.ui.show('account'); return; }
-      if (b.dataset.char === 'mage' && !this.accounts.data?.upgrades.mage) { this.treeUI.open('mage'); return; }
-      this.start(b.dataset.char);
-    }));
     $('resume').addEventListener('click', () => this.setPaused(false));
     $('restart').addEventListener('click', () => this.toTitle());
     const readyOr = (btn, solo) => () => {
@@ -351,12 +344,10 @@ class Game {
     $('go-title').addEventListener('click', () => this.toTitle());
     // after a run: solo opens the upgrade shop here; a party goes back to the room's lobby (upgrades inside)
     for (const id of ['go-lobby', 'victory-lobby']) $(id).addEventListener('click', () => this.afterRunLobby());
-    $('btn-mp').addEventListener('click', () => { this.audio.unlock(); this.openLobby(); });
     $('btn-settings').addEventListener('click', () => this.openSettings());
-    $('btn-settings-out').addEventListener('click', () => this.openSettings());
-    $('btn-solo').addEventListener('click', () => { this.audio.unlock(); this.home.show('chars'); document.querySelector('.char[data-char]')?.focus({ preventScroll: true }); });
-    $('chars-back').addEventListener('click', () => this.home.show('in'));
-    for (const id of ['night-toggle', 'lobby-night']) $(id).addEventListener('click', () => { this.nightRaid = !this.nightRaid; this.refreshNight(); });
+    this.hermitage = new Hermitage(this);
+    $('btn-herm').addEventListener('click', () => { this.audio.unlock(); this.hermitage.open(); });
+    $('lobby-night').addEventListener('click', () => { this.nightRaid = !this.nightRaid; this.refreshNight(); });
     $('set-signout').addEventListener('click', () => { this.accounts.signOut(); this.closeSettings(); this.refreshTitle(); });
     // fullscreen has to start from a click; phones that support it also lock to landscape. Hidden where the
     // browser can't (iPhone Safari), and the label follows Esc / F11 too
@@ -404,7 +395,6 @@ class Game {
     this.skinMenu = new SkinMenu(this);
     this.treeUI = new TreeUI(this);
     this.layoutEditor = new LayoutEditor(this);
-    $('btn-skins').addEventListener('click', () => { this.audio.unlock(); this.skinMenu.open(); });
     $('lobby-skins').addEventListener('click', () => this.skinMenu.open(this.lobbyKind));
     $('lobby-settings').addEventListener('click', () => this.openSettings());
     $('lobby-copy').addEventListener('click', () => {
@@ -419,10 +409,8 @@ class Game {
       if (b.dataset.pick === 'mage' && !this.accounts.data?.upgrades.mage) { this.treeUI.open('mage'); return; }
       this.lobbyKind = b.dataset.pick; if (this.mp.code) this.mp.setKind(this.lobbyKind); this.renderLobby();
     }));
-    $('btn-shop').addEventListener('click', () => { this.treeUI.open(); });
     $('shop-back').addEventListener('click', () => { this.ui.show('shop', false); this.refreshTitle(); this.renderLobby(); });
-    $('btn-acct').addEventListener('click', () => { this.audio.unlock(); $('acct-err').textContent = ''; this.ui.show('account'); });
-    $('acct-back').addEventListener('click', () => this.ui.show('account', false));
+    $('acct-back').addEventListener('click', () => { this.ui.show('account', false); if (this.hermitage) this.hermitage.pending = false; });
     const auth = async (fn) => {
       try {
         await fn($('acct-user').value.trim(), $('acct-pass').value);
@@ -468,6 +456,7 @@ class Game {
   startParty(kind, layout, seed, players) { this.ui.show('lobby', false); this.start(kind, { layout, seed, players }); }
 
   start(kind, party = null) {
+    if (this.hermitage?.active) this.hermitage.close(false);
     if (this.player) this.player.remove();
     this.overShown = false;
     this.kind = kind;
@@ -513,6 +502,7 @@ class Game {
     this.ui.prompt(null);
     this.ui.enemyBars([]);
     this.refreshTitle();
+    if (this.accounts.user) this.hermitage.open(this.kind); // back to the hideout
   }
 
   setPaused(v) {
@@ -672,9 +662,12 @@ class Game {
     this.home ||= new Home(this); // (bindUI refreshes the title before the constructor gets here)
     this.home.setGold(A.user ? A.data.gold : null);
     this.home.show(!A.user ? 'out' : this.home.view === 'out' ? 'in' : this.home.view);
-    const open = !!A.data?.upgrades.mage;
-    document.querySelector('.char[data-char="mage"]').classList.toggle('locked', !open);
-    $('mage-lock').textContent = open ? '' : 'Locked · unlock for ◆ 100 in Skill Trees';
+    // signing in from the Hermitage tile carries on into the Hermitage
+    if (this.hermitage) {
+      this.hermitage.refresh();
+      if (!A.user && this.hermitage.active) this.hermitage.close(); // signed out: back to the title
+      if (A.user && this.hermitage.pending) { this.hermitage.pending = false; this.ui.show('account', false); this.hermitage.open(); }
+    }
   }
 
 
@@ -1543,6 +1536,7 @@ class Game {
     this.camera.aspect = aspect;
     this.camera.fov = aspect > maxA ? 2 * Math.atan(Math.tan((48 / 2) * Math.PI / 180) * maxA / aspect) * 180 / Math.PI : 48;
     this.camera.updateProjectionMatrix();
+    this.hermitage?.resize(aspect);
     this.fx.setScale(px.h * 0.9 * (48 / this.camera.fov));
   }
 
@@ -1550,6 +1544,11 @@ class Game {
     requestAnimationFrame((t) => this.loop(t));
     let rdt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
+    if (this.hermitage?.active && this.mode === 'title') {
+      this.hermitage.update(rdt);
+      this.pixel.render(this.hermitage.scene, this.hermitage.camera);
+      return;
+    }
     if (this.mode === 'play' || this.mode === 'title') {
       let dt = rdt;
       if (this.freeze > 0) { this.freeze -= rdt; dt = 0; }

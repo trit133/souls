@@ -20,7 +20,7 @@ const drag = async (sel, x, y) => {
 const at = (sel) => p.locator(sel).boundingBox().then((r) => [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]);
 const log = (k, v) => console.log(k.padEnd(20), JSON.stringify(v));
 
-await p.click('#btn-settings');
+await p.evaluate(() => game.hermitage.active && game.hermitage.close()).then(() => p.click('#btn-settings'));
 log('default attack', await at('#b-attack').catch(() => 'hidden'));
 await p.tap('#set-layout'); await p.waitForTimeout(100);
 log('editing shown', [await p.isVisible('#layout-bar'), await p.isVisible('#b-attack')]);
@@ -49,7 +49,7 @@ await p.reload(); await p.waitForTimeout(600);
 log('after reload', await p.evaluate(() => Object.keys(game.settings.touchLayout)));
 
 // in a run: moved buttons are where they were put and still fire
-await p.tap('.char[data-char="knight"]'); await p.waitForTimeout(800);
+await p.evaluate(() => game.start('knight')); await p.waitForTimeout(800);
 log('in-game attack', await at('#b-attack'));
 log('in-game heal', await at('#b-heal'));
 await p.screenshot({ path: '/tmp/layout-game.png' });

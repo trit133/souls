@@ -4,7 +4,7 @@ const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-p
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + '\n' + e.stack));
 await page.goto(process.argv[2] || 'http://localhost:4173/?chain'); await page.waitForTimeout(600);
-await page.click('#btn-acct'); await page.fill('#acct-user', 'spell_test'); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(500);
+await page.click('#btn-herm'); await page.fill('#acct-user', 'spell' + (Date.now() % 1e6)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(500);
 const res = await page.evaluate(() => {
   game.loop = () => {};
   const out = {};
@@ -14,7 +14,7 @@ const res = await page.evaluate(() => {
   const fresh = (k) => { game.start(k); game.audio.play = () => {}; game.buildRun(LAYOUT); game.input.move = () => ({ x: 0, y: 0 }); return game.player; };
   // 1) the Spellsword lock opens her skill tree; unlocking costs 100; each evolution sits 6 rings out
   A.data.gold = 1000; A.save(); game.refreshTitle();
-  document.querySelector('.char[data-char="mage"]').click();
+  game.treeUI.open('mage');
   out.lockedClick = { mode: game.mode, treeOpen: !document.getElementById('tree').classList.contains('hidden'), tab: game.treeUI.kind, lockShown: !document.getElementById('tree-lock').classList.contains('hidden') };
   const g0 = A.data.gold; document.getElementById('tree-unlock').click();
   out.unlock = { paid: g0 - A.data.gold, unlocked: !!A.data.upgrades.mage, lockHidden: document.getElementById('tree-lock').classList.contains('hidden') };
@@ -22,7 +22,7 @@ const res = await page.evaluate(() => {
   for (const k of ['knight', 'rogue', 'mage']) { game.treeUI.kind = k; for (let d = 1; d <= 6; d++) game.treeUI.buy(`s0-${d}`); }
   out.evoOwned = ['knight', 'rogue', 'mage'].map((k) => (A.data.tree[k] || []).includes('s0-6'));
   document.getElementById('tree-back').click();
-  out.mageCardLocked = document.querySelector('.char[data-char="mage"]').classList.contains('locked');
+  out.mageCardLocked = !game.hermitage.unlocked.mage;
 
   // 2) potions: 7 flasks (4+3); heal = 48% x 1.45
   let p = fresh('knight');

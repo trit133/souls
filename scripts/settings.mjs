@@ -4,11 +4,11 @@ const SRV = 'http://127.0.0.1:4111', URL = `http://localhost:4173/?server=${enco
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errs = [];
 const dev = async () => { const p = await (await b.newContext({ viewport: { width: 900, height: 520 } })).newPage(); p.on('pageerror', (e) => errs.push(e.message)); await p.goto(URL); await p.waitForTimeout(500); return p; };
-const auth = async (p, u, btn) => { await p.click('#btn-acct'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click(btn); await p.waitForTimeout(700); };
+const auth = async (p, u, btn) => { await p.click('#btn-herm'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click(btn); await p.waitForTimeout(700); };
 const log = (k, v) => console.log(k.padEnd(18), JSON.stringify(v));
 const A = await dev(), u = 'set' + Date.now() % 100000;
 await auth(A, u, '#acct-signup');
-await A.click('#btn-settings');
+await A.evaluate(() => game.hermitage.active && game.hermitage.close()).then(() => A.click('#btn-settings'));
 log('owner', await A.textContent('#set-owner'));
 // rebind attack (row 6, primary) to G
 const btn = (row, slot) => A.locator('#binds button').nth(row * 2 + slot);
@@ -24,7 +24,7 @@ await A.waitForTimeout(500);
 log('help text', await A.textContent('#kb-help'));
 // the new binding drives the game
 await A.click('#set-back');
-await A.click('#btn-solo'); await A.click('.char[data-char="knight"]'); await A.waitForTimeout(600);
+await A.evaluate(() => game.start('knight')); await A.waitForTimeout(600);
 const r = await A.evaluate(async () => {
   game.loop = () => {}; game.audio.play = () => {};
   const p = game.player; p.setState('move');
@@ -42,7 +42,7 @@ log('other device', await B.evaluate(() => [game.settings.binds.attack, game.set
 const C = await dev(); await auth(C, u + 'x', '#acct-signup');
 log('other account', await C.evaluate(() => [game.settings.binds.attack, game.settings.music]));
 // pause menu has settings
-await C.click('#btn-solo'); await C.click('.char[data-char="knight"]'); await C.waitForTimeout(500); await C.keyboard.press('Escape'); await C.waitForTimeout(200);
+await C.evaluate(() => game.start('knight')); await C.waitForTimeout(500); await C.keyboard.press('Escape'); await C.waitForTimeout(200);
 await C.click('#pause-settings'); log('from pause', await C.isVisible('#settings'));
 if (errs.length) { console.log('ERRORS', errs.slice(0, 4)); process.exitCode = 1; } else console.log('OK no errors');
 await b.close();

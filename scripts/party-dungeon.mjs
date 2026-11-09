@@ -11,15 +11,15 @@ const device = async (n) => {
   await page.goto(URL); await page.waitForTimeout(500);
   return page;
 };
-const auth = async (p, u) => { await p.click('#btn-acct'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
+const auth = async (p, u) => { await p.click('#btn-herm'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
 const log = (k, v) => console.log(k.padEnd(13), JSON.stringify(v));
 const A = await device('A'), B = await device('B');
 const wait = (ms) => A.waitForTimeout(ms);
 const u = 'd' + Date.now() % 100000;
 await auth(A, u + 'a'); await auth(B, u + 'b');
-await A.click('#btn-mp'); await A.click('#lobby-create'); await wait(400);
+await A.click('#hm-party'); await A.click('#lobby-create'); await wait(400);
 const code = await A.textContent('#lobby-code');
-await B.click('#btn-mp'); await B.fill('#lobby-input', code); await B.click('#lobby-joinbtn'); await wait(400);
+await B.click('#hm-party'); await B.fill('#lobby-input', code); await B.click('#lobby-joinbtn'); await wait(400);
 await A.click('#lobby-start'); await wait(1500);
 const both = (fn, arg) => Promise.all([A, B].map((p) => p.evaluate(fn, arg)));
 for (const p of [A, B]) await p.evaluate(() => { game.player.hp = game.player.maxHp = 1e6; game.player.iframe = () => true; });

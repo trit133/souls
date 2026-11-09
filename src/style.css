@@ -714,3 +714,41 @@ button.pxbtn { justify-content: center; }
 #bigmap canvas { image-rendering: pixelated; border: 3px solid #6a4a30; box-shadow: 0 0 0 3px #1a120c, 0 0 30px rgba(0,0,0,.8); }
 .bm-hint { margin-top: 8px; font: 12px monospace; color: #c8b890; letter-spacing: 1px; }
 @media (max-width: 700px), (max-height: 450px) { #minimap canvas { width: 120px; height: 120px; } #mm-info { font-size: 9px; max-width: 200px; } }
+
+/* ---------- the Hermitage (hermitage.js): the scene is the game canvas underneath ---------- */
+#hermitage { position: fixed; inset: 0; z-index: 9; user-select: none; -webkit-user-select: none; touch-action: none; }
+#hermitage.hidden { display: none; }
+.hm-top { position: absolute; left: 0; right: 0; top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; padding: 0 calc(14px + env(safe-area-inset-left)); pointer-events: none; }
+.hm-top > * { pointer-events: auto; }
+#hm-gold { color: #e8c25a; font: 16px monospace; text-shadow: 0 1px 3px #000; min-width: 90px; text-align: right; }
+.hm-pick { position: relative; }
+#hm-list { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); display: flex; flex-direction: column; gap: 4px; min-width: 220px; padding: 6px; background: rgba(12,8,6,.94); border: 2px solid #6a3a1a; box-shadow: 0 0 0 2px #1a0c06, 0 8px 24px rgba(0,0,0,.7); z-index: 2; }
+#hm-list.hidden { display: none; }
+.hm-opt { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 10px; background: #2a140a; color: #e8dcc0; border: 1px solid #5a2a14; font: 14px Georgia, serif; cursor: pointer; text-align: left; }
+.hm-opt:hover, .hm-opt.on { background: #4a1e0c; border-color: #d86a24; }
+.hm-opt span { font: 11px monospace; color: #c8a070; }
+.hm-opt.locked { color: #8a7a6a; }
+.hm-opt.locked span { color: #e8c25a; }
+.hm-ask { padding: 8px; background: #1a0c06; border: 1px solid #d86a24; color: #e8dcc0; font: 13px Georgia, serif; text-align: center; }
+.hm-ask i { color: #c88; font-size: 12px; }
+.hm-ask button { margin: 6px 4px 0; padding: 4px 14px; font: bold 13px monospace; color: #fff3a6; background: #7a2a0c; border: 1px solid #ffb050; cursor: pointer; }
+.hm-ask button.hm-no { background: #2a1a12; border-color: #8a5a3a; color: #e8dcc0; }
+.hm-ask button:disabled { opacity: .4; cursor: default; }
+#hm-label { position: absolute; transform: translate(-50%, -100%); padding: 5px 10px 6px; background: rgba(10,6,4,.88); border: 2px solid #d8a040; box-shadow: 0 0 0 2px #1a0c06, 0 0 14px rgba(255,170,60,.35); color: #fff3d0; text-align: center; pointer-events: none; white-space: nowrap; }
+#hm-label.hidden { display: none; }
+#hm-label b { display: block; font: bold 15px Georgia, serif; letter-spacing: 1px; color: #ffd36a; }
+#hm-label span { display: block; font: 11px monospace; color: #d8c8a8; margin-top: 2px; }
+#hm-stash { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
+#hm-stash.hidden { display: none; }
+@keyframes hmslide { from { transform: translateX(40px); opacity: 0; } }
+.hm-sh { display: flex; justify-content: space-between; align-items: center; color: #ffd36a; font: bold 18px Georgia, serif; letter-spacing: 2px; }
+.hm-note { margin: 6px 0 8px; font: 11px monospace; color: #b8a888; }
+#hm-slots { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; overflow-y: auto; }
+.hm-slot { aspect-ratio: 1; background: #1c120c; border: 2px solid #3a2414; box-shadow: inset 0 0 6px #000; }
+.hm-bottom { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; align-items: center; gap: 14px; pointer-events: none; }
+.hm-bottom > * { pointer-events: auto; }
+#hm-night.on { filter: drop-shadow(0 0 8px #7a5aff); }
+#hm-hint { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); font: 12px monospace; color: #c8b890; letter-spacing: 1px; opacity: .8; transition: opacity 1s; pointer-events: none; text-shadow: 0 1px 2px #000; }
+#hm-hint.gone { opacity: 0; }
+.tile-herm { min-height: 150px; }
+@media (max-width: 700px), (max-height: 450px) { #hm-stash { width: 52vw; top: 54px; bottom: 70px; } .hm-bottom { gap: 8px; } }

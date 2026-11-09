@@ -42,6 +42,7 @@ export class SkinMenu {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.game.mp.code) this.game.mp.setKind(this.game.lobbyKind || 'knight'); // teammates see the new outfit
     this.game.refreshTitle?.(); this.game.renderLobby?.();
+    this.game.hermitage?.refreshCharacter(); // the hideout shows the new look
   }
 
   save() { this.game.accounts.save(); }

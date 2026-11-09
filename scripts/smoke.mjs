@@ -17,9 +17,8 @@ async function run(name, ctxOpts, fn) {
   await page.waitForTimeout(800);
   if (name === 'desktop') await shot(page, '00-signed-out');
   // you must be signed in to play: sign up, then Single Player
-  await page.click('#btn-acct'); await page.fill('#acct-user', 'smk' + name.slice(0, 2) + (Date.now() % 100000)); await page.fill('#acct-pass', 'secret123');
+  await page.click('#btn-herm'); await page.fill('#acct-user', 'smk' + name.slice(0, 2) + (Date.now() % 100000)); await page.fill('#acct-pass', 'secret123');
   await page.click('#acct-signup'); await page.waitForTimeout(700);
-  await page.click('#btn-solo'); await page.waitForTimeout(200);
   await fn(page);
   await browser.close();
 }
@@ -29,7 +28,7 @@ const hold = async (page, key, ms) => { await page.keyboard.down(key); await pag
 
 await run('desktop', { viewport: { width: 1280, height: 720 } }, async (page) => {
   await shot(page, '00-title');
-  await page.click('.char[data-char="knight"]');
+  await page.evaluate(() => game.hermitage.setKind('knight')); await page.click('#hm-solo');
   await page.waitForTimeout(1500);
   await shot(page, '01-start');
   await hold(page, 'KeyW', 1500);
@@ -89,7 +88,7 @@ await run('desktop', { viewport: { width: 1280, height: 720 } }, async (page) =>
 });
 
 await run('iphone', { ...devices['iPhone 13 landscape'] }, async (page) => {
-  await page.click('.char[data-char="rogue"]');
+  await page.evaluate(() => game.hermitage.setKind('rogue')); await page.click('#hm-solo');
   await page.waitForTimeout(1200);
   // drag the stick
   const cdp = await page.context().newCDPSession(page);

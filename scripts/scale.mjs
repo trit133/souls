@@ -69,7 +69,7 @@ const a = await measure(NEW), o = await measure(OLD);
   const page = await (await b.newContext()).newPage();
   page.on('pageerror', (e) => errs.push('acct ' + e.message));
   await page.goto('http://localhost:4173/?server=' + encodeURIComponent('http://127.0.0.1:4111')); await page.waitForTimeout(600);
-  await page.click('#btn-acct'); await page.fill('#acct-user', 'sc' + Date.now().toString().slice(-6)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
+  await page.click('#btn-herm'); await page.fill('#acct-user', 'sc' + Date.now().toString().slice(-6)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
   console.log('account gold', JSON.stringify(await page.evaluate(() => {
     const d = game.accounts.data; d.gold = 77; d.stats.goldEarned = 300; delete d.numScale;
     game.refreshTitle(); const once = [d.gold, d.stats.goldEarned]; game.refreshTitle();

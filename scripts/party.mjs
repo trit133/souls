@@ -10,7 +10,7 @@ const device = async (n) => {
   await page.goto(URL); await page.waitForTimeout(500);
   return page;
 };
-const auth = async (p, u, btn) => { await p.click('#btn-acct'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click(btn); await p.waitForTimeout(600); };
+const auth = async (p, u, btn) => { await p.click('#btn-herm'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click(btn); await p.waitForTimeout(600); };
 const log = (k, v) => console.log(k.padEnd(13), JSON.stringify(v));
 const A = await device('A'), B = await device('B'), C = await device('C');
 const wait = (ms) => A.waitForTimeout(ms);
@@ -26,11 +26,11 @@ log('1 after reload', await D.evaluate(() => [game.accounts.user, game.accounts.
 await D.context().close();
 
 // 2) lobby
-await A.click('#btn-mp'); await A.click('[data-pick=rogue]'); await A.click('#lobby-create'); await wait(400);
+await A.click('#hm-party'); await A.click('[data-pick=rogue]'); await A.click('#lobby-create'); await wait(400);
 const code = await A.textContent('#lobby-code');
-for (const [p, k] of [[B, 'knight'], [C, 'knight']]) { await p.click('#btn-mp'); await p.click(`[data-pick=${k}]`); await p.fill('#lobby-input', code); await p.click('#lobby-joinbtn'); await p.waitForTimeout(300); }
+for (const [p, k] of [[B, 'knight'], [C, 'knight']]) { await p.click('#hm-party'); await p.click(`[data-pick=${k}]`); await p.fill('#lobby-input', code); await p.click('#lobby-joinbtn'); await p.waitForTimeout(300); }
 log('2 lobby', await A.evaluate(() => document.getElementById('lobby-members').innerText.split('\n')));
-const E = await device('E'); await auth(E, u + 'e', '#acct-signup'); await E.click('#btn-mp'); await E.fill('#lobby-input', code); await E.click('#lobby-joinbtn'); await E.waitForTimeout(300);
+const E = await device('E'); await auth(E, u + 'e', '#acct-signup'); await E.click('#hm-party'); await E.fill('#lobby-input', code); await E.click('#lobby-joinbtn'); await E.waitForTimeout(300);
 log('2 4th player', await E.textContent('#lobby-err')); await E.context().close();
 await A.click('#lobby-start'); await wait(1200);
 const state = (p) => p.evaluate(() => ({ mode: game.mode, host: game.mp.isHost, layout: game.layout.join(), enemies: game.enemies.length, gruntHp: game.enemies.find((e) => e.type === 'grunt').maxHp, tier0dmg: +game.enemies[0].dmgScale.toFixed(2), bossHp: game.encounters.map((e) => e.boss.maxHp), puppet: game.enemies[0].puppet, peers: game.mp.peers.size }));

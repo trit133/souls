@@ -60,7 +60,6 @@ export class Home {
       const lab = t.querySelector('.tile-t');
       if (lab) { const L = new PixelLabel(lab, lab.textContent.trim(), { px: big ? 5 : 3 }); L.tile = t; lab.plabel = L; this.labels.push(L); }
     }
-    this.gold = new PixelLabel($('tile-gold'), '', { font: 'mini', px: 3 });
     for (const t of document.querySelectorAll('#menu .tile')) {
       const cv = document.createElement('canvas');
       cv.className = 'tilefx'; cv.setAttribute('aria-hidden', 'true');
@@ -80,12 +79,12 @@ export class Home {
     this.bindKeys();
   }
 
-  setGold(n) { this.gold.set(n == null ? '' : `${n} gold`); }
+  setGold() {}
 
   // which view: 'out' (signed out), 'in' (main tiles) or 'chars' (character select)
   show(view) {
     this.view = view;
-    for (const [v, id] of [['out', 'home-out'], ['in', 'home-in'], ['chars', 'home-chars']]) $(id).classList.toggle('hidden', v !== view);
+    $('home-in').classList.remove('hidden'); // one view now: Hermitage, Settings, Fullscreen
     $('menu').dataset.view = view;
     this.start();
   }

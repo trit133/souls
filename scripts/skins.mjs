@@ -9,7 +9,7 @@ const page = await (await b.newContext({ viewport: { width: 1100, height: 700 } 
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
 await page.goto(url); await page.waitForTimeout(700);
 const user = 'sk' + Date.now().toString().slice(-6);
-await page.click('#btn-acct'); await page.fill('#acct-user', user); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
+await page.click('#btn-herm'); await page.fill('#acct-user', user); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
 const out = {};
 // an old account: 520 knight kills with the Paladin equipped, 120 rogue kills -> emeralds and pieces once
 out.migrate = await page.evaluate(() => {
@@ -30,7 +30,7 @@ out.kills = await page.evaluate(() => {
 await page.evaluate(() => game.toTitle()); await page.waitForTimeout(300);
 // the screen: try on a piece you don't own, buy it, it is worn; colours the same; outfits switch
 await page.evaluate(() => { game.accounts.data.emeralds = 500; game.accounts.data.outfits.knight.slots[0] = { pieces: {}, colors: {} }; });
-await page.click('#btn-skins'); await page.waitForTimeout(500);
+await page.evaluate(() => game.skinMenu.open('knight')); await page.waitForTimeout(500);
 await page.click('[data-skin-kind="knight"]'); await page.click('#cz-slots button:nth-child(1)'); await page.click('.cz-piece:nth-child(2)'); await page.waitForTimeout(150);
 out.trying = await page.evaluate(() => ({ buy: document.getElementById('cz-buy').textContent, hidden: document.getElementById('cz-buy').classList.contains('hidden'), worn: game.equippedOutfit('knight').helmet.piece }));
 await page.click('#cz-buy'); await page.waitForTimeout(150);

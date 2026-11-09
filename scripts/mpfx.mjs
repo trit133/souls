@@ -9,12 +9,12 @@ const device = async (n) => {
   page.on('pageerror', (e) => errs.push(n + ': ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   await page.goto(URL); await page.waitForTimeout(500); return page;
 };
-const auth = async (p, u) => { await p.click('#btn-acct'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
+const auth = async (p, u) => { await p.click('#btn-herm'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
 const A = await device('A'), B = await device('B'), u = 'fx' + Date.now() % 100000;
 await auth(A, u + 'a'); await auth(B, u + 'b');
-await A.click('#btn-mp'); await A.click('[data-pick=knight]'); await A.click('#lobby-create'); await A.waitForTimeout(400);
+await A.click('#hm-party'); await A.click('[data-pick=knight]'); await A.click('#lobby-create'); await A.waitForTimeout(400);
 const code = await A.textContent('#lobby-code');
-await B.click('#btn-mp'); await B.click('[data-pick=rogue]'); await B.fill('#lobby-input', code); await B.click('#lobby-joinbtn'); await B.waitForTimeout(400);
+await B.click('#hm-party'); await B.click('[data-pick=rogue]'); await B.fill('#lobby-input', code); await B.click('#lobby-joinbtn'); await B.waitForTimeout(400);
 await A.click('#lobby-start'); await A.waitForTimeout(1500);
 // B records every shared effect it plays, and what A's body does on B's screen
 await B.evaluate(() => {

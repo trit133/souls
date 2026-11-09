@@ -96,6 +96,9 @@ const ICONS = {
   key: [
     '................', '...oooo.........', '..ohhhho........', '.ohlooolo.......', '.ohlo..olo......', '.ohlo..olo......', '.omlooolmoooooo.', '..omllllmmmmmmmo',
     '...ommmmoooomdmo', '....oooo....odo.', '.............oo.', '................', '................', '................', '................', '................'],
+  camp: [ // a campfire
+    '.......oo.......', '......ohho......', '.....ohhlo......', '....ohlhlho.....', '....ohllhlo.....', '...ohlmllhlo....', '...ohlmmllho....', '..ohlmddmllho...',
+    '..ohlmddmmlho...', '...omddddmmo....', '.oooooooooooooo.', 'odmmmmmmmmmmmmdo', '.oooddoooooddoo.', '...ooo....ooo...', '................', '................'],
 };
 const ICON_PAL = { o: OUT, d: '#5e1c0c', m: '#c9281f', l: '#ff8a2a', h: '#ffc23d' };
 // icons drawn from shapes: inside(x, y) on pixel centres; outlined and lit from the top left automatically

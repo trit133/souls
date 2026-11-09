@@ -13,7 +13,7 @@ const device = async (n, viewport) => {
   await page.goto(URL); await page.waitForTimeout(600);
   return page;
 };
-const auth = async (p, u) => { await p.click('#btn-acct'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
+const auth = async (p, u) => { await p.click('#btn-herm'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
 const visible = (p, sel) => p.isVisible(sel);
 const text = (p, sel) => p.textContent(sel);
 let fails = 0;
@@ -24,7 +24,7 @@ await A.screenshot({ path: '.shots/ui-title.png' });
 const u = 'l' + Date.now() % 100000;
 await auth(A, u + 'a'); await auth(B, u + 'b');
 
-await A.click('#btn-mp'); await A.waitForTimeout(200);
+await A.click('#hm-party'); await A.waitForTimeout(200);
 await A.screenshot({ path: '.shots/ui-lobby-out.png' });
 check('chat hidden before joining', !(await visible(A, '#chat-log')));
 await A.click('#lobby-create'); await A.waitForTimeout(700);
@@ -32,7 +32,7 @@ const code = (await text(A, '#lobby-code')).trim();
 check('room created', /^[A-Z]{4}$/.test(code), code);
 check('back button says Leave Room', (await text(A, '#lobby-back')) === 'Leave Room');
 
-await B.click('#btn-mp'); await B.fill('#lobby-input', code); await B.press('#lobby-input', 'Enter'); await B.waitForTimeout(700);
+await B.click('#hm-party'); await B.fill('#lobby-input', code); await B.press('#lobby-input', 'Enter'); await B.waitForTimeout(700);
 check('B joined by pressing Enter', (await text(B, '#lobby-code')).trim() === code);
 check('A sees the join notice', (await text(A, '#chat-log')).includes(u + 'b joined'));
 

@@ -8,7 +8,7 @@ const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-p
 const page = await (await b.newContext({ viewport: { width: 1280, height: 760 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
 await page.goto(url); await page.waitForTimeout(700);
-await page.click('#btn-acct'); await page.fill('#acct-user', 'tr' + Date.now().toString().slice(-6)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
+await page.click('#btn-herm'); await page.fill('#acct-user', 'tr' + Date.now().toString().slice(-6)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
 const out = {};
 // 1) an account from the old shop: dmg 3, hp 2, flask 1, evo_knight, Spellsword unlocked -> refund once
 out.refund = await page.evaluate(() => {
@@ -55,7 +55,7 @@ out.refundV1 = await page.evaluate(() => {
   return { gold: g, again: d.gold, expected: 8 + 10 + 12 + 15 + 18 + 75 + 66, cleared: JSON.stringify(d.tree) };
 });
 // 2) buy rules
-await page.click('#btn-shop'); await page.waitForTimeout(400);
+await page.evaluate(() => game.treeUI.open()); await page.waitForTimeout(400);
 out.rules = await page.evaluate(() => {
   const ui = game.treeUI, d = game.accounts.data; d.gold = 100;
   ui.kind = 'knight'; ui.render();

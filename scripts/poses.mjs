@@ -6,7 +6,7 @@ const page = await (await browser.newContext({ viewport: { width: 640, height: 4
 page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto(URL); await page.waitForTimeout(600);
 for (const kind of ['knight', 'rogue']) {
-  await page.click(`.char[data-char="${kind}"]`); await page.waitForTimeout(600);
+  await page.evaluate((k) => game.start(k), kind); await page.waitForTimeout(600);
   const names = await page.evaluate(() => Object.keys(game.player.c.attacks));
   for (const n of names) {
     for (const [lbl, frac] of [['wind', 0.45], ['hit', 0.75]]) {

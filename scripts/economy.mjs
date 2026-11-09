@@ -11,7 +11,7 @@ const log = (k, v) => console.log(k.padEnd(14), JSON.stringify(v));
 
 // 1) accounts through the real form
 const form = async (u, p, btn) => {
-  await page.click('#btn-acct'); await page.fill('#acct-user', u); await page.fill('#acct-pass', p);
+  await page.click('#btn-herm'); await page.fill('#acct-user', u); await page.fill('#acct-pass', p);
   await page.click(btn); await page.waitForTimeout(500);
   const err = await page.textContent('#acct-err');
   if (await page.isVisible('#account')) await page.click('#acct-back');
@@ -22,7 +22,7 @@ R.badName = await form('a', 'secret1', '#acct-signup');
 R.shortPass = await form('tester', '123', '#acct-signup');
 R.signup = await form(NAME, 'secret123', '#acct-signup');
 R.name = await page.textContent('#acct-name');
-await page.click('#btn-settings'); await page.click('#set-signout'); // sign out (in Settings now)
+await page.evaluate(() => game.hermitage.active && game.hermitage.close()).then(() => page.click('#btn-settings')); await page.click('#set-signout'); // sign out (in Settings now)
 R.afterOut = await page.textContent('#acct-name');
 R.duplicate = await form(NAME.toLowerCase(), 'other123', '#acct-signup');
 R.wrongPass = await form(NAME, 'nope1234', '#acct-submit' === 0 ? '' : '#acct-signin');
@@ -80,7 +80,7 @@ const shop = await page.evaluate(() => {
   const out = {};
   game.toTitle();
   game.accounts.data.gold = 100; game.accounts.data.tree = {}; game.accounts.save(); game.refreshTitle();
-  document.getElementById('btn-shop').click();
+  game.treeUI.open();
   const ui = game.treeUI; ui.kind = 'knight'; ui.render();
   const costs = [];
   for (const id of ['s1-1', 's1-2', 's1-3', 's1-4']) { const g = game.accounts.data.gold; ui.buy(id); costs.push(g - game.accounts.data.gold); }

@@ -59,53 +59,15 @@
     <h1 class="fire-title"><canvas id="title-fire" role="img" aria-label="Ashen Vigil"></canvas></h1>
     <p class="sub">a souls-like roguelite</p>
     <div id="home-bg" aria-hidden="true"></div>
-    <!-- signed out: sign in to play -->
-    <div id="home-out" class="home-view">
-      <button class="tile tile-signin" id="btn-acct" data-tile="ember"><span class="tile-ic" data-icon="key"></span><span class="tile-t">Sign in to play</span></button>
-      <div class="tiles-row">
-        <button class="tile tile-small" id="btn-settings-out" data-tile="ash"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
-      </div>
-    </div>
-    <!-- signed in: the main menu -->
-    <div id="home-in" class="home-view hidden">
+    <!-- the title: the Hermitage (sign in first), Settings, Fullscreen -->
+    <div id="home-in" class="home-view">
       <div id="acct-bar"><span id="acct-name"></span><span id="acct-gold"></span></div>
       <div class="tiles">
-        <button class="tile tile-big" id="btn-solo" data-tile="ember"><span class="tile-ic" data-icon="solo"></span><span class="tile-t">Single Player</span></button>
-        <button class="tile tile-big" id="btn-mp" data-tile="blood"><span class="tile-ic" data-icon="party"></span><span class="tile-t">Multiplayer</span></button>
-        <button class="tile tile-wide" id="btn-shop" data-tile="rust"><span class="tile-ic" data-icon="tree"></span><span class="tile-t">Skill Trees</span><span class="tile-s" id="tile-gold"></span></button>
-        <button class="tile tile-small" id="btn-skins" data-tile="scarlet"><span class="tile-ic" data-icon="skins"></span><span class="tile-t">Skins</span></button>
+        <button class="tile tile-big tile-herm" id="btn-herm" data-tile="ember"><span class="tile-ic" data-icon="camp"></span><span class="tile-t">Hermitage</span></button>
         <button class="tile tile-small" id="btn-settings" data-tile="ash"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
       </div>
-    </div>
-    <!-- single player: pick a character -->
-    <div id="home-chars" class="home-view hidden">
-      <div id="chars">
-        <button class="char" data-char="knight">
-          <div class="cname">The Knight</div>
-          <div class="cdesc">Longsword &amp; shield. Heavy hits.<br><b>L1: Block</b> (hold) absorbs damage, drains stamina.</div>
-        </button>
-        <button class="char" data-char="rogue">
-          <div class="cname">The Rogue</div>
-          <div class="cdesc">Twin daggers. Fast combos.<br><b>L1: Parry</b> on the faint white ring. A miss costs huge stamina.</div>
-        </button>
-        <button class="char" data-char="mage">
-          <div class="cname">The Spellsword</div>
-          <div class="cdesc">Knife hits build mana.<br><b>R2: Bolt</b> (8 mana). <b>L1: Fireball</b> (75 mana).</div>
-          <div class="clock" id="mage-lock"></div>
-        </button>
-        <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
-        <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
-        <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
-        <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
-        <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
-        <div class="char unknown" aria-hidden="true"><div class="qmark">?</div></div>
-      </div>
-      <button class="tile tile-back" id="chars-back" data-tile="ash"><span class="tile-t">Back</span></button>
-      <button class="tile tile-back hidden" id="night-toggle" data-tile="blood" title="The dungeons at night: you see 5 m ahead, enemies are tougher and drop more gold"><span class="tile-t">Night Raid: Off</span></button>
-      <div id="controls-help">
-        <div id="kb-help"></div>
-        <div><b>Touch:</b> left side = move stick · R1 light · R2 heavy · tap ROLL to dodge (no direction = backstep), hold it to sprint · tap the prompt to rest</div>
-      </div>
+      <div id="controls-help"><div id="kb-help"></div>
+        <div><b>Touch:</b> left side = move stick · R1 light · R2 heavy · tap ROLL to dodge (no direction = backstep), hold it to sprint</div></div>
     </div>
     <button class="tile tile-fs" id="btn-fs" data-fs data-tile="ash"><span class="tile-t">Fullscreen</span></button>
   </div>

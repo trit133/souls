@@ -9,9 +9,9 @@ const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } 
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
 await page.goto(url); await page.waitForTimeout(700);
 const user = 'nr' + Date.now().toString().slice(-6);
-await page.click('#btn-acct'); await page.fill('#acct-user', user); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
+await page.click('#btn-herm'); await page.fill('#acct-user', user); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
 const out = {};
-out.locked = await page.evaluate(() => ({ unlocked: game.nightUnlocked, toggleHidden: document.getElementById('night-toggle').classList.contains('hidden') }));
+out.locked = await page.evaluate(() => ({ unlocked: game.nightUnlocked, toggleHidden: document.getElementById('hm-night').classList.contains('hidden') }));
 // beat two mini bosses in a run: unlocked
 out.unlock = await page.evaluate(() => {
   const g = game; g.loop = () => {}; g.audio.play = () => {};
@@ -20,11 +20,10 @@ out.unlock = await page.evaluate(() => {
   const after1 = !!g.accounts.data.nightRaid;
   g.enterAct(1); g.onBossDeath(g.encounters[0].boss);
   g.toTitle();
-  return { after1, after2: !!g.accounts.data.nightRaid, toggleHidden: document.getElementById('night-toggle').classList.contains('hidden') };
+  return { after1, after2: !!g.accounts.data.nightRaid, toggleHidden: document.getElementById('hm-night').classList.contains('hidden') };
 });
-await page.click('#btn-solo'); await page.waitForTimeout(200);
-await page.click('#night-toggle'); await page.waitForTimeout(100);
-out.toggle = await page.evaluate(() => ({ on: game.nightRaid, layout: game.newLayout(), cls: document.getElementById('night-toggle').classList.contains('on') }));
+await page.click('#hm-night'); await page.waitForTimeout(100);
+out.toggle = await page.evaluate(() => ({ on: game.nightRaid, layout: game.newLayout(), cls: document.getElementById('hm-night').classList.contains('on') }));
 // a night run against a day run with the same seed
 out.compare = await page.evaluate(() => {
   const g = game, stat = () => { const e = g.enemies.find((x) => x.type === 'grunt' && !x.elite); const B = g.world.dungeon.enc.boss; return { gruntHp: e.maxHp, dmg: +e.dmgScale.toFixed(2), spd: +e.spdScale.toFixed(2), gap: +e.gapScale.toFixed(2), watch: e.watchGap().toFixed(1), aggro: e.aggroMul, bossHp: B.maxHp, bossDmg: +B.dmgScale.toFixed(2), hemi: g.hemi.intensity, lights: g.nightLights ? g.nightLights.length : 0 }; };
