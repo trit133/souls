@@ -833,7 +833,7 @@ button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the 
 @keyframes hmspin { to { transform: rotate(360deg); } }
 
 /* the Knight's regions, notables and keystones on the tree */
-#tree-svg .treg { font: bold 11px Georgia, serif; letter-spacing: 3px; fill: #e8b060; fill-opacity: .2; pointer-events: none; }
+#tree-svg .treg { font: bold 8.25px Georgia, serif; letter-spacing: 2.25px; fill: #e8b060; fill-opacity: .2; pointer-events: none; }
 #tree-svg .tn.notable circle { stroke: #c89a4a; stroke-width: 1.1; }
 #tree-svg .tn.notable.can circle { stroke: #ffd36a; stroke-width: 1.3; }
 #tree-svg .tn.keystone circle { stroke: #ff7a2a; stroke-width: 1.6; stroke-dasharray: 2.4 1; }
