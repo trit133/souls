@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 640, height: 400 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + '\n' + e.stack));
-await page.goto(process.argv[2] || 'http://localhost:4173/?chain'); await page.waitForTimeout(500);
+await page.goto(process.argv[2] || 'http://localhost:5180/?chain'); await page.waitForTimeout(500);
 const res = await page.evaluate(() => {
   game.loop = () => {};
   const step = () => { let dt = 1 / 60; if (game.freeze > 0) { game.freeze -= dt; dt = 0; } else if (game.slow > 0) { game.slow -= dt; dt *= 0.35; } game.step(dt, 1 / 60); };

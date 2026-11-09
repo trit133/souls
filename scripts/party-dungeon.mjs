@@ -1,8 +1,8 @@
 // A two-player party in a dungeon: both get the same map; a seal broken by the host shows broken for the guest; an
 // event's called-in enemies appear for the guest in the same places; the clear count follows; the guest stepping
-// on the stair down takes both into the next dungeon. Needs vite preview on :4173 and the room server on :4111.
+// on the stair down takes both into the next dungeon. Needs the dev server on :5180 and the room server on :4111.
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const errs = [];
 const device = async (n) => {

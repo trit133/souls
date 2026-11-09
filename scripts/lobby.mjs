@@ -1,8 +1,8 @@
 // Lobby: two players chat, switch class, and open Upgrades and Settings without leaving the room.
-// Needs: vite preview on :4173 and `DB_PATH=/tmp/x.db PORT=4111 node server/index.js`.
+// Needs: the dev server on :5180 and `DB_PATH=/tmp/x.db PORT=4111 node server/index.js`.
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
-const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 mkdirSync('.shots', { recursive: true });
 const errs = [];

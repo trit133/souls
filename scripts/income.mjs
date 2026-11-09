@@ -7,7 +7,7 @@ import { TREES, nodeCost, neighbours } from '../src/skilltree.js';
 import { NUM } from '../src/scale.js';
 import { MINI_GOLD, BOSS_GOLD, KILL_GOLD } from '../src/progress.js';
 
-const url = process.argv[2] || 'http://localhost:4173/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext()).newPage();
 await page.goto(url); await page.waitForTimeout(800);

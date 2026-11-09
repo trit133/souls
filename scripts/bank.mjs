@@ -1,6 +1,6 @@
 // Gold banked per cleared room (+ section bonus on boss kills) and ultrawide rendering.
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = `http://localhost:4173/?chain&server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = `http://localhost:5180/?chain&server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errs = [];
 const dev = async (vp = { width: 900, height: 500 }) => { const p = await (await b.newContext({ viewport: vp })).newPage(); p.on('pageerror', (e) => errs.push(e.message)); await p.goto(URL); await p.waitForTimeout(500); return p; };

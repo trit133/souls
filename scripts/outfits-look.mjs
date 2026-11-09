@@ -7,7 +7,7 @@ mkdirSync('/tmp/look', { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
-await page.goto('http://localhost:4173/?server=http%3A%2F%2F127.0.0.1%3A4111'); await page.waitForTimeout(800);
+await page.goto('http://localhost:5180/?server=http%3A%2F%2F127.0.0.1%3A4111'); await page.waitForTimeout(800);
 await page.click('#btn-herm'); await page.fill('#acct-user', 'fit' + (Date.now() % 100000)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(800);
 const LOOKS = {
   default: () => ({}),

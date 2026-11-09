@@ -2,7 +2,7 @@
 // the one-time refund of their old nodes (version 9 -> 10). Screenshots /tmp/tree-rogue.png, /tmp/tree-mage.png.
 // node scripts/trees.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/?chain&server=' + encodeURIComponent('http://127.0.0.1:4111');
+const url = process.argv[2] || 'http://localhost:5180/?chain&server=' + encodeURIComponent('http://127.0.0.1:4111');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

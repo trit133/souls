@@ -1,6 +1,6 @@
 // Screenshots of the customizer (wardrobe): desktop and phone, trying on a piece and a colour. /tmp/cz-*.png
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/?server=' + encodeURIComponent('http://127.0.0.1:4111');
+const url = process.argv[2] || 'http://localhost:5180/?server=' + encodeURIComponent('http://127.0.0.1:4111');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const errs = [];
 for (const [name, vp] of [['desktop', { width: 1280, height: 720 }], ['wide', { width: 1920, height: 1080 }], ['phone', { width: 844, height: 390 }]]) {

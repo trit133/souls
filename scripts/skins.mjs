@@ -3,7 +3,7 @@
 // the 3 outfits, the outfit in a run and in the multiplayer roster.
 // node scripts/skins.mjs "<url with ?server=>"
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/?chain';
+const url = process.argv[2] || 'http://localhost:5180/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1100, height: 700 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

@@ -2,7 +2,7 @@
 import { chromium, devices } from 'playwright';
 import { mkdirSync } from 'fs';
 
-const URL = process.argv[2] || 'http://localhost:4173/?chain&server=' + encodeURIComponent('http://127.0.0.1:4111');
+const URL = process.argv[2] || 'http://localhost:5180/?chain&server=' + encodeURIComponent('http://127.0.0.1:4111');
 const OUT = '.shots';
 mkdirSync(OUT, { recursive: true });
 const errors = [];

@@ -7,7 +7,7 @@ mkdirSync('/tmp/look', { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
-await page.goto('http://localhost:4173/?chain'); await page.waitForTimeout(800);
+await page.goto('http://localhost:5180/?chain'); await page.waitForTimeout(800);
 const LAYOUT = ['mini:hask', 'camp', 'ruins', 'bridge', 'mini:vael', 'village', 'crypt', 'mini:gorrath', 'bog', 'gate', 'boss'];
 const cases = [['knight', 'broken', false], ['rogue', 'parried', false], ['rogue', 'parried', true], ['rogue', 'broken', false], ['mage', 'broken', false]];
 const out = {};

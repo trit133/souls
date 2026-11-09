@@ -1,6 +1,6 @@
 // Settings: rebinding (keyboard + mouse, conflicts, clear), volumes, per-account storage.
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errs = [];
 const dev = async () => { const p = await (await b.newContext({ viewport: { width: 900, height: 520 } })).newPage(); p.on('pageerror', (e) => errs.push(e.message)); await p.goto(URL); await p.waitForTimeout(500); return p; };

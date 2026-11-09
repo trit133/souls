@@ -1,6 +1,6 @@
 // Close-up screenshots of every player/boss attack at its strike frame.
 import { chromium } from 'playwright';
-const URL = process.argv[2] || 'http://localhost:4173/?chain';
+const URL = process.argv[2] || 'http://localhost:5180/?chain';
 const browser = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await browser.newContext({ viewport: { width: 640, height: 480 } })).newPage();
 page.on('pageerror', (e) => console.log('ERR', e.message));

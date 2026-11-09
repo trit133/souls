@@ -2,7 +2,7 @@
 // Every health, damage, healing and gold figure should be exactly NUM times bigger, and everything that plays
 // (hits to kill, status procs, stamina, mana, stagger) the same. node scripts/scale.mjs <new url> <old url>
 import { chromium } from 'playwright';
-const NEW = process.argv[2] || 'http://localhost:4173/?chain', OLD = process.argv[3] || 'http://localhost:4174/?chain';
+const NEW = process.argv[2] || 'http://localhost:5180/?chain', OLD = process.argv[3] || 'http://localhost:4174/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errs = [];
 const measure = async (url) => {
@@ -68,7 +68,7 @@ const a = await measure(NEW), o = await measure(OLD);
 {
   const page = await (await b.newContext()).newPage();
   page.on('pageerror', (e) => errs.push('acct ' + e.message));
-  await page.goto('http://localhost:4173/?server=' + encodeURIComponent('http://127.0.0.1:4111')); await page.waitForTimeout(600);
+  await page.goto('http://localhost:5180/?server=' + encodeURIComponent('http://127.0.0.1:4111')); await page.waitForTimeout(600);
   await page.click('#btn-herm'); await page.fill('#acct-user', 'sc' + Date.now().toString().slice(-6)); await page.fill('#acct-pass', 'secret123'); await page.click('#acct-signup'); await page.waitForTimeout(600);
   console.log('account gold', JSON.stringify(await page.evaluate(() => {
     const d = game.accounts.data; d.gold = 77; d.stats.goldEarned = 300; delete d.numScale;

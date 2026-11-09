@@ -1,6 +1,6 @@
 // Accounts, gold, cash-out multipliers, enemy tiers, upgrade shop, persistence.
 import { chromium } from 'playwright';
-const URL = process.argv[2] || 'http://localhost:4173/?chain';
+const URL = process.argv[2] || 'http://localhost:5180/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ viewport: { width: 960, height: 540 } });
 const page = await ctx.newPage();

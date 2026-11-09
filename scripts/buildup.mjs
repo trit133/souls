@@ -2,7 +2,7 @@
 // tree, with no bleed resistance and with 8% and 25%; then the hits to the second proc. A hit fills at most 15% of
 // the meter, and each 1% of resistance cuts build-up by 3%. node scripts/buildup.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 640, height: 400 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
