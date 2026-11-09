@@ -297,6 +297,7 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 .dmgnum { position: absolute; transform: translate(-50%, -50%); font: bold 16px Georgia, serif; color: #f4efe4; text-shadow: 0 0 2px #000, 0 1px 2px #000, 0 0 4px #000; pointer-events: none; animation: dmgup .95s ease-out both; white-space: nowrap; }
 .dmgnum.heavy { font-size: 20px; }
 .dmgnum.crit { font-size: 26px; color: #ffd24a; }
+.dmgnum.critical { font-size: 24px; color: #ff9a3c; font-style: italic; text-shadow: 0 0 2px #000, 0 1px 2px #000, 0 0 8px #ff5a1a; } /* a critical hit (crit chance), not a riposte */
 .dmgnum.team { font-size: 14px; color: #a8a49c; opacity: .75; }
 .dmgnum.teamcrit { font-size: 20px; color: #c8b070; opacity: .8; }
 .dmgnum.status, .dmgnum.dot { font-size: 15px; }

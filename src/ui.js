@@ -128,7 +128,7 @@ export class UI {
   // a damage number that pops out and floats up
   dmgNumber(x, y, n, kind, color, delay = 0) {
     const d = document.createElement('div');
-    d.className = 'dmgnum ' + kind; d.textContent = n;
+    d.className = 'dmgnum ' + kind; d.textContent = kind === 'critical' ? n + '!' : n;
     if (color) d.style.color = color;
     if (delay) d.style.animationDelay = delay + 'ms';
     d.style.left = x + (Math.random() - 0.5) * 16 + 'px'; d.style.top = y + 'px';

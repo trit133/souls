@@ -16,7 +16,7 @@ export const MAGE_UNLOCK = 100 * NUM;
 // light-hit damage each character's weapon starts from (Knight first swing, Rogue first stab, Spellsword knife)
 const LIGHT = { knight: 22 * NUM, rogue: 16 * NUM, mage: 11 * NUM };
 // stats the panel shows in its own sections; everything else is listed under the character
-const SHOWN = new Set(['hp', 'hpPct', 'st', 'stPct', 'flask', 'potion', 'move', 'aspd', 'armor', 'evolved',
+const SHOWN = new Set(['hp', 'hpPct', 'st', 'stPct', 'flask', 'potion', 'move', 'aspd', 'armor', 'evolved', 'critChance', 'critPower',
   ...TYPES.flatMap((k) => [k + 'Dmg', k + 'Pct']), ...['fire', 'bleed', 'poison', 'frost'].map((k) => k + 'Res')]);
 
 export class TreeUI {
@@ -254,6 +254,8 @@ export class TreeUI {
       const p = playerParts(S, {}, LIGHT[kind]);
       return TYPES.filter((k) => p[k] >= 0.05).map((k) => `<i style="color:${TYPE_COLOR[k]}">${fmt(Math.round(p[k] * 10) / 10)}</i>`).join(' + ');
     }, 'ts-hit');
+    h += row('Crit chance', (S) => `${fmt(Math.min(CAPS.critChance, S.critChance || 0))} / ${CAPS.critChance}%`);
+    h += row('Crit damage', (S) => `+${fmt(50 + Math.min(CAPS.critPower, S.critPower || 0))}%`);
     h += head('Resistances');
     if (kind === 'knight') h += row('Armour (physical)', (S) => `${fmt(Math.min(ARMOR_CAP, S.armor || 0))} / ${ARMOR_CAP}%`);
     for (const k of ['fire', 'bleed', 'poison', 'frost']) h += row(TYPE_NAME[k], (S) => `${fmt(Math.min(RES_CAP, S[k + 'Res'] || 0))} / ${RES_CAP}%`, 'ts-type', `color:${TYPE_COLOR[k]}`);

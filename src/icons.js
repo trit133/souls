@@ -27,6 +27,7 @@ const P = {
   chargeKb: '<path d="M3 12h12M11 7l5 5-5 5M19 5v14"/>',
   parryCd: '<path d="M6 3h12M6 21h12M7 3c0 5 10 6 10 9s-10 4-10 9M17 3c0 5-10 6-10 9"/>',
   critDmg: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+  critPower: '<path d="M12 2l2.2 6.3L21 9l-5.3 4.1L17.6 20 12 16.3 6.4 20l1.9-6.9L3 9l6.8-.7z"/><path d="M12 9v4"/>',
   iframe: '<path d="M6 21V10a6 6 0 0 1 12 0v11l-3-2-3 2-3-2z"/><path d="M10 11h.1M14 11h.1"/>',
   atkCost: '<path d="M20 4C10 4 5 10 4 20c4-6 8-8 14-9-4-1-7 0-10 2 2-5 6-8 12-9z"/>',
   bleed: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/>',

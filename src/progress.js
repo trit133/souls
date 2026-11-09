@@ -52,7 +52,7 @@ export const UPGRADES = [
   { key: 'mage', section: 'Spellsword', name: 'Unlock Spellsword', costs: [100], desc: 'A new character: spells, fire and a knife' },
   { key: 'mana', section: 'Spellsword', name: 'Mana', a: 10, b: 15, unit: '', requires: 'mage' },
   { key: 'evo_knight', section: 'Evolutions', name: 'Shield Charge', costs: [EVOLUTION_COST], desc: 'Knight: block + heavy charges behind a spectral shield, knocking enemies back (20 s cooldown); attack right after for a leaping overhead' },
-  { key: 'evo_rogue', section: 'Evolutions', name: 'Red Riposte', costs: [EVOLUTION_COST], desc: 'Rogue: +50ms parry window; instant critical after a parry' },
+  { key: 'evo_rogue', section: 'Evolutions', name: 'Red Riposte', costs: [EVOLUTION_COST], desc: 'Rogue: +50ms parry window; instant riposte after a parry' },
   { key: 'evo_mage', section: 'Evolutions', name: 'Twin Inferno', costs: [EVOLUTION_COST], desc: 'Spellsword: two larger fireballs', requires: 'mage' },
 ];
 

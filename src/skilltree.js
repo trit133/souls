@@ -32,7 +32,7 @@ export const STATS = {
   chargeKb: { name: 'Battering Ram', fmt: (v) => `+${v}% Shield Charge knockback`, icon: 'chargeKb' },
   // rogue
   parryCd: { name: 'Quick Hands', fmt: (v) => `Parry cooldown −${v}s`, icon: 'parryCd' },
-  critDmg: { name: 'Cruelty', fmt: (v) => `+${v}% critical damage`, icon: 'critDmg' },
+  ripDmg: { name: 'Cruelty', fmt: (v) => `+${v}% riposte and finisher damage`, icon: 'critDmg' },
   iframe: { name: 'Shadowstep', fmt: (v) => `+${v}s roll invincibility`, icon: 'iframe' },
   atkCost: { name: 'Light Blades', fmt: (v) => `Attacks cost ${v}% less stamina`, icon: 'atkCost' },
 
@@ -46,6 +46,9 @@ export const STATS = {
   spellDmg: { name: 'Arcana', fmt: (v) => `+${v}% spell damage`, icon: 'spellDmg' },
   fireRadius: { name: 'Conflagration', fmt: (v) => `+${v}% fireball blast radius`, icon: 'fireRadius' },
   knifeDmg: { name: 'Spellblade', fmt: (v) => `+${v}% knife damage`, icon: 'knifeDmg' },
+  // critical hits (any class): a crit does +50% damage plus the crit damage bonus
+  critChance: { name: 'Precision', fmt: (v) => `+${v}% critical hit chance`, icon: 'critDmg' },
+  critPower: { name: 'Ferocity', fmt: (v) => `+${v}% critical damage`, icon: 'critPower' },
   // damage by type (status build-up comes from elemental damage)
   physDmg: { name: 'Brutality', fmt: (v) => `+${v} physical damage per hit`, icon: 'dmg' },
   physPct: { name: 'Heft', fmt: (v) => `+${v}% physical damage`, icon: 'dmg' },
@@ -78,7 +81,7 @@ export const STATS = {
   poisonedDmg: { name: 'Wither', fmt: (v) => `+${v}% damage to poisoned enemies`, icon: 'poison' },
   frozenDmg: { name: 'Shatterpoint', fmt: (v) => `+${v}% damage to enemies slowed by frost`, icon: 'frost' },
   fleeting: { name: 'Fleeting', fmt: () => 'Rolls cost half the stamina; you take 15% more damage', icon: 'rollCost' },
-  glassFang: { name: 'Glass Fang', fmt: () => 'Critical hits and ripostes +40% damage; −25% max health', icon: 'critDmg' },
+  glassFang: { name: 'Glass Fang', fmt: () => 'Ripostes and finishers +40% damage; −25% max health', icon: 'critDmg' },
   plague: { name: 'Plaguelord', fmt: () => 'Poison damage +50%; physical damage −20%', icon: 'poison' },
   bladeDance: { name: 'Blade Dance', fmt: () => '+25% attack speed; −20% damage per hit', icon: 'aspd' },
   pyromania: { name: 'Pyromania', fmt: () => 'Fire damage +40%; you take 15% more from fire', icon: 'fire' },
@@ -89,12 +92,12 @@ export const STATS = {
 // the character's own stats: [small, large] values
 const SPECIAL = {
   knight: [['blockDrain', 6, 12], ['chip', 1.5, 3], ['stun', 3, 6], ['counter', 6, 12], ['chargeCd', 1, 2], ['chargeKb', 10, 20]],
-  rogue: [['parryCd', 0.25, 0.5], ['critDmg', 4, 8], ['iframe', 0.01, 0.02], ['atkCost', 3, 6], ['parryWin', 1, 3], ['rollCost', 4, 8]],
+  rogue: [['parryCd', 0.25, 0.5], ['ripDmg', 4, 8], ['iframe', 0.01, 0.02], ['atkCost', 3, 6], ['parryWin', 1, 3], ['rollCost', 4, 8]],
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
 export const CAPS = { bleedTgt: 60, poisonedDmg: 60, frozenDmg: 60, counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 50, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 75, bleedRes: 75, poisonRes: 75, frostRes: 75, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
-  parryWin: 4, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
+  parryWin: 4, potion: 40, ripDmg: 30, critChance: 75, critPower: 100, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
 
 const INNER = [{ hp: 3 }, { st: 2 }];
 const MID = [{ hp: 4 }, { st: 2 }];
@@ -353,7 +356,7 @@ export function build(kind, opts = {}) {
     const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
-  if (PLANS[kind]) regionTree(kind, nodes, edges); // laid out in themed regions (below)
+  if (PLANS[kind]) { regionTree(kind, nodes, edges); critNodes(kind, nodes, edges); } // laid out in themed regions (below)
   else { assign(kind, nodes); typedNodes(kind, nodes); }
   return { kind, nodes, edges };
 }
@@ -398,7 +401,7 @@ const KNIGHT = {
   hubRes: [{ fireRes: 4 }, { bleedRes: 4 }, { poisonRes: 4 }, { frostRes: 4 }, { fireRes: 4 }, { bleedRes: 4 }, { poisonRes: 4 }, { frostRes: 4 }],
   small: [
     [{ blockDrain: 5 }, { armor: 1 }, { chip: 1 }, { hp: 6 }, { counter: 5 }, { st: 3 }, { chargeCd: 0.5 }, { armor: 1 }],
-    [{ physDmg: 2 }, { physPct: 3 }, { stun: 3 }, { aspd: 2 }, { physDmg: 2 }, { critDmg: 4 }, { physPct: 3 }, { hp: 5 }],
+    [{ physDmg: 2 }, { physPct: 3 }, { stun: 3 }, { aspd: 2 }, { physDmg: 2 }, { ripDmg: 4 }, { physPct: 3 }, { hp: 5 }],
     [{ fireDmg: 2 }, { firePct: 8 }, { chargeKb: 10 }, { move: 2 }, { fireDmg: 2 }, { firePct: 8 }, { fireRes: 4 }, { hp: 5 }],
     [{ hp: 8 }, { hpPct: 3 }, { st: 4 }, { stPct: 3 }, { potion: 4 }, { fireRes: 4 }, { bleedRes: 4 }, { frostRes: 4 }, { poisonRes: 4 }],
   ],
@@ -428,19 +431,19 @@ const ROGUE = {
   hubRes: KNIGHT.hubRes,
   small: [
     [{ rollCost: 4 }, { iframe: 0.01 }, { parryCd: 0.25 }, { move: 2 }, { st: 3 }, { atkCost: 3 }, { hp: 5 }, { rollCost: 4 }],
-    [{ bleedDmg: 2 }, { bleedPct: 8 }, { critDmg: 4 }, { physDmg: 1.5 }, { bleedDmg: 2 }, { aspd: 2 }, { bleedPct: 8 }, { hp: 5 }],
+    [{ bleedDmg: 2 }, { bleedPct: 8 }, { ripDmg: 4 }, { physDmg: 1.5 }, { bleedDmg: 2 }, { aspd: 2 }, { bleedPct: 8 }, { hp: 5 }],
     [{ poisonDmg: 2 }, { poisonPct: 8 }, { poisonRes: 4 }, { poisonDmg: 2 }, { potion: 4 }, { poisonPct: 8 }, { bleedRes: 4 }, { hp: 5 }],
-    [{ aspd: 2 }, { atkCost: 3 }, { stPct: 3 }, { st: 3 }, { physPct: 3 }, { critDmg: 3 }, { hp: 5 }, { hpPct: 2 }],
+    [{ aspd: 2 }, { atkCost: 3 }, { stPct: 3 }, { st: 3 }, { physPct: 3 }, { ripDmg: 3 }, { hp: 5 }, { hpPct: 2 }],
   ],
   notables: [
     [['Ghost Step', { iframe: 0.02, rollCost: 10 }], ['Quick Hands', { parryCd: 1 }], ['Fade', { move: 6, rollCost: 6 }],
-     ['Slip Away', { stPct: 8, rollCost: 8 }], ['Riposte Artist', { critDmg: 10, parryCd: 0.5 }], ['Untouchable', { iframe: 0.02, move: 4 }]],
-    [['Hemorrhage', { bleedPct: 25, bleedDmg: 3 }], ['Exsanguinate', { bleedTgt: 20 }], ['Cruel Edge', { critDmg: 12 }],
+     ['Slip Away', { stPct: 8, rollCost: 8 }], ['Riposte Artist', { ripDmg: 10, parryCd: 0.5 }], ['Untouchable', { iframe: 0.02, move: 4 }]],
+    [['Hemorrhage', { bleedPct: 25, bleedDmg: 3 }], ['Exsanguinate', { bleedTgt: 20 }], ['Cruel Edge', { ripDmg: 12 }],
      ["Butcher's Rhythm", { aspd: 5, bleedPct: 10 }], ["Executioner's Kiss", { execute: 20 }], ['Red Harvest', { killHeal: 2, bleedDmg: 2 }]],
     [['Virulence', { poisonPct: 30 }], ['Toxic Edge', { poisonDmg: 4, poisonPct: 10 }], ['Wither', { poisonedDmg: 20 }],
      ['Antitoxin', { poisonRes: 15, bleedRes: 8 }], ['Lingering Death', { poisonPct: 20, potion: 8 }], ['Venom Blood', { poisonRes: 10, hp: 10 }]],
     [['Flurry', { aspd: 8 }], ['Finishing Flourish', { finisherPct: 25 }], ['Light Feet', { atkCost: 10, st: 6 }],
-     ["Duelist's Focus", { critDmg: 8, physPct: 6 }], ['Relentless Assault', { aspd: 5, physDmg: 2 }], ['Second Breath', { stPct: 10, atkCost: 5 }]],
+     ["Duelist's Focus", { ripDmg: 8, physPct: 6 }], ['Relentless Assault', { aspd: 5, physDmg: 2 }], ['Second Breath', { stPct: 10, atkCost: 5 }]],
   ],
   keystones: [['Fleeting', { fleeting: 1 }], ['Glass Fang', { glassFang: 1 }], ['Plaguelord', { plague: 1 }], ['Blade Dance', { bladeDance: 1 }]],
   soon: [null,
@@ -563,6 +566,74 @@ function regionTree(kind, nodes, edges) {
       placed.push(bestN); open.splice(open.indexOf(bestN), 1);
     }
   }
+}
+
+// Critical hit nodes, added on top of the finished tree (so no other node moves or changes): 10 crit chance (3% near
+// the start up to 12% at the edge, 75% in all) and 10 crit damage (4% up to 16%, +100% in all). Each sits in the
+// middle of an existing long line, split in two so the spacing stays even, with full room from every node and line;
+// none on a path that would move an evolution off its 6 links. Spread out from ring 3 to the edge and round the
+// regions, so a first-section tree reaches only the inner few.
+export const CRIT_VALUES = { critChance: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12], critPower: [4, 6, 7, 8, 9, 11, 12, 13, 14, 16] };
+function critNodes(kind, nodes, edges) {
+  const NAMES = REGIONS[kind];
+  const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
+  const hopsFrom = (from) => {
+    const adj = new Map(); for (const [a, b] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); }
+    const d = new Map([[from, 0]]), q = [from];
+    while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } }
+    return d;
+  };
+  const evos = [...nodes.values()].filter((n) => n.role === 'evo' || n.soon).map((n) => n.id);
+  const h0 = hopsFrom('start'), evoHops = evos.map((id) => h0.get(id));
+  const lineGap = (p, skip) => { let d = 1e9; for (let i = 0; i < edges.length; i++) if (i !== skip) d = Math.min(d, segDist(p, nodes.get(edges[i][0]), nodes.get(edges[i][1]))); return d; };
+  const room = (p, skip) => [...nodes.values()].every((n) => Math.hypot(n.x - p.x, n.y - p.y) >= SIZE(n) + 3.9 + 2) && lineGap(p, skip) >= 3.9 + 2; // (clear of every node and line)
+  const placed = [], rejected = new Set();
+  for (let i = 0; i < 20; i++) {
+    const want = 3 + i, g = (i + Math.floor(i / 4)) % 4;
+    let best = null, bs = 1e9;
+    for (let k = 0; k < edges.length; k++) {
+      const [a, b] = edges[k], A = nodes.get(a), B = nodes.get(b);
+      if (rejected.has(a + '|' + b) || (A.socketRing && B.socketRing)) continue;
+      // the middle of the line, or a little off it where something sits close to the middle
+      const t = [0.5, 0.42, 0.58, 0.35, 0.65].find((f) => room({ x: A.x + (B.x - A.x) * f, y: A.y + (B.y - A.y) * f }, k));
+      if (t === undefined) continue;
+      const p = { x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t };
+      const ring = Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
+      const near = placed.length ? Math.min(...placed.map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
+      const sc = Math.abs(ring - want) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + Math.abs(t - 0.5) * 20 + (A.crit || B.crit ? 40 : 0); // (one per line)
+      if (sc < bs) { bs = sc; best = { k, p, ring }; }
+    }
+    // or a branch end carried on one step further, straight out along its line (nothing else moves)
+    const deg = new Map(); for (const [a, b] of edges) { deg.set(a, (deg.get(a) || 0) + 1); deg.set(b, (deg.get(b) || 0) + 1); }
+    for (const [a, b] of edges) for (const [end, from] of [[a, b], [b, a]]) {
+      const E = nodes.get(end), F = nodes.get(from);
+      if (deg.get(end) !== 1 || E.crit || E.notable || E.keystone || E.soon || E.evo || E.role === 'socket') continue; // (notables and keystones stay at the ends)
+      const L = Math.hypot(E.x - F.x, E.y - F.y) || 1;
+      const p = { x: E.x + ((E.x - F.x) / L) * RING, y: E.y + ((E.y - F.y) / L) * RING };
+      if (!room(p, -1) || edges.some(([c, d]) => c !== end && d !== end && segCross(E, p, nodes.get(c), nodes.get(d)))) continue;
+      if ([...nodes.values()].some((n) => n !== E && segDist(n, E, p) < SIZE(n) + 1.5)) continue;
+      const ring = Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
+      const near = placed.length ? Math.min(...placed.map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
+      const sc = Math.abs(ring - want) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + 6; // (a split line first; none bunched together)
+      if (sc < bs) { bs = sc; best = { end, p, ring }; }
+    }
+    if (!best) break;
+    const id = `cc${i}`;
+    if (best.end) edges.push([best.end, id]);
+    else {
+      const [a, b] = edges[best.k];
+      edges[best.k] = [a, id]; edges.push([id, b]);
+      const h = hopsFrom('start');
+      if (evos.some((e, j) => h.get(e) !== evoHops[j])) { edges.pop(); edges[best.k] = [a, b]; rejected.add(a + '|' + b); i--; continue; }
+    }
+    const n = { id, ring: best.ring, role: 'link', x: best.p.x, y: best.p.y, crit: true, typed: true, big: false, notable: null, keystone: false, give: {} };
+    n.region = NAMES[region(n)];
+    nodes.set(id, n); placed.push(n);
+  }
+  // values by distance out: alternate the two stats, smallest nearest the start
+  placed.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
+  const next = { critChance: 0, critPower: 0 };
+  placed.forEach((n, i) => { const k = i % 2 ? 'critPower' : 'critChance'; n.give = { [k]: CRIT_VALUES[k][next[k]++] }; });
 }
 
 // Damage, resistance and armour nodes take over regular stat nodes, spread round the web. Each sits in a ring
@@ -692,14 +763,14 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 13;
+export const TREE_VERSION = 14;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
   // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
-  if (data.treeV === 10 || data.treeV === 11 || data.treeV === 12) { // (12 -> 13: resistance and armour nodes added)
+  if (data.treeV >= 10 && data.treeV <= 13) { // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)
     let refund = 0;
     for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;

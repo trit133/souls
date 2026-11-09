@@ -27,14 +27,14 @@ import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare } from './p
 const FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
 import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
 import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
-import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems, mitigate } from './damage.js';
+import { playerParts, enemyParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems, mitigate } from './damage.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
 import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
-import { rollDefenses, enemyMitigate, RES_ELEMS } from './defenses.js';
+import { rollDefenses, enemyMitigate, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
 import { pixelMenus, syncRanges } from './pixelmenus.js';
@@ -264,7 +264,7 @@ class Game {
     for (const e of all) e.setElems(rollElems(e.tier, er));
     // armour and resistances (defenses.js): every enemy and boss rolls its own, the same on every device
     const dr = rng(seed + 29);
-    for (const e of all) e.def = e.effigy ? { armor: 0, res: {} } : rollDefenses(dr, { type: e.type, elite: !!e.elite, tier: e.tier });
+    for (const e of all) e.def = e.effigy ? { armor: 0, res: {}, crit: 0, critDmg: 0 } : rollDefenses(dr, { type: e.type, elite: !!e.elite, tier: e.tier });
     for (const b of this.bosses) b.def = rollDefenses(dr, { boss: b.cfg.id, tier: b.tier });
     this.tokens = 0;
     this.resetEncounters();
@@ -1136,6 +1136,8 @@ class Game {
     };
     if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
     if (h.pctHp) { info.dmg = (tg.maxHp || 100) * h.pctHp; info.elems = null; } // a share of the target's health, pure force (the hold burst)
+    // an enemy's critical hit (its rolled chance and bonus: defenses.js)
+    else if (att !== this.player) { const cm = critRoll(att.def?.crit, att.def?.critDmg); if (cm > 1) { info.dmg *= cm; info.crit = true; } }
     if (att === this.player && def.comboMove) info.combo = true; // a combo hit: can hold a weak enemy (hold.js)
     if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h) }, tg.pid); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
@@ -1167,6 +1169,7 @@ class Game {
         this.pfx.play('hurt', hp, { dir });
         this.hitstop(h.knock === 'heavy' ? 0.1 : 0.07);
         this.fx.addShake(h.knock === 'heavy' ? 0.7 : 0.4);
+        if (info.crit) this.critTaken(tg);
       }
       if (h.knockback && (r === 'hit' || r === 'block') && !tg.comboArmored()) tg.kb.copy(dir).multiplyScalar(h.knockback); // (no shove mid-combo)
       return;
@@ -1191,6 +1194,9 @@ class Game {
       // the target's armour and resistances (defenses.js); its status build-up is cut by the full resistance
       const mit = enemyMitigate(info.parts, tg.def);
       info.parts = mit.parts; info.buildParts = mit.build;
+      // your critical hit: +50% and the tree's crit damage, build-up too
+      const cm = critRoll(T.critChance, T.critPower);
+      if (cm > 1) { info.parts = scaleParts(info.parts, cm); info.buildParts = scaleParts(info.buildParts, cm); info.crit = true; }
       info.dmg = sumParts(info.parts);
       // a combo staggers each enemy at most once
       if ((def.comboMove || att.cmb) && att.cmbStag?.has(tg)) info.poise = 0;
@@ -1202,7 +1208,8 @@ class Game {
     if (r === 'stagger' && att === this.player && (def.comboMove || att.cmb)) att.cmbStag?.add(tg);
     const heavy = def.heavyHit, dealt = tg.puppet ? info.dmg : Math.max(0, hp0 - tg.hp);
     const shown = scaleParts(info.parts || { phys: info.dmg }, info.dmg > 0 ? dealt / info.dmg : 0);
-    this.dmgPops(tg, shown, heavy ? 'heavy' : 'me');
+    this.dmgPops(tg, shown, info.crit ? 'critical' : heavy ? 'heavy' : 'me');
+    if (info.crit) { this.audio.play('bigHit', 0.7); this.fx.addShake(0.2); }
     if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT + (att.tree?.manaHit || 0)); // knife hits only
     if (att === this.player && tg.alive) this.applyStatus(tg, info.buildParts || info.parts, BUILD_PER_DMG);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
@@ -1273,11 +1280,11 @@ class Game {
     }
   }
 
-  // a critical hit: `base` physical, flat tree damage counted `flatHits` times (a parry stab hits like three lights)
+  // a riposte or finisher: `base` physical, flat tree damage counted `flatHits` times (a parry stab hits like three lights)
   riposteHit(p, tg, base, flatHits = 1) {
     const T = { ...(p.tree || {}) };
     for (const k of TYPES) if (T[k + 'Dmg']) T[k + 'Dmg'] *= flatHits;
-    const raw = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100) * (p.tree?.glassFang ? 1.4 : 1)); // (Glass Fang)
+    const raw = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.ripDmg || 0) / 100) * (p.tree?.glassFang ? 1.4 : 1)); // (Glass Fang)
     const mit = enemyMitigate(raw, tg.def), parts = mit.parts; // (through its armour and resistances)
     const dmg = sumParts(parts);
     if (tg.alive) this.applyStatus(tg, mit.build, BUILD_PER_DMG);
@@ -1399,7 +1406,7 @@ class Game {
     mesh.position.copy(from);
     mesh.lookAt(from.clone().add(dir));
     this.scene.add(mesh);
-    this.addProj({ kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * NUM * e.dmgScale, elems: e.elems });
+    this.addProj(this.foeCrit(e, { kind: 'arrow', pos: from, vel: dir.multiplyScalar(18), life: 1.6, mesh, r: 0.3, dmg: 12 * NUM * e.dmgScale, elems: e.elems }));
   }
 
   spawnFireWave(b, off) {
@@ -1407,7 +1414,7 @@ class Game {
     for (const a of [-0.3, 0, 0.3]) {
       const d = f.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
       const pos = new THREE.Vector3(b.pos.x + f.x * off, 0.3, b.pos.z + f.z * off);
-      this.addProj({ kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * NUM * b.dmgScale, mesh: null, elems: { fire: 0.4 } });
+      this.addProj(this.foeCrit(b, { kind: 'fire', pos, vel: d.multiplyScalar(10), life: 1.1, r: 0.85, dmg: 20 * NUM * b.dmgScale, mesh: null, elems: { fire: 0.4 } }));
     }
     this.audio.play('fire');
   }
@@ -1421,8 +1428,20 @@ class Game {
     const dir = to.clone().sub(from).normalize();
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
     mesh.position.copy(from); this.scene.add(mesh);
-    this.addProj({ kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * NUM * b.dmgScale, knock: 'heavy', elems: b.elems, buildMul: b.elemBuild });
+    this.addProj(this.foeCrit(b, { kind: 'rock', pos: from, vel: dir.multiplyScalar(15), life: 2, mesh, r: 0.95, dmg: 26 * NUM * b.dmgScale, knock: 'heavy', elems: b.elems, buildMul: b.elemBuild }));
     this.audio.play('heavySwing', 1);
+  }
+
+  // a shot rolls its shooter's crit when it's loosed
+  foeCrit(att, q) {
+    const cm = critRoll(att.def?.crit, att.def?.critDmg);
+    if (cm > 1) { q.dmg *= cm; q.crit = true; }
+    return q;
+  }
+  // an enemy's critical hit landing on you: a callout over your head and a harder shake
+  critTaken(p) {
+    this.statusPopup(p, 'Critical!', '#ff8a3c');
+    this.fx.addShake(0.35);
   }
 
   // shots are shown on every device; only their owner's device applies them
@@ -1452,7 +1471,7 @@ class Game {
     const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false, elems: q.elems, buildMul: q.buildMul });
     if (t.isRemote) return r;
     const chest = new THREE.Vector3(t.pos.x, 1.1, t.pos.z);
-    if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.pfx.play('hurt', chest, { dir: chest.clone().sub(src) }); this.hitstop(0.05); this.fx.addShake(0.3); }
+    if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.pfx.play('hurt', chest, { dir: chest.clone().sub(src) }); this.hitstop(0.05); this.fx.addShake(0.3); if (q.crit) this.critTaken(t); }
     if (r === 'block') { this.audio.play('clang', 0.6); this.mp.event({ k: 'block' }); this.fx.sparks(chest, null, 8); }
     return r;
   }
@@ -1496,13 +1515,15 @@ class Game {
     const T = this.player.tree || {}, el0 = q.kind === 'fire' ? 'fire' : 'frost';
     mul *= this.treeMul(T, this.player, e) * (this.elemMul(T)[el0] || 1) * (T.spellblade ? 1.3 : 1); // (Spellblade: spells +30%)
     const res = Math.min(75, e.def?.res?.[el0] || 0) / 100; // the target's resistance to the spell's element
-    const raw = q.dmg * mul * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
+    const cm = critRoll(T.critChance, T.critPower); // (a spell can crit too)
+    const raw = q.dmg * mul * cm * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
     const hp0 = e.hp, sd = raw * (1 - res / 2);
     const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo });
     if (r === 'none') return;
     // the bolt is frost, the fireball fire
     const el = q.kind === 'fire' ? 'fire' : 'frost', dealt = e.puppet ? sd : hp0 - e.hp;
-    this.dmgPops(e, { [el]: dealt }, q.kind === 'fire' ? 'heavy' : 'me');
+    this.dmgPops(e, { [el]: dealt }, cm > 1 ? 'critical' : q.kind === 'fire' ? 'heavy' : 'me');
+    if (cm > 1) this.fx.addShake(0.2);
     this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
     this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', d: { [el]: Math.round(dealt) } });
@@ -1536,7 +1557,7 @@ class Game {
 
   spawnFireRing(x, z, maxR, dur, dmg) {
     if (this.mp.active) this.mp.sendAll({ t: 'ring', x, z, maxR, dur });
-    this.rings.push({ x, z, maxR, dur, dmg: dmg * NUM * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: new Set() });
+    this.rings.push(this.foeCrit(this.activeEnc?.boss || {}, { x, z, maxR, dur, dmg: dmg * NUM * (this.activeEnc?.boss.dmgScale || 1), t: 0, hit: new Set() }));
     this.audio.play('fire');
   }
 
@@ -1584,7 +1605,7 @@ class Game {
       }
       if (!g.ghost) for (const t of this.allPlayers()) {
         if (g.hit.has(t) || !t.alive || Math.abs(Math.hypot(t.pos.x - g.x, t.pos.z - g.z) - r) >= 0.7) continue;
-        if (this.projectileHit(t, { dmg: g.dmg, src: [g.x, g.z], elems: { fire: 0.4 } }) !== 'dodge') g.hit.add(t);
+        if (this.projectileHit(t, { dmg: g.dmg, crit: g.crit, src: [g.x, g.z], elems: { fire: 0.4 } }) !== 'dodge') g.hit.add(t);
       }
       return g.t < g.dur;
     });
@@ -1727,8 +1748,14 @@ class Game {
     const NAMES = { grunt: 'Swordsman', spear: 'Spearman', archer: 'Archer', brute: 'Brute', effigy: 'Cursed Effigy' };
     const name = foe.isBoss ? foe.name.split(',')[0] : `${foe.elite ? ELITE[foe.elite].name + ' ' : ''}${NAMES[foe.type] || foe.type}`;
     const d = foe.def || { armor: 0, res: {} }, deals = Object.keys(foe.elems || {});
+    // damage per hit: its moves' hits averaged (an archer's arrow), with its scaling and the elements it adds
+    const hits = foe.type === 'archer' ? [12] : Object.entries(foe.moves || {}).filter(([k]) => k !== 'holdBurst').flatMap(([, m]) => (m.hits || []).filter((h) => h.dmg > 0 && !h.pctHp).map((h) => h.dmg));
+    const perHit = hits.length ? Math.round(sumParts(enemyParts((hits.reduce((a, b) => a + b, 0) / hits.length) * NUM * (foe.dmgScale || 1), foe.elems))) : 0;
     const res = RES_ELEMS.filter((k) => d.res?.[k]).map((k) => `<span class="fp-res" style="color:${TYPE_COLOR[k]}">${k[0].toUpperCase() + k.slice(1)} ${d.res[k]}%</span>`).join('') || '<span class="fp-none">none</span>';
-    el.innerHTML = `<div class="fp-name">${name}</div><div class="fp-row"><b>Armour</b><span>${d.armor}%</span></div><div class="fp-bar"><i style="width:${d.armor * 2}%"></i></div>`
+    el.innerHTML = `<div class="fp-name">${name}</div>`
+      + (perHit ? `<div class="fp-row"><b>Damage per hit</b><span>${perHit}</span></div>` : '')
+      + `<div class="fp-row"><b>Crit chance</b><span>${d.crit || 0}%</span></div><div class="fp-row"><b>Crit damage</b><span>+${50 + (d.critDmg || 0)}%</span></div>`
+      + `<div class="fp-row"><b>Armour</b><span>${d.armor}%</span></div><div class="fp-bar"><i style="width:${d.armor * 2}%"></i></div>`
       + `<div class="fp-row"><b>Resistances</b></div><div class="fp-list">${res}</div>`
       + (deals.length ? `<div class="fp-row"><b>Deals</b></div><div class="fp-list">${deals.map((k) => `<span class="fp-res" style="color:${TYPE_COLOR[k]}">${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>` : '');
   }
