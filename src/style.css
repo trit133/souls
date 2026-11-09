@@ -765,3 +765,58 @@ button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the 
 /* the title: Hermitage as wide as Fullscreen, Settings in the bottom right corner */
 .tile-herm { grid-column: 1 / -1; }
 #btn-settings { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 210px; min-height: 104px; z-index: 2; }
+
+/* ---------- the wardrobe window (skinmenu.js): one framed window in the middle of the screen ---------- */
+#skins { justify-content: center; align-items: center; padding: calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom)); background: rgba(6,4,3,.82); overflow: hidden; }
+#cz-win { width: min(1400px, 95vw); height: min(880px, 92vh); display: flex; flex-direction: column; background: linear-gradient(#140c08, #0c0806); border: 12px solid transparent; border-image: var(--pxf-panel) 4 / 12px / 0 stretch; image-rendering: pixelated; box-shadow: 0 20px 60px rgba(0,0,0,.8); }
+#cz-head { display: flex; align-items: center; gap: 16px; padding: 4px 6px 8px; border-bottom: 2px solid #3a2414; }
+#cz-title { margin: 0 !important; flex: none; }
+#skin-tabs { display: flex; gap: 4px; margin: 0; }
+#cz-emeralds { margin-left: auto; }
+#skins-back { flex: none; }
+#cz-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(150px, 19%) 1fr minmax(260px, 36%); gap: 12px; padding: 10px 4px; }
+.cz-h { font: bold 13px Georgia, serif; letter-spacing: 2px; text-transform: uppercase; color: #e8b060; margin: 2px 0 6px; border-bottom: 1px solid #3a2414; padding-bottom: 3px; text-align: left; }
+.cz-h span { text-transform: none; letter-spacing: 0; font-weight: normal; color: #e8dcc0; margin-left: 8px; }
+#cz-left, #cz-right { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+#cz-slots { display: flex; flex-direction: column; gap: 4px; }
+.cz-slot { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; margin: 0; padding: 6px 10px; background: #1e120a; border: 2px solid #3a2414; color: #f0e2c8; cursor: pointer; text-align: left; transition: background .1s, border-color .1s; }
+.cz-slot b { font: bold 14px Georgia, serif; letter-spacing: 1px; }
+.cz-slot span { font: 11px Georgia, serif; color: #b8a080; }
+.cz-slot:hover { background: #2a180c; border-color: #8a4a22; }
+.cz-slot.on { background: #3a1a0a; border-color: #ffb050; box-shadow: inset 3px 0 0 #ffb050; }
+.cz-slot.trying span { color: #ff8a6a; }
+#cz-mid { display: flex; flex-direction: column; align-items: center; min-height: 0; min-width: 0; }
+#cz-stage { position: relative; flex: 1; width: 100%; min-height: 0; border: 2px solid #3a2414; background: #0e0c0a; overflow: hidden; }
+#skin-view { position: absolute !important; inset: 0; border: 0; cursor: grab; touch-action: none; box-sizing: border-box !important; }
+#skin-view:active { cursor: grabbing; }
+#cz-drag { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); font: 11px monospace; color: #8a7a60; pointer-events: none; transition: opacity .6s; }
+#cz-drag.gone { opacity: 0; }
+#cz-outfits { display: flex; gap: 4px; margin-top: 8px; justify-content: center; }
+#cz-pieces { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
+#cz-colors { display: flex; flex-direction: column; gap: 6px; }
+.cz-crow { gap: 5px; }
+#cz-foot { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 6px 0; border-top: 2px solid #3a2414; }
+#skin-note { margin: 0; flex: 1; text-align: left; }
+#cz-trying { flex: 1; text-align: left; font: 14px Georgia, serif; color: #ffc89a; }
+#cz-trying:empty { display: none; }
+#cz-buy, #cz-cancel { align-self: center; }
+@media (max-width: 900px), (max-height: 520px) {
+  #cz-win { width: 98vw; height: 96vh; border-width: 8px; }
+  #cz-head { gap: 8px; padding-bottom: 4px; }
+  #cz-body { grid-template-columns: 120px 1fr minmax(200px, 40%); gap: 6px; padding: 6px 2px; }
+  .cz-slot { padding: 3px 6px; } .cz-slot b { font-size: 12px; } .cz-slot span { font-size: 10px; }
+  #cz-pieces { grid-template-columns: 1fr 1fr; gap: 4px; } .cz-pdesc { display: none; }
+  .cz-swatch { width: 18px; height: 18px; border-width: 2px; }
+  #cz-foot { min-height: 40px; } #skin-note { font-size: 10px; }
+}
+#cz-slots .cz-slot { width: 100%; margin: 0; }
+#cz-emeralds { white-space: nowrap; }
+/* colours: the label, then two neat rows of eight */
+.cz-crow { display: grid; grid-template-columns: 46px repeat(8, 28px); gap: 5px; align-items: center; margin-bottom: 6px; }
+.cz-crow .cz-clabel { grid-row: span 2; width: auto; align-self: start; padding-top: 4px; }
+@media (max-width: 900px), (max-height: 520px) {
+  .cz-crow { grid-template-columns: 36px repeat(8, 20px); gap: 3px; }
+  #cz-outfits { zoom: .7; margin-top: 4px; }
+  #cz-drag { display: none; }
+  #skin-tabs, #skins-back { zoom: .8; }
+}

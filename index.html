@@ -194,31 +194,41 @@
     </div>
   </div>
   <div id="skins" class="screen hidden">
-    <h2>Customize</h2>
-    <div id="cz-top">
-      <div id="skin-tabs">
-        <button class="mini-btn" data-skin-kind="knight">Knight</button>
-        <button class="mini-btn" data-skin-kind="rogue">Rogue</button>
-        <button class="mini-btn" data-skin-kind="mage">Spellsword</button>
+    <div id="cz-win">
+      <div id="cz-head">
+        <h2 id="cz-title">Wardrobe</h2>
+        <div id="skin-tabs">
+          <button class="mini-btn" data-skin-kind="knight">Knight</button>
+          <button class="mini-btn" data-skin-kind="rogue">Rogue</button>
+          <button class="mini-btn" data-skin-kind="mage">Spellsword</button>
+        </div>
+        <div id="cz-emeralds"></div>
+        <button class="mini-btn" id="skins-back" title="Back (Esc)">X</button>
       </div>
-      <div id="cz-outfits">
-        <button class="mini-btn" data-outfit="0">Outfit 1</button>
-        <button class="mini-btn" data-outfit="1">Outfit 2</button>
-        <button class="mini-btn" data-outfit="2">Outfit 3</button>
+      <div id="cz-body">
+        <div id="cz-left"><div class="cz-h">Slots</div><div id="cz-slots"></div></div>
+        <div id="cz-mid">
+          <div id="cz-stage"><canvas id="skin-view" width="240" height="300"></canvas><div id="cz-drag">Drag to turn</div></div>
+          <div id="cz-outfits">
+            <button class="mini-btn" data-outfit="0">Outfit 1</button>
+            <button class="mini-btn" data-outfit="1">Outfit 2</button>
+            <button class="mini-btn" data-outfit="2">Outfit 3</button>
+          </div>
+        </div>
+        <div id="cz-right">
+          <div class="cz-h" id="cz-pieces-h">Pieces</div>
+          <div id="cz-pieces"></div>
+          <div class="cz-h">Colours <span id="cz-cname"></span></div>
+          <div id="cz-colors"></div>
+        </div>
       </div>
-      <div id="cz-emeralds"></div>
-    </div>
-    <div id="skin-body">
-      <canvas id="skin-view" width="240" height="300"></canvas>
-      <div id="cz-slots"></div>
-      <div id="cz-panel">
-        <div id="cz-pieces"></div>
-        <div id="cz-colors"></div>
+      <div id="cz-foot">
+        <div id="skin-note"></div>
+        <div id="cz-trying"></div>
+        <button class="mini-btn hidden" id="cz-cancel">Cancel</button>
         <button class="mini-btn hidden" id="cz-buy">Buy</button>
       </div>
     </div>
-    <div id="skin-note"></div>
-    <button class="menu-btn" id="skins-back">Back</button>
   </div>
   <div id="tree" class="screen hidden">
     <div id="tree-top">

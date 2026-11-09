@@ -83,6 +83,8 @@ The other menus (sign in, skins, settings, lobby) share the title's look (`src/p
 - **Accounts:** online, in `server/` (Node + SQLite). Passwords are hashed with scrypt, and each device gets its own login token. Rules live in `src/progress.js`.
 
 ## Customizer
+**The wardrobe screen** (opened from the wardrobe in the Hermitage): one framed window filling most of the screen. Header: tabs for each character, emeralds, X to close (or Esc). Left: the slots, each showing the piece it wears. Middle: the model, big, turning slowly (drag it to turn it yourself), with the 3 outfits under it. Right: the chosen slot's pieces as cards, then its main and trim colours in two rows of eight (hover one for its name and price). Trying on something you don't own shows it in the bar along the bottom with Cancel and Buy. `scripts/cz-look.mjs` takes screenshots (desktop, wide, phone).
+
 `src/outfits.js` (catalogue, prices, ownership, outfits), `src/playerkits.js` (the pieces), screen in `src/skinmenu.js`. Each character is dressed from swappable pieces, one per slot, each with its own **main and trim colour**:
 
 | | Slots |

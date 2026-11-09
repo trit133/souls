@@ -68,11 +68,12 @@ export function pixelMenus() {
   const q = (sel) => document.querySelectorAll(sel);
   // headings
   for (const s of SCREENS) { const h = document.querySelector(`${s} > h2`); if (h) pxText(h, { px: s === '#lobby' ? 4 : 5 }); }
+  pxText(document.getElementById('cz-title'), { px: 3 });
   for (const h of q('#lobby .panel-head, #settings .shop-head')) pxText(h, { font: 'mini', px: 3 });
   pxText(document.getElementById('lobby-code'), { px: 5 });
   // buttons, by role
-  const tone = { 'cz-buy': 'ember', 'lobby-start': 'ember', 'lobby-create': 'ember', 'acct-signin': 'ember', 'acct-signup': 'rust', 'lobby-back': 'blood', 'set-signout': 'blood', 'set-back': 'ember', 'skins-back': 'ash', 'acct-back': 'ash' };
-  for (const b of q('#account button, #skins > button, #skins #skin-tabs button, #skins #cz-outfits button, #cz-buy, #settings > button, #settings #set-layout, #lobby button.menu-btn, #lobby button.mini-btn')) {
+  const tone = { 'cz-buy': 'ember', 'cz-cancel': 'ash', 'lobby-start': 'ember', 'lobby-create': 'ember', 'acct-signin': 'ember', 'acct-signup': 'rust', 'lobby-back': 'blood', 'set-signout': 'blood', 'set-back': 'ember', 'skins-back': 'ash', 'acct-back': 'ash' };
+  for (const b of q('#account button, #skins-back, #cz-cancel, #skins #skin-tabs button, #skins #cz-outfits button, #cz-buy, #settings > button, #settings #set-layout, #lobby button.menu-btn, #lobby button.mini-btn')) {
     pxButton(b, tone[b.id] || (b.closest('#skin-tabs') ? 'scarlet' : 'rust'), b.classList.contains('menu-btn') ? 3 : 2);
   }
   // the lobby's class picks: framed tiles with their names in the pixel font
@@ -80,10 +81,6 @@ export function pixelMenus() {
     p.classList.add('pxpick'); const n = p.querySelector('b'); if (n) pxText(n, { font: 'big', px: 2, hover: p });
     const pad = document.createElement('i'); pad.className = 'pxpad'; pixelIcon(pad, 'lock', 2); p.appendChild(pad); // shown while locked
   }
-  // the customizer's slot list is rebuilt on every change: dress its buttons as they appear
-  const dressSlots = () => { for (const b of q('#cz-slots button')) pxButton(b, 'rust', 2); };
-  new MutationObserver(dressSlots).observe(document.getElementById('cz-slots'), { childList: true });
-  dressSlots();
   // sliders
   document.addEventListener('input', (e) => { if (e.target.matches?.('#settings input[type=range]')) syncRange(e.target); });
   syncRanges();

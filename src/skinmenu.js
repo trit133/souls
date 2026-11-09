@@ -1,7 +1,9 @@
-// The customizer (replaces the old skin picker): tabs per character, 3 saved outfits (the selected one is worn),
-// a rotating pixel-art preview, the character's slots, and for the chosen slot its pieces and a main and a trim
-// colour. Owned pieces and colours apply at once; anything not owned yet is tried on in the preview with a Buy
-// button (emeralds). Purchases and outfits are saved on the account; teammates see the outfit you wear.
+// The wardrobe (customizer): one framed window in the middle of the screen. Header: the character's name, tabs to
+// switch character, emeralds, close (X or Esc). Left: the character's slots, each showing the piece it wears.
+// Middle: the model, big, turning slowly (drag to turn it yourself), with the 3 saved outfits under it (the
+// selected one is worn). Right: the chosen slot's pieces, then its main and trim colours (hover a swatch for its
+// name). Owned pieces and colours apply at once; anything not owned is tried on in the preview and the bar along
+// the bottom offers Cancel / Buy (emeralds). Purchases and outfits are saved on the account; teammates see them.
 import * as THREE from 'three';
 import { buildHumanoid } from './models.js';
 import { locomotion } from './anims.js';
@@ -23,6 +25,14 @@ export class SkinMenu {
     document.querySelectorAll('[data-outfit]').forEach((b) => b.addEventListener('click', () => this.useOutfit(+b.dataset.outfit)));
     $('skins-back').addEventListener('click', () => this.close());
     $('cz-buy').addEventListener('click', () => this.buy());
+    $('cz-cancel').addEventListener('click', () => { this.try = null; this.render(); });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('skins').classList.contains('hidden')) { e.preventDefault(); this.close(); } });
+    // drag the model round; it carries on turning slowly a moment after you let go
+    const cv = $('skin-view');
+    cv.addEventListener('pointerdown', (e) => { this.drag = { x: e.clientX }; this.held = 2; cv.setPointerCapture(e.pointerId); $('cz-drag').classList.add('gone'); });
+    cv.addEventListener('pointermove', (e) => { if (!this.drag || !this.rig) return; this.rig.root.rotation.y += (e.clientX - this.drag.x) * 0.012; this.drag.x = e.clientX; });
+    const up = () => { this.drag = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   }
 
   get data() { const d = this.game.accounts.data; return d && this.game.accounts.user ? cosmetics(d) : null; }
@@ -95,13 +105,19 @@ export class SkinMenu {
     document.querySelectorAll('[data-outfit]').forEach((b) => b.classList.toggle('on', +b.dataset.outfit === (this.outfits?.active || 0)));
     $('cz-emeralds').textContent = signed ? `${d.emeralds} emeralds` : '';
     $('skin-note').textContent = signed ? 'Emeralds: 1 for every kill, 2 for a boss. The selected outfit is the one you wear.' : 'Sign in to customize (emeralds and outfits are kept on your account).';
-    // slots
+    // slots, each with the piece it wears
+    const all = d ? wornOutfit(d, kind) : {};
     $('cz-slots').replaceChildren(...SLOTS[kind].map((s) => {
       const b = document.createElement('button');
-      b.className = 'mini-btn cz-slot' + (s.id === this.slot ? ' on' : ''); b.textContent = s.name;
+      b.className = 'cz-slot' + (s.id === this.slot ? ' on' : '') + (this.try && s.id === this.slot ? ' trying' : '');
+      const piece = pieceList(kind, s.id).find((p) => p.id === all[s.id]?.piece) || pieceList(kind, s.id)[0];
+      b.innerHTML = '<b></b><span></span>';
+      b.querySelector('b').textContent = s.name;
+      b.querySelector('span').textContent = piece?.name || '';
       b.addEventListener('click', () => { this.slot = s.id; this.try = null; this.render(); });
       return b;
     }));
+    $('cz-pieces-h').textContent = `Pieces · ${SLOTS[kind].find((s) => s.id === this.slot)?.name || ''}`;
     // pieces for the slot
     const worn = d ? wornOutfit(d, kind)[this.slot] : null;
     $('cz-pieces').replaceChildren(...pieceList(kind, this.slot).map((p, i) => {
@@ -127,17 +143,23 @@ export class SkinMenu {
         sw.title = c.name + (own ? '' : ` · ${colorPrice(c)} emeralds`);
         if (c.hex !== undefined) sw.style.background = hexCss(c.hex);
         sw.addEventListener('click', () => this.pick(type, c.id));
+        sw.addEventListener('pointerenter', () => { $('cz-cname').textContent = sw.title; });
+        sw.addEventListener('pointerleave', () => { $('cz-cname').textContent = ''; });
         wrap.append(sw);
       }
       return wrap;
     };
     $('cz-colors').replaceChildren(row('main', 'Main'), row('trim', 'Trim'));
-    // the buy button for whatever is being tried on
+    // the bar along the bottom: what you're trying on, Cancel and Buy (or the note when trying nothing)
     const t = this.try, price = this.priceOf(t), b = $('cz-buy');
-    b.classList.toggle('hidden', !t);
+    for (const id of ['cz-buy', 'cz-cancel']) $(id).classList.toggle('hidden', !t);
+    $('skin-note').classList.toggle('hidden', !!t);
+    $('cz-trying').textContent = '';
     if (t) {
       const name = t.type === 'piece' ? pieceList(kind, this.slot).find((p) => p.id === t.id)?.name : COLORS.find((c) => c.id === t.id)?.name;
-      b.textContent = `Buy ${name} · ${price}`;
+      const slot = SLOTS[kind].find((s) => s.id === this.slot)?.name;
+      $('cz-trying').textContent = `Trying on: ${name} (${t.type === 'piece' ? slot : `${slot} ${t.type === 'main' ? 'main' : 'trim'} colour`})${d && d.emeralds < price ? ` · you have ${d.emeralds}` : ''}`;
+      b.textContent = `Buy · ${price}`;
       b.disabled = !d || d.emeralds < price;
     }
     this.buildPreview();
@@ -158,10 +180,7 @@ export class SkinMenu {
       this.camera = new THREE.PerspectiveCamera(32, cv.clientWidth / cv.clientHeight || 0.8, 0.1, 50);
       this.camera.position.set(0, 1.6, 4.6); this.camera.lookAt(0, 1.0, 0);
     }
-    const w = cv.clientWidth || 240, h = cv.clientHeight || 300;
-    this.pixel.setSize(w, h, window.devicePixelRatio || 1, 150);
-    cv.style.position = 'static'; cv.style.width = w + 'px'; cv.style.height = h + 'px';
-    this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+    this.fitStage();
     const rot = this.rig?.root.rotation.y || 0;
     if (this.rig) { this.scene.remove(this.rig.root); forgetRig(this.rig.root); }
     this.rig = buildHumanoid({ ...outfitModel(CHARS[this.kind].model, this.kind, this.shown()), scale: 1 });
@@ -169,11 +188,24 @@ export class SkinMenu {
     this.scene.add(this.rig.root);
   }
 
+  // the preview fills the stage in the middle (and follows it when the window changes size)
+  fitStage() {
+    const st = $('cz-stage'), w = Math.max(120, st.clientWidth), h = Math.max(160, st.clientHeight);
+    if (w === this.sw && h === this.sh) return;
+    this.sw = w; this.sh = h;
+    const cv = $('skin-view');
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    this.pixel.setSize(w, h, window.devicePixelRatio || 1, Math.round(Math.min(260, Math.max(150, h / 2.6))));
+    this.camera.aspect = w / h; this.camera.fov = w / h < 0.75 ? 38 : 30; this.camera.updateProjectionMatrix();
+  }
+
   tick(now) {
     this.raf = requestAnimationFrame((t) => this.tick(t));
     const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
     if (!this.rig) return;
-    this.rig.root.rotation.y += dt * 0.7;
+    this.fitStage();
+    if (this.held > 0) this.held -= dt; // just dragged: hold still a moment
+    else if (!this.drag) this.rig.root.rotation.y += dt * 0.7;
     this.rig.setGlow?.(0.8 + Math.sin(now / 600) * 0.2);
     this.rig.apply(locomotion(CHARS[this.kind].style, 0, 0, false, now / 1000), dt, 10);
     tickOutfitColors(now / 1000);
