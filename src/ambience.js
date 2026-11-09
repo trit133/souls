@@ -12,10 +12,10 @@ const pick = (table) => {
 
 // what can be heard: [sound, weight] by act (0 The Ashen Warrens, 1 The Hollow Deep, 2 The Drowned Halls, 3 Varek's approach)
 const DAY = [
-  [['leaves', 4], ['creak', 1.2], ['crow', 0.8]],
-  [['drip', 3], ['embers', 1.5], ['whistle', 1.2], ['leaves', 1]],
+  [['creak', 1.2], ['whistle', 1], ['crow', 0.8]],
+  [['drip', 3], ['embers', 1.5], ['whistle', 1.2]],
   [['lap', 2.5], ['frog', 2], ['drip', 2], ['insects', 1.5]],
-  [['leaves', 2], ['whistle', 1.5], ['embers', 1.5], ['crow', 0.6]],
+  [['whistle', 1.5], ['embers', 1.5], ['creak', 0.8], ['crow', 0.6]],
 ];
 const NIGHT = [['scream', 2], ['moan', 2], ['whisper', 2], ['toll', 1], ['chains', 1.2], ['growl', 1.5], ['creak', 0.6]];
 const GAP = { day: [1.6, 5], night: [4, 11] }; // seconds between sounds
@@ -139,21 +139,6 @@ export class Ambience {
 
   _sound(name, t) { this[name](t); }
 
-  // leaves blowing past: a crisp rustle that swells and sweeps from one side to the other
-  leaves(t) {
-    const dur = rand(1.4, 3), side = Math.random() < 0.5 ? -1 : 1;
-    const out = this._place(t, dur, { pan: side * 0.8, dist: rand(0.2, 0.7), wet: 0.25 });
-    if (out.panner.pan) { out.panner.pan.setValueAtTime(side * 0.8, t); out.panner.pan.linearRampToValueAtTime(-side * rand(0.2, 0.8), t + dur); }
-    const s = this._src(t, t + dur + 0.1), hp = this._bp(1800, 0.7, 'highpass'), bp = this._bp(rand(3000, 5000), 0.6);
-    const g = this._gain();
-    // a gritty, flickering level under a swell
-    for (let i = 0, n = Math.floor(dur / 0.018); i < n; i++) {
-      const k = i / n, swell = Math.sin(Math.PI * k) ** 1.5;
-      g.gain.setValueAtTime(swell * (Math.random() < 0.35 ? rand(0.05, 0.14) : rand(0, 0.03)), t + i * 0.018);
-    }
-    g.gain.setValueAtTime(0, t + dur);
-    s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(out);
-  }
   // old wood straining: a slow stick-slip buzz through a hollow resonance
   creak(t) {
     const dur = rand(0.5, 1.1), out = this._place(t, dur, { wet: 0.4 });
