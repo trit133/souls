@@ -22,7 +22,7 @@ out.unlock = await page.evaluate(() => {
   g.toTitle();
   return { after1, after2: !!g.accounts.data.nightRaid, toggleHidden: document.getElementById('hm-night').classList.contains('hidden') };
 });
-await page.click('#hm-night'); await page.waitForTimeout(100);
+await page.click('#hm-solo'); await page.waitForTimeout(150); await page.click('#hm-night'); await page.waitForTimeout(100);
 out.toggle = await page.evaluate(() => ({ on: game.nightRaid, layout: game.newLayout(), cls: document.getElementById('hm-night').classList.contains('on') }));
 // a night run against a day run with the same seed
 out.compare = await page.evaluate(() => {

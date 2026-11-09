@@ -103,6 +103,7 @@ const ICONS = {
 const ICON_PAL = { o: OUT, d: '#5e1c0c', m: '#c9281f', l: '#ff8a2a', h: '#ffc23d' };
 // icons drawn from shapes: inside(x, y) on pixel centres; outlined and lit from the top left automatically
 const SHAPES = {
+  person: (x, y) => Math.hypot(x - 7.5, y - 4.6) < 2.7 || (y > 8.2 && y < 14.6 && Math.abs(x - 7.5) < 1.5 + (y - 8.2) * 0.72), // head and shoulders
   gear: (x, y) => {
     const dx = x - 7.5, dy = y - 7.5, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
     return r >= 2.2 && r <= (Math.cos(a * 8) > 0.45 ? 7 : 5.2); // a ring with eight teeth

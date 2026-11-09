@@ -23,7 +23,7 @@ for (const kind of ['knight', 'rogue']) {
   await page.evaluate((k) => game.hermitage.setKind(k), kind); await page.waitForTimeout(500);
   await page.screenshot({ path: `/tmp/herm-${kind}.png` });
   const s = await where('stash'); await page.mouse.move(s.x, s.y); await page.waitForTimeout(250);
-  out[kind + 'Hover'] = await page.evaluate(() => ({ hover: game.hermitage.hover?.id, label: document.getElementById('hm-label').textContent, outlined: game.hermitage.hover?.outlines.some((o) => o.visible) }));
+  out[kind + 'Hover'] = await page.evaluate(() => ({ hover: game.hermitage.hover?.id, label: document.getElementById('hm-label').textContent, outlined: game.hermitage.hover?.outlines.some((o) => !o.material.transparent), faintOnAll: game.hermitage.items.every((it) => it.outlines.length && it.outlines.every((o) => o.visible)) }));
   await page.screenshot({ path: `/tmp/herm-${kind}-hover.png` });
 }
 // the stash opens (lid and panel)
@@ -39,7 +39,7 @@ s = await where('char'); await page.mouse.click(s.x, s.y); await page.waitForTim
 out.character = await page.evaluate(() => ({ tree: !document.getElementById('tree').classList.contains('hidden'), hermStill: game.hermitage.active }));
 await page.click('#tree-back'); await page.waitForTimeout(200);
 // the Spellsword: locked in the list, a yes/no to unlock it
-await page.click('#hm-char'); await page.waitForTimeout(150);
+await page.click('#hm-chars'); await page.waitForTimeout(150);
 out.list = await page.evaluate(() => [...document.querySelectorAll('.hm-opt')].map((b) => b.textContent));
 await page.evaluate(() => { game.accounts.data.gold = 1500; });
 await page.click('.hm-opt.locked'); await page.waitForTimeout(150);
@@ -48,8 +48,15 @@ await page.screenshot({ path: '/tmp/herm-unlock.png' });
 await page.click('.hm-yes'); await page.waitForTimeout(500);
 out.unlocked = await page.evaluate(() => ({ kind: game.hermitage.kind, mage: game.accounts.data.upgrades.mage, gold: game.accounts.data.gold }));
 await page.screenshot({ path: '/tmp/herm-mage.png' });
-// Solo Raid starts a run as this character; ending it comes back here; the last character is remembered
-await page.click('#hm-solo'); await page.waitForTimeout(400);
+// Solo Raid starts a run as this character (asking about Night Raid once that's unlocked); ending it comes back here
+out.bottom = await page.evaluate(() => [...document.querySelectorAll('.hm-bottom > button, .hm-bottom .hm-solo-wrap > button')].filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
+await page.evaluate(() => { game.accounts.data.nightRaid = true; game.refreshNight(); });
+await page.click('#hm-solo'); await page.waitForTimeout(200);
+out.soloAsks = await page.evaluate(() => !document.getElementById('hm-go').classList.contains('hidden'));
+await page.click('#hm-night'); await page.waitForTimeout(100);
+out.nightOn = await page.evaluate(() => [game.nightRaid, game.newLayout()]);
+await page.screenshot({ path: '/tmp/herm-solo-night.png' });
+await page.click('#hm-night'); await page.click('#hm-begin'); await page.waitForTimeout(400);
 out.run = await page.evaluate(() => ({ mode: game.mode, kind: game.kind, herm: game.hermitage.active }));
 await page.evaluate(() => game.toTitle()); await page.waitForTimeout(300);
 out.back = await page.evaluate(() => ({ herm: game.hermitage.active, kind: game.hermitage.kind, last: game.accounts.data.lastKind }));

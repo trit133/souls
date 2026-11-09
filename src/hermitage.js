@@ -16,13 +16,16 @@ import { CHARS } from './player.js';
 import { outfitModel } from './playerkits.js';
 import { tickOutfitColors, forgetRig } from './outfits.js';
 import { pxButton } from './pixelmenus.js';
+import { pixelIcon } from './pixelui.js';
 import { MAGE_UNLOCK } from './treeui.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 export const STASH_SLOTS = 48;
 const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
+// every usable thing has a faint outline; the one under the pointer a bright one
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0xffd36a, side: THREE.BackSide });
+const FAINT = new THREE.MeshBasicMaterial({ color: 0xc8a060, side: THREE.BackSide, transparent: true, opacity: 0.22, depthWrite: false });
 
 // ---------- little builders ----------
 function box(g, w, h, d, mat, x, y, z, ry = 0, rx = 0, rz = 0) {
@@ -116,7 +119,7 @@ const SCENES = {
   },
   rogue: {
     fire: { at: [1.3, 0, 0.9], colors: [0xffd27a, 0xff5a12], light: 0xff8a3a },
-    seatYaw: 0.8, sky: 0x050706,
+    seatYaw: 0.8, sky: 0x050706, seatX: -0.45,
     build(g, r) {
       const M = { floor: L(0x2a2a1c), leaf: L(0x5a3a1c), leaf2: L(0x6a4a1a), moss: L(0x2e3e22), root: L(0x3a2818), wood: L(0x5a4430), stone: L(0x4a4840), cloth: L(0x3a3628), red: L(0x5a1a16), iron: L(0x3a3a40) };
       flat(g, new THREE.CircleGeometry(16, 32), M.floor, 0, 0, 0);
@@ -126,7 +129,7 @@ const SCENES = {
       for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; rock(g, 0.13, M.stone, 1.3 + Math.cos(a) * 0.38, 0.05, 0.9 + Math.sin(a) * 0.38, r); }
       for (const s of [-1, 1]) { const st = cyl(g, 0.03, 0.03, 0.9, M.root, 1.3 + s * 0.48, 0.42, 0.9, 4, 0, s * 0.2); void st; }
       cyl(g, 0.025, 0.025, 1.1, M.iron, 1.3, 0.84, 0.9, 4, 0, Math.PI / 2); box(g, 0.25, 0.12, 0.12, M.wood, 1.3, 0.76, 0.9); // the spit with a bird on it
-      cyl(g, 0.24, 0.27, 0.32, M.wood, 0, 0.16, 0, 8); // the stump he sits on
+      cyl(g, 0.24, 0.27, 0.32, M.wood, -0.45, 0.16, 0, 8); // the stump he sits on
       // a bedroll and a few crates
       const bed = box(g, 0.75, 0.12, 1.7, M.cloth, -2.4, 0.06, -1.6, 0.3); void bed; cyl(g, 0.17, 0.17, 0.78, M.red, -2.62, 0.17, -0.85, 7, 0, Math.PI / 2).rotation.y = 0.3;
       box(g, 0.6, 0.55, 0.6, M.wood, 2.5, 0.28, -2.4, 0.4); box(g, 0.45, 0.42, 0.45, M.wood, 2.95, 0.21, -1.85, 0.9);
@@ -153,7 +156,7 @@ const SCENES = {
   },
   mage: {
     fire: { at: [1.6, 0, -0.55], colors: [0xe8b8ff, 0x8a3aff], light: 0xb070ff, fireplace: true, power: 10 },
-    seatYaw: 1.25, sky: 0x060510,
+    seatYaw: 0.75, sky: 0x060510,
     build(g, r) {
       const M = { tile: L(0x2c2a34), tile2: L(0x24222c), rune: new THREE.MeshBasicMaterial({ color: 0x5a3aa0, transparent: true, opacity: 0.5 }), black: L(0x16141a), stone: L(0x2a2830), wood: L(0x3a2a20), book: L(0x5a1a2a), page: L(0xc8bca0), wax: L(0xd8ccb0) };
       for (let x = -5; x <= 5; x++) for (let z = -4; z <= 4; z++) if (x * x + z * z < 30) flat(g, new THREE.PlaneGeometry(0.96, 0.96), (x + z) & 1 ? M.tile : M.tile2, x, z, 0.01 + r() * 0.004);
@@ -210,28 +213,39 @@ export class Hermitage {
     el.innerHTML = `
       <div class="hm-top">
         <button class="mini-btn" id="hm-back">Title</button>
-        <div class="hm-pick"><button class="mini-btn" id="hm-char">Knight ▾</button><div id="hm-list" class="hidden"></div></div>
+        <div class="hm-pick"><span id="hm-name">Knight</span><button class="mini-btn hm-icon" id="hm-chars" title="Characters" aria-label="Characters"><span id="hm-chars-ic"></span></button><div id="hm-list" class="hidden"></div></div>
         <div id="hm-gold"></div>
       </div>
       <div id="hm-label" class="hidden"></div>
       <div id="hm-stash" class="hidden"><div class="hm-sh"><span>Stash</span><button class="mini-btn" id="hm-stash-close">Close</button></div>
         <div class="hm-note">Shared by all your characters. Items you find will be kept here.</div><div id="hm-slots"></div></div>
       <div class="hm-bottom">
-        <button class="menu-btn primary" id="hm-solo">Solo Raid</button>
+        <div class="hm-solo-wrap"><button class="menu-btn primary" id="hm-solo">Solo Raid</button>
+          <div id="hm-go" class="hidden"><button class="mini-btn" id="hm-night">Night Raid: Off</button><button class="mini-btn" id="hm-begin">Begin</button></div></div>
         <button class="menu-btn primary" id="hm-party">Party Raid</button>
-        <button class="mini-btn hidden" id="hm-night">Night Raid: Off</button>
       </div>
       <div id="hm-hint">Hover the things around the fire</div>`;
     document.body.append(el);
     this.el = el;
     $('hm-slots').innerHTML = Array.from({ length: STASH_SLOTS }, () => '<div class="hm-slot"></div>').join('');
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-char', 'rust'], ['hm-stash-close', 'ash'], ['hm-solo', 'ember'], ['hm-party', 'blood'], ['hm-night', 'blood']]) pxButton($(id), tone, (id === 'hm-solo' || id === 'hm-party') && innerHeight > 500 ? 4 : innerHeight > 500 ? 3 : 2);
+    // one size for the small buttons, one for the two raid buttons
+    const big = innerHeight > 500 ? 3 : 2;
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
+    pixelIcon($('hm-chars-ic'), 'person', 2);
     $('hm-back').addEventListener('click', () => this.close());
-    $('hm-char').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
+    $('hm-chars').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
-    $('hm-solo').addEventListener('click', () => { this.game.audio.unlock(); this.close(false); this.game.start(this.kind); });
+    // Solo Raid starts at once; once Night Raid is unlocked it first asks (Night Raid on/off, Begin)
+    $('hm-solo').addEventListener('click', (e) => {
+      e.stopPropagation(); this.game.audio.unlock();
+      if (!this.game.nightUnlocked) return this.begin();
+      $('hm-go').classList.toggle('hidden');
+    });
+    $('hm-begin').addEventListener('click', () => this.begin());
     $('hm-party').addEventListener('click', () => { this.game.audio.unlock(); this.game.lobbyKind = this.kind; this.game.openLobby(); });
-    $('hm-night').addEventListener('click', () => { this.game.nightRaid = !this.game.nightRaid; this.game.refreshNight(); });
+    $('hm-night').addEventListener('click', (e) => { e.stopPropagation(); this.game.nightRaid = !this.game.nightRaid; this.game.refreshNight(); });
+    document.addEventListener('click', (e) => { if (!e.target.closest?.('.hm-solo-wrap')) $('hm-go')?.classList.add('hidden'); });
     // the scene: hover and click
     el.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch' && e.target === el) this.pick(e); else if (e.target !== el) this.setHover(null); });
     el.addEventListener('pointerleave', () => this.setHover(null));
@@ -245,6 +259,8 @@ export class Hermitage {
     el.addEventListener('pointerdown', (e) => { this.touch = e.pointerType === 'touch'; });
     document.addEventListener('click', (e) => { if (!e.target.closest?.('.hm-pick')) $('hm-list')?.classList.add('hidden'); });
   }
+
+  begin() { $('hm-go').classList.add('hidden'); this.close(false); this.game.start(this.kind); }
 
   get unlocked() { return { knight: true, rogue: true, mage: !!this.game.accounts.data?.upgrades?.mage }; }
 
@@ -306,7 +322,7 @@ export class Hermitage {
     const d = this.game.accounts.data;
     if (d && d.lastKind !== kind) { d.lastKind = kind; this.game.accounts.save(); }
     this.game.lobbyKind = kind;
-    $('hm-char').firstChild.textContent = `${NAMES[kind]} ▾`;
+    $('hm-name').textContent = NAMES[kind];
     this.refresh();
     this.buildScene(kind);
   }
@@ -366,7 +382,7 @@ export class Hermitage {
     const kind = this.kind;
     if (this.rig) { this.scene.remove(this.rig.root); forgetRig(this.rig.root); }
     const rig = buildHumanoid({ ...outfitModel(CHARS[kind].model, kind, this.game.equippedOutfit(kind)), scale: 1 });
-    rig.idle = true; rig.root.position.set(0, 0.0, 0.05); rig.root.rotation.y = this.seatYaw;
+    rig.idle = true; rig.root.position.set(SCENES[kind].seatX || 0, 0.0, 0.05); rig.root.rotation.y = this.seatYaw;
     rig.apply(P.rest, 1, 60);
     this.scene.add(rig.root);
     this.rig = rig;
@@ -380,10 +396,10 @@ export class Hermitage {
   addOutline(item) {
     item.outlines = [];
     const meshes = [];
-    item.group.traverse((o) => { if (o.isMesh && !o.userData.outline && o.material !== OUTLINE && !o.material.transparent) meshes.push(o); }); // (not shadows or glows)
+    item.group.traverse((o) => { if (o.isMesh && !o.userData.outline && o.material !== OUTLINE && o.material !== FAINT && !o.material.transparent) meshes.push(o); }); // (not shadows or glows)
     for (const m of meshes) {
-      const o = new THREE.Mesh(m.geometry, OUTLINE);
-      o.userData.outline = true; o.scale.setScalar(1.12); o.visible = false; o.raycast = () => {};
+      const o = new THREE.Mesh(m.geometry, FAINT);
+      o.userData.outline = true; o.scale.setScalar(1.12); o.raycast = () => {};
       m.add(o); item.outlines.push(o);
     }
   }
@@ -404,9 +420,9 @@ export class Hermitage {
 
   setHover(it) {
     if (this.hover === it) return;
-    if (this.hover) for (const o of this.hover.outlines) o.visible = false;
+    if (this.hover) for (const o of this.hover.outlines) o.material = FAINT;
     this.hover = it;
-    if (it) { for (const o of it.outlines) o.visible = true; this.game.audio.play('uiTick', 0.5); }
+    if (it) { for (const o of it.outlines) o.material = OUTLINE; this.game.audio.play('uiTick', 0.5); }
     this.el.style.cursor = it ? 'pointer' : '';
     const lab = $('hm-label');
     lab.classList.toggle('hidden', !it);
