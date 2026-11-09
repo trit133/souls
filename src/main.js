@@ -23,8 +23,8 @@ import { STATUS } from './status.js';
 import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { rng } from './world.js';
-import { enemyGold, MINI_GOLD, BOSS_GOLD, SECTION_MULT, sectionBonus, extraEnemyShare } from './progress.js';
-const FULL_CLEAR_GOLD = 20 * NUM, FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
+import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare } from './progress.js';
+const FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
 import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
 import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
 import { playerParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems, mitigate } from './damage.js';
@@ -695,11 +695,10 @@ class Game {
     // solo: your kill. A party shares each room's kills when it's cleared (see openRoom)
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
     else if (!e.effigy) this.creditKill(e);
-    // in a dungeon there are many more enemies: most drop nothing, brutes and elites always do
-    let n = !this.world.dungeon ? enemyGold(e.type) : (e.effigy ? 0 : e.elite ? 3 : e.type === 'brute' ? 2 : Math.random() < 0.4 ? 1 : 0) * NUM;
-    if (this.night && n && Math.random() < 0.5) n *= 2; // Night Raid: half the drops are doubled
-    this.roomGold[e.mod] = (this.roomGold[e.mod] || 0) + n;
-    if (n) this.statusPopup(e, `+${n}`, '#a89060');
+    // gold for the kill (progress.js), the same for everyone in the party; Night Raid doubles half of them
+    let n = killGold(e);
+    if (this.night && n && Math.random() < 0.5) n *= 2;
+    if (n) { this.earnKill(n, e); if (this.mp.active) this.mp.sendAll({ t: 'kgold', n, id: e.netId }); }
     if (this.world.dungeon && !e.event && !e.effigy) {
       this.clearKilled++;
       if (this.mp.active) this.mp.sendAll({ t: 'prog', k: this.clearKilled });
@@ -707,14 +706,27 @@ class Game {
     }
   }
 
-  // every enemy in the dungeon dead: bonus gold and emeralds for everyone
+  // a kill's gold (solo all of it; in a party everyone gets a share of every kill), banked at once
+  earnKill(n, e) {
+    const share = this.mp.active ? partyShare(this.runPlayers || this.mp.members.length || 2) : 1, g = Math.round(n * share);
+    if (!g) return;
+    this.runBanked += g;
+    this.ui.setRunGold(this.runBanked);
+    if (e) this.statusPopup(e, `+${g}`, '#e8c25a');
+    const A = this.accounts;
+    if (A.data) {
+      A.data.gold += g; A.data.stats.goldEarned += g;
+      clearTimeout(this.goldSave); this.goldSave = setTimeout(() => A.save(), 1500); // (saved a moment after the last kill)
+    }
+  }
+
+  // every enemy in the dungeon dead: emeralds for everyone
   fullClear(net = false) {
     if (this.clearPaid) return;
     this.clearPaid = true; this.clearKilled = this.clearTotal;
     if (!net && this.mp.active) this.mp.sendAll({ t: 'clear100' });
-    const n = this.bankNow(FULL_CLEAR_GOLD, 'clear' + this.act);
     this.addEmeralds(FULL_CLEAR_EMERALDS);
-    this.ui.toast(`DUNGEON CLEARED · ◆ +${n} · +${FULL_CLEAR_EMERALDS} EMERALDS`, 3.5);
+    this.ui.toast(`DUNGEON CLEARED · +${FULL_CLEAR_EMERALDS} EMERALDS`, 3.5);
     this.audio.play('victory');
   }
 
@@ -1038,16 +1050,12 @@ class Game {
   // amounts and sends them (`net`) so every device banks exactly the same.
   bossPayout(enc, net) {
     const section = enc.kind === 'mini' ? this.minisFelled : 3;
-    let drop, bonus;
-    if (net && this.isGuest) { drop = net.drop || 0; bonus = net.bonus || 0; } else {
-      drop = (enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD) * (this.night ? 2 : 1); // double at night
-      this.addRunGold(drop, enc.boss); // counts toward the section this boss closes
-      bonus = sectionBonus(this.secGold, section);
-    }
-    const key = 'boss' + this.encounters.indexOf(enc);
-    this.bankNow(drop + bonus, key);
-    if (bonus) setTimeout(() => this.ui.toast(`SECTION BONUS ×${SECTION_MULT[section]} · ◆ +${bonus}`, 2.5), 4600);
-    return { drop, bonus };
+    // a boss pays everyone in the party its full drop (double at night)
+    let drop;
+    if (net && this.isGuest) drop = net.drop || 0;
+    else { drop = (enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD) * (this.night ? 2 : 1); this.addRunGold(drop, enc.boss); }
+    this.bankNow(drop, 'boss' + this.encounters.indexOf(enc));
+    return { drop, bonus: 0 };
   }
 
   onBossDeath(boss, net = null) {

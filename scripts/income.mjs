@@ -5,8 +5,7 @@
 import { chromium } from 'playwright';
 import { TREES, nodeCost, neighbours } from '../src/skilltree.js';
 import { NUM } from '../src/scale.js';
-import { MINI_GOLD, BOSS_GOLD, SECTION_MULT } from '../src/progress.js';
-import { SEAL_BONUS } from '../src/seals.js';
+import { MINI_GOLD, BOSS_GOLD, KILL_GOLD } from '../src/progress.js';
 
 const url = process.argv[2] || 'http://localhost:4173/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -33,36 +32,21 @@ const W = await page.evaluate(() => {
 });
 await b.close();
 
-// ---------- 2. gold per run ----------
-// kill gold in a dungeon: a regular enemy 1 × NUM 40% of the time, a brute 2, an elite 3 (Night Raid: half doubled)
-const killGold = (c, share, night) => (c.regular * share * 0.4 + c.brute * share * 2 + c.elite * 3 + c.event * 0.4) * NUM * (night ? 1.5 : 1);
-const FULL = 20 * NUM;
-// a player: share of regular enemies killed, seals broken, full clear?
-const PLAYERS = { rusher: { share: 0.5, seals: 3, events: 0.5 }, thorough: { share: 1, seals: 5, events: 1 } };
+// ---------- 2. gold per run: every kill pays (progress.js killGold), bosses pay their drop ----------
+// a player: share of the regular enemies killed, seal events joined
+const PLAYERS = { rusher: { share: 0.5, events: 0.5 }, thorough: { share: 1, events: 1 } };
 // outcome: how far the run gets (acts beaten; a death partway through the next one at half progress)
 const OUTCOMES = [['dies in dungeon 1', 0], ['beats 1 mini boss', 1], ['beats 2', 2], ['beats 3, dies to Varek', 3], ['beats Varek', 4]];
 function runGold(P, beaten, night = false) {
-  const sec = [0, 0, 0, 0]; let banked = 0;
-  for (let act = 0; act < 3; act++) {
-    if (act > beaten) break;
-    const c = W.acts[act], part = act === beaten ? 0.5 : 1; // dies halfway through the act it doesn't beat
-    const evShare = P.events * Math.min(1, (P.seals - 3 + 1) / 3); // event enemies killed (only if those seals are done)
-    const g = killGold({ ...c, event: c.event * evShare, elite: c.elite * Math.min(1, P.seals / 5) * (part < 1 ? 0.5 : 1) }, P.share * part, night);
-    sec[act] += g;
-    if (part < 1) break;
-    const drop = MINI_GOLD[act] * (night ? 2 : 1);
-    sec[act] += drop;
-    banked += Math.max(0, P.seals - 3) * SEAL_BONUS + (P.share >= 1 ? FULL : 0);
+  let gold = 0;
+  const kill = (n, act, mul = 1) => n * KILL_GOLD[act] * mul * (night ? 1.5 : 1);
+  for (let act = 0; act < 3 && act <= beaten; act++) {
+    const c = W.acts[act], part = act === beaten ? 0.5 : 1;
+    gold += kill(c.regular * P.share * part + c.event * P.events * part, act) + kill(c.brute * P.share * part, act, 2) + kill(c.elite * part, act, 3);
+    if (part === 1) gold += MINI_GOLD[act] * (night ? 2 : 1);
   }
-  if (beaten >= 3) { // the approach and Varek
-    const part = beaten >= 4 ? 1 : 0.6;
-    sec[3] += (W.gate.regular * 1 + W.gate.brute * 3) * NUM * part;
-    if (beaten >= 4) sec[3] += BOSS_GOLD * (night ? 2 : 1);
-  }
-  // each beaten section's boss pays the section's multiplier on its gold
-  let bonus = 0;
-  for (let i = 0; i < 4; i++) if (beaten > i) bonus += sec[i] * (SECTION_MULT[i] - 1);
-  return Math.round(sec.reduce((a, v) => a + v, 0) + bonus + banked);
+  if (beaten >= 3) gold += kill((W.gate.regular + W.gate.brute * 2) * (beaten >= 4 ? 1 : 0.6), 3) + (beaten >= 4 ? BOSS_GOLD * (night ? 2 : 1) : 0);
+  return Math.round(gold);
 }
 
 // ---------- 3. trees: nodes in the order a player would buy them (cheapest reachable first) ----------

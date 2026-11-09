@@ -32,9 +32,12 @@ log('seal broken', await both(() => [game.seals.broken, game.seals.list.find((x)
 await B.evaluate(() => { const s = game.seals.list.find((x) => x.def.kind === 'circle'); game.player.pos.set(s.def.x + 1, 0, s.def.z + 1); game.lastGood = null; });
 await wait(2500);
 log('circle', await both(() => { const s = game.seals.list.find((x) => x.def.kind === 'circle'); const called = s.def.reserves.filter((r) => !r.enemy.reserve).map((r) => r.enemy); return [s.state, +s.prog.toFixed(0), called.length, called.map((e) => e.pos.x.toFixed(0) + ',' + e.pos.z.toFixed(0)).join(' ')]; }));
-// kills count toward the clear on both screens
-await A.evaluate(() => { let n = 0; for (const e of game.enemies) if (e.alive && !e.event && !e.effigy && n++ < 6) e.die(); });
-await wait(800);
+// kills count toward the clear on both screens, and every kill pays both players a share (2 players: 77%)
+const g0 = await both(() => game.accounts.data.gold);
+const paid = await A.evaluate(() => { let n = 0, sum = 0; for (const e of game.enemies) if (e.alive && !e.event && !e.effigy && n++ < 6) { sum += e.elite ? 45 : e.type === 'brute' ? 30 : 15; e.lastHitBy = game.player; e.die(); } return sum; });
+await wait(2200);
+const g1 = await both(() => game.accounts.data.gold);
+log('kill gold', { killsWorth: paid, host: g1[0] - g0[0], guest: g1[1] - g0[1] });
 log('clear %', await both(() => game.clearPct()));
 // the host breaks the rest, beats the mini boss; the guest takes the stair down
 await A.evaluate(() => { for (const s of game.seals.list) if (s.state !== 'broken') game.seals.breakSeal(s); });

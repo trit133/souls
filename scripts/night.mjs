@@ -38,9 +38,9 @@ out.gold = await page.evaluate(() => {
   for (const e of g.enemies.filter((x) => x.type === 'brute' || x.elite).slice(0, 0)) e.die();
   // count what kills put in the pots over many grunts
   const base = { ...g.roomGold }; let sum = 0, n = 0;
-  for (let k = 0; k < 400; k++) { const e = g.enemies[k % g.enemies.length]; const before = g.roomGold[e.mod] || 0; e.alive = true; e.die(); const got = (g.roomGold[e.mod] || 0) - before; if (!e.elite && e.type !== 'brute' && !e.effigy) { sum += got; n++; drops.push(got); } }
+  for (let k = 0; k < 400; k++) { const e = g.enemies[k % g.enemies.length]; const before = g.accounts.data.gold; e.alive = true; e.die(); const got = g.accounts.data.gold - before; if (!e.elite && e.type !== 'brute' && !e.effigy) { sum += got; n++; drops.push(got); } }
   const enc = g.world.dungeon.enc; const pay = g.bossPayout(enc);
-  return { night: g.night, avgGoldPerRegular: +(sum / n).toFixed(2), twos: drops.filter((d) => d === 2).length, ones: drops.filter((d) => d === 1).length, bossDrop: pay.drop };
+  return { night: g.night, avgGoldPerRegular: +(sum / n).toFixed(2), doubled: drops.filter((d) => d === 30).length, plain: drops.filter((d) => d === 15).length, bossDrop: pay.drop };
 });
 // screenshots: the start, and a room with enemies in it (after the test's boss kills have finished their fanfare)
 await page.waitForTimeout(4000);

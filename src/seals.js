@@ -12,7 +12,6 @@ import * as THREE from 'three';
 import { SEALS_NEEDED } from './dungeon.js';
 
 const HOLD_TIME = 30, WAVES = [0, 7, 14, 21], ALTAR_EVERY = 5;
-export const SEAL_BONUS = 8 * NUM; // gold for each seal past the third
 
 export class Seals {
   constructor(game) {
@@ -104,11 +103,7 @@ export class Seals {
     g.audio.play('bonfire');
     this.broken++;
     if (!net && g.mp.active && !g.isGuest) g.mp.sendAll({ t: 'seal', i: d.i, s: 'b' });
-    if (this.broken <= SEALS_NEEDED) g.ui.toast(`SEAL BROKEN ${this.broken}/${SEALS_NEEDED}`, 2.5);
-    else {
-      g.bankNow(SEAL_BONUS, 'seal' + g.act + ':' + d.i);
-      g.ui.toast(`SEAL BROKEN · BONUS ◆ +${SEAL_BONUS}`, 2.5);
-    }
+    g.ui.toast(this.broken <= SEALS_NEEDED ? `SEAL BROKEN ${this.broken}/${SEALS_NEEDED}` : 'SEAL BROKEN', 2.5);
     if (this.broken === SEALS_NEEDED && this.enc) {
       this.enc.sealed = false;
       this.world.setGate(this.enc.gateIn, true, true); // fog you can walk through, as before any boss
