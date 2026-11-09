@@ -3,7 +3,7 @@
 // Players: the weapon is physical; skill-tree nodes add flat and % damage per type, Infusions add a share of
 // each hit's physical damage as their element. Enemies: an `elems` share of their hit is elemental (taken out
 // of the physical, so the total stays the same). On players, armour (Knight) cuts physical damage, and each 1%
-// of an element's resistance cuts its build-up by 1% and its damage by 0.5%.
+// of an element's resistance cuts its build-up by 1% and its damage by 1% (a direct cut).
 import { NUM } from './scale.js';
 export const TYPES = ['phys', 'fire', 'bleed', 'poison', 'frost'];
 export const ELEMS = ['bleed', 'fire', 'frost', 'poison'];
@@ -49,7 +49,7 @@ export function mitigate(parts, tree = {}, buildMul = 1) {
   for (const [k, v] of Object.entries(parts)) {
     if (k === 'phys') { taken.phys = v * (1 - Math.min(ARMOR_CAP, tree.armor || 0) / 100); continue; }
     const res = Math.min(RES_CAP, tree[k + 'Res'] || 0) / 100;
-    taken[k] = v * (1 - res / 2);
+    taken[k] = v * (1 - res); // a direct cut: 75% resistance, a quarter of the damage
     build[k] = v * ENEMY_BUILD * buildMul * (1 - res);
   }
   return { taken, build, total: sumParts(taken) };

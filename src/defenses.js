@@ -1,5 +1,5 @@
 // Enemy armour and resistances: the same rules as the player's (damage.js). Armour % cuts physical damage taken by
-// that much (capped at 50%); each 1% of an element's resistance cuts its damage by 0.5% and its status build-up by
+// that much (capped at 50%); each 1% of an element's resistance cuts its damage by 1% and its status build-up by
 // 1% (capped at 75%). Every enemy rolls its own armour inside its type's range, and 1-4 resistances (bosses: their
 // own pattern) inside its type's resistance range; the rolls come from the run's seed, so a party sees the same.
 // Ranges climb with the tier (each dungeon of a section, +2 armour / +3 resistance) and jump at each new section
@@ -56,7 +56,7 @@ export function enemyMitigate(parts, def) {
   for (const [k, v] of Object.entries(parts)) {
     if (k === 'phys') { out.phys = v * (1 - Math.min(ARMOR_MAX, def.armor || 0) / 100); continue; }
     const res = Math.min(RES_MAX, def.res?.[k] || 0) / 100;
-    out[k] = v * (1 - res / 2);
+    out[k] = v * (1 - res);
     build[k] = v * (1 - res);
   }
   return { parts: out, build };

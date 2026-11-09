@@ -51,6 +51,6 @@ await b.close();
 console.log('max this section', JSON.stringify(out.maxThisSection));
 for (const [k, v] of Object.entries(out.ranges).sort()) console.log(k.padEnd(18), 'armour', v.armor.join('-'), ' res', v.res.join('-'), ' count', v.count.join('-'));
 console.log('armour 20%       ', out.armour20, '(×0.8 physical)');
-console.log('fire res 40%     ', JSON.stringify(out.fireRes40), '(damage ×0.8, build-up ×0.6)');
+console.log('fire res 40%     ', JSON.stringify(out.fireRes40), '(damage ×0.6, build-up ×0.6)');
 console.log('panel            ', JSON.stringify(panel));
 console.log(errs.length ? 'ERRORS\n' + [...new Set(errs)].join('\n') : 'OK no errors');

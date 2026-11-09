@@ -258,7 +258,7 @@ export class TreeUI {
     h += row('Crit damage', (S) => `+${fmt(50 + Math.min(CAPS.critPower, S.critPower || 0))}%`);
     h += head('Resistances');
     if (kind === 'knight') h += row('Armour (physical)', (S) => `${fmt(Math.min(ARMOR_CAP, S.armor || 0))} / ${ARMOR_CAP}%`);
-    for (const k of ['fire', 'bleed', 'poison', 'frost']) h += row(TYPE_NAME[k], (S) => `${fmt(Math.min(RES_CAP, S[k + 'Res'] || 0))} / ${RES_CAP}%`, 'ts-type', `color:${TYPE_COLOR[k]}`);
+    for (const k of ['fire', 'bleed', 'poison', 'frost']) h += row(TYPE_NAME[k], (S) => { const r = Math.min(RES_CAP, S[k + 'Res'] || 0); return `${fmt(r)} / ${RES_CAP}% · take ${fmt(100 - r)}%`; }, 'ts-type', `color:${TYPE_COLOR[k]}`);
     h += head(`${NAMES[kind]} bonuses`);
     const keys = [...new Set([...Object.keys(cur), ...Object.keys(next || {})])].filter((k) => !SHOWN.has(k) && STATS[k]);
     for (const k of keys) h += row(STATS[k].name, (S) => (S[k] ? STATS[k].fmt(+fmt(S[k])) + (CAPS[k] && S[k] >= CAPS[k] ? ' (max)' : '') : '—'));

@@ -1517,7 +1517,7 @@ class Game {
     const res = Math.min(75, e.def?.res?.[el0] || 0) / 100; // the target's resistance to the spell's element
     const cm = critRoll(T.critChance, T.critPower); // (a spell can crit too)
     const raw = q.dmg * mul * cm * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
-    const hp0 = e.hp, sd = raw * (1 - res / 2);
+    const hp0 = e.hp, sd = raw * (1 - res);
     const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo });
     if (r === 'none') return;
     // the bolt is frost, the fireball fire

@@ -60,7 +60,7 @@ export const STATS = {
   poisonPct: { name: 'Venom', fmt: (v) => `+${v}% poison damage`, icon: 'poison' },
   frostDmg: { name: 'Chill', fmt: (v) => `+${v} frost damage per hit`, icon: 'frost' },
   frostPct: { name: 'Rime', fmt: (v) => `+${v}% frost damage`, icon: 'frost' },
-  // resistances: each 1% cuts that element's build-up on you by 1% and its damage by 0.5%
+  // resistances: each 1% cuts that element's damage and its build-up on you by 1% (75%: a quarter gets through)
   fireRes: { name: 'Fireproof', fmt: (v) => `+${v}% fire resistance`, icon: 'resFire', res: true },
   bleedRes: { name: 'Clotting', fmt: (v) => `+${v}% bleed resistance`, icon: 'resBleed', res: true },
   poisonRes: { name: 'Antidote', fmt: (v) => `+${v}% poison resistance`, icon: 'resPoison', res: true },
@@ -356,7 +356,7 @@ export function build(kind, opts = {}) {
     const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
-  if (PLANS[kind]) { regionTree(kind, nodes, edges); critNodes(kind, nodes, edges); } // laid out in themed regions (below)
+  if (PLANS[kind]) { regionTree(kind, nodes, edges); critNodes(kind, nodes, edges); elemNodes(kind, nodes, edges); } // laid out in themed regions (below)
   else { assign(kind, nodes); typedNodes(kind, nodes); }
   return { kind, nodes, edges };
 }
@@ -575,6 +575,27 @@ function regionTree(kind, nodes, edges) {
 // regions, so a first-section tree reaches only the inner few.
 export const CRIT_VALUES = { critChance: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12], critPower: [4, 6, 7, 8, 9, 11, 12, 13, 14, 16] };
 function critNodes(kind, nodes, edges) {
+  addNodes(kind, nodes, edges, 20, 'cc', (i) => 3 + i, (placed) => {
+    // values by distance out: alternate the two stats, smallest nearest the start
+    const next = { critChance: 0, critPower: 0 };
+    placed.forEach((n, i) => { const k = i % 2 ? 'critPower' : 'critChance'; n.crit = true; n.give = { [k]: CRIT_VALUES[k][next[k]++] }; });
+  });
+}
+// Every class can deal every element, its own the most: the elements its tree had none of get 4 nodes each, added the
+// same way after the crit nodes (flat +1 then +2 per hit, +15% then +25%, the bigger ones further out). Elements are
+// dealt round so each gets nodes near the start and at the edge.
+export const OFF_ELEMS = { knight: ['bleed', 'poison', 'frost'], rogue: ['fire', 'frost'], mage: ['bleed', 'poison'] };
+const OFF_STEPS = [['Dmg', 1], ['Pct', 15], ['Dmg', 2], ['Pct', 25]];
+function elemNodes(kind, nodes, edges) {
+  const E = OFF_ELEMS[kind], count = E.length * 4;
+  addNodes(kind, nodes, edges, count, 'ce', (i) => Math.round(4 + (i * 17) / (count - 1)), (placed) => {
+    const next = Object.fromEntries(E.map((k) => [k, 0]));
+    placed.forEach((n, i) => { const el = E[i % E.length], [suf, v] = OFF_STEPS[next[el]++]; n.give = { [el + suf]: v }; });
+  });
+}
+// new nodes on top of a finished tree: `count` of them, the i-th aimed at ring want(i); finish(placed, nearest first)
+// gives them their stats
+function addNodes(kind, nodes, edges, count, prefix, want, finish) {
   const NAMES = REGIONS[kind];
   const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
   const hopsFrom = (from) => {
@@ -587,9 +608,9 @@ function critNodes(kind, nodes, edges) {
   const h0 = hopsFrom('start'), evoHops = evos.map((id) => h0.get(id));
   const lineGap = (p, skip) => { let d = 1e9; for (let i = 0; i < edges.length; i++) if (i !== skip) d = Math.min(d, segDist(p, nodes.get(edges[i][0]), nodes.get(edges[i][1]))); return d; };
   const room = (p, skip) => [...nodes.values()].every((n) => Math.hypot(n.x - p.x, n.y - p.y) >= SIZE(n) + 3.9 + 2) && lineGap(p, skip) >= 3.9 + 2; // (clear of every node and line)
-  const placed = [], rejected = new Set();
-  for (let i = 0; i < 20; i++) {
-    const want = 3 + i, g = (i + Math.floor(i / 4)) % 4;
+  const placed = [], rejected = new Set(), before = [...nodes.values()].filter((n) => n.added);
+  for (let i = 0; i < count; i++) {
+    const ring0 = want(i), g = (i + Math.floor(i / 4)) % 4;
     let best = null, bs = 1e9;
     for (let k = 0; k < edges.length; k++) {
       const [a, b] = edges[k], A = nodes.get(a), B = nodes.get(b);
@@ -599,26 +620,26 @@ function critNodes(kind, nodes, edges) {
       if (t === undefined) continue;
       const p = { x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t };
       const ring = Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
-      const near = placed.length ? Math.min(...placed.map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
-      const sc = Math.abs(ring - want) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + Math.abs(t - 0.5) * 20 + (A.crit || B.crit ? 40 : 0); // (one per line)
+      const near = placed.length + before.length ? Math.min(...[...before, ...placed].map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
+      const sc = Math.abs(ring - ring0) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + Math.abs(t - 0.5) * 20 + (A.added || B.added ? 40 : 0); // (one per line)
       if (sc < bs) { bs = sc; best = { k, p, ring }; }
     }
     // or a branch end carried on one step further, straight out along its line (nothing else moves)
     const deg = new Map(); for (const [a, b] of edges) { deg.set(a, (deg.get(a) || 0) + 1); deg.set(b, (deg.get(b) || 0) + 1); }
     for (const [a, b] of edges) for (const [end, from] of [[a, b], [b, a]]) {
       const E = nodes.get(end), F = nodes.get(from);
-      if (deg.get(end) !== 1 || E.crit || E.notable || E.keystone || E.soon || E.evo || E.role === 'socket') continue; // (notables and keystones stay at the ends)
+      if (deg.get(end) !== 1 || E.added || E.notable || E.keystone || E.soon || E.evo || E.role === 'socket') continue; // (notables and keystones stay at the ends)
       const L = Math.hypot(E.x - F.x, E.y - F.y) || 1;
       const p = { x: E.x + ((E.x - F.x) / L) * RING, y: E.y + ((E.y - F.y) / L) * RING };
       if (!room(p, -1) || edges.some(([c, d]) => c !== end && d !== end && segCross(E, p, nodes.get(c), nodes.get(d)))) continue;
       if ([...nodes.values()].some((n) => n !== E && segDist(n, E, p) < SIZE(n) + 1.5)) continue;
       const ring = Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
-      const near = placed.length ? Math.min(...placed.map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
-      const sc = Math.abs(ring - want) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + 6; // (a split line first; none bunched together)
+      const near = placed.length + before.length ? Math.min(...[...before, ...placed].map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
+      const sc = Math.abs(ring - ring0) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + 6; // (a split line first; none bunched together)
       if (sc < bs) { bs = sc; best = { end, p, ring }; }
     }
     if (!best) break;
-    const id = `cc${i}`;
+    const id = `${prefix}${i}`;
     if (best.end) edges.push([best.end, id]);
     else {
       const [a, b] = edges[best.k];
@@ -626,14 +647,12 @@ function critNodes(kind, nodes, edges) {
       const h = hopsFrom('start');
       if (evos.some((e, j) => h.get(e) !== evoHops[j])) { edges.pop(); edges[best.k] = [a, b]; rejected.add(a + '|' + b); i--; continue; }
     }
-    const n = { id, ring: best.ring, role: 'link', x: best.p.x, y: best.p.y, crit: true, typed: true, big: false, notable: null, keystone: false, give: {} };
+    const n = { id, ring: best.ring, role: 'link', x: best.p.x, y: best.p.y, added: true, typed: true, big: false, notable: null, keystone: false, give: {} };
     n.region = NAMES[region(n)];
     nodes.set(id, n); placed.push(n);
   }
-  // values by distance out: alternate the two stats, smallest nearest the start
   placed.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
-  const next = { critChance: 0, critPower: 0 };
-  placed.forEach((n, i) => { const k = i % 2 ? 'critPower' : 'critChance'; n.give = { [k]: CRIT_VALUES[k][next[k]++] }; });
+  finish(placed);
 }
 
 // Damage, resistance and armour nodes take over regular stat nodes, spread round the web. Each sits in a ring
@@ -763,14 +782,14 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 14;
+export const TREE_VERSION = 15;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
   // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
-  if (data.treeV >= 10 && data.treeV <= 13) { // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)
+  if (data.treeV >= 10 && data.treeV <= 14) { // (14 -> 15: damage nodes for every element) // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)
     let refund = 0;
     for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;
