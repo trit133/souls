@@ -113,7 +113,6 @@ class Game {
     this.deaths = 0;
     this.reserves = [];
     this.seals = new Seals(this);
-    this.mouse = { x: -1, y: -1 }; addEventListener('mousemove', (e) => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; });
     this.minimap = new Minimap(this);
     this.buildRun();
 
@@ -1712,25 +1711,13 @@ class Game {
     this.updateCamera(rdt);
   }
 
-  // the enemy under the mouse (or, on touch, the one you're locked on to): its armour, resistances and elements in a
-  // small panel at the top right (under the map)
+  // the enemy you're locked on to: its armour, resistances and elements in a small panel at the top right (under the map)
   updateFoePanel(dt) {
     if ((this.foeT = (this.foeT || 0) - dt) > 0) return;
     this.foeT = 0.1;
     const el = (this.foeEl ||= Object.assign(document.createElement('div'), { id: 'foe-panel', className: 'hidden' }));
     if (!el.isConnected) document.getElementById('hud').append(el);
-    let foe = null;
-    if (this.input.lastDevice === 'touch') foe = this.player.lock?.alive ? this.player.lock : null;
-    else if (this.mouse.x >= 0) {
-      let bd = 46; const v = new THREE.Vector3();
-      for (const e of [...this.enemies, ...this.bosses]) {
-        if (!e.alive || !e.rig.root.visible || e.reserve) continue;
-        v.set(e.pos.x, 1.1 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
-        if (v.z > 1) continue;
-        const d = Math.hypot((v.x * 0.5 + 0.5) * innerWidth - this.mouse.x, (-v.y * 0.5 + 0.5) * innerHeight - this.mouse.y);
-        if (d < bd) { bd = d; foe = e; }
-      }
-    }
+    const foe = this.player.lock?.alive ? this.player.lock : null;
     el.classList.toggle('hidden', !foe);
     if (!foe) { this.foeShown = null; return; }
     const map = this.minimap.el.classList.contains('hidden') ? null : this.minimap.el.getBoundingClientRect();

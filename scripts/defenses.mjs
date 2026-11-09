@@ -39,11 +39,12 @@ const out = await page.evaluate(() => {
   const T = g.treeUI ? null : null;
   return o;
 });
-// 4. the panel: hover an enemy
+// 4. the panel: hidden while only hovering, shown once locked on
 await page.evaluate(() => { const g = game; g.start('knight'); g.player.hp = g.player.maxHp = 1e6; for (let i = 0; i < 30; i++) g.step(1 / 60, 1 / 60); });
 const at = await page.evaluate(() => { const g = game, e = g.enemies.filter((x) => x.alive && x.rig.root.visible).sort((a, c) => a.distTo(g.player) - c.distTo(g.player))[0]; g.player.pos.set(e.pos.x, 0, e.pos.z + 4); g.camPos.set(e.pos.x, 14, e.pos.z + 16); e.cd = 99; for (let i = 0; i < 40; i++) g.step(1 / 60, 1 / 60); const v = e.pos.clone(); v.y = 1.1; v.project(g.camera); return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }; });
-await page.mouse.move(at.x, at.y); await page.evaluate(() => { for (let i = 0; i < 12; i++) game.step(1 / 60, 1 / 60); game.pixel.render(game.scene, game.camera); });
-const panel = await page.evaluate(() => ({ shown: !document.getElementById('foe-panel')?.classList.contains('hidden'), text: document.getElementById('foe-panel')?.innerText.replace(/\n+/g, ' | ') }));
+const before = await page.evaluate(() => { for (let i = 0; i < 12; i++) game.step(1 / 60, 1 / 60); return !document.getElementById('foe-panel')?.classList.contains('hidden'); });
+await page.mouse.move(at.x, at.y); await page.evaluate(() => { const g = game; g.player.lock = g.enemies.filter((x) => x.alive && x.rig.root.visible).sort((a, c) => a.distTo(g.player) - c.distTo(g.player))[0]; for (let i = 0; i < 12; i++) game.step(1 / 60, 1 / 60); game.pixel.render(game.scene, game.camera); });
+const panel = await page.evaluate((before) => ({ shownBeforeLock: before, shown: !document.getElementById('foe-panel')?.classList.contains('hidden'), text: document.getElementById('foe-panel')?.innerText.replace(/\n+/g, ' | ') }), before);
 await page.screenshot({ path: '/tmp/defenses-panel.png' });
 const caps = await page.evaluate(async () => { const m = await import('/src/damage.js').catch(() => null); return null; });
 await b.close();
