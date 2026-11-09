@@ -9,6 +9,12 @@ import { TreeBackground } from './treebg.js';
 import { COMBOS } from './combos.js';
 import { keyLabel } from './settings.js';
 
+// what a node can be found by: its name, what it gives (and those stats' names) and kind (its region by full name)
+const searchText = (n) => (n._search ??= (() => {
+  const d = describe(n), kinds = [n.keystone ? 'keystone' : n.notable ? 'notable' : '', n.evo || n.soon ? 'evolution' : '', n.role === 'socket' ? 'socket rune' : ''];
+  return [d.name, ...d.lines, ...Object.keys(n.give || {}).map((k) => STATS[k]?.name || ''), ...kinds].join(' ').toLowerCase();
+})());
+
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const THEME = { knight: '#9ab4e8', rogue: '#e05a48', mage: '#b48aff' };
@@ -33,6 +39,10 @@ export class TreeUI {
     $('tree-back').addEventListener('click', () => this.close());
     $('tree-unlock').addEventListener('click', () => this.unlockMage());
     $('tree-stats-btn').addEventListener('click', () => $('tree-stats').classList.toggle('open'));
+    // search: every node whose name or description has all the words typed lights up
+    const sIn = $('tree-search-input');
+    sIn.addEventListener('input', () => this.applySearch());
+    sIn.addEventListener('keydown', (e) => { if (e.key === 'Escape') { sIn.value = ''; this.applySearch(); sIn.blur(); } e.stopPropagation(); });
     document.querySelectorAll('[data-tz]').forEach((b) => b.addEventListener('click', () => {
       const z = b.dataset.tz;
       if (z === 'fit') this.fit(); else this.zoom(z === 'in' ? 1.35 : 1 / 1.35);
@@ -217,6 +227,7 @@ export class TreeUI {
         + `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(iconKey(n))}</svg></g>`;
     }
     $('tree-svg').innerHTML = s;
+    this.applySearch();
     this.applyView();
     this.renderStats();
     this.bg.start(this.kind);
@@ -225,6 +236,19 @@ export class TreeUI {
 
   // ---------- stats panel ----------
   // this character's totals from the nodes owned; hovering an unowned node previews what it would change
+  // the search box (top right): highlight matching nodes and count them
+  applySearch() {
+    const q = ($('tree-search-input')?.value || '').toLowerCase().trim(), words = q.split(/\s+/).filter(Boolean);
+    let n = 0;
+    for (const g of $('tree-svg').querySelectorAll('.tn')) {
+      const node = this.tree.nodes.get(g.dataset.node);
+      const hit = words.length > 0 && node && words.every((w) => searchText(node).includes(w) || w === node.region?.toLowerCase()); // (a region by its full name)
+      g.classList.toggle('found', hit); if (hit) n++;
+    }
+    $('tree-svg').classList.toggle('searching', words.length > 0);
+    $('tree-search-count').textContent = words.length ? `${n} found` : '';
+  }
+
   renderStats() {
     const el = $('tree-stats');
     if (!el) return;

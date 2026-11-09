@@ -340,6 +340,15 @@ svg .solid { fill: currentColor; } /* filled icons (crit chance star) */
 #tree-tip .tt-status { font-size: 11px; color: #c8a070; }
 #tree-tip button { margin-top: 6px; }
 #tree-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
+#tree-search { position: absolute; right: 8px; top: 8px; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+#tree-search input { width: 190px; padding: 6px 9px; background: rgba(8,7,10,.85); border: 1px solid #5a4a30; color: #f0e6d0; font: 13px Georgia, serif; outline: none; }
+#tree-search input:focus { border-color: #c8a060; }
+#tree-search input::placeholder { color: #7a6e5c; }
+#tree-search-count { font: 11px Georgia, serif; color: #f2d890; letter-spacing: 1px; text-shadow: 0 1px 2px #000; }
+/* search matches: a bright pulsing ring; everything else dims a little */
+#tree-svg.searching .tn:not(.found) { opacity: .45; }
+#tree-svg .tn.found circle, #tree-svg .tn.found polygon { stroke: #fff3a0; stroke-width: 1.8; filter: drop-shadow(0 0 2px #ffd84a); animation: tfound 1.1s ease-in-out infinite alternate; }
+@keyframes tfound { from { stroke-opacity: 1; } to { stroke-opacity: .45; } }
 #tree-lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(7,6,10,.7); font-size: 16px; }
 #tree-foot { display: flex; align-items: center; gap: 14px; }
 #tree-resetbar { display: flex; align-items: center; gap: 10px; color: #f0a090; font-size: 13px; }
