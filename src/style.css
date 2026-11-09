@@ -865,3 +865,28 @@ button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the 
 .fp-list { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 2px; }
 .fp-res { font: bold 12px monospace; } .fp-none { font: italic 11px Georgia, serif; color: #8a7a6a; }
 #minimap.touch ~ #foe-panel { right: calc(66px + env(safe-area-inset-right)); }
+
+/* ---------- phones (html.phone, set in main.js from input.js isPhone); desktop never matches ---------- */
+/* home: a small Hermitage and Settings side by side, a slim Fullscreen bar, no controls text */
+html.phone #controls-help { display: none; }
+html.phone .tiles { display: flex; justify-content: center; gap: 10px; width: auto; }
+html.phone .tile-big, html.phone .tile-small { grid-column: auto; min-height: 0; height: 64px; padding: 6px 10px; }
+html.phone .tile-big { width: 190px; }
+html.phone .tile-small, html.phone #btn-settings { position: relative; right: auto; bottom: auto; width: 165px; min-height: 0; }
+html.phone .tile-ic { right: 6px; top: 6px; transform: scale(.5); transform-origin: top right; }
+html.phone .tile-fs { width: 150px; margin-top: 6px; }
+/* skill tree: a tapped node's card docks at the bottom, with its Upgrade button */
+html.phone #tree-tip { left: 50% !important; top: auto !important; bottom: 8px; transform: translateX(-50%); width: min(320px, calc(100% - 16px)); max-width: none; max-height: calc(100% - 16px); overflow-y: auto; pointer-events: auto; z-index: 4; }
+html.phone #tree-tip { padding: 6px 10px; font-size: 12px; }
+html.phone #tree-tip .tt-name { font-size: 13px; margin-bottom: 2px; }
+html.phone #tree-tip .tt-ring { margin-top: 3px; }
+html.phone #tree-tip .tt-buy { display: block; width: 100%; margin: 6px 0 0; padding: 6px 12px; font-size: 14px; }
+html.phone #tree-tip .tt-buy:disabled { opacity: .45; cursor: default; }
+/* the lock-on panel: half size, still under the map */
+html.phone #foe-panel { width: 112px; padding: 4px 6px; border-width: 1px; box-shadow: 0 0 0 1px #1a0c06, 0 3px 8px rgba(0,0,0,.5); }
+html.phone .fp-name { font-size: 10px; margin-bottom: 2px; letter-spacing: 0; }
+html.phone .fp-row { font-size: 9px; margin-top: 1px; }
+html.phone .fp-row b { font-size: 7px; letter-spacing: 0; }
+html.phone .fp-bar { height: 2px; margin-top: 1px; }
+html.phone .fp-list { gap: 1px 5px; margin-top: 1px; }
+html.phone .fp-res { font-size: 8px; } html.phone .fp-none { font-size: 8px; }

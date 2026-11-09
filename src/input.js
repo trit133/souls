@@ -12,6 +12,8 @@ export class Input {
     this.held = { special: false, roll: false };
     this.stick = { x: 0, y: 0, active: false, id: null, ox: 0, oy: 0 };
     this.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    // a phone or tablet: a finger is the main pointer and nothing hovers (a touchscreen laptop still has a mouse, so it isn't)
+    this.isPhone = matchMedia('(pointer: coarse) and (hover: none)').matches;
     this.lastDevice = this.isTouch ? 'touch' : 'kb';
     this.capture = null; // set while the settings screen waits for a key
     this.layoutEdit = false; // touch controls are being dragged around, not pressed

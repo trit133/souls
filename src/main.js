@@ -77,6 +77,7 @@ class Game {
     this.nightLights = null;
 
     this.input = new Input();
+    document.documentElement.classList.toggle('phone', this.input.isPhone); // the phone layout (style.css html.phone)
     this.audio = new Audio();
     this.fx = new FX(this.scene);
     this.pfx = new PFX(this);
@@ -1743,7 +1744,7 @@ class Game {
     el.classList.toggle('hidden', !foe);
     if (!foe) { this.foeShown = null; return; }
     const map = this.minimap.el.classList.contains('hidden') ? null : this.minimap.el.getBoundingClientRect();
-    el.style.top = (map ? map.bottom + 8 : 12) + 'px';
+    el.style.top = (map ? map.bottom + (this.input.isPhone ? 4 : 8) : 12) + 'px';
     if (this.foeShown === foe) return;
     this.foeShown = foe;
     const NAMES = { grunt: 'Swordsman', spear: 'Spearman', archer: 'Archer', brute: 'Brute', effigy: 'Cursed Effigy' };

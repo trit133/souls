@@ -39,6 +39,8 @@ export class TreeUI {
     $('tree-back').addEventListener('click', () => this.close());
     $('tree-unlock').addEventListener('click', () => this.unlockMage());
     $('tree-stats-btn').addEventListener('click', () => $('tree-stats').classList.toggle('open'));
+    // phone: the tapped node's card has an Upgrade button
+    $('tree-tip').addEventListener('click', (e) => { if (e.target.closest('.tt-buy') && this.sel) this.buy(this.sel); });
     // search: every node whose name or description has all the words typed lights up
     const sIn = $('tree-search-input');
     sIn.addEventListener('input', () => this.applySearch());
@@ -74,8 +76,10 @@ export class TreeUI {
   // ---------- view ----------
   radius() { let r = 0; for (const n of this.tree.nodes.values()) r = Math.max(r, Math.hypot(n.x, n.y)); return r + RING; }
   fit() { this.view = { x: 0, y: 0, z: 1 }; }
+  // phones zoom in much further: a few nodes can fill the small screen
+  get maxZoom() { return this.game.input.isPhone ? 15 : 5; }
   zoom(f, cx = null, cy = null) {
-    const v = this.view, z = Math.min(5, Math.max(0.6, v.z * f));
+    const v = this.view, z = Math.min(this.maxZoom, Math.max(0.6, v.z * f));
     if (cx !== null) { v.x = cx - (cx - v.x) * (v.z / z); v.y = cy - (cy - v.y) * (v.z / z); }
     v.z = z;
   }
@@ -110,7 +114,7 @@ export class TreeUI {
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinch && pts.size === 2) {
         const [a, b] = [...pts.values()];
-        this.view.z = Math.min(5, Math.max(0.6, pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+        this.view.z = Math.min(this.maxZoom, Math.max(0.6, pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
         this.applyView(); return;
       }
       if (drag) {
@@ -138,9 +142,11 @@ export class TreeUI {
 
   // one click: buy it if you can; in reset mode, mark or unmark it
   // mouse: the tooltip just follows the hover; touch (no hover): a tap shows it until the next tap
+  // phone: a tap only opens the node's card; buying is its Upgrade button
   click(id, touch = false) {
-    if (!id) { this.sel = null; this.hideTip(); return; }
+    if (!id) { this.sel = null; this.hideTip(); if (this.game.input.isPhone) this.render(); return; }
     if (this.resetting) { this.toggleMark(id); return; }
+    if (this.game.input.isPhone) { this.sel = id; this.render(); return; }
     const have = this.data ? owned(this.data, this.kind) : new Set(['start']);
     const n = this.tree.nodes.get(id);
     if (!have.has(id) && canTake(this.tree, have, id) && this.game.accounts.user && !this.locked && (this.data?.gold ?? 0) >= nodeCost(n)) this.buy(id);
@@ -308,15 +314,19 @@ export class TreeUI {
     const have = this.data ? owned(this.data, this.kind) : new Set(['start']);
     const { name, lines } = describe(n), cost = nodeCost(n), got = have.has(id), can = canTake(this.tree, have, id);
     const gold = this.data?.gold ?? 0, signed = !!this.game.accounts.user;
-    const cap = nodeCap(this.data, this.kind), atCap = have.size - 1 >= cap;
-    const status = got ? (this.resetting ? 'Click to mark for reset' : 'Owned')
+    const cap = nodeCap(this.data, this.kind), atCap = have.size - 1 >= cap, phone = this.game.input.isPhone;
+    const buyable = !got && !this.locked && signed && can && !atCap && gold >= cost;
+    const status = got ? (this.resetting ? (phone ? 'Tap to mark for reset' : 'Click to mark for reset') : 'Owned')
       : this.locked ? 'Unlock the Spellsword first' : !signed ? 'Sign in to buy' : !can ? 'Connect to it from a node you own'
         : atCap ? `Node limit ${cap} reached. ${capHint(cap)}.`
-          : gold >= cost ? 'Click to unlock' : `Need ◆ ${cost - gold} more`;
-    tip.innerHTML = `<div class="tt-name"></div>${lines.map(() => '<div class="tt-line"></div>').join('')}<div class="tt-ring">Ring ${n.ring}${cost ? ` · ◆ ${cost}` : ''}</div><div class="tt-status"></div>`;
+          : gold >= cost ? (phone ? 'Ready to unlock' : 'Click to unlock') : `Need ◆ ${cost - gold} more`;
+    tip.innerHTML = `<div class="tt-name"></div>${lines.map(() => '<div class="tt-line"></div>').join('')}<div class="tt-ring">Ring ${n.ring}${cost ? ` · ◆ ${cost}` : ''}</div><div class="tt-status"></div>`
+      + (phone && !got && !this.resetting ? `<button class="menu-btn tt-buy"${buyable ? '' : ' disabled'}>Upgrade${cost ? ` · ◆ ${cost}` : ''}</button>` : '');
     tip.querySelector('.tt-name').textContent = name;
     tip.querySelectorAll('.tt-line').forEach((el, i) => { el.textContent = lines[i]; });
     tip.querySelector('.tt-status').textContent = status;
+    // phone: the card sits at the bottom of the screen (style.css), out from under the finger
+    if (phone) { tip.style.left = tip.style.top = ''; tip.classList.remove('hidden'); return; }
     // place it beside the node
     const wrap = $('tree-wrap').getBoundingClientRect(), svg = $('tree-svg'), vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect();
     const px = r.left + ((n.x - vb.x) / vb.width) * r.width - wrap.left, py = r.top + ((n.y - vb.y) / vb.height) * r.height - wrap.top;
