@@ -722,7 +722,7 @@ button.pxbtn { justify-content: center; }
 .hm-top > * { pointer-events: auto; }
 #hm-gold { color: #e8c25a; font: 16px monospace; text-shadow: 0 1px 3px #000; min-width: 90px; text-align: right; }
 .hm-pick { position: relative; display: flex; align-items: center; gap: 6px; }
-#hm-name { font: bold 20px Georgia, serif; color: #ffd36a; letter-spacing: 2px; text-shadow: 0 2px 4px #000, 0 0 10px rgba(255,140,40,.4); padding: 0 6px; }
+#hm-name { padding: 0 6px; filter: drop-shadow(0 2px 3px #000); }
 #hermitage button.pxbtn.mini-btn { min-height: 38px; min-width: 38px; }
 #hermitage .hm-icon { padding: 2px 4px; display: inline-flex; align-items: center; justify-content: center; }
 #hermitage .hm-icon .picon { display: block; image-rendering: pixelated; }
@@ -761,3 +761,7 @@ button.pxbtn { justify-content: center; }
 .tile-herm { min-height: 150px; }
 @media (max-width: 700px), (max-height: 450px) { #hm-stash { width: 52vw; top: 54px; bottom: 70px; } .hm-bottom { gap: 8px; } }
 button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the characters button */
+
+/* the title: Hermitage as wide as Fullscreen, Settings in the bottom right corner */
+.tile-herm { grid-column: 1 / -1; }
+#btn-settings { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 210px; min-height: 104px; z-index: 2; }

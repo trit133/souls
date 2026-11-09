@@ -15,7 +15,7 @@ import { P } from './anims.js';
 import { CHARS } from './player.js';
 import { outfitModel } from './playerkits.js';
 import { tickOutfitColors, forgetRig } from './outfits.js';
-import { pxButton } from './pixelmenus.js';
+import { pxButton, pxText } from './pixelmenus.js';
 import { pixelIcon } from './pixelui.js';
 import { MAGE_UNLOCK } from './treeui.js';
 
@@ -23,9 +23,11 @@ const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 export const STASH_SLOTS = 48;
 const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
-// every usable thing has a faint outline; the one under the pointer a bright one
-const OUTLINE = new THREE.MeshBasicMaterial({ color: 0xffd36a, side: THREE.BackSide });
-const FAINT = new THREE.MeshBasicMaterial({ color: 0xc8a060, side: THREE.BackSide, transparent: true, opacity: 0.22, depthWrite: false });
+// every usable thing has a faint outline round its edge; the one under the pointer a bright one. The outlines are
+// slightly bigger back-faced copies drawn after the scene without writing depth, and the thing itself is drawn
+// over them, so only the rim outside its silhouette shows (no lines across the inside)
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0xffd36a, side: THREE.BackSide, depthWrite: false });
+const FAINT = new THREE.MeshBasicMaterial({ color: 0x9a7444, side: THREE.BackSide, depthWrite: false }); // (solid: see-through ones draw after everything)
 
 // ---------- little builders ----------
 function box(g, w, h, d, mat, x, y, z, ry = 0, rx = 0, rz = 0) {
@@ -233,6 +235,7 @@ export class Hermitage {
     for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
+    pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
     $('hm-back').addEventListener('click', () => this.close());
     $('hm-chars').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
@@ -343,24 +346,24 @@ export class Hermitage {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(S.sky);
     scene.fog = new THREE.Fog(S.sky, 5.5, 12); // the edges fall away into the dark
-    scene.add(new THREE.HemisphereLight(0x5a6688, 0x0a0806, 0.55)); // faint moonlight: shapes, not colours
+    scene.add(new THREE.HemisphereLight(0x6a76a0, 0x14100c, 0.85)); // faint moonlight: shapes, not colours
     const g = new THREE.Group(); scene.add(g);
     S.build(g, r);
     // the fire and its light (the main light on the character)
     const [fx, fy, fz] = S.fire.at;
     this.fire = fire(g, fx, fy + (S.fire.fireplace ? 0.25 : 0.05), fz, S.fire.fireplace ? 1.1 : 1, S.fire.colors);
-    this.firePower = S.fire.power || 6;
+    this.firePower = (S.fire.power || 6) * 1.25;
     this.fireLight = new THREE.PointLight(S.fire.light, this.firePower, 8, 1.3); this.fireLight.position.set(fx, 1.0, fz + (S.fire.fireplace ? 0.5 : 0)); scene.add(this.fireLight);
     // small lights here and there
     this.small = [];
     for (const l of S.lights) {
-      const pl = new THREE.PointLight(l.color, l.power, l.range, 1.5); pl.position.set(...l.at); scene.add(pl);
+      const pl = new THREE.PointLight(l.color, l.power * 1.4, l.range * 1.2, 1.5); pl.position.set(...l.at); scene.add(pl);
       if (l.lantern) {
         cyl(g, 0.04, 0.05, l.at[1] + 0.3, L(0x2a2018), l.at[0], (l.at[1] + 0.3) / 2, l.at[2] - 0.05, 5);
         box(g, 0.2, 0.26, 0.2, new THREE.MeshBasicMaterial({ color: l.color }), l.at[0], l.at[1], l.at[2]);
       }
       if (l.candles) for (let i = 0; i < 3; i++) { const cx = l.at[0] + (i - 1) * 0.16, cz = l.at[2] + (i % 2) * 0.12, h = 0.14 + i * 0.06; cyl(g, 0.04, 0.045, h, L(0xd8ccb0), cx, h / 2, cz, 5); box(g, 0.04, 0.07, 0.04, new THREE.MeshBasicMaterial({ color: 0xffd080 }), cx, h + 0.04, cz); }
-      this.small.push({ pl, base: l.power, ph: r() * 6 });
+      this.small.push({ pl, base: l.power * 1.4, ph: r() * 6 });
     }
     // the things you can use
     const stash = S.stash(g); stash.group.position.set(2.95, 0, -0.2); stash.group.rotation.y = -0.5; g.add(stash.group);
@@ -399,7 +402,8 @@ export class Hermitage {
     item.group.traverse((o) => { if (o.isMesh && !o.userData.outline && o.material !== OUTLINE && o.material !== FAINT && !o.material.transparent) meshes.push(o); }); // (not shadows or glows)
     for (const m of meshes) {
       const o = new THREE.Mesh(m.geometry, FAINT);
-      o.userData.outline = true; o.scale.setScalar(1.12); o.raycast = () => {};
+      o.userData.outline = true; o.scale.setScalar(1.1); o.raycast = () => {}; o.renderOrder = 1;
+      m.renderOrder = 2;
       m.add(o); item.outlines.push(o);
     }
   }
