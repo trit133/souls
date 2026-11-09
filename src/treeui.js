@@ -192,7 +192,8 @@ export class TreeUI {
     // the four sit on the corners of a square), level, under the nodes
     if (this.kind === 'knight') KNIGHT_REGIONS.forEach((name, g) => {
       const a = -Math.PI / 2 + g * Math.PI / 2 + Math.PI / 4, d = RING * 8;
-      s += `<text class="treg" x="${Math.cos(a) * d}" y="${Math.sin(a) * d}" text-anchor="middle" dominant-baseline="middle">${name.toUpperCase()}</text>`;
+      const y = Math.sin(a) * d + Math.sign(Math.sin(a)) * 7; // the top two nudged up, the bottom two down: clear of the nodes
+      s += `<text class="treg" x="${Math.cos(a) * d}" y="${y}" text-anchor="middle" dominant-baseline="middle">${name.toUpperCase()}</text>`;
     });
     // links: owned both ends = gold, reachable = theme, else dim
     for (const [a, b] of T.edges) {
