@@ -746,8 +746,8 @@ button.pxbtn { justify-content: center; }
 #hm-label.hidden { display: none; }
 #hm-label b { display: block; font: bold 15px Georgia, serif; letter-spacing: 1px; color: #ffd36a; }
 #hm-label span { display: block; font: 11px monospace; color: #d8c8a8; margin-top: 2px; }
-#hm-stash { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
-#hm-stash.hidden { display: none; }
+#hm-stash, #hm-juke { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
+#hm-stash.hidden, #hm-juke.hidden { display: none; }
 @keyframes hmslide { from { transform: translateX(40px); opacity: 0; } }
 .hm-sh { display: flex; justify-content: space-between; align-items: center; color: #ffd36a; font: bold 18px Georgia, serif; letter-spacing: 2px; }
 .hm-note { margin: 6px 0 8px; font: 11px monospace; color: #b8a888; }
@@ -820,3 +820,14 @@ button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the 
   #cz-drag { display: none; }
   #skin-tabs, #skins-back { zoom: .8; }
 }
+
+/* the jukebox's records */
+#hm-recs { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.hm-rec { display: flex; align-items: center; gap: 12px; padding: 8px; background: #1e120a; border: 2px solid #3a2414; color: #f0e2c8; cursor: pointer; text-align: left; }
+.hm-rec:hover { border-color: #8a4a22; background: #2a180c; }
+.hm-rec.on { border-color: #ffb050; background: #3a1a0a; }
+.hm-rec span { display: flex; flex-direction: column; gap: 2px; }
+.hm-rec b { font: bold 15px Georgia, serif; } .hm-rec em { font: italic 11px Georgia, serif; color: #b8a080; } .hm-rec small { font: bold 11px monospace; color: #ffc23d; }
+.hm-vinyl { flex: none; width: 56px; height: 56px; border-radius: 50%; background: radial-gradient(circle, #111 0 9%, var(--rl) 10% 28%, var(--rc) 29% 31%, #161616 32% 38%, var(--rc) 39% 41%, #161616 42% 52%, var(--rc) 53% 55%, #161616 56% 68%, var(--rc) 69% 100%); box-shadow: 0 0 0 2px #000, 0 3px 8px rgba(0,0,0,.6); }
+.hm-rec.on .hm-vinyl { animation: hmspin 2.4s linear infinite; }
+@keyframes hmspin { to { transform: rotate(360deg); } }

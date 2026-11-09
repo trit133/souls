@@ -123,10 +123,11 @@ export class Audio {
   stopMusic(fade = 1.2) {
     this.band?.stop(fade);
   }
-  // the menus' theme: fades in fresh rather than waiting for the bar line
-  titleMusic() {
-    if (!this.ctx || this.band.playing === 'title') return;
+  // the menus' theme (or whichever record is in the Hermitage's jukebox): fades in fresh rather than waiting
+  // for the bar line
+  titleMusic(song = 'title') {
+    if (!this.ctx || this.band.playing === song) return;
     this.band.stop(1.5);
-    this.band.play('title', 3);
+    this.band.play(song, 3);
   }
 }

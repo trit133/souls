@@ -34,6 +34,7 @@ import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
+import { currentRecord } from './records.js';
 import { pixelMenus, syncRanges } from './pixelmenus.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
@@ -265,6 +266,9 @@ class Game {
     this.minimap.setup(this.world);
   }
 
+  // the menus' music: the record in the jukebox (records.js)
+  titleSong() { return currentRecord(this.accounts.user ? this.accounts.data : null).song; }
+
   // the share of a dungeon's enemies killed (not counting ones called in by seals)
   clearPct() { return this.clearTotal ? Math.min(100, Math.floor(this.clearKilled / this.clearTotal * 100)) : 0; }
   get areaName() { return this.world.dungeon ? this.world.dungeon.def.name : this.world.mods[0]?.name || ''; }
@@ -430,7 +434,7 @@ class Game {
     const firstGesture = () => {
       this.audio.unlock();
       if (!this.audio.ctx) return;
-      if (this.mode === 'title' || this.mode === 'lobby') this.audio.titleMusic();
+      if (this.mode === 'title' || this.mode === 'lobby') this.audio.titleMusic(this.titleSong());
       for (const ev of ['click', 'touchend', 'keydown']) removeEventListener(ev, firstGesture, true);
     };
     for (const ev of ['click', 'touchend', 'keydown']) addEventListener(ev, firstGesture, true);
@@ -495,7 +499,7 @@ class Game {
     this.mode = 'title';
     $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
     if (this.mp.active || this.mp.code) this.mp.leave();
-    this.audio.titleMusic();
+    this.audio.titleMusic(this.titleSong());
     this.ui.show('pause', false); this.ui.show('victory', false); this.ui.show('death', false);
     this.ui.show('gameover', false); this.ui.show('reward', false);
     this.ui.show('hud', false); this.ui.show('touch', false); this.ui.show('menu');
@@ -917,7 +921,7 @@ class Game {
   }
 
   afterRunLobby() {
-    this.audio.titleMusic();
+    this.audio.titleMusic(this.titleSong());
     if (!this.mp.active) { this.treeUI.open(this.kind); return; }
     this.mode = 'lobby';
     for (const s of ['gameover', 'victory', 'death', 'reward', 'hud', 'touch']) this.ui.show(s, false);

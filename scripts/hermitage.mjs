@@ -31,6 +31,16 @@ let s = await where('stash'); await page.mouse.click(s.x, s.y); await page.waitF
 out.stash = await page.evaluate(() => ({ open: game.hermitage.stashOpen, panel: !document.getElementById('hm-stash').classList.contains('hidden'), slots: document.querySelectorAll('.hm-slot').length, lid: +game.hermitage.stashLid.rotation.x.toFixed(2) }));
 await page.screenshot({ path: '/tmp/herm-stash.png' });
 await page.click('#hm-stash-close');
+// the jukebox: its records, one drops in and spins, the menus play its song, kept on the account
+s = await where('jukebox'); await page.mouse.click(s.x, s.y); await page.waitForTimeout(400);
+out.jukebox = await page.evaluate(() => ({ open: game.hermitage.jukeOpen, records: [...document.querySelectorAll('.hm-rec')].map((b) => b.textContent.trim()) }));
+await page.click('.hm-rec[data-record="hearth"]'); await page.waitForTimeout(250);
+out.record = await page.evaluate(() => ({ saved: game.accounts.data.record, song: game.titleSong(), dropping: game.hermitage.dropT < 1, color: game.hermitage.juke.vinyl.material.color.getHexString() }));
+await page.waitForTimeout(900);
+await page.screenshot({ path: '/tmp/herm-jukebox.png' });
+await page.click('.hm-rec[data-record="lament"]'); await page.waitForTimeout(1200);
+out.lamentAgain = await page.evaluate(() => ({ saved: game.accounts.data.record, playing: game.audio.band?.playing ?? null, spin: +game.hermitage.juke.disc.rotation.z.toFixed(1) }));
+await page.click('#hm-juke-close');
 // the wardrobe opens the customizer for this character; the character opens the skill tree
 s = await where('wardrobe'); await page.mouse.click(s.x, s.y); await page.waitForTimeout(400);
 out.wardrobe = await page.evaluate(() => ({ skins: !document.getElementById('skins').classList.contains('hidden'), kind: game.skinMenu.kind }));

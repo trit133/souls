@@ -6,6 +6,8 @@
 //   the character  -> their skill tree
 //   the wardrobe   -> their skin customizer (left)
 //   the stash      -> the lid opens and the stash panel slides in (right); shared by every character
+//   the jukebox    -> the records you have (records.js); pick one and it drops into the jukebox's window and spins,
+//                     and the menus play its song (kept on the account)
 // At the top: back to the title, the character selector (the Spellsword shows locked until bought, with a yes/no to
 // unlock it), gold. At the bottom: Solo Raid, Party Raid and the Night Raid toggle once unlocked.
 // Kept sparse on purpose: the hideouts will be customizable later.
@@ -18,6 +20,8 @@ import { tickOutfitColors, forgetRig } from './outfits.js';
 import { pxButton, pxText } from './pixelmenus.js';
 import { pixelIcon } from './pixelui.js';
 import { MAGE_UNLOCK } from './treeui.js';
+import { ownedRecords, currentRecord, recordById } from './records.js';
+import { SONG_NAMES } from './music.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
@@ -76,6 +80,27 @@ function fire(g, x, y, z, scale, colors) {
     },
   };
 }
+
+// a jukebox: a wooden cabinet with an arched top, glowing side strips and a window where the record spins
+function jukebox(wood) {
+  const g = new THREE.Group(), M = { wood: L(wood), dark: L(0x1a120c), trim: L(0x8a6a2a), glass: new THREE.MeshBasicMaterial({ color: 0x0a0806 }), glow: new THREE.MeshBasicMaterial({ color: 0xffb060 }) };
+  box(g, 1.0, 1.25, 0.55, M.wood, 0, 0.62, 0);
+  const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.55, 14, 1, false, -Math.PI / 2, Math.PI), M.wood);
+  arch.rotation.x = Math.PI / 2; arch.rotation.y = Math.PI / 2; arch.position.set(0, 1.25, 0); g.add(arch);
+  box(g, 1.04, 0.08, 0.58, M.trim, 0, 1.25, 0); box(g, 1.04, 0.1, 0.6, M.dark, 0, 0.05, 0);
+  box(g, 0.72, 0.5, 0.03, M.glass, 0, 0.95, 0.28); // the window
+  const plat = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 16), M.dark); plat.rotation.x = Math.PI / 2; plat.position.set(0, 0.95, 0.29); g.add(plat);
+  const strips = [];
+  for (const s of [-1, 1]) strips.push(box(g, 0.06, 1.0, 0.04, M.glow, s * 0.44, 0.75, 0.28));
+  for (let i = 0; i < 3; i++) strips.push(box(g, 0.6, 0.035, 0.04, M.glow, 0, 0.32 + i * 0.1, 0.28));
+  // the record: a disc with a label, facing out of the window
+  const disc = new THREE.Group(); disc.position.set(0, 0.95, 0.31); g.add(disc);
+  const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.012, 20), new THREE.MeshLambertMaterial({ color: 0x222222 })); vinyl.rotation.x = Math.PI / 2; disc.add(vinyl);
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.016, 12), new THREE.MeshBasicMaterial({ color: 0xffffff })); label.rotation.x = Math.PI / 2; disc.add(label);
+  const groove = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.15, 0.014), new THREE.MeshBasicMaterial({ color: 0x000000 })); groove.position.y = 0.09; disc.add(groove); // so you can see it turn
+  return { group: g, disc, vinyl, label, glowMat: M.glow, strips };
+}
+const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x4a3020 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x3a2a1c }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a1e2a } };
 
 // the three hideouts
 const SCENES = {
@@ -221,6 +246,8 @@ export class Hermitage {
       <div id="hm-label" class="hidden"></div>
       <div id="hm-stash" class="hidden"><div class="hm-sh"><span>Stash</span><button class="mini-btn" id="hm-stash-close">Close</button></div>
         <div class="hm-note">Shared by all your characters. Items you find will be kept here.</div><div id="hm-slots"></div></div>
+      <div id="hm-juke" class="hidden"><div class="hm-sh"><span>Jukebox</span><button class="mini-btn" id="hm-juke-close">Close</button></div>
+        <div class="hm-note">Pick a record for the menus. More are out there to be found.</div><div id="hm-recs"></div></div>
       <div class="hm-bottom">
         <div class="hm-solo-wrap"><button class="menu-btn primary" id="hm-solo">Solo Raid</button>
           <div id="hm-go" class="hidden"><button class="mini-btn" id="hm-night">Night Raid: Off</button><button class="mini-btn" id="hm-begin">Begin</button></div></div>
@@ -232,13 +259,14 @@ export class Hermitage {
     $('hm-slots').innerHTML = Array.from({ length: STASH_SLOTS }, () => '<div class="hm-slot"></div>').join('');
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
     $('hm-back').addEventListener('click', () => this.close());
     $('hm-chars').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
+    $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
     // Solo Raid starts at once; once Night Raid is unlocked it first asks (Night Raid on/off, Begin)
     $('hm-solo').addEventListener('click', (e) => {
       e.stopPropagation(); this.game.audio.unlock();
@@ -311,10 +339,11 @@ export class Hermitage {
     this.el.classList.remove('hidden');
     this.setKind(kind, true);
     g.refreshNight();
+    g.audio.titleMusic(g.titleSong()); // the record in the jukebox
   }
 
   close(toMenu = true) {
-    this.active = false; this.setStash(false); this.setHover(null);
+    this.active = false; this.setStash(false); this.setJuke(false); this.setHover(null);
     this.el.classList.add('hidden');
     if (toMenu) this.game.ui.show('menu');
   }
@@ -369,10 +398,14 @@ export class Hermitage {
     const stash = S.stash(g); stash.group.position.set(2.95, 0, -0.2); stash.group.rotation.y = -0.5; g.add(stash.group);
     const wardrobe = S.wardrobe(g); wardrobe.position.set(-2.95, 0, -0.7); wardrobe.rotation.y = 0.5; g.add(wardrobe);
     this.stashLid = stash.lid; this.lidAngle = 0;
+    const J = JUKEBOX[kind], juke = jukebox(J.wood); juke.group.position.set(J.at[0], 0, J.at[1]); juke.group.rotation.y = J.ry; g.add(juke.group);
+    this.juke = juke; this.jukeLight = new THREE.PointLight(0xffb060, 1.6, 3, 1.5); this.jukeLight.position.set(J.at[0], 1.0, J.at[1] + 0.7); scene.add(this.jukeLight);
     this.items = [
       { id: 'stash', group: stash.group, label: 'Stash', sub: 'Shared by all your characters' },
       { id: 'wardrobe', group: wardrobe, label: 'Wardrobe', sub: 'Change your look' },
+      { id: 'jukebox', group: juke.group, label: 'Jukebox', sub: 'Choose the music' },
     ];
+    this.showRecord(false);
     this.scene = scene;
     this.seatYaw = S.seatYaw;
     this.placeCharacter();
@@ -440,10 +473,56 @@ export class Hermitage {
     if (it.id === 'char') g.treeUI.open(this.kind);
     else if (it.id === 'wardrobe') g.skinMenu.open(this.kind);
     else if (it.id === 'stash') this.setStash(!this.stashOpen);
+    else if (it.id === 'jukebox') this.setJuke(!this.jukeOpen);
+  }
+
+  // ---------- the jukebox ----------
+  setJuke(v) {
+    this.jukeOpen = v;
+    if (v) { this.setStash(false); this.renderRecords(); this.game.audio.play('uiTick', 1); }
+    $('hm-juke')?.classList.toggle('hidden', !v);
+  }
+
+  renderRecords() {
+    const d = this.game.accounts.data, cur = currentRecord(d);
+    const hex = (c) => '#' + c.toString(16).padStart(6, '0');
+    $('hm-recs').replaceChildren(...ownedRecords(d).map((r) => {
+      const b = document.createElement('button');
+      b.className = 'hm-rec' + (r.id === cur.id ? ' on' : '');
+      b.dataset.record = r.id;
+      const ready = SONG_NAMES.includes(r.song);
+      b.innerHTML = `<i class="hm-vinyl" style="--rc:${hex(r.color)};--rl:${hex(r.label)}"></i><span><b></b><em></em><small>${r.id === cur.id ? 'Playing' : ready ? '' : 'No music on it yet'}</small></span>`;
+      b.querySelector('b').textContent = r.name; b.querySelector('em').textContent = r.desc;
+      b.addEventListener('click', () => this.playRecord(r.id));
+      return b;
+    }));
+  }
+
+  // put a record on: it drops into the jukebox's window and spins, and the menus play its song
+  playRecord(id) {
+    const A = this.game.accounts, d = A.data, r = recordById(id);
+    if (!d) return;
+    if (d.record !== id) { d.record = id; A.save(); }
+    this.showRecord(true);
+    this.game.audio.unlock();
+    this.game.audio.play('clang', 0.25);
+    this.game.audio.titleMusic(r.song);
+    this.renderRecords();
+  }
+
+  // the record in the window: its colours, and (animate) dropping in from above
+  showRecord(animate) {
+    const r = currentRecord(this.game.accounts.data), J = this.juke;
+    if (!J) return;
+    J.vinyl.material.color.setHex(r.color); J.label.material.color.setHex(r.label);
+    J.glowMat.color.setHex(r.color).lerp(new THREE.Color(0xffd090), 0.45);
+    this.jukeLight.color.copy(J.glowMat.color);
+    this.dropT = animate ? 0 : 1;
   }
 
   setStash(v) {
     this.stashOpen = v;
+    if (v) this.setJuke(false); // one panel at a time
     $('hm-stash')?.classList.toggle('hidden', !v);
     if (v) this.game.audio.play('uiTick', 1);
   }
@@ -459,6 +538,16 @@ export class Hermitage {
     // the lid swings open while the stash is
     this.lidAngle += ((this.stashOpen ? -1.15 : 0) - this.lidAngle) * Math.min(1, dt * 8);
     this.stashLid.rotation.x = this.lidAngle;
+    // the record drops into the window, then spins; the strips pulse while music plays
+    if (this.juke) {
+      this.dropT = Math.min(1, (this.dropT ?? 1) + dt * 1.6);
+      const k = 1 - (1 - this.dropT) ** 3;
+      this.juke.disc.position.set(0, 0.95 + (1 - k) * 0.9, 0.31 + (1 - k) * 0.25);
+      this.juke.disc.rotation.x = (1 - k) * -1.2;
+      if (this.dropT >= 1) this.juke.disc.rotation.z -= dt * 3.5;
+      const playing = !!this.game.audio.band?.playing;
+      this.jukeLight.intensity = playing ? 1.6 + Math.sin(t * 6) * 0.5 : 0.6;
+    }
     if (this.rig) {
       const breathe = Math.sin(t * 1.6) * 0.03;
       this.rig.apply({ ...P.rest, torso: [0.35 + breathe, 0, 0], head: [0.4 + Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.3) * 0.15, 0] }, dt, 6);
