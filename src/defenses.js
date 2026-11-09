@@ -1,6 +1,6 @@
 // Enemy armour and resistances: the same rules as the player's (damage.js). Armour % cuts physical damage taken by
 // that much (capped at 50%); each 1% of an element's resistance cuts its damage by 1% and its status build-up by
-// 1% (capped at 75%). Every enemy rolls its own armour inside its type's range, and 1-4 resistances (bosses: their
+// 3% (at most 90%; capped at 75% resistance). Every enemy rolls its own armour inside its type's range, and 1-4 resistances (bosses: their
 // own pattern) inside its type's resistance range; the rolls come from the run's seed, so a party sees the same.
 // Ranges climb with the tier (each dungeon of a section, +2 armour / +3 resistance) and jump at each new section
 // (every 4 tiers: +6 / +9 more), so the first section stays far from the caps and later sections close in on them.
@@ -50,6 +50,8 @@ export const critRoll = (chance, bonus, r = Math.random()) => (chance > 0 && r <
 
 // what gets through an enemy's defences: damage parts after armour and resistances, and the status build-up each
 // element still adds (fraction of the unmitigated part)
+// how much status build-up gets through an enemy's resistance (0-1): each 1% cuts it by 3%, at most by 90%
+export const enemyBuildMul = (res) => 1 - Math.min(0.9, 3 * res);
 export function enemyMitigate(parts, def) {
   if (!def) return { parts, build: parts };
   const out = {}, build = {};
@@ -57,7 +59,7 @@ export function enemyMitigate(parts, def) {
     if (k === 'phys') { out.phys = v * (1 - Math.min(ARMOR_MAX, def.armor || 0) / 100); continue; }
     const res = Math.min(RES_MAX, def.res?.[k] || 0) / 100;
     out[k] = v * (1 - res);
-    build[k] = v * (1 - res);
+    build[k] = v * enemyBuildMul(res);
   }
   return { parts: out, build };
 }

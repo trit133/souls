@@ -11,8 +11,8 @@ export const TYPE_NAME = { phys: 'Physical', fire: 'Fire', bleed: 'Bleed', poiso
 export const TYPE_COLOR = { phys: '#ffffff', fire: '#ff8a2a', bleed: '#e8343c', poison: '#8ad848', frost: '#9ad8ff' };
 
 // (per point of damage: damage is NUM times bigger, the meters are not)
-export const BUILD_PER_DMG = 3.5 / NUM; // a player's melee: status build-up per point of elemental damage
-export const SPELL_BUILD = 1.5 / NUM; // spells are all one element, so they build less per point
+export const BUILD_PER_DMG = 1.75 / NUM; // a player's melee: status build-up per point of elemental damage (on enemies)
+export const SPELL_BUILD = 0.75 / NUM; // spells are all one element, so they build less per point
 export const ENEMY_BUILD = 4 / NUM; // enemies' hits on players
 export const RES_CAP = 75, ARMOR_CAP = 50; // (the same caps as enemies: defenses.js)
 

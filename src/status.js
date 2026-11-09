@@ -10,6 +10,7 @@ export const STATUS = {
   fire: { name: 'Fire', color: '#ff7a1a', rgb: [1, 0.45, 0.08], desc: 'Fire damage builds it up. When full: they burn — fast damage over 3.5 seconds.' },
 };
 export const STATUS_KEYS = Object.keys(STATUS);
+export const HIT_MAX = 0.15; // the most of an enemy's meter one hit can fill (so even huge elemental damage takes 7+ hits)
 
 // fraction of max HP (normal enemies / bosses) + flat
 const FX = {
@@ -52,6 +53,7 @@ export class StatusState {
     if (!this.a.alive) return;
     if (this.a.puppet) { game.mp.send({ t: 'status', id: this.a.netId, kind, amount }); return; }
     this.idle = 0;
+    if (!this.a.isPlayer) amount = Math.min(amount, this.base * HIT_MAX); // one hit fills at most 15% of an enemy's first meter (so the doubled one takes twice the hits)
     this.meter[kind] += amount;
     if (amount > 0) this.hitAt[kind] = performance.now(); // (the HUD icon flashes)
     if (this.meter[kind] >= this.resist[kind]) {

@@ -34,7 +34,7 @@ import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
-import { rollDefenses, enemyMitigate, critRoll, RES_ELEMS } from './defenses.js';
+import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
 import { pixelMenus, syncRanges } from './pixelmenus.js';
@@ -1528,7 +1528,7 @@ class Game {
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
     this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', d: { [el]: Math.round(dealt) } });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
-    if (e.alive) this.applyStatus(e, { [el]: raw * (1 - res) }, SPELL_BUILD);
+    if (e.alive) this.applyStatus(e, { [el]: raw * enemyBuildMul(res) }, SPELL_BUILD);
   }
 
   // Blue bolts and fireballs fly straight; a fireball bursts on contact or at range.
