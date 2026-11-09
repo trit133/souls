@@ -509,17 +509,6 @@ function regionTree(kind, nodes, edges) {
     }
     [...new Set(pick)].forEach((n, i) => { const [name, give] = P.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
   }
-  // the evolutions still to come, one in each other region: at least 6 links from the start and from every other
-  // evolution, on a branch end (one link) so nothing is cut off behind it, as near the start as that allows
-  const adj = new Map(); for (const [a, c] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(c); (adj.get(c) || adj.set(c, []).get(c)).push(a); }
-  const hops = (from) => { const d = new Map([[from, 0]]), q = [from]; while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } } return d; };
-  const fromStart = hops('start'), evoHops = all.filter((n) => n.role === 'evo').map((n) => hops(n.id));
-  for (let g = 1; g < 4; g++) {
-    const ok = (n) => plain(n) && !n.notable && !n.keystone && region(n) === g && (adj.get(n.id) || []).length === 1
-      && fromStart.get(n.id) >= 6 && evoHops.every((h) => h.get(n.id) >= 6);
-    const leaf = all.filter(ok).sort((a, b) => fromStart.get(a.id) - fromStart.get(b.id) || a.ring - b.ring || a.id.localeCompare(b.id))[0];
-    if (leaf) { Object.assign(leaf, { soon: P.soon[g], give: {}, big: true }); evoHops.push(hops(leaf.id)); }
-  }
   // a tree's one-off small nodes (the Rogue's two parry window nodes), on its first region's arm
   for (const extra of P.extra || []) {
     const n = all.find((x) => plain(x) && !x.notable && !x.keystone && !x.soon && !Object.keys(x.give).length && region(x) === 0 && x.ring >= 5 && !x.extra);
@@ -533,6 +522,30 @@ function regionTree(kind, nodes, edges) {
     else { const g = region(n), pool = P.small[g]; n.give = { ...pool[si[g]++ % pool.length] }; if (n.ring >= 14) for (const k of Object.keys(n.give)) n.give[k] *= 1.5; }
     n.typed = Object.keys(n.give).some((k) => /Dmg$|Pct$|Res$|armor/.test(k) && k !== 'hpPct' && k !== 'stPct');
   }
+  // the evolutions still to come, one in each other region, placed last (so moving one never changes another node):
+  // exactly 6 links out from the start like the first evolution, at least 6 links from every other evolution, on a
+  // node whose loss cuts nothing off (they can't be taken yet). The region's main arm first, then anything else.
+  const adj = new Map(); for (const [a, c] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(c); (adj.get(c) || adj.set(c, []).get(c)).push(a); }
+  const hops = (from, skip = new Set()) => { const d = new Map([[from, 0]]), q = [from]; while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x) && !skip.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } } return d; };
+  const fromStart = hops('start');
+  const ang = (n) => Math.atan2(n.y, n.x), aim = (g) => -Math.PI / 2 + g * Math.PI / 2;
+  const off = (n, g) => Math.abs(Math.atan2(Math.sin(ang(n) - aim(g)), Math.cos(ang(n) - aim(g))));
+  // the regions in each order until all three land exactly 6 out (otherwise the order that gets nearest)
+  let best = null;
+  for (const order of [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]) {
+    const evoHops = all.filter((n) => n.role === 'evo').map((n) => hops(n.id)), blocked = new Set(), picks = [];
+    for (const g of order) {
+      const cutsOff = (n) => { const skip = new Set([...blocked, n.id]); return hops('start', skip).size < nodes.size - skip.size; };
+      const fits = (n, want) => plain(n) && !n.notable && !n.keystone && !n.extra && region(n) === g && fromStart.get(n.id) === want && evoHops.every((h) => h.get(n.id) >= 6) && !cutsOff(n);
+      let pick = null;
+      for (let want = 6; want <= 9 && !pick; want++) pick = all.filter((n) => fits(n, want)).sort((a, c) => (a.role === 'main' ? 0 : 1) - (c.role === 'main' ? 0 : 1) || off(a, g) - off(c, g))[0];
+      if (pick) { picks.push([g, pick]); evoHops.push(hops(pick.id)); blocked.add(pick.id); }
+    }
+    const score = picks.reduce((a, [, n]) => a + fromStart.get(n.id) - 6, 0) + (3 - picks.length) * 100;
+    if (!best || score < best.score) best = { score, picks };
+    if (score === 0) break;
+  }
+  for (const [g, pick] of best.picks) Object.assign(pick, { soon: P.soon[g], give: {}, big: true, typed: false });
 }
 
 // Damage, resistance and armour nodes take over regular stat nodes, spread round the web. Each sits in a ring
@@ -662,14 +675,14 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 11;
+export const TREE_VERSION = 12;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
-  // 10 -> 11: the evolutions moved (6 links from the start and from each other), so every tree's nodes come back
-  if (data.treeV === 10) {
+  // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
+  if (data.treeV === 10 || data.treeV === 11) {
     let refund = 0;
     for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;
