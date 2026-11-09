@@ -323,7 +323,8 @@ export class Player extends Actor {
     // status effects build on players too (meters over the health bar)
     this.isPlayer = true;
     this.status = new StatusState(this, 100);
-    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')));
+    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1)); // Stalwart Vow: +30% health
+    if (T.stalwart) this.dmgMul *= 0.85; // ... and 15% less damage
     this.maxSt = this.st = Math.round((c.st + (T.st || 0)) * (1 + pct('stPct')));
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0);
     this.potionMul = 1 + pct('potion');
@@ -931,7 +932,7 @@ export class Player extends Actor {
   }
 
   startRoll(dir) {
-    this.spend(this.c.roll.cost * (1 - (this.tree.rollCost || 0) / 100));
+    this.spend(this.c.roll.cost * (1 - (this.tree.rollCost || 0) / 100) * (this.tree.immovable ? 1.5 : 1));
     this.setDodgeRate();
     this.rollDir.copy(dir).setY(0).normalize();
     this.yaw = Math.atan2(this.rollDir.x, this.rollDir.z);
@@ -943,7 +944,7 @@ export class Player extends Actor {
   }
 
   startBackstep() {
-    this.spend(this.c.roll.cost * 0.6 * (1 - (this.tree.rollCost || 0) / 100));
+    this.spend(this.c.roll.cost * 0.6 * (1 - (this.tree.rollCost || 0) / 100) * (this.tree.immovable ? 1.5 : 1));
     this.setDodgeRate();
     this.fwd(this.rollDir).multiplyScalar(-1);
     this.setState('backstep');
@@ -957,7 +958,7 @@ export class Player extends Actor {
     if (this.iframe()) return 'dodge';
     // armour and resistances: what gets through, and the status build-up the elements add
     const mit = mitigate(info.parts || enemyParts(info.dmg, info.elems), this.tree, info.buildMul ?? 1);
-    info = { ...info, dmg: mit.total };
+    info = { ...info, dmg: mit.total * (this.tree.emberOath ? 1.15 : 1) }; // (Ember Oath: 15% more taken)
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;
@@ -986,7 +987,9 @@ export class Player extends Actor {
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
-    if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30 * NUM)) {
+    if (this.tree.immovable) {
+      // Immovable (Knight keystone): hits hurt but never stagger or knock you down
+    } else if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30 * NUM)) {
       this.kb.copy(away).multiplyScalar(11);
       this.yaw = toSrc;
       this.setState('knockdown');

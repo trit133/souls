@@ -1,7 +1,7 @@
 // Skill tree screen: the selected character's web drawn in SVG. Hover (or tap) a node to see what it
 // gives; buy it from the tooltip. Drag to pan, wheel / pinch / buttons to zoom.
 import { NUM } from './scale.js';
-import { TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
+import { KNIGHT_REGIONS, TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
 import { CHARS } from './player.js';
 import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
 import { iconPath } from './icons.js';
@@ -196,8 +196,8 @@ export class TreeUI {
     }
     for (const n of T.nodes.values()) {
       const got = have.has(n.id), can = !got && canTake(T, have, n.id) && !this.locked;
-      const r = n.role === 'start' ? 4.6 : n.role === 'socket' || n.evo ? 5 : n.big ? 3.8 : /^(hp|st|dmg)$/.test(Object.keys(n.give)[0] || '') ? 2.6 : 3.1;
-      const cls = `tn ${got ? 'own' : can ? 'can' : ''} ${gone.has(n.id) ? (this.marked.has(n.id) ? 'mark' : 'orphan') : ''} ${n.role} ${n.big ? 'big' : ''} ${this.sel === n.id ? 'sel' : ''}`;
+      const r = n.role === 'start' ? 4.6 : n.keystone ? 6 : n.role === 'socket' || n.evo ? 5 : n.notable ? 4.4 : n.big ? 3.8 : /^(hp|st|dmg)$/.test(Object.keys(n.give)[0] || '') ? 2.6 : 3.1;
+      const cls = `tn ${got ? 'own' : can ? 'can' : ''} ${gone.has(n.id) ? (this.marked.has(n.id) ? 'mark' : 'orphan') : ''} ${n.role} ${n.big ? 'big' : ''} ${n.keystone ? 'keystone' : n.notable ? 'notable' : ''} ${this.sel === n.id ? 'sel' : ''}`;
       const shape = n.role === 'socket'
         ? `<polygon points="${[0, 1, 2, 3, 4, 5].map((i) => `${Math.cos(Math.PI / 6 + (i * Math.PI) / 3) * r},${Math.sin(Math.PI / 6 + (i * Math.PI) / 3) * r}`).join(' ')}"/>`
         : `<circle r="${r}"/>`;
@@ -205,6 +205,11 @@ export class TreeUI {
       s += `<g class="${cls}" data-node="${n.id}" transform="translate(${n.x} ${n.y})" style="--c:${col}">${shape}`
         + `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(iconKey(n))}</svg></g>`;
     }
+    // regions (the Knight's tree): a name out along each arm
+    if (this.kind === 'knight') KNIGHT_REGIONS.forEach((name, g) => {
+      const a = -Math.PI / 2 + g * Math.PI / 2 + 0.3, d = RING * 4.2;
+      s += `<text class="treg" x="${Math.cos(a) * d}" y="${Math.sin(a) * d}" text-anchor="middle">${name.toUpperCase()}</text>`;
+    });
     $('tree-svg').innerHTML = s;
     this.applyView();
     this.renderStats();

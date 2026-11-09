@@ -62,6 +62,17 @@ export const STATS = {
   bleedRes: { name: 'Clotting', fmt: (v) => `+${v}% bleed resistance`, icon: 'resBleed', res: true },
   poisonRes: { name: 'Antidote', fmt: (v) => `+${v}% poison resistance`, icon: 'resPoison', res: true },
   frostRes: { name: 'Warmth', fmt: (v) => `+${v}% frost resistance`, icon: 'resFrost', res: true },
+  // the Knight's notables (mechanics) and keystones
+  counterSt: { name: 'Riposte Master', fmt: (v) => `Guard counters give back ${v} stamina`, icon: 'counter' },
+  execute: { name: "Executioner's Mark", fmt: (v) => `+${v}% damage to enemies under 30% health`, icon: 'dmg' },
+  lowHpDmg: { name: 'Last Stand', fmt: (v) => `+${v}% damage while you're under half health`, icon: 'dmg' },
+  finisherPct: { name: 'Crowning Blow', fmt: (v) => `+${v}% damage with combo finishers`, icon: 'dmg' },
+  burnDmg: { name: 'Pyre', fmt: (v) => `+${v}% damage to burning enemies`, icon: 'fire' },
+  killHeal: { name: 'Second Wind', fmt: (v) => `Heal ${v}% of your health on each kill`, icon: 'hp' },
+  immovable: { name: 'Immovable', fmt: () => 'You can\'t be staggered or knocked down; rolls cost 50% more stamina', icon: 'dr' },
+  headsman: { name: 'Headsman', fmt: () => 'Heavy attacks and finishers +40% damage; light attacks −20%', icon: 'dmg' },
+  emberOath: { name: 'Ember Oath', fmt: () => 'Half your physical damage becomes fire; you take 15% more damage', icon: 'fire' },
+  stalwart: { name: 'Stalwart Vow', fmt: () => '+30% max health; −15% damage dealt', icon: 'hp' },
 };
 
 // the character's own stats: [small, large] values
@@ -71,7 +82,7 @@ const SPECIAL = {
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
-export const CAPS = { armor: 20, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
+export const CAPS = { counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 20, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
   parryWin: 10, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
 
 const INNER = [{ hp: 3 }, { st: 2 }];
@@ -331,8 +342,8 @@ export function build(kind, opts = {}) {
     const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
-  assign(kind, nodes);
-  typedNodes(kind, nodes);
+  if (kind === 'knight') knightTree(nodes); // the Knight's tree is laid out in themed regions (below)
+  else { assign(kind, nodes); typedNodes(kind, nodes); }
   return { kind, nodes, edges };
 }
 
@@ -360,6 +371,67 @@ function assign(kind, nodes) {
       const r = oi++ % 4;
       n.give = r === 0 ? OUTER[(oi / 4 | 0) % OUTER.length] : r === 3 ? special(false) : PCT_OUTER[po++ % PCT_OUTER.length];
     }
+  }
+}
+
+// ---------- the Knight: four regions, one down each arm of the cross ----------
+// up: BULWARK (block, armour, guard counter, Shield Charge, where the evolution sits); right: EXECUTIONER (physical
+// damage, stun, heavy blows, combo finishers); down: CRUSADER (fire, charge, speed); left: WARDEN (health, stamina,
+// potions, resistances). The middle three rings are a hub of health, stamina and a little of every resistance.
+// Small nodes cycle through their region's stats; six notables per region (bundles and mechanics) sit at the ends of
+// branches; a keystone (a big trade-off) caps each arm. Values are at the designed size (scale.js scales flat ones).
+export const KNIGHT_REGIONS = ['Bulwark', 'Executioner', 'Crusader', 'Warden'];
+const KNIGHT = {
+  hub: [{ hp: 5 }, { st: 3 }],
+  hubRes: [{ fireRes: 4 }, { bleedRes: 4 }, { poisonRes: 4 }, { frostRes: 4 }, { fireRes: 4 }, { bleedRes: 4 }, { poisonRes: 4 }, { frostRes: 4 }],
+  small: [
+    [{ blockDrain: 5 }, { armor: 1 }, { chip: 1 }, { hp: 6 }, { counter: 5 }, { st: 3 }, { chargeCd: 0.5 }, { armor: 1 }],
+    [{ physDmg: 2 }, { physPct: 3 }, { stun: 3 }, { aspd: 2 }, { physDmg: 2 }, { critDmg: 4 }, { physPct: 3 }, { hp: 5 }],
+    [{ fireDmg: 2 }, { firePct: 8 }, { chargeKb: 10 }, { move: 2 }, { fireDmg: 2 }, { firePct: 8 }, { fireRes: 4 }, { hp: 5 }],
+    [{ hp: 8 }, { hpPct: 3 }, { st: 4 }, { stPct: 3 }, { potion: 4 }, { fireRes: 4 }, { bleedRes: 4 }, { frostRes: 4 }, { poisonRes: 4 }],
+  ],
+  notables: [
+    [['Iron Wall', { blockDrain: 15, chip: 3 }], ['Riposte Master', { counter: 15, counterSt: 15 }], ['Unbroken', { armor: 3, hp: 10 }],
+     ['Charging Bull', { chargeCd: 2, chargeKb: 25 }], ['Guarded Heart', { blockDrain: 10, hpPct: 5 }], ['Bastion', { armor: 3, chip: 2 }]],
+    [["Executioner's Mark", { execute: 25 }], ['Brutal Edge', { physDmg: 4, physPct: 8 }], ['Crushing Weight', { stun: 10, physPct: 5 }],
+     ['Crowning Blow', { finisherPct: 25 }], ['Relentless', { aspd: 6, physDmg: 2 }], ['Last Stand', { lowHpDmg: 25 }]],
+    [['Pyre', { burnDmg: 20 }], ['Kindled Steel', { fireDmg: 4, firePct: 25 }], ['Holy Charge', { chargeCd: 2, fireDmg: 2 }],
+     ['Flame Warden', { fireRes: 10, firePct: 15 }], ['Zeal', { move: 5, aspd: 4 }], ['Smoulder', { firePct: 30 }]],
+    [['Second Wind', { killHeal: 3 }], ['Thick Hide', { hp: 15, hpPct: 6 }], ['Endurance', { st: 8, stPct: 8 }],
+     ['Wardstone', { fireRes: 8, bleedRes: 8, poisonRes: 8, frostRes: 8 }], ['Field Medic', { potion: 15, hp: 6 }], ['Deep Breath', { stPct: 10, potion: 6 }]],
+  ],
+  keystones: [['Immovable', { immovable: 1 }], ['Headsman', { headsman: 1 }], ['Ember Oath', { emberOath: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
+};
+function knightTree(nodes) {
+  const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
+  const all = [...nodes.values()].sort((a, b) => a.ring - b.ring || a.id.localeCompare(b.id));
+  const plain = (n) => n.role !== 'start' && n.role !== 'evo' && n.role !== 'socket' && !n.flask && !n.socketRing;
+  for (const n of all) { n.big = false; n.give = {}; n.notable = null; n.keystone = false; n.region = n.role === 'start' ? null : KNIGHT_REGIONS[region(n)]; }
+  for (const n of all) {
+    if (n.role === 'evo') { n.evo = EVOS.knight; n.big = true; }
+    else if (n.role === 'socket') n.big = true;
+    else if (n.flask) n.give = { flask: 1 };
+  }
+  // keystones: the last node of each arm
+  for (let g = 0; g < 4; g++) {
+    const arm = all.filter((n) => plain(n) && region(n) === g).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0];
+    const [name, give] = KNIGHT.keystones[g];
+    Object.assign(arm, { give: { ...give }, notable: name, keystone: true, big: true });
+  }
+  // notables: branch ends spread along each arm (rings 4 and out)
+  for (let g = 0; g < 4; g++) {
+    const ends = all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && (n.role === 'tip' || n.role === 'branch'));
+    const pick = [], want = KNIGHT.notables[g].length;
+    for (let i = 0; i < want && ends.length; i++) pick.push(ends[Math.min(ends.length - 1, Math.round((i + 0.5) * ends.length / want))]);
+    [...new Set(pick)].forEach((n, i) => { const [name, give] = KNIGHT.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
+  }
+  // the hub, then each region's small nodes
+  let hi = 0, ri = 0; const si = [0, 0, 0, 0];
+  for (const n of all) {
+    if (!plain(n) || n.notable || Object.keys(n.give).length) continue;
+    if (n.ring <= 3) n.give = { ...((n.ring >= 2 && ri < KNIGHT.hubRes.length && hi % 2) ? KNIGHT.hubRes[ri++] : KNIGHT.hub[hi % 2]) }, hi++;
+    else { const g = region(n), pool = KNIGHT.small[g]; n.give = { ...pool[si[g]++ % pool.length] }; if (n.ring >= 14) for (const k of Object.keys(n.give)) n.give[k] *= 1.5; }
+    n.typed = Object.keys(n.give).some((k) => /Dmg$|Pct$|Res$|armor/.test(k) && k !== 'hpPct' && k !== 'stPct');
   }
 }
 
@@ -416,7 +488,8 @@ export function nodeCost(n) {
   if (n.role === 'start') return 0;
   if (n.role === 'evo') return 150 * NUM;
   const c = COST[Math.min(n.ring, COST.length - 1)];
-  return (n.role === 'socket' ? Math.round(c * 1.5) : c) * NUM;
+  // notables cost twice a small node of their ring, keystones three times
+  return Math.round((n.role === 'socket' ? c * 1.5 : n.keystone ? c * 3 : n.notable ? c * 2 : c)) * NUM;
 }
 
 export function neighbours(tree, id) {
@@ -451,9 +524,11 @@ export function describe(n) {
   if (n.role === 'start') return { name: 'Start', lines: ['Your path begins here.'] };
   if (n.evo) return { name: `Evolution · ${n.evo.name}`, lines: [n.evo.desc] };
   if (n.role === 'socket') return { name: 'Rune Socket', lines: ['An empty socket. Runes found later in the game will fit here.'] };
-  const lines = Object.entries(n.give).map(([k, v]) => STATS[k].fmt(v));
+  const lines = Object.entries(n.give).map(([k, v]) => STATS[k].fmt(+v.toFixed(2)));
   const k = Object.keys(n.give)[0];
-  return { name: STATS[k]?.name || 'Node', lines };
+  if (n.keystone) return { name: `Keystone · ${n.notable}`, lines };
+  if (n.notable) return { name: `${n.notable}`, lines: [...lines, n.region ? `${n.region} notable` : ''].filter(Boolean) };
+  return { name: STATS[k]?.name || 'Node', lines: n.region ? [...lines] : lines };
 }
 
 export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo ? 'evo' : n.role === 'socket' ? 'socket' : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
@@ -485,9 +560,19 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 7;
+export const TREE_VERSION = 8;
+// version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
+// ring price paid; the others' trees are untouched
+const COST_V7 = (id) => { const n = TREES.knight.nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
+  if (data.treeV === 7) {
+    const refund = (data.tree?.knight || []).reduce((a, id) => a + COST_V7(id), 0) * NUM;
+    if (data.tree) data.tree.knight = [];
+    data.gold = (data.gold || 0) + refund;
+    data.treeV = TREE_VERSION;
+    return refund;
+  }
   const v = data.treeV >= 2 && data.treeV <= 6 ? data.treeV : 1;
   let refund = 0;
   for (const [kind, ids] of Object.entries(data.tree || {})) for (const id of ids) refund += costOld(v, kind, id);

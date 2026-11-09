@@ -831,3 +831,10 @@ button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the 
 .hm-vinyl { flex: none; width: 56px; height: 56px; border-radius: 50%; background: radial-gradient(circle, #111 0 9%, var(--rl) 10% 28%, var(--rc) 29% 31%, #161616 32% 38%, var(--rc) 39% 41%, #161616 42% 52%, var(--rc) 53% 55%, #161616 56% 68%, var(--rc) 69% 100%); box-shadow: 0 0 0 2px #000, 0 3px 8px rgba(0,0,0,.6); }
 .hm-rec.on .hm-vinyl { animation: hmspin 2.4s linear infinite; }
 @keyframes hmspin { to { transform: rotate(360deg); } }
+
+/* the Knight's regions, notables and keystones on the tree */
+#tree-svg .treg { font: bold 5px Georgia, serif; letter-spacing: 1.2px; fill: #e8b060; fill-opacity: .55; pointer-events: none; }
+#tree-svg .tn.notable circle { stroke: #c89a4a; stroke-width: 1.1; }
+#tree-svg .tn.notable.can circle { stroke: #ffd36a; stroke-width: 1.3; }
+#tree-svg .tn.keystone circle { stroke: #ff7a2a; stroke-width: 1.6; stroke-dasharray: 2.4 1; }
+#tree-svg .tn.keystone.can circle, #tree-svg .tn.keystone.own circle { stroke: #ffb050; stroke-dasharray: none; stroke-width: 1.8; }

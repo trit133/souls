@@ -688,6 +688,9 @@ class Game {
 
   // kills fill the room's pot; it pays out when the room is cleared
   onEnemyKilled(e) {
+    // Second Wind (Knight notable): a kill heals the one who landed it
+    const p = this.player, kh = p?.tree?.killHeal;
+    if (kh && p.alive && e.lastHitBy === p) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * kh / 100);
     if (this.isGuest) return;
     // solo: your kill. A party shares each room's kills when it's cleared (see openRoom)
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
@@ -1158,10 +1161,19 @@ class Game {
       // skill tree: flat damage, knife and counter bonuses, stun buildup
       // the weapon is physical; the tree and Infusions add each damage type
       const T = att.tree || {};
-      const mul = att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1) * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
+      let mul = att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1) * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
+      // notables and keystones (skilltree.js)
+      const heavyMove = !!(def.finisher || def.heavyHit || def === att.c.attacks.heavy);
+      if (T.execute && tg.maxHp && tg.hp / tg.maxHp < 0.3) mul *= 1 + T.execute / 100;
+      if (T.lowHpDmg && att.hp / att.maxHp < 0.5) mul *= 1 + T.lowHpDmg / 100;
+      if (T.finisherPct && def.finisher) mul *= 1 + T.finisherPct / 100;
+      if (T.burnDmg && tg.status?.dots?.fire) mul *= 1 + T.burnDmg / 100;
+      if (T.headsman) mul *= heavyMove ? 1.4 : 0.8;
       info.parts = scaleParts(playerParts(T, att.statusLv, info.dmg), mul);
       // some combo moves turn part of the weapon's physical damage into an element (Rimeblade, Shatter: frost)
       if (def.convert) for (const [k, sh] of Object.entries(def.convert)) { info.parts[k] = (info.parts[k] || 0) + info.parts.phys * sh; info.parts.phys *= 1 - sh; }
+      if (T.emberOath) { info.parts.fire = (info.parts.fire || 0) + info.parts.phys * 0.5 * (1 + (T.firePct || 0) / 100); info.parts.phys *= 0.5; } // Ember Oath: half the steel burns
+      if (T.counterSt && def === att.c.attacks.guardCounter) att.st = Math.min(att.maxSt, att.st + T.counterSt);
       info.dmg = sumParts(info.parts);
       // a combo staggers each enemy at most once
       if ((def.comboMove || att.cmb) && att.cmbStag?.has(tg)) info.poise = 0;
