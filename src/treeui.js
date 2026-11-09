@@ -1,7 +1,7 @@
 // Skill tree screen: the selected character's web drawn in SVG. Hover (or tap) a node to see what it
 // gives; buy it from the tooltip. Drag to pan, wheel / pinch / buttons to zoom.
 import { NUM } from './scale.js';
-import { KNIGHT_REGIONS, TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
+import { REGIONS, TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
 import { CHARS } from './player.js';
 import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
 import { iconPath } from './icons.js';
@@ -190,9 +190,13 @@ export class TreeUI {
     for (let d = 1; d * RING < R; d++) s += `<circle cx="0" cy="0" r="${d * RING}" fill="none" stroke="#fff" stroke-opacity=".035" stroke-width=".3"/>`;
     // regions (the Knight's tree): each name the same distance out, turned 45° round the centre from its arm (so
     // the four sit on the corners of a square), level, under the nodes
-    if (this.kind === 'knight') KNIGHT_REGIONS.forEach((name, g) => {
+    (REGIONS[this.kind] || []).forEach((name, g) => {
       const a = -Math.PI / 2 + g * Math.PI / 2 + Math.PI / 4, d = RING * 8;
-      const y = Math.sin(a) * d + Math.sign(Math.sin(a)) * 7; // the top two nudged up, the bottom two down: clear of the nodes
+      // the top two nudged up, the bottom two down: as little as clears the nodes (7 on the Knight's tree)
+      const w = name.length * 8.2, x0 = Math.cos(a) * d, y0 = Math.sin(a) * d, dir = Math.sign(y0);
+      const under = (y) => [...T.nodes.values()].filter((p) => Math.abs(p.x - x0) < w / 2 + 4 && Math.abs(p.y - y) < 8).length;
+      let dy = 7; for (let k = 7, best = Infinity; k <= 20; k++) { const c = under(y0 + dir * k); if (c < best) { best = c; dy = k; } if (!c) break; }
+      const y = y0 + dir * dy;
       s += `<text class="treg" x="${Math.cos(a) * d}" y="${y}" text-anchor="middle" dominant-baseline="middle">${name.toUpperCase()}</text>`;
     });
     // links: owned both ends = gold, reachable = theme, else dim

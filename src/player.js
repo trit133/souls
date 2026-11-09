@@ -318,12 +318,13 @@ export class Player extends Actor {
     this.boonList = [];
     // `upgrades`: this character's summed skill-tree stats (skilltree.js treeStats)
     const T = (this.tree = upgrades || {}), pct = (k) => (T[k] || 0) / 100;
-    this.aspdMul += pct('aspd'); this.moveMul += pct('move');
+    this.aspdMul += pct('aspd') + (T.bladeDance ? 0.25 : 0); this.moveMul += pct('move'); // (Blade Dance: +25% attack speed)
+    if (T.bladeDance) this.dmgMul *= 0.8; // ... and 20% less a hit
     this.flatDmg = T.physDmg || 0;
     // status effects build on players too (meters over the health bar)
     this.isPlayer = true;
     this.status = new StatusState(this, 100);
-    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1)); // Stalwart Vow: +30% health
+    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1) * (T.glassFang ? 0.75 : 1)); // Stalwart Vow +30%, Glass Fang −25%
     if (T.stalwart) this.dmgMul *= 0.85; // ... and 15% less damage
     this.maxSt = this.st = Math.round((c.st + (T.st || 0)) * (1 + pct('stPct')));
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0);
@@ -932,7 +933,7 @@ export class Player extends Actor {
   }
 
   startRoll(dir) {
-    this.spend(this.c.roll.cost * (1 - (this.tree.rollCost || 0) / 100) * (this.tree.immovable ? 1.5 : 1));
+    this.spend(this.c.roll.cost * (1 - (this.tree.rollCost || 0) / 100) * (this.tree.immovable ? 1.5 : 1) * (this.tree.fleeting ? 0.5 : 1));
     this.setDodgeRate();
     this.rollDir.copy(dir).setY(0).normalize();
     this.yaw = Math.atan2(this.rollDir.x, this.rollDir.z);
@@ -944,7 +945,7 @@ export class Player extends Actor {
   }
 
   startBackstep() {
-    this.spend(this.c.roll.cost * 0.6 * (1 - (this.tree.rollCost || 0) / 100) * (this.tree.immovable ? 1.5 : 1));
+    this.spend(this.c.roll.cost * 0.6 * (1 - (this.tree.rollCost || 0) / 100) * (this.tree.immovable ? 1.5 : 1) * (this.tree.fleeting ? 0.5 : 1));
     this.setDodgeRate();
     this.fwd(this.rollDir).multiplyScalar(-1);
     this.setState('backstep');
@@ -958,7 +959,9 @@ export class Player extends Actor {
     if (this.iframe()) return 'dodge';
     // armour and resistances: what gets through, and the status build-up the elements add
     const mit = mitigate(info.parts || enemyParts(info.dmg, info.elems), this.tree, info.buildMul ?? 1);
-    info = { ...info, dmg: mit.total * (this.tree.emberOath ? 1.15 : 1) }; // (Ember Oath: 15% more taken)
+    // keystones that cost you: Ember Oath and Fleeting take 15% more, Pyromania 15% more from fire
+    const extra = (this.tree.emberOath ? 1.15 : 1) * (this.tree.fleeting ? 1.15 : 1);
+    info = { ...info, dmg: (mit.total + (this.tree.pyromania ? (mit.taken.fire || 0) * 0.15 : 0)) * extra };
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;

@@ -73,6 +73,17 @@ export const STATS = {
   headsman: { name: 'Headsman', fmt: () => 'Heavy attacks and finishers +40% damage; light attacks −20%', icon: 'dmg' },
   emberOath: { name: 'Ember Oath', fmt: () => 'Half your physical damage becomes fire; you take 15% more damage', icon: 'fire' },
   stalwart: { name: 'Stalwart Vow', fmt: () => '+30% max health; −15% damage dealt', icon: 'hp' },
+  // the Rogue's and Spellsword's
+  bleedTgt: { name: 'Exsanguinate', fmt: (v) => `+${v}% damage to enemies whose bleed is half built or more`, icon: 'bleed' },
+  poisonedDmg: { name: 'Wither', fmt: (v) => `+${v}% damage to poisoned enemies`, icon: 'poison' },
+  frozenDmg: { name: 'Shatterpoint', fmt: (v) => `+${v}% damage to enemies slowed by frost`, icon: 'frost' },
+  fleeting: { name: 'Fleeting', fmt: () => 'Rolls cost half the stamina; you take 15% more damage', icon: 'rollCost' },
+  glassFang: { name: 'Glass Fang', fmt: () => 'Critical hits and ripostes +40% damage; −25% max health', icon: 'critDmg' },
+  plague: { name: 'Plaguelord', fmt: () => 'Poison damage +50%; physical damage −20%', icon: 'poison' },
+  bladeDance: { name: 'Blade Dance', fmt: () => '+25% attack speed; −20% damage per hit', icon: 'aspd' },
+  pyromania: { name: 'Pyromania', fmt: () => 'Fire damage +40%; you take 15% more from fire', icon: 'fire' },
+  rimeHeart: { name: 'Rime Heart', fmt: () => 'Frost damage +40%; fire damage halved', icon: 'frost' },
+  spellblade: { name: 'Spellblade', fmt: () => 'Spell damage +30%; knife damage −20%', icon: 'spellDmg' },
 };
 
 // the character's own stats: [small, large] values
@@ -82,8 +93,8 @@ const SPECIAL = {
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
-export const CAPS = { counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 20, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
-  parryWin: 10, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
+export const CAPS = { bleedTgt: 60, poisonedDmg: 60, frozenDmg: 60, counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 20, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
+  parryWin: 4, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
 
 const INNER = [{ hp: 3 }, { st: 2 }];
 const MID = [{ hp: 4 }, { st: 2 }];
@@ -342,7 +353,7 @@ export function build(kind, opts = {}) {
     const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
-  if (kind === 'knight') knightTree(nodes, edges); // the Knight's tree is laid out in themed regions (below)
+  if (PLANS[kind]) regionTree(kind, nodes, edges); // laid out in themed regions (below)
   else { assign(kind, nodes); typedNodes(kind, nodes); }
   return { kind, nodes, edges };
 }
@@ -380,7 +391,8 @@ function assign(kind, nodes) {
 // potions, resistances). The middle three rings are a hub of health, stamina and a little of every resistance.
 // Small nodes cycle through their region's stats; six notables per region (bundles and mechanics) sit at the ends of
 // branches; a keystone (a big trade-off) caps each arm. Values are at the designed size (scale.js scales flat ones).
-export const KNIGHT_REGIONS = ['Bulwark', 'Executioner', 'Crusader', 'Warden'];
+export const REGIONS = { knight: ['Bulwark', 'Executioner', 'Crusader', 'Warden'], rogue: ['Shadow', 'Bloodletter', 'Venom', 'Duelist'], mage: ['Pyromancer', 'Frostblade', 'Arcanist', 'Spellward'] };
+export const KNIGHT_REGIONS = REGIONS.knight;
 const KNIGHT = {
   hub: [{ hp: 5 }, { st: 3 }],
   hubRes: [{ fireRes: 4 }, { bleedRes: 4 }, { poisonRes: 4 }, { frostRes: 4 }, { fireRes: 4 }, { bleedRes: 4 }, { poisonRes: 4 }, { frostRes: 4 }],
@@ -408,42 +420,114 @@ const KNIGHT = {
     { name: 'Sun Brand', desc: 'Evolves a holy brand still to come: the brand bursts into a ring of fire on the ground that burns enemies and heals you while you stand in it.' },
     { name: 'Rallying Cry', desc: 'Evolves a war cry still to come: a shout that restores stamina and grants armour to you and nearby allies, and staggers enemies close by.' }],
 };
-function knightTree(nodes, edges) {
+// ---------- the Rogue: up SHADOW (rolls, i-frames, parry cooldown; Red Riposte), right BLOODLETTER (bleed, crits),
+// down VENOM (poison), left DUELIST (attack speed, stamina, combos). The parry window only grows a little: two small
+// +2 ms nodes in Shadow, capped at +4 ms ----------
+const ROGUE = {
+  hub: [{ hp: 4 }, { st: 3 }],
+  hubRes: KNIGHT.hubRes,
+  small: [
+    [{ rollCost: 4 }, { iframe: 0.01 }, { parryCd: 0.25 }, { move: 2 }, { st: 3 }, { atkCost: 3 }, { hp: 5 }, { rollCost: 4 }],
+    [{ bleedDmg: 2 }, { bleedPct: 8 }, { critDmg: 4 }, { physDmg: 1.5 }, { bleedDmg: 2 }, { aspd: 2 }, { bleedPct: 8 }, { hp: 5 }],
+    [{ poisonDmg: 2 }, { poisonPct: 8 }, { poisonRes: 4 }, { poisonDmg: 2 }, { potion: 4 }, { poisonPct: 8 }, { bleedRes: 4 }, { hp: 5 }],
+    [{ aspd: 2 }, { atkCost: 3 }, { stPct: 3 }, { st: 3 }, { physPct: 3 }, { critDmg: 3 }, { hp: 5 }, { hpPct: 2 }],
+  ],
+  notables: [
+    [['Ghost Step', { iframe: 0.02, rollCost: 10 }], ['Quick Hands', { parryCd: 1 }], ['Fade', { move: 6, rollCost: 6 }],
+     ['Slip Away', { stPct: 8, rollCost: 8 }], ['Riposte Artist', { critDmg: 10, parryCd: 0.5 }], ['Untouchable', { iframe: 0.02, move: 4 }]],
+    [['Hemorrhage', { bleedPct: 25, bleedDmg: 3 }], ['Exsanguinate', { bleedTgt: 20 }], ['Cruel Edge', { critDmg: 12 }],
+     ["Butcher's Rhythm", { aspd: 5, bleedPct: 10 }], ["Executioner's Kiss", { execute: 20 }], ['Red Harvest', { killHeal: 2, bleedDmg: 2 }]],
+    [['Virulence', { poisonPct: 30 }], ['Toxic Edge', { poisonDmg: 4, poisonPct: 10 }], ['Wither', { poisonedDmg: 20 }],
+     ['Antitoxin', { poisonRes: 15, bleedRes: 8 }], ['Lingering Death', { poisonPct: 20, potion: 8 }], ['Venom Blood', { poisonRes: 10, hp: 10 }]],
+    [['Flurry', { aspd: 8 }], ['Finishing Flourish', { finisherPct: 25 }], ['Light Feet', { atkCost: 10, st: 6 }],
+     ["Duelist's Focus", { critDmg: 8, physPct: 6 }], ['Relentless Assault', { aspd: 5, physDmg: 2 }], ['Second Breath', { stPct: 10, atkCost: 5 }]],
+  ],
+  keystones: [['Fleeting', { fleeting: 1 }], ['Glass Fang', { glassFang: 1 }], ['Plaguelord', { plague: 1 }], ['Blade Dance', { bladeDance: 1 }]],
+  soon: [null,
+    { name: 'Crimson Fan', desc: 'Evolves a thrown-knife volley still to come: a fan of blades that opens deep bleeding wounds on everything it passes through.' },
+    { name: 'Plague Cloud', desc: 'Evolves a poison flask still to come: it bursts into a lingering cloud that poisons and slows anything inside it.' },
+    { name: 'Blade Waltz', desc: 'Evolves a spinning dash still to come: a whirl of cuts through a crowd that leaves you briefly untouchable.' }],
+  extra: [{ parryWin: 2 }, { parryWin: 2 }], // the only parry window in the tree, in Shadow
+};
+
+// ---------- the Spellsword: up PYROMANCER (fire, fireball; Twin Inferno), right FROSTBLADE (frost, knife), down
+// ARCANIST (mana, spells), left SPELLWARD (health, resistances, potions) ----------
+const MAGE = {
+  hub: [{ hp: 4 }, { st: 3 }],
+  hubRes: KNIGHT.hubRes,
+  small: [
+    [{ fireDmg: 2 }, { firePct: 8 }, { fireRadius: 5 }, { fireCost: 2 }, { spellDmg: 3 }, { fireDmg: 2 }, { firePct: 8 }, { hp: 5 }],
+    [{ frostDmg: 2 }, { frostPct: 8 }, { knifeDmg: 3 }, { aspd: 2 }, { frostRes: 4 }, { frostDmg: 2 }, { frostPct: 8 }, { hp: 5 }],
+    [{ mana: 5 }, { manaHit: 0.5 }, { boltCost: 0.5 }, { spellDmg: 3 }, { stPct: 3 }, { mana: 5 }, { spellDmg: 3 }, { hp: 5 }],
+    [{ hp: 8 }, { hpPct: 3 }, { st: 4 }, { potion: 4 }, { fireRes: 4 }, { bleedRes: 4 }, { frostRes: 4 }, { poisonRes: 4 }],
+  ],
+  notables: [
+    [['Inferno', { firePct: 30 }], ['Wide Blast', { fireRadius: 15, fireCost: 4 }], ['Kindling', { fireCost: 6, fireDmg: 2 }],
+     ['Pyre', { burnDmg: 20 }], ['Fire Soul', { firePct: 15, fireRes: 10 }], ['Searing', { spellDmg: 10, fireDmg: 3 }]],
+    [['Rime Edge', { frostPct: 30 }], ['Frozen Steel', { frostDmg: 4, knifeDmg: 8 }], ['Shatterpoint', { frozenDmg: 20 }],
+     ['Cold Steel', { knifeDmg: 10, aspd: 4 }], ["Winter's Grip", { frostPct: 15, frostRes: 10 }], ['Glacial', { frostDmg: 3, physDmg: 2 }]],
+    [['Deep Well', { mana: 20 }], ['Siphon', { manaHit: 2 }], ['Thrift', { boltCost: 2, fireCost: 4 }],
+     ['Arcane Power', { spellDmg: 15 }], ['Desperation', { lowHpDmg: 20 }], ['Focused Mind', { spellDmg: 8, mana: 10 }]],
+    [['Second Wind', { killHeal: 3 }], ['Thick Hide', { hp: 15, hpPct: 6 }], ['Wardstone', { fireRes: 8, bleedRes: 8, poisonRes: 8, frostRes: 8 }],
+     ['Field Medic', { potion: 15, hp: 6 }], ['Endurance', { st: 8, stPct: 8 }], ['Iron Will', { hpPct: 5, stPct: 5 }]],
+  ],
+  keystones: [['Pyromania', { pyromania: 1 }], ['Rime Heart', { rimeHeart: 1 }], ['Spellblade', { spellblade: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
+  soon: [null,
+    { name: 'Glacier Prison', desc: 'Evolves a frost nova still to come: a ring of ice that freezes enemies in place and shatters for frost damage.' },
+    { name: 'Arcane Echo', desc: 'Evolves an arcane missile still to come: each missile repeats itself a moment later at half strength.' },
+    { name: 'Runic Aegis', desc: 'Evolves a rune ward still to come: a ward that soaks damage and bursts outward when it breaks.' }],
+};
+const PLANS = { knight: KNIGHT, rogue: ROGUE, mage: MAGE };
+
+function regionTree(kind, nodes, edges) {
+  const P = PLANS[kind], NAMES = REGIONS[kind];
   const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
   const all = [...nodes.values()].sort((a, b) => a.ring - b.ring || a.id.localeCompare(b.id));
   const plain = (n) => n.role !== 'start' && n.role !== 'evo' && n.role !== 'socket' && !n.flask && !n.socketRing;
-  for (const n of all) { n.big = false; n.give = {}; n.notable = null; n.keystone = false; n.region = n.role === 'start' ? null : KNIGHT_REGIONS[region(n)]; }
+  for (const n of all) { n.big = false; n.give = {}; n.notable = null; n.keystone = false; n.region = n.role === 'start' ? null : NAMES[region(n)]; }
   for (const n of all) {
-    if (n.role === 'evo') { n.evo = EVOS.knight; n.big = true; }
+    if (n.role === 'evo') { n.evo = EVOS[kind]; n.big = true; }
     else if (n.role === 'socket') n.big = true;
     else if (n.flask) n.give = { flask: 1 };
   }
   // keystones: the last node of each arm
   for (let g = 0; g < 4; g++) {
     const arm = all.filter((n) => plain(n) && region(n) === g).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0];
-    const [name, give] = KNIGHT.keystones[g];
+    const [name, give] = P.keystones[g];
     Object.assign(arm, { give: { ...give }, notable: name, keystone: true, big: true });
   }
   // notables: branch ends spread along each arm (rings 4 and out)
   for (let g = 0; g < 4; g++) {
-    const ends = all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && (n.role === 'tip' || n.role === 'branch'));
-    const pick = [], want = KNIGHT.notables[g].length;
-    for (let i = 0; i < want && ends.length; i++) pick.push(ends[Math.min(ends.length - 1, Math.round((i + 0.5) * ends.length / want))]);
-    [...new Set(pick)].forEach((n, i) => { const [name, give] = KNIGHT.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
+    let ends = all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && (n.role === 'tip' || n.role === 'branch'));
+    const pick = [], want = P.notables[g].length;
+    // too few branch ends in this region: use other nodes along it too
+    if (ends.length < want) ends = [...ends, ...all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && !ends.includes(n))].sort((a, c) => a.ring - c.ring || a.id.localeCompare(c.id));
+    for (let i = 0; i < want && ends.length; i++) {
+      let k = Math.min(ends.length - 1, Math.round((i + 0.5) * ends.length / want));
+      if (pick.includes(ends[k])) k = [...ends.keys()].slice(k).concat([...ends.keys()].slice(0, k)).find((j) => !pick.includes(ends[j])) ?? k; // (two landing on one: the next free)
+      pick.push(ends[k]);
+    }
+    [...new Set(pick)].forEach((n, i) => { const [name, give] = P.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
   }
   // the evolutions still to come: a branch end (one link) around ring 6 in each other region, so nothing is cut off
   const links = new Map(); for (const [a, c] of edges) { links.set(a, (links.get(a) || 0) + 1); links.set(c, (links.get(c) || 0) + 1); }
   for (let g = 1; g < 4; g++) {
-    const leaf = all.filter((n) => plain(n) && !n.notable && !n.keystone && region(n) === g && links.get(n.id) === 1 && n.ring >= 4)
-      .sort((a, b) => Math.abs(a.ring - 6) - Math.abs(b.ring - 6))[0];
-    if (leaf) Object.assign(leaf, { soon: KNIGHT.soon[g], give: {}, big: true });
+    const free = (n) => plain(n) && !n.notable && !n.keystone && region(n) === g && n.ring >= 4;
+    const leaf = (all.filter((n) => free(n) && links.get(n.id) === 1).sort((a, b) => Math.abs(a.ring - 6) - Math.abs(b.ring - 6))[0])
+      || all.filter((n) => free(n) && links.get(n.id) === 1).sort((a, b) => a.ring - b.ring)[0]; // (always a branch end, so nothing is cut off)
+    if (leaf) Object.assign(leaf, { soon: P.soon[g], give: {}, big: true });
+  }
+  // a tree's one-off small nodes (the Rogue's two parry window nodes), on its first region's arm
+  for (const extra of P.extra || []) {
+    const n = all.find((x) => plain(x) && !x.notable && !x.keystone && !x.soon && !Object.keys(x.give).length && region(x) === 0 && x.ring >= 5 && !x.extra);
+    if (n) Object.assign(n, { give: { ...extra }, extra: true });
   }
   // the hub, then each region's small nodes
   let hi = 0, ri = 0; const si = [0, 0, 0, 0];
   for (const n of all) {
     if (!plain(n) || n.notable || n.soon || Object.keys(n.give).length) continue;
-    if (n.ring <= 3) n.give = { ...((n.ring >= 2 && ri < KNIGHT.hubRes.length && hi % 2) ? KNIGHT.hubRes[ri++] : KNIGHT.hub[hi % 2]) }, hi++;
-    else { const g = region(n), pool = KNIGHT.small[g]; n.give = { ...pool[si[g]++ % pool.length] }; if (n.ring >= 14) for (const k of Object.keys(n.give)) n.give[k] *= 1.5; }
+    if (n.ring <= 3) n.give = { ...((n.ring >= 2 && ri < P.hubRes.length && hi % 2) ? P.hubRes[ri++] : P.hub[hi % 2]) }, hi++;
+    else { const g = region(n), pool = P.small[g]; n.give = { ...pool[si[g]++ % pool.length] }; if (n.ring >= 14) for (const k of Object.keys(n.give)) n.give[k] *= 1.5; }
     n.typed = Object.keys(n.give).some((k) => /Dmg$|Pct$|Res$|armor/.test(k) && k !== 'hpPct' && k !== 'stPct');
   }
 }
@@ -575,27 +659,36 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 9;
+export const TREE_VERSION = 10;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
-const COST_V7 = (id) => { const n = TREES.knight.nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
+const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
+  // 9 -> 10: the Rogue's and Spellsword's trees rebuilt in regions: their nodes come back as gold at the ring price
+  if (data.treeV === 9) {
+    let refund = 0;
+    for (const k of ['rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
+    refund *= NUM;
+    data.gold = (data.gold || 0) + refund;
+    data.treeV = TREE_VERSION;
+    return refund;
+  }
   // 8 -> 9: three Knight nodes became evolutions still to come; anyone holding one gets it back as gold
   if (data.treeV === 8) {
     const soon = (data.tree?.knight || []).filter((id) => TREES.knight.nodes.get(id)?.soon);
     const refund = soon.reduce((a, id) => a + COST_V7(id), 0) * NUM;
     if (soon.length) data.tree.knight = data.tree.knight.filter((id) => !soon.includes(id));
     data.gold = (data.gold || 0) + refund;
-    data.treeV = TREE_VERSION;
-    return refund;
+    data.treeV = 9; // (and on to 10)
+    return refund + migrateTree(data);
   }
   if (data.treeV === 7) {
     const refund = (data.tree?.knight || []).reduce((a, id) => a + COST_V7(id), 0) * NUM;
     if (data.tree) data.tree.knight = [];
     data.gold = (data.gold || 0) + refund;
-    data.treeV = TREE_VERSION;
-    return refund;
+    data.treeV = 9; // (and on to 10)
+    return refund + migrateTree(data);
   }
   const v = data.treeV >= 2 && data.treeV <= 6 ? data.treeV : 1;
   let refund = 0;

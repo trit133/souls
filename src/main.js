@@ -1164,15 +1164,15 @@ class Game {
       let mul = att.dmgMul * (att.c.caster ? 1 + (T.knifeDmg || 0) / 100 : 1) * (def === att.c.attacks.guardCounter ? 1 + (T.counter || 0) / 100 : 1);
       // notables and keystones (skilltree.js)
       const heavyMove = !!(def.finisher || def.heavyHit || def === att.c.attacks.heavy);
-      if (T.execute && tg.maxHp && tg.hp / tg.maxHp < 0.3) mul *= 1 + T.execute / 100;
-      if (T.lowHpDmg && att.hp / att.maxHp < 0.5) mul *= 1 + T.lowHpDmg / 100;
+      mul *= this.treeMul(T, att, tg);
       if (T.finisherPct && def.finisher) mul *= 1 + T.finisherPct / 100;
-      if (T.burnDmg && tg.status?.dots?.fire) mul *= 1 + T.burnDmg / 100;
       if (T.headsman) mul *= heavyMove ? 1.4 : 0.8;
+      if (T.spellblade && att.c.caster) mul *= 0.8; // Spellblade: the knife is weaker
       info.parts = scaleParts(playerParts(T, att.statusLv, info.dmg), mul);
       // some combo moves turn part of the weapon's physical damage into an element (Rimeblade, Shatter: frost)
       if (def.convert) for (const [k, sh] of Object.entries(def.convert)) { info.parts[k] = (info.parts[k] || 0) + info.parts.phys * sh; info.parts.phys *= 1 - sh; }
       if (T.emberOath) { info.parts.fire = (info.parts.fire || 0) + info.parts.phys * 0.5 * (1 + (T.firePct || 0) / 100); info.parts.phys *= 0.5; } // Ember Oath: half the steel burns
+      for (const [k, m] of Object.entries(this.elemMul(T))) if (info.parts[k]) info.parts[k] *= m; // Plaguelord, Pyromania, Rime Heart
       if (T.counterSt && def === att.c.attacks.guardCounter) att.st = Math.min(att.maxSt, att.st + T.counterSt);
       info.dmg = sumParts(info.parts);
       // a combo staggers each enemy at most once
@@ -1260,7 +1260,7 @@ class Game {
   riposteHit(p, tg, base, flatHits = 1) {
     const T = { ...(p.tree || {}) };
     for (const k of TYPES) if (T[k + 'Dmg']) T[k + 'Dmg'] *= flatHits;
-    const parts = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100));
+    const parts = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100) * (p.tree?.glassFang ? 1.4 : 1)); // (Glass Fang)
     const dmg = sumParts(parts);
     if (tg.alive) this.applyStatus(tg, parts, BUILD_PER_DMG);
     this.mp.event({ k: 'rip', id: tg.netId, d: packParts(parts) });
@@ -1452,8 +1452,32 @@ class Game {
     this.audio.play(kind === 'fire' ? 'fire' : 'bow', 0.7);
   }
 
+  // skill tree bonuses that depend on the target and on you: Executioner's Mark, Last Stand, Pyre, Exsanguinate,
+  // Wither, Shatterpoint (skilltree.js)
+  treeMul(T, att, tg) {
+    let m = 1;
+    const st = tg.status;
+    if (T.execute && tg.maxHp && tg.hp / tg.maxHp < 0.3) m *= 1 + T.execute / 100;
+    if (T.lowHpDmg && att.hp / att.maxHp < 0.5) m *= 1 + T.lowHpDmg / 100;
+    if (T.burnDmg && st?.dots?.fire) m *= 1 + T.burnDmg / 100;
+    if (T.bleedTgt && st && st.meter.bleed / st.resist.bleed >= 0.5) m *= 1 + T.bleedTgt / 100;
+    if (T.poisonedDmg && st?.dots?.poison) m *= 1 + T.poisonedDmg / 100;
+    if (T.frozenDmg && st?.frostT > 0) m *= 1 + T.frozenDmg / 100;
+    return m;
+  }
+  // keystones that change an element: Plaguelord, Pyromania, Rime Heart
+  elemMul(T) {
+    const m = {};
+    if (T.plague) { m.poison = 1.5; m.phys = 0.8; }
+    if (T.pyromania) m.fire = (m.fire || 1) * 1.4;
+    if (T.rimeHeart) { m.frost = (m.frost || 1) * 1.4; m.fire = (m.fire || 1) * 0.5; }
+    return m;
+  }
+
   spellDamage(q, e, mul = 1) {
-    const hp0 = e.hp, sd = q.dmg * mul * this.player.dmgMul * (1 + (this.player.tree?.spellDmg || 0) / 100);
+    const T = this.player.tree || {}, el0 = q.kind === 'fire' ? 'fire' : 'frost';
+    mul *= this.treeMul(T, this.player, e) * (this.elemMul(T)[el0] || 1) * (T.spellblade ? 1.3 : 1); // (Spellblade: spells +30%)
+    const hp0 = e.hp, sd = q.dmg * mul * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
     const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo });
     if (r === 'none') return;
     // the bolt is frost, the fireball fire
