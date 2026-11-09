@@ -342,7 +342,7 @@ export function build(kind, opts = {}) {
     const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
     n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
   }
-  if (kind === 'knight') knightTree(nodes); // the Knight's tree is laid out in themed regions (below)
+  if (kind === 'knight') knightTree(nodes, edges); // the Knight's tree is laid out in themed regions (below)
   else { assign(kind, nodes); typedNodes(kind, nodes); }
   return { kind, nodes, edges };
 }
@@ -401,8 +401,14 @@ const KNIGHT = {
      ['Wardstone', { fireRes: 8, bleedRes: 8, poisonRes: 8, frostRes: 8 }], ['Field Medic', { potion: 15, hp: 6 }], ['Deep Breath', { stPct: 10, potion: 6 }]],
   ],
   keystones: [['Immovable', { immovable: 1 }], ['Headsman', { headsman: 1 }], ['Ember Oath', { emberOath: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
+  // one evolution per region: Shield Charge (Bulwark) is in; the other three evolve abilities still to come, so they
+  // show with their notes and can't be taken yet
+  soon: [null,
+    { name: 'Guillotine', desc: 'Evolves a heavy execution strike still to come: a leaping downward blow that cleaves anything under 30% health clean through.' },
+    { name: 'Sun Brand', desc: 'Evolves a holy brand still to come: the brand bursts into a ring of fire on the ground that burns enemies and heals you while you stand in it.' },
+    { name: 'Rallying Cry', desc: 'Evolves a war cry still to come: a shout that restores stamina and grants armour to you and nearby allies, and staggers enemies close by.' }],
 };
-function knightTree(nodes) {
+function knightTree(nodes, edges) {
   const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
   const all = [...nodes.values()].sort((a, b) => a.ring - b.ring || a.id.localeCompare(b.id));
   const plain = (n) => n.role !== 'start' && n.role !== 'evo' && n.role !== 'socket' && !n.flask && !n.socketRing;
@@ -425,10 +431,17 @@ function knightTree(nodes) {
     for (let i = 0; i < want && ends.length; i++) pick.push(ends[Math.min(ends.length - 1, Math.round((i + 0.5) * ends.length / want))]);
     [...new Set(pick)].forEach((n, i) => { const [name, give] = KNIGHT.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
   }
+  // the evolutions still to come: a branch end (one link) around ring 6 in each other region, so nothing is cut off
+  const links = new Map(); for (const [a, c] of edges) { links.set(a, (links.get(a) || 0) + 1); links.set(c, (links.get(c) || 0) + 1); }
+  for (let g = 1; g < 4; g++) {
+    const leaf = all.filter((n) => plain(n) && !n.notable && !n.keystone && region(n) === g && links.get(n.id) === 1 && n.ring >= 4)
+      .sort((a, b) => Math.abs(a.ring - 6) - Math.abs(b.ring - 6))[0];
+    if (leaf) Object.assign(leaf, { soon: KNIGHT.soon[g], give: {}, big: true });
+  }
   // the hub, then each region's small nodes
   let hi = 0, ri = 0; const si = [0, 0, 0, 0];
   for (const n of all) {
-    if (!plain(n) || n.notable || Object.keys(n.give).length) continue;
+    if (!plain(n) || n.notable || n.soon || Object.keys(n.give).length) continue;
     if (n.ring <= 3) n.give = { ...((n.ring >= 2 && ri < KNIGHT.hubRes.length && hi % 2) ? KNIGHT.hubRes[ri++] : KNIGHT.hub[hi % 2]) }, hi++;
     else { const g = region(n), pool = KNIGHT.small[g]; n.give = { ...pool[si[g]++ % pool.length] }; if (n.ring >= 14) for (const k of Object.keys(n.give)) n.give[k] *= 1.5; }
     n.typed = Object.keys(n.give).some((k) => /Dmg$|Pct$|Res$|armor/.test(k) && k !== 'hpPct' && k !== 'stPct');
@@ -502,6 +515,7 @@ export const owned = (data, kind) => new Set(['start', ...(data?.tree?.[kind] ||
 
 // buyable: not owned and touching an owned node
 export function canTake(tree, have, id) {
+  if (tree.nodes.get(id)?.soon) return false; // an evolution still to come
   return !have.has(id) && neighbours(tree, id).some((x) => have.has(x));
 }
 
@@ -526,12 +540,13 @@ export function describe(n) {
   if (n.role === 'socket') return { name: 'Rune Socket', lines: ['An empty socket. Runes found later in the game will fit here.'] };
   const lines = Object.entries(n.give).map(([k, v]) => STATS[k].fmt(+v.toFixed(2)));
   const k = Object.keys(n.give)[0];
+  if (n.soon) return { name: `Evolution · ${n.soon.name}`, lines: [n.soon.desc, 'Coming soon: its ability isn\'t in the game yet'] };
   if (n.keystone) return { name: `Keystone · ${n.notable}`, lines };
   if (n.notable) return { name: `${n.notable}`, lines: [...lines, n.region ? `${n.region} notable` : ''].filter(Boolean) };
   return { name: STATS[k]?.name || 'Node', lines: n.region ? [...lines] : lines };
 }
 
-export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo ? 'evo' : n.role === 'socket' ? 'socket' : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
+export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo || n.soon ? 'evo' : n.role === 'socket' ? 'socket' : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
 
 // Earlier tree layouts were priced and placed differently: anything bought on them comes back as the
 // gold it cost, once, and the trees start fresh on the current layout (version 3: socket triangle).
@@ -560,12 +575,21 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 8;
+export const TREE_VERSION = 9;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id) => { const n = TREES.knight.nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
+  // 8 -> 9: three Knight nodes became evolutions still to come; anyone holding one gets it back as gold
+  if (data.treeV === 8) {
+    const soon = (data.tree?.knight || []).filter((id) => TREES.knight.nodes.get(id)?.soon);
+    const refund = soon.reduce((a, id) => a + COST_V7(id), 0) * NUM;
+    if (soon.length) data.tree.knight = data.tree.knight.filter((id) => !soon.includes(id));
+    data.gold = (data.gold || 0) + refund;
+    data.treeV = TREE_VERSION;
+    return refund;
+  }
   if (data.treeV === 7) {
     const refund = (data.tree?.knight || []).reduce((a, id) => a + COST_V7(id), 0) * NUM;
     if (data.tree) data.tree.knight = [];

@@ -15,6 +15,7 @@ const out = await page.evaluate(() => {
   Object.assign(d, { treeV: 7, gold: 0, tree: { knight: ['s0-1', 's0-2', 's0-3'], rogue: ['s0-1', 's0-2'] } });
   g.refreshTitle();
   o.refund = { gold: d.gold, knight: d.tree.knight, rogue: d.tree.rogue, v: d.treeV };
+
   // 2. the mechanics: the same light hit on a grunt with each stat
   const LAYOUT = ['camp', 'ruins', 'mini:hask', 'bridge', 'village', 'mini:vael', 'crypt', 'bog', 'mini:gorrath', 'gate', 'boss'];
   const P = g.player?.constructor;

@@ -188,6 +188,11 @@ export class TreeUI {
     let s = `<defs><radialGradient id="tg-bg"><stop offset="0" stop-color="${col}" stop-opacity=".14"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>`;
     s += `<circle cx="0" cy="0" r="${R}" fill="url(#tg-bg)"/>`;
     for (let d = 1; d * RING < R; d++) s += `<circle cx="0" cy="0" r="${d * RING}" fill="none" stroke="#fff" stroke-opacity=".035" stroke-width=".3"/>`;
+    // regions (the Knight's tree): each name at the same distance out along its arm, under the nodes
+    if (this.kind === 'knight') KNIGHT_REGIONS.forEach((name, g) => {
+      const a = -Math.PI / 2 + g * Math.PI / 2, d = RING * 8;
+      s += `<text class="treg" x="${Math.cos(a) * d}" y="${Math.sin(a) * d}" text-anchor="middle" dominant-baseline="middle">${name.toUpperCase()}</text>`;
+    });
     // links: owned both ends = gold, reachable = theme, else dim
     for (const [a, b] of T.edges) {
       const A = T.nodes.get(a), B = T.nodes.get(b), ha = have.has(a), hb = have.has(b);
@@ -196,8 +201,8 @@ export class TreeUI {
     }
     for (const n of T.nodes.values()) {
       const got = have.has(n.id), can = !got && canTake(T, have, n.id) && !this.locked;
-      const r = n.role === 'start' ? 4.6 : n.keystone ? 6 : n.role === 'socket' || n.evo ? 5 : n.notable ? 4.4 : n.big ? 3.8 : /^(hp|st|dmg)$/.test(Object.keys(n.give)[0] || '') ? 2.6 : 3.1;
-      const cls = `tn ${got ? 'own' : can ? 'can' : ''} ${gone.has(n.id) ? (this.marked.has(n.id) ? 'mark' : 'orphan') : ''} ${n.role} ${n.big ? 'big' : ''} ${n.keystone ? 'keystone' : n.notable ? 'notable' : ''} ${this.sel === n.id ? 'sel' : ''}`;
+      const r = n.role === 'start' ? 4.6 : n.keystone ? 6 : n.role === 'socket' || n.evo || n.soon ? 5 : n.notable ? 4.4 : n.big ? 3.8 : /^(hp|st|dmg)$/.test(Object.keys(n.give)[0] || '') ? 2.6 : 3.1;
+      const cls = `tn ${got ? 'own' : can ? 'can' : ''} ${gone.has(n.id) ? (this.marked.has(n.id) ? 'mark' : 'orphan') : ''} ${n.role} ${n.big ? 'big' : ''} ${n.keystone ? 'keystone' : n.notable ? 'notable' : ''} ${n.soon ? 'evo soon' : ''} ${this.sel === n.id ? 'sel' : ''}`;
       const shape = n.role === 'socket'
         ? `<polygon points="${[0, 1, 2, 3, 4, 5].map((i) => `${Math.cos(Math.PI / 6 + (i * Math.PI) / 3) * r},${Math.sin(Math.PI / 6 + (i * Math.PI) / 3) * r}`).join(' ')}"/>`
         : `<circle r="${r}"/>`;
@@ -205,11 +210,6 @@ export class TreeUI {
       s += `<g class="${cls}" data-node="${n.id}" transform="translate(${n.x} ${n.y})" style="--c:${col}">${shape}`
         + `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(iconKey(n))}</svg></g>`;
     }
-    // regions (the Knight's tree): a name out along each arm
-    if (this.kind === 'knight') KNIGHT_REGIONS.forEach((name, g) => {
-      const a = -Math.PI / 2 + g * Math.PI / 2 + 0.3, d = RING * 4.2;
-      s += `<text class="treg" x="${Math.cos(a) * d}" y="${Math.sin(a) * d}" text-anchor="middle">${name.toUpperCase()}</text>`;
-    });
     $('tree-svg').innerHTML = s;
     this.applyView();
     this.renderStats();
