@@ -188,9 +188,10 @@ export class TreeUI {
     let s = `<defs><radialGradient id="tg-bg"><stop offset="0" stop-color="${col}" stop-opacity=".14"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>`;
     s += `<circle cx="0" cy="0" r="${R}" fill="url(#tg-bg)"/>`;
     for (let d = 1; d * RING < R; d++) s += `<circle cx="0" cy="0" r="${d * RING}" fill="none" stroke="#fff" stroke-opacity=".035" stroke-width=".3"/>`;
-    // regions (the Knight's tree): each name at the same distance out along its arm, under the nodes
+    // regions (the Knight's tree): each name the same distance out, turned 45° round the centre from its arm (so
+    // the four sit on the corners of a square), level, under the nodes
     if (this.kind === 'knight') KNIGHT_REGIONS.forEach((name, g) => {
-      const a = -Math.PI / 2 + g * Math.PI / 2, d = RING * 8;
+      const a = -Math.PI / 2 + g * Math.PI / 2 + Math.PI / 4, d = RING * 8;
       s += `<text class="treg" x="${Math.cos(a) * d}" y="${Math.sin(a) * d}" text-anchor="middle" dominant-baseline="middle">${name.toUpperCase()}</text>`;
     });
     // links: owned both ends = gold, reachable = theme, else dim
