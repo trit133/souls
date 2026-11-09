@@ -509,13 +509,16 @@ function regionTree(kind, nodes, edges) {
     }
     [...new Set(pick)].forEach((n, i) => { const [name, give] = P.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
   }
-  // the evolutions still to come: a branch end (one link) around ring 6 in each other region, so nothing is cut off
-  const links = new Map(); for (const [a, c] of edges) { links.set(a, (links.get(a) || 0) + 1); links.set(c, (links.get(c) || 0) + 1); }
+  // the evolutions still to come, one in each other region: at least 6 links from the start and from every other
+  // evolution, on a branch end (one link) so nothing is cut off behind it, as near the start as that allows
+  const adj = new Map(); for (const [a, c] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(c); (adj.get(c) || adj.set(c, []).get(c)).push(a); }
+  const hops = (from) => { const d = new Map([[from, 0]]), q = [from]; while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } } return d; };
+  const fromStart = hops('start'), evoHops = all.filter((n) => n.role === 'evo').map((n) => hops(n.id));
   for (let g = 1; g < 4; g++) {
-    const free = (n) => plain(n) && !n.notable && !n.keystone && region(n) === g && n.ring >= 4;
-    const leaf = (all.filter((n) => free(n) && links.get(n.id) === 1).sort((a, b) => Math.abs(a.ring - 6) - Math.abs(b.ring - 6))[0])
-      || all.filter((n) => free(n) && links.get(n.id) === 1).sort((a, b) => a.ring - b.ring)[0]; // (always a branch end, so nothing is cut off)
-    if (leaf) Object.assign(leaf, { soon: P.soon[g], give: {}, big: true });
+    const ok = (n) => plain(n) && !n.notable && !n.keystone && region(n) === g && (adj.get(n.id) || []).length === 1
+      && fromStart.get(n.id) >= 6 && evoHops.every((h) => h.get(n.id) >= 6);
+    const leaf = all.filter(ok).sort((a, b) => fromStart.get(a.id) - fromStart.get(b.id) || a.ring - b.ring || a.id.localeCompare(b.id))[0];
+    if (leaf) { Object.assign(leaf, { soon: P.soon[g], give: {}, big: true }); evoHops.push(hops(leaf.id)); }
   }
   // a tree's one-off small nodes (the Rogue's two parry window nodes), on its first region's arm
   for (const extra of P.extra || []) {
@@ -659,20 +662,29 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 10;
+export const TREE_VERSION = 11;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
+  // 10 -> 11: the evolutions moved (6 links from the start and from each other), so every tree's nodes come back
+  if (data.treeV === 10) {
+    let refund = 0;
+    for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
+    refund *= NUM;
+    data.gold = (data.gold || 0) + refund;
+    data.treeV = TREE_VERSION;
+    return refund;
+  }
   // 9 -> 10: the Rogue's and Spellsword's trees rebuilt in regions: their nodes come back as gold at the ring price
   if (data.treeV === 9) {
     let refund = 0;
     for (const k of ['rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;
     data.gold = (data.gold || 0) + refund;
-    data.treeV = TREE_VERSION;
-    return refund;
+    data.treeV = 10; // (and on to 11)
+    return refund + migrateTree(data);
   }
   // 8 -> 9: three Knight nodes became evolutions still to come; anyone holding one gets it back as gold
   if (data.treeV === 8) {
