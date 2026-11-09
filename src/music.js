@@ -18,7 +18,7 @@ const CHORDS = {
   Dm: ['D', 'F', 'A'], Bb: ['Bb', 'D', 'F'], Gm: ['G', 'Bb', 'D'], A: ['A', 'C#', 'E'],
   C: ['C', 'E', 'G'], Eb: ['Eb', 'G', 'Bb'], F: ['F', 'A', 'C'],
   Em: ['E', 'G', 'B'], Am: ['A', 'C', 'E'], Cm: ['C', 'Eb', 'G'],
-  D: ['D', 'F#', 'A'], E: ['E', 'G#', 'B'], G: ['G', 'B', 'D'], B: ['B', 'D#', 'F#'],
+  D: ['D', 'F#', 'A'], E: ['E', 'G#', 'B'], G: ['G', 'B', 'D'], B: ['B', 'D#', 'F#'], Bm: ['B', 'D', 'F#'],
 };
 // the chord's tones stacked upward from its root in octave `oct`
 const voicing = (name, oct) => {
@@ -49,7 +49,7 @@ const barPat = (p, bar) => (Array.isArray(p) ? p[bar % p.length] : p);
 function compileSection(S, bar) {
   // every bar of every pattern must be exactly one bar long
   const check = (k, p) => [].concat(p).forEach((x, i) => { if (toks(x).length !== bar) throw new Error(`music: ${k}[${i}] has ${toks(x).length} steps, not ${bar}: ${x}`); });
-  for (const k of ['lead', 'harm', 'bell', 'bassLine', 'bass', 'arp', 'brass']) if (S[k]) check(k, S[k]);
+  for (const k of ['lead', 'harm', 'bell', 'lute', 'mbox', 'bassLine', 'bass', 'arp', 'brass']) if (S[k]) check(k, S[k]);
   for (const [k, p] of Object.entries({ ...S.drums, ...S.fill })) check(k, p);
   const steps = Array.from({ length: S.bars * bar }, () => []);
   const add = (at, e) => at < steps.length && steps[at].push(e);
@@ -65,7 +65,7 @@ function compileSection(S, bar) {
   });
 
   // melodic lines: whole-section strings so notes can tie across bar lines
-  for (const [inst, key] of [['lead', 'lead'], ['harm', 'harm'], ['bell', 'bell'], ['bass', 'bassLine']]) {
+  for (const [inst, key] of [['lead', 'lead'], ['harm', 'harm'], ['bell', 'bell'], ['lute', 'lute'], ['mbox', 'mbox'], ['bass', 'bassLine']]) {
     if (!S[key]) continue;
     const shift = inst === 'lead' ? S.shift || 0 : 0;
     for (const e of parse(S[key].join(' '))) add(e.at, { i: inst, m: midi(e.sym) + shift, len: e.len, v: 1 });
@@ -83,18 +83,18 @@ function compileSection(S, bar) {
       const m = { r: v[0], o: v[0] + 12, f: v[2], t: v[1] }[e.sym.toLowerCase()];
       add(o + e.at, { i: 'bass', m, len: e.len, v: e.sym === e.sym.toUpperCase() ? 1 : 0.8 });
     }
-    // arpeggio: digits index the chord's tones going up from octave 4
+    // arpeggio: digits index the chord's tones going up from octave 4 (or arpOct), on a pulse (or arpInst)
     const ap = pat('arp');
     if (ap) for (const e of parse(ap)) {
-      const v = voicing(chordAt[o + e.at], 4), all = [...v, ...v.map((x) => x + 12)];
-      add(o + e.at, { i: 'arp', m: all[+e.sym], len: e.len, v: S.arpVel || 1 });
+      const v = voicing(chordAt[o + e.at], S.arpOct || 4), all = [...v, ...v.map((x) => x + 12)];
+      add(o + e.at, { i: S.arpInst || 'arp', m: all[+e.sym], len: e.len, v: S.arpVel || 1 });
     }
     // stabs on the chord (x, X accented): brass, or plucked strings with stab: 'pizz'
     const br = pat('brass');
     if (br) for (const e of parse(br)) add(o + e.at, { i: S.stab || 'brass', m: voicing(chordAt[o + e.at], S.stab === 'pizz' ? 3 : 4), len: e.len, v: e.sym === 'X' ? 1 : 0.7 });
     // drums: X accent, x normal, o ghost; timpani r root / f fifth (upper case accented)
     const D = S.drums || {};
-    for (const k of ['kick', 'snare', 'hat', 'crash', 'timp', 'anvil']) {
+    for (const k of ['kick', 'snare', 'hat', 'crash', 'timp', 'anvil', 'crackle']) {
       const p = last && S.fill?.[k] != null ? S.fill[k] : D[k] != null ? barPat(D[k], b) : null;
       if (!p) continue;
       toks(p).forEach((t, i) => {
@@ -322,7 +322,144 @@ const HARP = '0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1';
 const SLOW_BASS = 'r - - - - - - - f - - - - - - -';
 const TOLL = ['R . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .'];
 
+// ---------- jukebox records (records.js): calm songs for the menus ----------
+// Hearthlight: G major by the fire, a lute over strings with the logs crackling
+const HEARTH_LUTE = [
+  'D5 - - - B4 - - - G4 - A4 - B4 - - -',
+  'E5 - - - - - - - D5 - B4 - - - - -',
+  'C5 - - - E5 - - - G5 - - - E5 - - -',
+  'D5 - - - - - - - F#5 - - - A5 - - -',
+  'B5 - - - A5 - - - G5 - - - D5 - - -',
+  'E5 - - - G5 - - - B5 - - - A5 - G5 -',
+  'A5 - - - - - - - F#5 - - - D5 - - -',
+  'G5 - - - - - - - - - - - . . . .',
+];
+const HEARTH_LEAD = [
+  'E5 - - - G5 - - - C6 - - - B5 - - -',
+  'B5 - - - - - - - D5 - - - - - - -',
+  'C6 - - - B5 - - - A5 - - - E5 - - -',
+  'G5 - - - - - - - - - - - . . . .',
+  'E5 - - - F5 - - - G5 - - - C6 - - -',
+  'D6 - - - - - - - B5 - - - G5 - - -',
+  'A5 - - - - - - - F#5 - G5 - A5 - - -',
+  'D5 - - - - - - - - - - - . . . .',
+];
+const FIRE = { crackle: 'x . . . x . . . x . . . x . . .' };
+const hearthA = (extra = {}) => ({ bars: 8, chords: ['G', 'Em', 'C', 'D', 'G', 'Em', 'Am D', 'G'], lute: HEARTH_LUTE, strings: 0.6, bass: 'r - - - - - - - f - - - - - - -', drums: FIRE, ...extra });
+
+// Ember Waltz: a music box in 3/4, C major
+const EMBER_A = [
+  'E6 - - - G6 - - - E6 - D6 -',
+  'C6 - - - - - - - A5 - - -',
+  'A5 - C6 - F6 - - - E6 - D6 -',
+  'D6 - - - - - - - B5 - - -',
+  'E6 - - - G6 - - - C7 - B6 -',
+  'A6 - - - E6 - - - C6 - - -',
+  'D6 - - - F6 - B5 - D6 - G6 -',
+  'C6 - - - - - - - . . . .',
+];
+const EMBER_B = [
+  'A5 - - - C6 - - - F6 - - -',
+  'E6 - - - D6 - C6 - G5 - - -',
+  'F5 - - - A5 - - - D6 - - -',
+  'C6 - - - - - - - . . . .',
+  'A5 - - - C6 - - - F6 - E6 -',
+  'G6 - - - E6 - - - C6 - - -',
+  'B5 - C6 - D6 - - - F6 - - -',
+  'G6 - - - - - - - . . . .',
+];
+const emberSec = (chords, mbox, extra = {}) => ({ bars: 8, chords, mbox, strings: 0.45, bass: 'r - - - . . . . . . . .', stab: 'pizz', brass: '. . . . o . . . o . . .', ...extra });
+
+// Pilgrim's Road: a hopeful walking tune in D major, lute strummed on the off beats
+const PILGRIM_A = [
+  'F#5 - - - A5 - - - D6 - - - A5 - - -',
+  'B5 - A5 - F#5 - - - E5 - - - D5 - - -',
+  'G5 - - - B5 - - - D6 - - - B5 - - -',
+  'C#6 - - - - - - - A5 - - - - - - -',
+  'F#5 - - - A5 - - - D6 - - - E6 - - -',
+  'F#6 - - - E6 - D6 - B5 - - - - - - -',
+  'G5 - - - B5 - - - A5 - - - C#6 - - -',
+  'D6 - - - - - - - - - - - . . . .',
+];
+const PILGRIM_B = [
+  'B5 - - - - - - - G5 - - - D5 - - -',
+  'F#5 - - - A5 - - - D6 - - - - - - -',
+  'E6 - - - D6 - - - B5 - - - G5 - - -',
+  'A5 - - - - - - - E5 - F#5 - G5 - - -',
+  'B5 - - - D6 - - - G6 - - - F#6 - E6 -',
+  'F#6 - - - - - - - D6 - - - A5 - - -',
+  'G5 - - - B5 - - - C#6 - - - E6 - - -',
+  'D6 - - - - - - - - - - - . . . .',
+];
+const WALK = { kick: 'X . . . . . . . X . . . . . . .', snare: '. . . . o . . . . . . . o . . .', hat: 'x . o . x . o . x . o . x . o .' };
+const pilgrimSec = (chords, lead, extra = {}) => ({ bars: 8, chords, lead, strings: 0.5, stab: 'pizz', brass: '. . x . . . x . . . x . . . x .', bass: 'r - - - f - - - r - - - f - - -', drums: WALK, ...extra });
+
+// Moonwell: still water at night, E minor; bells, a music box and the choir, almost no tune
+const MOONWELL_BELL = [
+  'B5 - - - - - - - G5 - - - - - - -', 'E5 - - - - - - - . . . . . . . .',
+  'D6 - - - - - - - B5 - - - - - - -', 'A5 - - - - - - - F#5 - - - - - - -',
+  'G5 - - - - - - - B5 - - - - - - -', 'E6 - - - - - - - D6 - - - - - - -',
+  'C6 - - - - - - - E5 - - - - - - -', 'D#6 - - - - - - - F#5 - - - - - - -',
+];
+const MOON_CHORDS = ['Em', 'C', 'G', 'D', 'Em', 'C', 'Am', 'B'];
+
+// ---------- the dungeons' quiet: soft pads under the wind (ambience.js adds the world's sounds) ----------
+const DRIFT_CHORDS = ['Am', 'F', 'Am', 'Em', 'Am', 'F', 'Dm', 'Em'];
+// Night Raid: a slow heartbeat under a drone, the half-step above it pressing in
+const DREAD_CHORDS = ['Dm', 'Eb', 'Dm', 'Gm', 'Dm', 'Eb', 'Bb', 'A'];
+const HEARTBEAT = { kick: 'X . o . . . . . X . o . . . . .' };
+
 const SONGS = {
+  hearth: {
+    bpm: 84,
+    intro: [{ bars: 1, chords: ['G'], strings: 0.5, drums: FIRE, bass: 'r - - - - - - - - - - - - - - -' }],
+    loop: [
+      hearthA(),
+      { bars: 8, chords: ['C', 'G', 'Am', 'Em', 'C', 'G', 'D', 'D'], lead: HEARTH_LEAD, strings: 0.8, bass: 'r - - - - - - - f - - - - - - -', arp: '0 . 1 . 2 . 1 . 0 . 1 . 2 . 1 .', arpInst: 'lute', arpOct: 3, arpVel: 0.5, drums: FIRE },
+      hearthA({ choir: 0.5 }),
+    ],
+  },
+  ember: {
+    bpm: 108, bar: 12, gain: 1.4,
+    intro: [{ bars: 2, chords: ['C', 'G'], mbox: ['C6 - - - E6 - - - G6 - - -', 'B5 - - - D6 - - - G6 - - -'] }],
+    loop: [
+      emberSec(['C', 'Am', 'F', 'G', 'C', 'Am', 'Dm G', 'C'], EMBER_A),
+      emberSec(['F', 'C', 'Dm', 'Am', 'F', 'C', 'G', 'G'], EMBER_B, { choir: 0.4 }),
+      emberSec(['C', 'Am', 'F', 'G', 'C', 'Am', 'Dm G', 'C'], EMBER_A, { arp: '0 . 2 . 4 . 2 . 4 . 2 .', arpInst: 'mbox', arpOct: 4, arpVel: 0.5 }),
+    ],
+  },
+  pilgrim: {
+    bpm: 100,
+    intro: [{ bars: 1, chords: ['D'], strings: 0.4, stab: 'pizz', brass: 'x . x . x . x . x . x . x . x .', bass: 'r - - - - - - - f - - - - - - -' }],
+    loop: [
+      pilgrimSec(['D', 'D', 'G', 'A', 'D', 'Bm', 'G A', 'D'], PILGRIM_A),
+      pilgrimSec(['G', 'D', 'Em', 'A', 'G', 'D', 'Em A', 'D'], PILGRIM_B, { choir: 0.4 }),
+      pilgrimSec(['D', 'D', 'G', 'A', 'D', 'Bm', 'G A', 'D'], PILGRIM_A, { harm: PILGRIM_A.map((l) => l.replace(/[A-G][#b]?\d/g, (n) => { const m = midi(n) - 12; return n.replace(/\d$/, String(Math.floor(m / 12) - 1)); })), drums: { ...WALK, hat: 'x o x o x o x o x o x o x o x o' } }),
+    ],
+  },
+  moonwell: {
+    bpm: 60,
+    loop: [
+      { bars: 8, chords: MOON_CHORDS, bell: MOONWELL_BELL, strings: 0.6, choir: 0.5, bass: 'r - - - - - - - - - - - - - - -', arp: '0 . . . 2 . . . 4 . . . 2 . . .', arpInst: 'mbox', arpOct: 5, arpVel: 0.6 },
+      { bars: 8, chords: MOON_CHORDS, strings: 0.8, choir: 0.9, bass: 'r - - - - - - - - - - - - - - -', arp: '0 1 2 4 . . 2 . 1 . . . 0 . . .', arpInst: 'mbox', arpOct: 5, arpVel: 0.6 },
+    ],
+  },
+  drift: {
+    bpm: 64, gain: 0.75,
+    loop: [
+      { bars: 8, chords: DRIFT_CHORDS, strings: 0.6, bass: 'r - - - - - - - - - - - - - - -', arp: ['0 . . . . . . . . . . . . . . .', '. . . . . . . . 2 . . . . . . .', '. . . . 4 . . . . . . . . . . .', '. . . . . . . . . . . . . . . .'], arpInst: 'mbox', arpOct: 5, arpVel: 0.5 },
+      { bars: 8, chords: DRIFT_CHORDS, strings: 0.5, choir: 0.35, bass: 'r - - - - - - - - - - - - - - -', bell: ['. . . . . . . . . . . . . . . .', 'A5 - - - - - - - - - - - - - - -', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'C6 - - - - - - - - - - - - - - -', '. . . . . . . . . . . . . . . .', 'B5 - - - - - - - - - - - - - - -'] },
+    ],
+  },
+  dread: {
+    bpm: 52, gain: 0.7,
+    loop: [
+      { bars: 8, chords: DREAD_CHORDS, strings: 0.6, choir: 0.5, vowel: 'oh', bassLine: Array(8).fill('D2 - - - - - - - - - - - - - - -'), drums: HEARTBEAT },
+      { bars: 8, chords: DREAD_CHORDS, strings: 0.8, choir: 0.8, vowel: 'oh', bassLine: Array(8).fill('D2 - - - - - - - - - - - - - - -'),
+        bell: ['D4 - - - - - - - - - - - - - - -', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'D4 - - - - - - - - - - - - - - -', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .'],
+        drums: { ...HEARTBEAT, timp: ['R . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .'] } },
+    ],
+  },
   title: {
     bpm: 76,
     intro: [{
@@ -686,6 +823,36 @@ export class Music {
     const ng = this.ctx.createGain(); ng.gain.setValueAtTime(0.15 * v, t); ng.gain.setTargetAtTime(0, t, 0.006);
     n.connect(hp); hp.connect(ng); ng.connect(g);
     this._out(g, c, 0.4, -0.15);
+  }
+  // a plucked lute: pulse and triangle through a closing filter
+  lute(t, d, m, v, c) {
+    const f = hz(m), end = t + Math.min(d + 0.4, 2.5);
+    const a = this._osc('p25', f, t, end), b = this._osc('triangle', f, t, end, 4);
+    const lp = this._filter('lowpass', 3400, 1.5), fq = lp.frequency;
+    fq.setValueAtTime(3400, t); fq.setTargetAtTime(800, t, 0.12);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.22 * v, t); g.gain.setTargetAtTime(0, t + 0.005, 0.38);
+    a.connect(lp); b.connect(lp); lp.connect(g);
+    this._out(g, c, 0.35, -0.1);
+  }
+  // a music box tine: a sine with a faint, quickly fading overtone
+  mbox(t, d, m, v, c) {
+    const f = hz(m);
+    [[1, 1, 0.45], [3, 0.18, 0.08], [5.95, 0.08, 0.04]].forEach(([r, a, dec]) => {
+      const o = this._osc('sine', f * r, t, t + dec * 6);
+      const g = this.ctx.createGain(); g.gain.setValueAtTime(0.1 * a * v, t); g.gain.setTargetAtTime(0, t + 0.002, dec);
+      o.connect(g); this._out(g, c, 0.5, 0.15);
+    });
+  }
+  // a log fire: a few random pops and snaps over the next beat
+  crackle(t, d, m, v, c) {
+    const n = 2 + Math.floor(Math.random() * 4);
+    for (let k = 0; k < n; k++) {
+      const at = t + Math.random() * d * 4, len = 0.004 + Math.random() * 0.012;
+      const s = this._noiseSrc(at, at + len + 0.02), bp = this._filter('bandpass', 1500 + Math.random() * 4000, 1.5);
+      const g = this.ctx.createGain(); g.gain.setValueAtTime((0.12 + Math.random() * 0.3) * v, at); g.gain.setTargetAtTime(0, at + 0.001, len / 2);
+      s.connect(bp); bp.connect(g);
+      this._out(g, c, 0.15, Math.random() * 0.6 - 0.3);
+    }
   }
   bell(t, d, m, v, c) {
     const f = hz(m);

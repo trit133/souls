@@ -1,5 +1,6 @@
 // Tiny procedural sound kit (WebAudio). Must be unlocked by a user gesture (iOS).
 import { Music } from './music.js';
+import { Ambience } from './ambience.js';
 
 export class Audio {
   constructor() {
@@ -35,6 +36,7 @@ export class Audio {
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.band = new Music(this.ctx, this.musicBus);
+      this.amb = new Ambience(this.ctx, this.sfx); // the world's sounds sit under the Effects volume
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     // iOS: play a silent buffer inside the gesture
@@ -114,11 +116,30 @@ export class Audio {
     }
   }
 
-  // a boss's theme by id ('hask', 'vael', 'gorrath', 'varek'); 2 moves Varek's into his
-  // second phase on the next bar line
+  // a boss's theme by id ('hask', 'vael', 'gorrath', 'varek'), fading in over the exploring music (the
+  // world's sounds drop back); 2 moves Varek's into his second phase on the next bar line
   startMusic(song) {
     if (!this.ctx) return;
-    this.band.play(song === 'varek' ? 'varek1' : song === 2 ? 'varek2' : song);
+    if (song === 2) { this.band.play('varek2'); return; }
+    this.band.stop(1);
+    this.band.play(song === 'varek' ? 'varek1' : song, 1.5);
+    this.amb.duck(true);
+  }
+  // exploring: 'day' or 'night' (Night Raid) sounds for this act, with quiet music; null stops both
+  ambience(kind, act = 0) {
+    if (!this.ctx) return;
+    this.ambKind = kind;
+    this.amb.set(kind, act);
+    if (kind) this.calm();
+  }
+  // back to the exploring music and the world's full sounds (a run starting, a boss fallen)
+  calm() {
+    if (!this.ctx || !this.ambKind) return;
+    this.amb.duck(false);
+    const song = this.ambKind === 'night' ? 'dread' : 'drift';
+    if (this.band.playing === song) return;
+    this.band.stop(2);
+    this.band.play(song, 5);
   }
   stopMusic(fade = 1.2) {
     this.band?.stop(fade);
@@ -126,7 +147,9 @@ export class Audio {
   // the menus' theme (or whichever record is in the Hermitage's jukebox): fades in fresh rather than waiting
   // for the bar line
   titleMusic(song = 'title') {
-    if (!this.ctx || this.band.playing === song) return;
+    if (!this.ctx) return;
+    this.ambience(null);
+    if (this.band.playing === song) return;
     this.band.stop(1.5);
     this.band.play(song, 3);
   }

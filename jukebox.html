@@ -25,7 +25,16 @@
     <h1>ASHEN VIGIL · JUKEBOX</h1>
     <p>Varek's phase 2 is what plays once he ignites. Press it while phase 1 is playing and it switches on the next bar, the same way it does in the fight.</p>
     <h2>Menus</h2>
-    <button data-song="title">Title screen</button>
+    <button data-song="title">The Ashen Lament (title)</button>
+    <button data-song="hearth">Hearthlight</button>
+    <button data-song="ember">Ember Waltz</button>
+    <button data-song="pilgrim">Pilgrim's Road</button>
+    <button data-song="moonwell">Moonwell</button>
+    <h2>Dungeons (music with the world's sounds)</h2>
+    <button data-song="drift" data-amb="day:0">The Ashen Warrens · wind and leaves</button>
+    <button data-song="drift" data-amb="day:1">The Hollow Deep · drips and embers</button>
+    <button data-song="drift" data-amb="day:2">The Drowned Halls · water and frogs</button>
+    <button data-song="dread" data-amb="night:0">Night Raid</button>
     <h2>Mini bosses</h2>
     <button data-song="hask">Brother Hask · The Executioner's Pit</button>
     <button data-song="vael">Sister Vael · The Moonlit Cloister</button>
@@ -42,10 +51,12 @@
   </main>
   <script type="module">
     import { Music } from './src/music.js';
-    let ctx, vol, band;
+    import { Ambience } from './src/ambience.js';
+    let ctx, vol, band, amb;
     const now = document.getElementById('now');
-    const NAMES = { title: 'the title theme', hask: 'Brother Hask', vael: 'Sister Vael', gorrath: 'Gorrath', varek1: 'Varek, phase 1', varek2: 'Varek, phase 2' };
-    const mark = () => document.querySelectorAll('[data-song]').forEach((b) => b.classList.toggle('on', b.dataset.song === band?.playing));
+    const NAMES = { title: 'The Ashen Lament', hearth: 'Hearthlight', ember: 'Ember Waltz', pilgrim: "Pilgrim's Road", moonwell: 'Moonwell', drift: 'the dungeon ambience', dread: 'the Night Raid ambience', hask: 'Brother Hask', vael: 'Sister Vael', gorrath: 'Gorrath', varek1: 'Varek, phase 1', varek2: 'Varek, phase 2' };
+    let ambOn = null;
+    const mark = () => document.querySelectorAll('[data-song]').forEach((b) => b.classList.toggle('on', b.dataset.song === band?.playing && (b.dataset.amb || null) === ambOn));
     const state = document.getElementById('state');
     setInterval(() => { state.textContent = ctx ? `Audio ${ctx.state}, ${ctx.sampleRate} Hz` : 'Audio not started yet: press a button'; }, 250);
     // iPhone/iPad: play through the mute switch, and wake the audio inside the tap
@@ -55,6 +66,7 @@
         ctx = new (window.AudioContext || window.webkitAudioContext)();
         vol = ctx.createGain(); vol.gain.value = +document.getElementById('vol').value; vol.connect(ctx.destination);
         band = new Music(ctx, vol);
+        amb = new Ambience(ctx, vol);
       }
       ctx.resume();
       const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start();
@@ -68,9 +80,14 @@
     setInterval(() => { mark(); now.textContent = band?.playing ? `Playing ${NAMES[band.playing]} · bar ${Math.floor(band.cur.pos / band.cur.s.bar) + 1}` : ''; }, 100);
     document.querySelectorAll('[data-song]').forEach((b) => b.addEventListener('click', () => {
       start();
+      // songs switch on the bar line; the dungeons' sounds fade in fresh with their music
+      ambOn = b.dataset.amb || null;
+      if (ambOn || band.playing === 'drift' || band.playing === 'dread') band.stop(1);
+      amb.set(null);
+      if (ambOn) { const [kind, act] = ambOn.split(':'); amb.set(kind, +act); }
       band.play(b.dataset.song);
     }));
-    document.getElementById('stop').addEventListener('click', () => band?.stop(1));
+    document.getElementById('stop').addEventListener('click', () => { band?.stop(1); amb?.set(null); ambOn = null; });
     document.getElementById('vol').addEventListener('input', (e) => vol && (vol.gain.value = +e.target.value));
   </script>
 </body>

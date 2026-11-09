@@ -298,6 +298,7 @@ class Game {
     this.camPos.set(p.pos.x, 14, p.pos.z + 12);
     this.ui.setProgress(n + 1, 4);
     this.audio.play('fog');
+    this.audio.ambience(this.night ? 'night' : 'day', n);
     this.ui.toast(this.areaName.toUpperCase(), 3);
   }
 
@@ -482,7 +483,7 @@ class Game {
     this.deaths = 0;
     this.startTime = this.time;
     this.mode = 'play';
-    this.audio.stopMusic(2);
+    this.audio.ambience(this.night ? 'night' : 'day', this.act);
     this.ui.setMaxHp(this.player.maxHp, this.player.maxSt);
     this.ui.hp.snap(1); this.ui.st.snap(1);
     $('b-special').textContent = { knight: 'BLOCK', rogue: 'PARRY', mage: 'FIRE' }[kind];
@@ -844,6 +845,7 @@ class Game {
     if (this.overShown) return;
     this.overShown = true;
     this.audio.stopMusic(2);
+    this.audio.ambience(null);
     this.ui.show('reward', false);
     this.ui.show('death');
     const s = Math.round(this.time - this.startTime);
@@ -1075,12 +1077,14 @@ class Game {
       setTimeout(() => {
         if (this.mode !== 'play' || !this.player.alive) return;
         this.audio.play('victory');
+        this.audio.calm();
         this.ui.toast('GREAT FOE FELLED', 2);
         this.ui.show('boss', false);
         setTimeout(() => this.mode === 'play' && this.player.alive && this.offerReward(), 1300);
       }, 2000);
       return;
     }
+    this.audio.ambience(null);
     // nothing left can hurt the player once Varek falls
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     const pay = this.bossPayout(enc, net);
