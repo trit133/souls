@@ -18,7 +18,7 @@ const measure = async (url) => {
       g.start(kind); g.buildRun(LAYOUT, 5, 1); g.input.move = () => ({ x: 0, y: 0 });
       const p = g.player, e = g.enemies.find((x) => x.type === 'grunt');
       for (const x of g.enemies) if (x !== e) x.die(true);
-      e.elems = null;
+      e.elems = null; e.def = null; // (the old build has no armour to compare)
       o[kind + ' maxHp'] = p.maxHp; o[kind + ' stamina'] = p.maxSt;
       // a light hit on a grunt
       p.pos.set(e.pos.x, 0, e.pos.z + 1.6); p.yaw = Math.PI; e.alert(); step(30); e.cd = 99; e.setState('chase');
@@ -38,7 +38,7 @@ const measure = async (url) => {
     { const p = g.player, e = g.enemies.find((x) => x.type === 'grunt'); e.elems = null; p.pos.set(e.pos.x, 0, e.pos.z + 1.6); p.yaw = Math.PI; e.yaw = 0; p.blocking = true; const st0 = p.st, hp0 = p.hp; const def = e.T.moves.slash; g.resolveHit(e, p, def.hits[0], def); o['knight block stamina'] = +(st0 - p.st).toFixed(1); o['knight block chip'] = +(hp0 - p.hp).toFixed(1); }
     // status: bleed on a grunt from infused hits — hits until it procs, and the proc's size
     g.start('rogue'); g.buildRun(LAYOUT, 5, 1);
-    { const p = g.player; p.statusLv = { bleed: 3 }; const e = g.enemies.find((x) => x.type === 'grunt'); e.maxHp = e.hp = e.maxHp * 100;
+    { const p = g.player; p.statusLv = { bleed: 3 }; const e = g.enemies.find((x) => x.type === 'grunt'); e.def = null; e.maxHp = e.hp = e.maxHp * 100;
       let hits = 0, procHp = 0; const def = p.c.attacks.r1;
       while (hits < 60) { hits++; e.state = 'chase'; const before = e.hp; g.resolveHit(p, e, def.hits[0], def); if (e.status.procd.bleed) { procHp = Math.round(before - e.hp); break; } }
       o['bleed hits to proc'] = hits; o['bleed proc + hit'] = procHp; }
@@ -52,7 +52,7 @@ const measure = async (url) => {
       g.start('mage'); g.buildRun(LAYOUT, 5, 1);
       const p = g.player, e = g.enemies.find((x) => x.type === 'grunt');
       for (const x of g.enemies) if (x !== e) x.die(true);
-      e.maxHp = e.hp = 1e7; e.cd = 99; e.status.add = () => {}; // the hit itself, no burn
+      e.maxHp = e.hp = 1e7; e.cd = 99; e.def = null; e.status.add = () => {}; // the hit itself, no burn
       p.pos.set(e.pos.x, 0, e.pos.z + 3); p.yaw = Math.PI;
       const h = e.hp; g.spawnSpell(p, spell); step(60);
       o[spell + ' hit'] = Math.round(h - e.hp);

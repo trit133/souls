@@ -34,6 +34,8 @@ import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
+import { rollDefenses, enemyMitigate, RES_ELEMS } from './defenses.js';
+import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
 import { pixelMenus, syncRanges } from './pixelmenus.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
@@ -111,6 +113,7 @@ class Game {
     this.deaths = 0;
     this.reserves = [];
     this.seals = new Seals(this);
+    this.mouse = { x: -1, y: -1 }; addEventListener('mousemove', (e) => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; });
     this.minimap = new Minimap(this);
     this.buildRun();
 
@@ -260,6 +263,10 @@ class Game {
     // regular enemies carrying elemental damage: more of them the further into the run (same roll on every device)
     const er = rng(seed + 13);
     for (const e of all) e.setElems(rollElems(e.tier, er));
+    // armour and resistances (defenses.js): every enemy and boss rolls its own, the same on every device
+    const dr = rng(seed + 29);
+    for (const e of all) e.def = e.effigy ? { armor: 0, res: {} } : rollDefenses(dr, { type: e.type, elite: !!e.elite, tier: e.tier });
+    for (const b of this.bosses) b.def = rollDefenses(dr, { boss: b.cfg.id, tier: b.tier });
     this.tokens = 0;
     this.resetEncounters();
     this.seals.setup(this.world);
@@ -1182,6 +1189,9 @@ class Game {
       if (T.emberOath) { info.parts.fire = (info.parts.fire || 0) + info.parts.phys * 0.5 * (1 + (T.firePct || 0) / 100); info.parts.phys *= 0.5; } // Ember Oath: half the steel burns
       for (const [k, m] of Object.entries(this.elemMul(T))) if (info.parts[k]) info.parts[k] *= m; // Plaguelord, Pyromania, Rime Heart
       if (T.counterSt && def === att.c.attacks.guardCounter) att.st = Math.min(att.maxSt, att.st + T.counterSt);
+      // the target's armour and resistances (defenses.js); its status build-up is cut by the full resistance
+      const mit = enemyMitigate(info.parts, tg.def);
+      info.parts = mit.parts; info.buildParts = mit.build;
       info.dmg = sumParts(info.parts);
       // a combo staggers each enemy at most once
       if ((def.comboMove || att.cmb) && att.cmbStag?.has(tg)) info.poise = 0;
@@ -1195,7 +1205,7 @@ class Game {
     const shown = scaleParts(info.parts || { phys: info.dmg }, info.dmg > 0 ? dealt / info.dmg : 0);
     this.dmgPops(tg, shown, heavy ? 'heavy' : 'me');
     if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT + (att.tree?.manaHit || 0)); // knife hits only
-    if (att === this.player && tg.alive) this.applyStatus(tg, info.parts, BUILD_PER_DMG);
+    if (att === this.player && tg.alive) this.applyStatus(tg, info.buildParts || info.parts, BUILD_PER_DMG);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
     this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, d: packParts(shown) });
     this.fx.blood(hp, dir, heavy ? 16 : 9);
@@ -1268,9 +1278,10 @@ class Game {
   riposteHit(p, tg, base, flatHits = 1) {
     const T = { ...(p.tree || {}) };
     for (const k of TYPES) if (T[k + 'Dmg']) T[k + 'Dmg'] *= flatHits;
-    const parts = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100) * (p.tree?.glassFang ? 1.4 : 1)); // (Glass Fang)
+    const raw = scaleParts(playerParts(T, p.statusLv, base), p.dmgMul * (1 + (p.tree?.critDmg || 0) / 100) * (p.tree?.glassFang ? 1.4 : 1)); // (Glass Fang)
+    const mit = enemyMitigate(raw, tg.def), parts = mit.parts; // (through its armour and resistances)
     const dmg = sumParts(parts);
-    if (tg.alive) this.applyStatus(tg, parts, BUILD_PER_DMG);
+    if (tg.alive) this.applyStatus(tg, mit.build, BUILD_PER_DMG);
     this.mp.event({ k: 'rip', id: tg.netId, d: packParts(parts) });
     this.dmgPops(tg, parts, 'crit');
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
@@ -1294,10 +1305,10 @@ class Game {
     const push = (e.isBoss ? 4 : e.type === 'brute' ? 7 : 12) * (1 + (p.tree?.chargeKb || 0) / 100);
     const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
     if (e.puppet) {
-      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * NUM * p.dmgMul, poise: 12, kb: [dir.x * push, dir.z * push] });
-      e.hp = Math.max(1, e.hp - 10 * NUM * p.dmgMul); e.hpShow = 4;
+      this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100), poise: 12, kb: [dir.x * push, dir.z * push] });
+      e.hp = Math.max(1, e.hp - 10 * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100)); e.hpShow = 4;
     } else {
-      const r = e.receive({ dmg: 10 * NUM * p.dmgMul, poise: 12, srcPos: p.pos, attacker: p, noKnock: true });
+      const r = e.receive({ dmg: 10 * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100), poise: 12, srcPos: p.pos, attacker: p, noKnock: true });
       if (r !== 'none') e.kb.copy(dir).multiplyScalar(push);
     }
     this.vfx('bash', hp, dir.clone());
@@ -1485,7 +1496,9 @@ class Game {
   spellDamage(q, e, mul = 1) {
     const T = this.player.tree || {}, el0 = q.kind === 'fire' ? 'fire' : 'frost';
     mul *= this.treeMul(T, this.player, e) * (this.elemMul(T)[el0] || 1) * (T.spellblade ? 1.3 : 1); // (Spellblade: spells +30%)
-    const hp0 = e.hp, sd = q.dmg * mul * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
+    const res = Math.min(75, e.def?.res?.[el0] || 0) / 100; // the target's resistance to the spell's element
+    const raw = q.dmg * mul * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
+    const hp0 = e.hp, sd = raw * (1 - res / 2);
     const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo });
     if (r === 'none') return;
     // the bolt is frost, the fireball fire
@@ -1495,7 +1508,7 @@ class Game {
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
     this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', d: { [el]: Math.round(dealt) } });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
-    if (e.alive) this.applyStatus(e, { [el]: sd }, SPELL_BUILD);
+    if (e.alive) this.applyStatus(e, { [el]: raw * (1 - res) }, SPELL_BUILD);
   }
 
   // Blue bolts and fireballs fly straight; a fireball bursts on contact or at range.
@@ -1678,6 +1691,7 @@ class Game {
         if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
       }
       this.minimap.update(rdt);
+      this.updateFoePanel(rdt);
 
       this.ui.update(rdt, p);
       this.ui.party(this.mp.active ? [...this.mp.peers.values()] : []);
@@ -1696,6 +1710,40 @@ class Game {
     tickOutfitColors(this.time); // effect colours on outfits (molten, frost, void, gilded)
     if (this.mode === 'play' || this.mode === 'wait') this.weaponFx.update(dt);
     this.updateCamera(rdt);
+  }
+
+  // the enemy under the mouse (or, on touch, the one you're locked on to): its armour, resistances and elements in a
+  // small panel at the top right (under the map)
+  updateFoePanel(dt) {
+    if ((this.foeT = (this.foeT || 0) - dt) > 0) return;
+    this.foeT = 0.1;
+    const el = (this.foeEl ||= Object.assign(document.createElement('div'), { id: 'foe-panel', className: 'hidden' }));
+    if (!el.isConnected) document.getElementById('hud').append(el);
+    let foe = null;
+    if (this.input.lastDevice === 'touch') foe = this.player.lock?.alive ? this.player.lock : null;
+    else if (this.mouse.x >= 0) {
+      let bd = 46; const v = new THREE.Vector3();
+      for (const e of [...this.enemies, ...this.bosses]) {
+        if (!e.alive || !e.rig.root.visible || e.reserve) continue;
+        v.set(e.pos.x, 1.1 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+        if (v.z > 1) continue;
+        const d = Math.hypot((v.x * 0.5 + 0.5) * innerWidth - this.mouse.x, (-v.y * 0.5 + 0.5) * innerHeight - this.mouse.y);
+        if (d < bd) { bd = d; foe = e; }
+      }
+    }
+    el.classList.toggle('hidden', !foe);
+    if (!foe) { this.foeShown = null; return; }
+    const map = this.minimap.el.classList.contains('hidden') ? null : this.minimap.el.getBoundingClientRect();
+    el.style.top = (map ? map.bottom + 8 : 12) + 'px';
+    if (this.foeShown === foe) return;
+    this.foeShown = foe;
+    const NAMES = { grunt: 'Swordsman', spear: 'Spearman', archer: 'Archer', brute: 'Brute', effigy: 'Cursed Effigy' };
+    const name = foe.isBoss ? foe.name.split(',')[0] : `${foe.elite ? ELITE[foe.elite].name + ' ' : ''}${NAMES[foe.type] || foe.type}`;
+    const d = foe.def || { armor: 0, res: {} }, deals = Object.keys(foe.elems || {});
+    const res = RES_ELEMS.filter((k) => d.res?.[k]).map((k) => `<span class="fp-res" style="color:${TYPE_COLOR[k]}">${k[0].toUpperCase() + k.slice(1)} ${d.res[k]}%</span>`).join('') || '<span class="fp-none">none</span>';
+    el.innerHTML = `<div class="fp-name">${name}</div><div class="fp-row"><b>Armour</b><span>${d.armor}%</span></div><div class="fp-bar"><i style="width:${d.armor * 2}%"></i></div>`
+      + `<div class="fp-row"><b>Resistances</b></div><div class="fp-list">${res}</div>`
+      + (deals.length ? `<div class="fp-row"><b>Deals</b></div><div class="fp-list">${deals.map((k) => `<span class="fp-res" style="color:${TYPE_COLOR[k]}">${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>` : '');
   }
 
   // blazing elites burn anyone standing close (each device burns its own player)

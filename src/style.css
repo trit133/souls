@@ -840,3 +840,14 @@ button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the 
 #tree-svg .tn.keystone.can circle, #tree-svg .tn.keystone.own circle { stroke: #ffb050; stroke-dasharray: none; stroke-width: 1.8; }
 #tree-svg .tn.soon circle { stroke: #8a6ab8; stroke-width: 1.2; stroke-dasharray: 1.6 1.2; fill: #14101c; }
 #tree-svg .tn.soon .ti { stroke: #8a7aa8; }
+
+/* the enemy under the mouse (main.js updateFoePanel) */
+#foe-panel { position: absolute; right: calc(16px + env(safe-area-inset-right)); width: 200px; padding: 8px 10px; background: rgba(10,7,5,.88); border: 2px solid #6a3a1a; box-shadow: 0 0 0 2px #1a0c06, 0 6px 16px rgba(0,0,0,.6); color: #e8dcc0; pointer-events: none; text-align: left; }
+#foe-panel.hidden { display: none; }
+.fp-name { font: bold 15px Georgia, serif; color: #ffd36a; margin-bottom: 6px; letter-spacing: 1px; }
+.fp-row { display: flex; justify-content: space-between; font: 12px Georgia, serif; margin-top: 4px; }
+.fp-row b { font-weight: normal; color: #c8b090; letter-spacing: 1px; text-transform: uppercase; font-size: 10px; }
+.fp-bar { height: 4px; background: #2a1a10; margin-top: 2px; } .fp-bar i { display: block; height: 100%; background: #b8b8c8; }
+.fp-list { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 2px; }
+.fp-res { font: bold 12px monospace; } .fp-none { font: italic 11px Georgia, serif; color: #8a7a6a; }
+#minimap.touch ~ #foe-panel { right: calc(66px + env(safe-area-inset-right)); }

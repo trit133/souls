@@ -14,7 +14,7 @@ export const TYPE_COLOR = { phys: '#ffffff', fire: '#ff8a2a', bleed: '#e8343c', 
 export const BUILD_PER_DMG = 3.5 / NUM; // a player's melee: status build-up per point of elemental damage
 export const SPELL_BUILD = 1.5 / NUM; // spells are all one element, so they build less per point
 export const ENEMY_BUILD = 4 / NUM; // enemies' hits on players
-export const RES_CAP = 50, ARMOR_CAP = 20;
+export const RES_CAP = 75, ARMOR_CAP = 50; // (the same caps as enemies: defenses.js)
 
 // Infusion share of physical damage added as the element: 15% for the first, +8% for each more
 export const infusionShare = (lv) => (lv ? 0.15 + 0.08 * (lv - 1) : 0);

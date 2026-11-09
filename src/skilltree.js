@@ -93,7 +93,7 @@ const SPECIAL = {
   mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
 };
 // limits so a full tree stays fair
-export const CAPS = { bleedTgt: 60, poisonedDmg: 60, frozenDmg: 60, counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 20, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 50, bleedRes: 50, poisonRes: 50, frostRes: 50, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
+export const CAPS = { bleedTgt: 60, poisonedDmg: 60, frozenDmg: 60, counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 50, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 75, bleedRes: 75, poisonRes: 75, frostRes: 75, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
   parryWin: 4, potion: 40, critDmg: 30, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
 
 const INNER = [{ hp: 3 }, { st: 2 }];
@@ -546,6 +546,23 @@ function regionTree(kind, nodes, edges) {
     if (score === 0) break;
   }
   for (const [g, pick] of best.picks) Object.assign(pick, { soon: P.soon[g], give: {}, big: true, typed: false });
+  // resistances (and the Knight's armour) topped up so a whole tree reaches the caps (75% each element, 50% armour):
+  // small nodes from ring 4 out become resistance nodes, each placed as far as it can be from the others, bigger
+  // further out. A tree in the first section holds only part of them; later sections fill the rest
+  const TARGET = { fireRes: 75, bleedRes: 75, poisonRes: 75, frostRes: 75, ...(kind === 'knight' ? { armor: 50 } : {}) };
+  const has = (n) => Object.keys(n.give || {}).some((k) => k in TARGET);
+  const placed = all.filter(has);
+  const open = all.filter((n) => plain(n) && !n.notable && !n.keystone && !n.soon && !n.extra && n.ring >= 4 && !has(n));
+  for (const k of Object.keys(TARGET)) {
+    let need = TARGET[k] - all.reduce((a, n) => a + (n.give?.[k] || 0), 0);
+    while (need > 0 && open.length) {
+      let bestN = null, bd = -1;
+      for (const n of open) { const d = Math.min(...placed.map((p) => Math.hypot(p.x - n.x, p.y - n.y))); if (d > bd) { bd = d; bestN = n; } }
+      const v = Math.min(need, k === 'armor' ? (bestN.ring < 9 ? 2 : bestN.ring < 15 ? 3 : 4) : (bestN.ring < 9 ? 4 : bestN.ring < 15 ? 5 : 7));
+      bestN.give = { [k]: v }; bestN.typed = true; need -= v;
+      placed.push(bestN); open.splice(open.indexOf(bestN), 1);
+    }
+  }
 }
 
 // Damage, resistance and armour nodes take over regular stat nodes, spread round the web. Each sits in a ring
@@ -675,14 +692,14 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 12;
+export const TREE_VERSION = 13;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
   // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
-  if (data.treeV === 10 || data.treeV === 11) {
+  if (data.treeV === 10 || data.treeV === 11 || data.treeV === 12) { // (12 -> 13: resistance and armour nodes added)
     let refund = 0;
     for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;
