@@ -56,9 +56,27 @@ export class UI {
       el.textContent = txt; el.classList.toggle('ready', !!cd && !(cd[1] > 0));
       document.getElementById('b-special')?.classList.toggle('cd', p.kind === 'rogue' && cd[1] > 0);
     }
-    // status build-up on you: an icon per building status with its meter; it flashes when it procs
-    const ps = (p.status?.bars() || []).map((b) => `<span class="psicon${b.flash ? ' proc' : ''}" style="color:${STATUS[b.k].color}">${icon(STATUS_ICON[b.k])}<i style="background:${STATUS[b.k].color};transform:scaleX(${b.flash ? 1 : b.v.toFixed(2)})"></i></span>`).join('');
-    if (ps !== this.psHtml) { this.psHtml = ps; (this.psEl ||= document.getElementById('pstatus')).innerHTML = ps; }
+    // status build-up on you: a big icon per building status with its meter under it; it flashes each time a hit
+    // adds to it, and bursts when it procs. Built once per status and updated in place (so the flashes replay)
+    const bars = p.status?.bars() || [], box = (this.psEl ||= document.getElementById('pstatus'));
+    this.psIcons ||= {};
+    for (const k of Object.keys(STATUS)) {
+      const b = bars.find((x) => x.k === k);
+      let el = this.psIcons[k];
+      if (!b) { if (el) { el.remove(); delete this.psIcons[k]; } continue; }
+      if (!el) {
+        el = this.psIcons[k] = document.createElement('span');
+        el.className = 'psicon'; el.style.color = STATUS[k].color; el.style.setProperty('--c', STATUS[k].color);
+        el.innerHTML = `${icon(STATUS_ICON[k])}<b class="psbar"><i></i></b>`;
+        box.append(el);
+      }
+      el.querySelector('i').style.transform = `scaleX(${b.flash ? 1 : b.v.toFixed(3)})`;
+      const hit = b.hit && !b.flash;
+      if (hit && !el._hit) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+      el._hit = hit;
+      if (b.flash && !el._proc) { el.classList.remove('proc'); void el.offsetWidth; el.classList.add('proc'); }
+      el._proc = b.flash;
+    }
     if (p.maxMana) {
       this.mn.set(p.mana / p.maxMana, dt);
       const txt = `${Math.floor(p.mana)} / ${p.maxMana}`;

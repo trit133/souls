@@ -35,14 +35,14 @@ export class StatusState {
     this.meter = { bleed: 0, poison: 0, frost: 0, fire: 0 };
     this.idle = 0;
     this.dots = {}; // poison / fire: { t, dps }
-    this.procd = {}; this.procAt = {};
+    this.procd = {}; this.procAt = {}; this.hitAt = {};
     this.frostT = 0;
   }
 
   reset(resist) {
     if (resist) this.base = resist;
     for (const k of STATUS_KEYS) { this.meter[k] = 0; this.resist[k] = this.base; }
-    this.procd = {}; this.procAt = {};
+    this.procd = {}; this.procAt = {}; this.hitAt = {};
     this.dots = {}; this.frostT = 0; this.idle = 0;
   }
 
@@ -53,6 +53,7 @@ export class StatusState {
     if (this.a.puppet) { game.mp.send({ t: 'status', id: this.a.netId, kind, amount }); return; }
     this.idle = 0;
     this.meter[kind] += amount;
+    if (amount > 0) this.hitAt[kind] = performance.now(); // (the HUD icon flashes)
     if (this.meter[kind] >= this.resist[kind]) {
       this.meter[kind] = 0;
       this.proc(kind, game);
@@ -119,8 +120,8 @@ export class StatusState {
     const out = [];
     const now = performance.now();
     for (const k of STATUS_KEYS) {
-      const flash = now - (this.procAt[k] || -1e9) < 600;
-      if (this.meter[k] > 0.5 || flash) out.push({ k, v: Math.min(1, this.meter[k] / this.resist[k]), flash });
+      const flash = now - (this.procAt[k] || -1e9) < 600, hit = now - (this.hitAt?.[k] || -1e9) < 260;
+      if (this.meter[k] > 0.5 || flash) out.push({ k, v: Math.min(1, this.meter[k] / this.resist[k]), flash, hit });
     }
     return out;
   }

@@ -31,14 +31,17 @@ export function playerParts(tree = {}, statusLv = {}, base) {
 export const scaleParts = (p, m) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v * m]));
 export const sumParts = (p) => Object.values(p).reduce((a, b) => a + b, 0);
 
-// an enemy's hit: total damage split by its element shares
+// an enemy's hit. Regular enemies' elements are added on top of the hit (elems.add, see addedElems); a boss's
+// are carved out of it (its total stays the same)
 export function enemyParts(dmg, elems) {
   const out = {};
   let rest = 1;
   for (const [k, s] of Object.entries(elems || {})) { out[k] = dmg * s; rest -= s; }
-  out.phys = dmg * Math.max(0, rest);
+  out.phys = elems?.add ? dmg : dmg * Math.max(0, rest);
   return out;
 }
+// mark an elements object as extra damage on top of the hit (hidden from Object.entries, kept wherever it's passed)
+export const addedElems = (e) => (e ? Object.defineProperty(e, 'add', { value: true }) : e);
 
 // what reaches a player after armour and resistances, and the build-up each element adds
 export function mitigate(parts, tree = {}, buildMul = 1) {
@@ -58,25 +61,27 @@ export function weaponElems(tree, statusLv, base = 15 * NUM) {
   return ELEMS.filter((k) => (p[k] || 0) >= 1.5 * NUM).join('+');
 }
 
-// regular enemies carrying an element, by part of the run (mini bosses passed): chance, then the chance of a
-// second and third element. Rows past the first section are for the second section, still to come.
+// regular enemies carrying an element, by dungeon (0-2; 3 = the approach to Varek): chance, then the chance of a
+// second and third element. Rising so resistances matter more and more: half in the first dungeon, most in the
+// second (some with two), every enemy in the third (often two, sometimes three). Rows past 3 are for later.
 export const ELEM_CHANCE = [
-  { p: 1 / 8, two: 0, three: 0 },
-  { p: 1 / 6, two: 0, three: 0 },
-  { p: 1 / 3, two: 0.1, three: 0 },
-  { p: 1 / 2, two: 0.25, three: 0 },
+  { p: 0.5, two: 0, three: 0 },
+  { p: 0.8, two: 0.33, three: 0 },
+  { p: 1, two: 0.45, three: 0.1 },
+  { p: 1, two: 0.45, three: 0.1 },
   { p: 0.62, two: 0.35, three: 0.08 },
   { p: 0.72, two: 0.45, three: 0.15 },
   { p: 0.82, two: 0.5, three: 0.22 },
   { p: 0.9, two: 0.55, three: 0.3 },
 ];
-// share of an enemy's hit that is elemental, by how many elements it has
-const SHARE = [0, 0.25, 0.15, 0.11];
+// elemental damage added on top of a hit (share of the hit), by how many elements: a bit more from the third
+// dungeon on
+const SHARE = [0, 0.2, 0.12, 0.09], SHARE_DEEP = [0, 0.3, 0.18, 0.13];
 export function rollElems(tier, r) {
   const c = ELEM_CHANCE[Math.min(tier, ELEM_CHANCE.length - 1)];
   if (r() >= c.p) return null;
   const n = r() < c.three ? 3 : r() < c.two ? 2 : 1;
-  const pool = [...ELEMS], out = {};
-  for (let i = 0; i < n; i++) out[pool.splice(Math.floor(r() * pool.length), 1)[0]] = SHARE[n];
-  return out;
+  const pool = [...ELEMS], out = {}, share = tier >= 2 ? SHARE_DEEP : SHARE;
+  for (let i = 0; i < n; i++) out[pool.splice(Math.floor(r() * pool.length), 1)[0]] = share[n];
+  return addedElems(out);
 }

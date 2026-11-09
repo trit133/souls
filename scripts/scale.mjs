@@ -35,7 +35,7 @@ const measure = async (url) => {
     }
     // block: stamina a hit costs the knight
     g.start('knight'); g.buildRun(LAYOUT, 5, 1);
-    { const p = g.player, e = g.enemies.find((x) => x.type === 'grunt'); p.pos.set(e.pos.x, 0, e.pos.z + 1.6); p.yaw = Math.PI; e.yaw = 0; p.blocking = true; const st0 = p.st, hp0 = p.hp; const def = e.T.moves.slash; g.resolveHit(e, p, def.hits[0], def); o['knight block stamina'] = +(st0 - p.st).toFixed(1); o['knight block chip'] = +(hp0 - p.hp).toFixed(1); }
+    { const p = g.player, e = g.enemies.find((x) => x.type === 'grunt'); e.elems = null; p.pos.set(e.pos.x, 0, e.pos.z + 1.6); p.yaw = Math.PI; e.yaw = 0; p.blocking = true; const st0 = p.st, hp0 = p.hp; const def = e.T.moves.slash; g.resolveHit(e, p, def.hits[0], def); o['knight block stamina'] = +(st0 - p.st).toFixed(1); o['knight block chip'] = +(hp0 - p.hp).toFixed(1); }
     // status: bleed on a grunt from infused hits — hits until it procs, and the proc's size
     g.start('rogue'); g.buildRun(LAYOUT, 5, 1);
     { const p = g.player; p.statusLv = { bleed: 3 }; const e = g.enemies.find((x) => x.type === 'grunt'); e.maxHp = e.hp = e.maxHp * 100;

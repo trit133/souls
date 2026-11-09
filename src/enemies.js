@@ -1,4 +1,5 @@
 import { NUM } from './scale.js';
+import { addedElems } from './damage.js';
 import { comboHold, tickHold, HOLD_BURST } from './hold.js';
 import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
@@ -236,7 +237,7 @@ export class Enemy extends Actor {
   // elemental damage this enemy carries (a share of each hit, taken out of the physical): { fire: 0.25 } or null.
   // Its weapon shows the element(s), like a player's.
   setElems(elems) {
-    if (this.elite === 'blazing') elems = { ...(elems || {}), fire: 0.5 };
+    if (this.elite === 'blazing') elems = addedElems({ ...(elems || {}), fire: Math.max(elems?.fire || 0, 0.3) }); // fire on every hit
     if (this.effigy) elems = null;
     this.elems = elems; this.elemBuild = 1;
     this.wfxKey = elems ? ['bleed', 'fire', 'frost', 'poison'].filter((k) => elems[k]).join('+') : '';
