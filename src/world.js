@@ -540,8 +540,9 @@ export class World {
     this.lightPool.forEach((L, i) => {
       const s = active[i];
       if (!s) { L.intensity = 0; return; }
-      L.position.set(s.x, s.y, s.z); L.color.set(s.color); L.distance = s.range;
-      L.intensity = s.power + Math.sin(time * 11 + s.x * 3) * s.power * 0.1;
+      const k = this.nightLight || { power: 1, range: 1 }; // (Night Raid: torches and fires light much less)
+      L.position.set(s.x, s.y, s.z); L.color.set(s.color); L.distance = s.range * k.range;
+      L.intensity = (s.power + Math.sin(time * 11 + s.x * 3) * s.power * 0.1) * k.power;
     });
   }
 }

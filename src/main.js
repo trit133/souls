@@ -166,6 +166,7 @@ class Game {
     this.hemi.intensity = on ? 0.3 : 2.0;
     this.hemi.color.set(on ? 0x40507a : 0x9aa6c8); this.hemi.groundColor.set(on ? 0x08080a : 0x4a3a28);
     this.sun.intensity = on ? 0 : 2.0;
+    this.world.nightLight = on ? { power: 0.3, range: 0.6 } : null; // torches, braziers and bonfires: 30% as bright, 60% the reach
     this.scene.background.set(on ? 0x040508 : 0x15130f);
     this.scene.fog.color.set(on ? 0x040508 : 0x1a1712);
     if (on && !this.nightLights) {
@@ -184,7 +185,7 @@ class Game {
     const players = this.mode === 'title' ? [] : this.allPlayers();
     this.nightLights.forEach((L, i) => {
       const p = players[i];
-      L.cone.intensity = p && p.alive !== false ? 26 : 0; L.glow.intensity = p ? 1.2 : 0;
+      L.cone.intensity = p && p.alive !== false ? 17 : 0; L.glow.intensity = p ? 0.7 : 0;
       if (!p) return;
       const f = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
       L.cone.position.set(p.pos.x - f.x * 1.2, 3.4, p.pos.z - f.z * 1.2); // from above and behind: lights the ground ahead, not you
