@@ -582,10 +582,10 @@ function critNodes(kind, nodes, edges) {
   });
 }
 // Every class can deal every element, its own the most: the elements its tree had none of get 4 nodes each, added the
-// same way after the crit nodes (flat +1 then +2 per hit, +15% then +25%, the bigger ones further out). Elements are
+// same way after the crit nodes (flat +20 then +30 per hit, +50% then +80%, the bigger ones further out). Elements are
 // dealt round so each gets nodes near the start and at the edge.
 export const OFF_ELEMS = { knight: ['bleed', 'poison', 'frost'], rogue: ['fire', 'frost'], mage: ['bleed', 'poison'] };
-const OFF_STEPS = [['Dmg', 1], ['Pct', 15], ['Dmg', 2], ['Pct', 25]];
+const OFF_STEPS = [['Dmg', 2], ['Pct', 50], ['Dmg', 3], ['Pct', 80]]; // (flat ×NUM: +20 then +30)
 function elemNodes(kind, nodes, edges) {
   const E = OFF_ELEMS[kind], count = E.length * 4;
   addNodes(kind, nodes, edges, count, 'ce', (i) => Math.round(4 + (i * 17) / (count - 1)), (placed) => {
