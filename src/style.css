@@ -320,6 +320,10 @@ input { -webkit-user-select: text; user-select: text; touch-action: manipulation
 #tree-svg .te.own { stroke: #e8c25a; stroke-width: 1.2; }
 #tree-svg .te.sr:not(.own) { stroke: #6a4a9a; stroke-width: .9; stroke-dasharray: 2 1; }
 #tree-svg .tn circle, #tree-svg .tn polygon { fill: #16131a; stroke: #4a4232; stroke-width: .6; }
+svg .solid { fill: currentColor; } /* filled icons (crit chance star) */
+#tree-svg .tn .ti .solid { fill: #6e6454; }
+#tree-svg .tn.can .ti .solid { fill: #d8cfbf; }
+#tree-svg .tn.own .ti .solid { fill: #fff2c8; }
 #tree-svg .tn .ti { fill: none; stroke: #6e6454; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 #tree-svg .tn.can circle, #tree-svg .tn.can polygon { stroke: var(--c); stroke-width: .9; fill: #1e1a24; }
 #tree-svg .tn.can .ti { stroke: #d8cfbf; }

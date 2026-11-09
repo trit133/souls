@@ -47,7 +47,7 @@ export const STATS = {
   fireRadius: { name: 'Conflagration', fmt: (v) => `+${v}% fireball blast radius`, icon: 'fireRadius' },
   knifeDmg: { name: 'Spellblade', fmt: (v) => `+${v}% knife damage`, icon: 'knifeDmg' },
   // critical hits (any class): a crit does +50% damage plus the crit damage bonus
-  critChance: { name: 'Precision', fmt: (v) => `+${v}% critical hit chance`, icon: 'critDmg' },
+  critChance: { name: 'Precision', fmt: (v) => `+${v}% critical hit chance`, icon: 'critChance' },
   critPower: { name: 'Ferocity', fmt: (v) => `+${v}% critical damage`, icon: 'critPower' },
   // damage by type (status build-up comes from elemental damage)
   physDmg: { name: 'Brutality', fmt: (v) => `+${v} physical damage per hit`, icon: 'dmg' },
