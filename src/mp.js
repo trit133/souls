@@ -300,6 +300,8 @@ export class Multiplayer {
       case 'rsv': { const e = this.entity(d.id); if (e) g.activateReserve(e, d.x, d.z); break; }
       case 'prog': g.clearKilled = d.k; break;
       case 'clear100': g.fullClear(true); break;
+      case 'heart': g.spawnHeart(d.x, d.z, d.id); break;
+      case 'heartTaken': g.takeHeart(d.id, true); break;
       case 'kgold': g.earnKill(d.n, g.netMap?.[d.id]); break; // a teammate's kill: your share
       case 'descend': if (this.isHost) g.descend(); break;
       case 'act': g.enterAct(d.n); break;

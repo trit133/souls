@@ -44,6 +44,7 @@ import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
 
 const $ = (id) => document.getElementById(id);
+const HEART_CHANCE = 0.2, HEART_HEAL = 20 * NUM; // hearts: a fifth of enemies drop one, healing 20 (at the old size, like every number: scale.js)
 const PARRY_EARLY = 0.23, PARRY_LATE = 0; // seconds before impact
 const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const MANA_PER_HIT = 10;
@@ -92,6 +93,7 @@ class Game {
     this.maxTokens = 99; // replaced by assignEngagement()
     this.projectiles = [];
     this.rings = [];
+    this.hearts = [];
     this.mode = 'title';
     this.enemies = [];
     this.bosses = [];
@@ -235,6 +237,7 @@ class Game {
     for (const e of [...this.enemies, ...this.reserves]) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
+    this.clearHearts();
     this.layout = layout;
     this.portal = null;
     this.night = !!this.run?.night;
@@ -545,7 +548,7 @@ class Game {
     this.ui.show('boss', false);
     this.audio.stopMusic();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear();
-    this.rings = [];
+    this.rings = []; this.clearHearts();
   }
 
   startEncounter(enc) {
@@ -707,10 +710,55 @@ class Game {
     let n = killGold(e);
     if (this.night && n && Math.random() < 0.5) n *= 2;
     if (n) { this.earnKill(n, e); if (this.mp.active) this.mp.sendAll({ t: 'kgold', n, id: e.netId }); }
+    // a fifth of enemies drop a heart (the host decides and tells the party)
+    if (!e.effigy && Math.random() < HEART_CHANCE) {
+      const id = `h${this.heartN = (this.heartN || 0) + 1}`;
+      this.spawnHeart(e.pos.x, e.pos.z, id);
+      if (this.mp.active) this.mp.sendAll({ t: 'heart', x: e.pos.x, z: e.pos.z, id });
+    }
     if (this.world.dungeon && !e.event && !e.effigy) {
       this.clearKilled++;
       if (this.mp.active) this.mp.sendAll({ t: 'prog', k: this.clearKilled });
       if (this.clearKilled >= this.clearTotal) this.fullClear();
+    }
+  }
+
+  // ---------- hearts ----------
+  // a red pixel heart that bobs where an enemy fell; walk over it (when hurt) to heal HEART_HEAL. In a party the
+  // first to reach it takes it
+  heartTex() {
+    if (this._heartTex) return this._heartTex;
+    const rows = ['.##...##.', '####.####', '#########', '#########', '.#######.', '..#####..', '...###...', '....#....'];
+    const c = document.createElement('canvas'); c.width = 11; c.height = 10; const x = c.getContext('2d');
+    rows.forEach((r, y) => [...r].forEach((ch, i) => { if (ch !== '#') return; x.fillStyle = '#5a0a0e'; x.fillRect(i + 1, y + 1, 1, 1); }));
+    rows.forEach((r, y) => [...r].forEach((ch, i) => { if (ch !== '#') return; x.fillStyle = (y < 2 && i < 3) ? '#ff9a9a' : '#e0202a'; x.fillRect(i, y, 1, 1); }));
+    const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+    return (this._heartTex = t);
+  }
+  spawnHeart(x, z, id) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heartTex(), transparent: true, depthWrite: false }));
+    s.scale.set(0.55, 0.5, 1); s.position.set(x, 0.6, z); this.scene.add(s);
+    this.hearts.push({ id, x, z, s, t: Math.random() * 6 });
+  }
+  takeHeart(id, net = false) {
+    const i = this.hearts.findIndex((h) => h.id === id);
+    if (i < 0) return;
+    const [h] = this.hearts.splice(i, 1);
+    this.scene.remove(h.s); h.s.material.dispose();
+    if (!net && this.mp.active) this.mp.sendAll({ t: 'heartTaken', id });
+  }
+  clearHearts() { for (const h of this.hearts || []) { this.scene.remove(h.s); h.s.material.dispose(); } this.hearts = []; }
+  updateHearts(dt) {
+    const p = this.player;
+    for (const h of [...this.hearts]) {
+      h.t += dt; h.s.position.y = 0.6 + Math.sin(h.t * 3) * 0.12;
+      if (!p?.alive || p.hp >= p.maxHp || Math.hypot(p.pos.x - h.x, p.pos.z - h.z) > 1.1) continue;
+      const got = Math.min(HEART_HEAL, p.maxHp - p.hp);
+      p.hp += got;
+      this.statusPopup(p, `+${Math.round(got)}`, '#ff6a6a');
+      this.audio.play('heal', 0.6);
+      this.fx.burst({ x: h.x, y: 0.7, z: h.z }, 10, [1, 0.3, 0.3], 2.5, 0.6, 0.15);
+      this.takeHeart(h.id);
     }
   }
 
@@ -1675,6 +1723,7 @@ class Game {
         }
         this.separate();
         this.updateProjectiles(dt);
+        this.updateHearts(dt);
         this.seals.update(dt);
         this.mp.tick(dt);
         this.stepRevive(dt);
