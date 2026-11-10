@@ -351,7 +351,7 @@ export class Player extends Actor {
   }
 
   // ---------- helpers ----------
-  spend(n) { this.st -= n; if (this.st < 0) this.st = 0; this.stDelay = 0.6; }
+  spend(n) { if (this.freeMove) return; this.st -= n; if (this.st < 0) this.st = 0; this.stDelay = 0.6; }
   // an empty bar blocks attacks, rolls and parries until it refills a little
   canSpend() { return this.st >= 1; }
 
@@ -787,6 +787,9 @@ export class Player extends Actor {
     const node = this.c.combos?.[input];
     this.cmb = node && this.comboIn(node) ? { node, openAt: null } : null;
     this.cmbStag = new Set(); // enemies this combo has staggered (once each)
+    // stamina back: land the first two moves of a combo and the rest of it is free (a roll or bolt step counts as
+    // landed). cmbDepth: which move of the combo is playing; cmbHit: the moves that hit something
+    this.cmbDepth = 1; this.cmbHit = new Set(); this.cmbAuto = new Set();
     return true;
   }
   // is the player doing that node's move right now?
@@ -801,8 +804,10 @@ export class Player extends Actor {
   comboTick() {
     const C = this.cmb;
     if (!C) { this.comboMark(false); return; }
-    if (!this.comboIn(C.node) || !Object.keys(C.node.next).length) { this.cmb = null; return; }
     const now = this.game.time;
+    // (an open window outlasts the move: you can still continue from standing until it closes)
+    const lingering = C.openAt != null && now <= C.openAt + COMBO_WINDOW && this.state === 'move';
+    if ((!this.comboIn(C.node) && !lingering) || !Object.keys(C.node.next).length) { this.cmb = null; return; }
     if (C.openAt == null && this.comboTime() >= C.node.at) { C.openAt = now; this.comboFlash(); }
     else if (C.openAt != null && now > C.openAt + COMBO_WINDOW) this.cmb = null;
     this.comboMark(this.cmb?.openAt != null);
@@ -815,7 +820,15 @@ export class Player extends Actor {
     const now = this.game.time, next = C.node.next[a];
     this.cmb = null;
     if (C.openAt == null || now > C.openAt + COMBO_WINDOW || !next) return false;
-    if (!this.comboStep(next, dir, mag)) return false;
+    const depth = (this.cmbDepth || 1) + 1;
+    if (C.node.move === 'roll' || C.node.move === 'bolt') this.cmbAuto?.add(depth - 1);
+    const landed = (d) => this.cmbHit?.has(d) || this.cmbAuto?.has(d);
+    this.freeMove = depth >= 3 && landed(1) && landed(2);
+    const ok = this.comboStep(next, dir, mag);
+    this.freeMove = false;
+    if (!ok) return false;
+    this.cmbDepth = depth;
+    if (depth === 3 && landed(1) && landed(2)) this.game.statusPopup(this, 'STAMINA FREE', '#7ad06a');
     this.armorSeq = this.stateSeq; // this move is armoured until it ends
     this.game.audio.play('comboHit');
     if (Object.keys(next.next).length) this.cmb = { node: next, openAt: null };
@@ -824,14 +837,14 @@ export class Player extends Actor {
   }
   comboStep(node, dir, mag) {
     if (node.move === 'roll') {
-      if (!this.canSpend()) return false;
+      if (!this.freeMove && !this.canSpend()) return false;
       if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
       if (node.fast) this.rollRate *= FAST;
       return true;
     }
     if (node.move === 'bolt') return this.castBolt(dir, mag);
     const def = this.c.attacks[node.move];
-    if (!def || !this.canSpend()) return false;
+    if (!def || (!this.freeMove && !this.canSpend())) return false;
     if (def.mana) {
       if (this.mana < def.mana) { this.game.ui.toastSmall?.('Not enough mana'); return false; }
       this.mana -= def.mana;

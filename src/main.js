@@ -1256,6 +1256,7 @@ class Game {
     const r = tg.receive(info);
     if (r === 'none') return;
     if (r === 'stagger' && att === this.player && (def.comboMove || att.cmb)) att.cmbStag?.add(tg);
+    if (att === this.player && att.cmbDepth && (def.comboMove || att.cmb)) att.cmbHit?.add(att.cmbDepth); // (a combo move that landed)
     const heavy = def.heavyHit, dealt = tg.puppet ? info.dmg : Math.max(0, hp0 - tg.hp);
     const shown = scaleParts(info.parts || { phys: info.dmg }, info.dmg > 0 ? dealt / info.dmg : 0);
     this.dmgPops(tg, shown, info.crit ? 'critical' : heavy ? 'heavy' : 'me');
