@@ -707,11 +707,11 @@ class Game {
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
     else if (!e.effigy) this.creditKill(e);
     // gold for the kill (progress.js), the same for everyone in the party; Night Raid doubles half of them
-    let n = killGold(e);
+    let n = e.vanished ? 0 : killGold(e); // (a held circle's leftovers fade away: no gold or hearts)
     if (this.night && n && Math.random() < 0.5) n *= 2;
     if (n) { this.earnKill(n, e); if (this.mp.active) this.mp.sendAll({ t: 'kgold', n, id: e.netId }); }
     // a third of enemies drop a heart (the host decides and tells the party)
-    if (!e.effigy && Math.random() < HEART_CHANCE) {
+    if (!e.effigy && !e.vanished && Math.random() < HEART_CHANCE) {
       const id = `h${this.heartN = (this.heartN || 0) + 1}`;
       this.spawnHeart(e.pos.x, e.pos.z, id);
       if (this.mp.active) this.mp.sendAll({ t: 'heart', x: e.pos.x, z: e.pos.z, id });

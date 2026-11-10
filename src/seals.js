@@ -2,7 +2,8 @@
 // fifth pay bonus gold. Each is guarded:
 //   elite  - an elite and its pack stand round the shrine: kill them all and the seal breaks
 //   circle - stand in the ring round the shrine for 30 s (time only runs with someone inside; it slips back slowly
-//            when nobody is), while waves come in from the chamber's edges
+//            when nobody is), while waves come in from the chamber's edges; when it breaks, every enemy left in
+//            the chamber fades away
 //   altar  - three cursed effigies stand round the shrine; once you come near, enemies pour out of it every few
 //            seconds until all three are broken
 // The host (or a solo player) runs them and tells the party: 'seal' messages (event started, progress, broken) and
@@ -58,7 +59,7 @@ export class Seals {
         if (s.state !== 'active') continue;
         s.prog = inside ? s.prog + dt : Math.max(0, s.prog - dt * 0.25);
         const due = WAVES.filter((t) => s.prog >= t).length;
-        while (s.waves < due) { s.waves++; this.callIn(s, 2 + this.world.dungeon.players, false); } // 3 / 4 / 5 a wave by party size
+        while (s.waves < due) { s.waves++; this.callIn(s, 1 + this.world.dungeon.players, false); } // 2 / 3 / 4 a wave by party size
         if (s.prog >= HOLD_TIME) this.breakSeal(s);
         else if (this.sendT <= 0 && g.mp.active) g.mp.sendAll({ t: 'seal', i: d.i, s: 'p', p: Math.round(s.prog * 10) / 10 });
       }
@@ -95,6 +96,13 @@ export class Seals {
     d.crystal.visible = false; d.beam.visible = false;
     // whoever was still waiting to be called in stays away
     for (const sp of d.reserves) if (sp.enemy.reserve) g.reserves = g.reserves.filter((e) => e !== sp.enemy);
+    // a held circle: everything still fighting in its chamber fades away (no gold or hearts; they count as cleared)
+    if (d.kind === 'circle' && !g.isGuest) for (const e of g.enemies) {
+      if (!e.alive || e.isBoss || e.mod !== d.mod) continue;
+      e.vanished = true;
+      g.fx.burst(new THREE.Vector3(e.pos.x, 1, e.pos.z), 18, [0.7, 0.5, 1], 3, 0.7, 0.25);
+      e.die(true); e.rig.root.visible = false;
+    }
     const at = new THREE.Vector3(d.x, 3.7, d.z);
     g.pfx?.play('parry', at);
     g.fx.burst(at, 40, [0.8, 0.5, 1], 6, 0.9, 0.3);

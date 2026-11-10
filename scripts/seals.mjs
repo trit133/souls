@@ -33,7 +33,7 @@ const out = await page.evaluate(() => {
   goto(S.def.x + 12, S.def.z); step(4); const slipped = S.prog;
   goto(S.def.x + 1, S.def.z + 1);
   for (let t = 0; t < 40 && S.state !== 'broken'; t++) { step(1); goto(S.def.x + 1, S.def.z + 1); }
-  o.circle = { state: S.state, calledIn: g.enemies.length - e0, progWhenOutside: +slipped.toFixed(1), broken: g.seals.broken, leftWaiting: g.reserves.filter((e) => e.mod === S.def.mod).length };
+  o.circle = { state: S.state, calledIn: g.enemies.length - e0, progWhenOutside: +slipped.toFixed(1), broken: g.seals.broken, leftWaiting: g.reserves.filter((e) => e.mod === S.def.mod).length, aliveInRoomAfter: g.enemies.filter((e) => e.alive && e.mod === S.def.mod).length };
   // 3. the altar: come near, enemies pour out, break the effigies
   S = seal('altar');
   const e1 = g.enemies.length;
