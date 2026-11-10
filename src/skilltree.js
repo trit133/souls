@@ -118,7 +118,9 @@ export const EVOS = {
 // 'wheel' (a hub ringed by small nodes), 'arc' (a curved chain sweeping toward the next spoke), 'gem' (wheels
 // set out at the star's points and forks between them)
 const SHAPES = {
-  knight: { spokes: 4, lens: [22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1], [9, 2], [13, 2], [18, 1], [21, 1]], star: [], style: 'wheel' },
+  // (the Knight's four straight lines keep only rings 1-10 and the rings where things join them further out: the rest
+  // of his nodes sit in the quarters' clusters; rings 7-8 stay so no shortcut brings the evolutions under 6 links apart)
+  knight: { spokes: 4, lens: [22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1], [9, 2], [13, 2], [18, 1], [21, 1]], star: [], style: 'wheel', keep: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 18, 21, 22] },
   rogue: { spokes: 6, lens: [22, 17, 22, 17, 22, 17], twist: 0.09, start: -Math.PI / 2, links: [[5, 1], [13, 1]], star: [], style: 'arc' },
   mage: { spokes: 5, lens: [22, 22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1]], star: [12, 16], style: 'gem' },
 };
@@ -162,9 +164,10 @@ export function build(kind, opts = {}) {
   const ringOf = (x, y) => Math.max(1, Math.round(Math.hypot(x, y) / RING));
   add({ id: 'start', ring: 0, role: 'start', x: 0, y: 0, pin: true });
   // spokes
-  for (let i = 0; i < S.spokes; i++) for (let d = 1; d <= S.lens[i]; d++) {
+  for (let i = 0; i < S.spokes; i++) for (let d = 1, prev = 'start'; d <= S.lens[i]; d++) {
+    if (S.keep && !S.keep.includes(d)) continue;
     add({ id: `s${i}-${d}`, ring: d, role: 'main', spoke: i, pin: true, ...at(ang(i, d), d * RING) });
-    link(d === 1 ? 'start' : `s${i}-${d - 1}`, `s${i}-${d}`);
+    link(prev, `s${i}-${d}`); prev = `s${i}-${d}`;
   }
   const has = (id) => nodes.has(id);
   // ring links between neighbouring spokes (only where both reach)
@@ -484,6 +487,8 @@ const MAGE = {
 };
 const PLANS = { knight: KNIGHT, rogue: ROGUE, mage: MAGE };
 
+// a node on one of the Knight's straight lines (kept to basic nodes)
+const onLine = (kind, n) => kind === 'knight' && n.spoke !== undefined && n.role === 'main';
 // a small node's value by how far out it sits
 const ringMul = (ring) => (ring <= 4 ? 1 : ring <= 8 ? 1.25 : ring <= 13 ? 1.75 : ring <= 18 ? 2.5 : 3);
 const scaleGive = (give, m) => Object.fromEntries(Object.entries(give).map(([k, v]) => [k, v * m >= 2 ? Math.round(v * m) : Math.round(v * m * 100) / 100]));
@@ -492,6 +497,8 @@ function regionTree(kind, nodes, edges) {
   const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
   const all = [...nodes.values()].sort((a, b) => a.ring - b.ring || a.id.localeCompare(b.id));
   const plain = (n) => n.role !== 'start' && n.role !== 'evo' && n.role !== 'socket' && !n.flask && !n.socketRing;
+  const line = (n) => onLine(kind, n); // (the Knight's straight lines: basic nodes only)
+  const armOff = (n, g) => Math.abs(Math.atan2(Math.sin(Math.atan2(n.y, n.x) + Math.PI / 2 - g * Math.PI / 2), Math.cos(Math.atan2(n.y, n.x) + Math.PI / 2 - g * Math.PI / 2))); // (how far round from its arm)
   for (const n of all) { n.big = false; n.give = {}; n.notable = null; n.keystone = false; n.region = n.role === 'start' ? null : NAMES[region(n)]; }
   for (const n of all) {
     if (n.role === 'evo') { n.evo = EVOS[kind]; n.big = true; }
@@ -500,7 +507,7 @@ function regionTree(kind, nodes, edges) {
   }
   // keystones: the last node of each arm
   for (let g = 0; g < 4; g++) {
-    const arm = all.filter((n) => plain(n) && region(n) === g).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0];
+    const arm = all.filter((n) => plain(n) && !line(n) && region(n) === g && (kind !== 'knight' || armOff(n, g) < 0.6)).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0];
     const [name, give] = P.keystones[g];
     Object.assign(arm, { give: { ...give }, notable: name, keystone: true, big: true });
   }
@@ -509,7 +516,7 @@ function regionTree(kind, nodes, edges) {
     let ends = all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && (n.role === 'tip' || n.role === 'branch'));
     const pick = [], want = P.notables[g].length;
     // too few branch ends in this region: use other nodes along it too
-    if (ends.length < want) ends = [...ends, ...all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && !ends.includes(n))].sort((a, c) => a.ring - c.ring || a.id.localeCompare(c.id));
+    if (ends.length < want) ends = [...ends, ...all.filter((n) => plain(n) && !line(n) && !n.keystone && region(n) === g && n.ring >= 4 && !ends.includes(n))].sort((a, c) => a.ring - c.ring || a.id.localeCompare(c.id));
     for (let i = 0; i < want && ends.length; i++) {
       let k = Math.min(ends.length - 1, Math.round((i + 0.5) * ends.length / want));
       if (pick.includes(ends[k])) k = [...ends.keys()].slice(k).concat([...ends.keys()].slice(0, k)).find((j) => !pick.includes(ends[j])) ?? k; // (two landing on one: the next free)
@@ -528,6 +535,7 @@ function regionTree(kind, nodes, edges) {
   for (const n of all) {
     if (!plain(n) || n.notable || n.soon || Object.keys(n.give).length) continue;
     if (n.ring <= 4) n.give = { ...P.hub[hi++ % P.hub.length] };
+    else if (line(n)) n.give = scaleGive(P.hub[hi++ % 2], ringMul(n.ring)); // health and stamina along the lines
     else { const g = region(n), pool = P.small[g]; n.give = scaleGive(pool[si[g]++ % pool.length], ringMul(n.ring)); }
     n.typed = Object.keys(n.give).some((k) => /Dmg$|Pct$|Res$|armor/.test(k) && k !== 'hpPct' && k !== 'stPct');
   }
@@ -541,23 +549,37 @@ function regionTree(kind, nodes, edges) {
   const off = (n, g) => Math.abs(Math.atan2(Math.sin(ang(n) - aim(g)), Math.cos(ang(n) - aim(g))));
   // the regions in each order until all three land exactly 6 out (otherwise the order that gets nearest)
   let best = null;
-  for (const order of [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]) {
+  // (off the Knight's lines first; on them only if that's the only way to keep all three exactly 6 out)
+  for (const lineLast of [true, false]) for (const order of [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]) {
+    if (best?.score === 0) break;
     const evoHops = all.filter((n) => n.role === 'evo').map((n) => hops(n.id)), blocked = new Set(), picks = [];
     for (const g of order) {
       const cutsOff = (n) => { const skip = new Set([...blocked, n.id]); return hops('start', skip).size < nodes.size - skip.size; };
       const fits = (n, want) => plain(n) && !n.notable && !n.keystone && !n.extra && region(n) === g && fromStart.get(n.id) === want && evoHops.every((h) => h.get(n.id) >= 6) && !cutsOff(n);
       let pick = null;
-      for (let want = 6; want <= 9 && !pick; want++) pick = all.filter((n) => fits(n, want)).sort((a, c) => (a.role === 'main' ? 0 : 1) - (c.role === 'main' ? 0 : 1) || off(a, g) - off(c, g))[0];
+      for (let want = 6; want <= 9 && !pick; want++) pick = all.filter((n) => fits(n, want)).sort((a, c) => (lineLast ? (line(a) ? 1 : 0) - (line(c) ? 1 : 0) : 0) || (a.role === 'main' ? 0 : 1) - (c.role === 'main' ? 0 : 1) || off(a, g) - off(c, g))[0];
       if (pick) { picks.push([g, pick]); evoHops.push(hops(pick.id)); blocked.add(pick.id); }
     }
     const score = picks.reduce((a, [, n]) => a + fromStart.get(n.id) - 6, 0) + (3 - picks.length) * 100;
     if (!best || score < best.score) best = { score, picks };
     if (score === 0) break;
   }
+  // the greedy pass can miss a set that works: try every combination of exactly-6 nodes (off the Knight's lines first)
+  if (best.score > 0) {
+    const ev0 = all.filter((n) => n.role === 'evo').map((n) => hops(n.id));
+    const ok6 = (n, g) => plain(n) && !n.notable && !n.keystone && !n.extra && region(n) === g && fromStart.get(n.id) === 6 && ev0.every((h) => h.get(n.id) >= 6);
+    const cand = [1, 2, 3].map((g) => all.filter((n) => ok6(n, g)).sort((a, c) => (line(a) ? 1 : 0) - (line(c) ? 1 : 0) || off(a, g) - off(c, g)));
+    const H = new Map(cand.flat().map((n) => [n.id, hops(n.id)]));
+    const cuts = (set) => { const skip = new Set(set.map((n) => n.id)); return hops('start', skip).size < nodes.size - skip.size; };
+    search: for (const a of cand[0]) for (const b of cand[1]) {
+      if (H.get(a.id).get(b.id) < 6) continue;
+      for (const c of cand[2]) if (H.get(a.id).get(c.id) >= 6 && H.get(b.id).get(c.id) >= 6 && !cuts([a, b, c])) { best = { score: 0, picks: [[1, a], [2, b], [3, c]] }; break search; }
+    }
+  }
   for (const [g, pick] of best.picks) Object.assign(pick, { soon: P.soon[g], give: {}, big: true, typed: false });
-  // resistances: none inside ring 5; 7 nodes per element, 7/8/9/10/12/13/16% (75%) rising outward, five of each seven
-  // in the tree's defensive quarter and two elsewhere, each as far as it can be from the same element's others
-  const open = all.filter((n) => plain(n) && !n.notable && !n.keystone && !n.soon && !n.extra && n.ring >= 5);
+  // resistances: 7 nodes per element, 7/8/9/10/12/13/16% (75%) rising outward from ring 8, spread evenly round the
+  // outside: every quarter gets 7, a mix of all four elements, each as far as it can be from the same element's others
+  const open = all.filter((n) => plain(n) && !line(n) && !n.notable && !n.keystone && !n.soon && !n.extra && n.ring >= 5);
   const take = (n, give) => { n.give = give; n.typed = true; open.splice(open.indexOf(n), 1); };
   const pickNode = (want, g, near) => {
     let bestN = null, bs = 1e9;
@@ -573,7 +595,7 @@ function regionTree(kind, nodes, edges) {
   ['fireRes', 'bleedRes', 'poisonRes', 'frostRes'].forEach((k, ei) => {
     const mine = [];
     RES_STEPS.forEach((v, j) => {
-      const want = 5 + Math.round(j * 2.6), g = j % 3 === 2 ? (P.defensive + 1 + ((ei + j) % 3)) % 4 : P.defensive;
+      const want = 8 + Math.round(j * 2.2), g = (ei + j) % 4;
       const n = pickNode(want, g, mine) || pickNode(want, null, mine);
       if (n) { take(n, { [k]: v }); mine.push(n); }
     });
@@ -636,7 +658,7 @@ function addNodes(kind, nodes, edges, count, prefix, want, finish) {
     let best = null, bs = 1e9;
     for (let k = 0; k < edges.length; k++) {
       const [a, b] = edges[k], A = nodes.get(a), B = nodes.get(b);
-      if (rejected.has(a + '|' + b) || (A.socketRing && B.socketRing)) continue;
+      if (rejected.has(a + '|' + b) || (A.socketRing && B.socketRing) || (kind === 'knight' && A.spoke !== undefined && B.spoke !== undefined)) continue;
       // the middle of the line, or a little off it where something sits close to the middle
       const t = [0.5, 0.42, 0.58, 0.35, 0.65].find((f) => room({ x: A.x + (B.x - A.x) * f, y: A.y + (B.y - A.y) * f }, k));
       if (t === undefined) continue;
@@ -650,7 +672,7 @@ function addNodes(kind, nodes, edges, count, prefix, want, finish) {
     const deg = new Map(); for (const [a, b] of edges) { deg.set(a, (deg.get(a) || 0) + 1); deg.set(b, (deg.get(b) || 0) + 1); }
     for (const [a, b] of edges) for (const [end, from] of [[a, b], [b, a]]) {
       const E = nodes.get(end), F = nodes.get(from);
-      if (deg.get(end) !== 1 || E.added || E.notable || E.keystone || E.soon || E.evo || E.role === 'socket') continue; // (notables and keystones stay at the ends)
+      if (deg.get(end) !== 1 || onLine(kind, E) || E.added || E.notable || E.keystone || E.soon || E.evo || E.role === 'socket') continue; // (notables and keystones stay at the ends)
       const L = Math.hypot(E.x - F.x, E.y - F.y) || 1;
       const p = { x: E.x + ((E.x - F.x) / L) * RING, y: E.y + ((E.y - F.y) / L) * RING };
       if (!room(p, -1) || edges.some(([c, d]) => c !== end && d !== end && segCross(E, p, nodes.get(c), nodes.get(d)))) continue;
@@ -804,14 +826,15 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 16;
+export const TREE_VERSION = 17;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
   // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
-  if (data.treeV >= 10 && data.treeV <= 15) { // (14 -> 15: damage nodes for every element; 15 -> 16: stats regrouped: centre basics, outer quarters, armour 60%) // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)
+  if (data.treeV >= 10 && data.treeV <= 16) { // (16 -> 17: the Knight's lines thinned, resistances spread round the outside;
+    // 14 -> 15: damage nodes for every element; 15 -> 16: stats regrouped: centre basics, outer quarters, armour 60%) // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)
     let refund = 0;
     for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;
