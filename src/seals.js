@@ -59,7 +59,7 @@ export class Seals {
       } else if (d.kind === 'altar') {
         const eff = d.effigies.map((sp) => sp.enemy);
         if (s.state === 'idle' && (this.playersNear(d.x, d.z, 10) || eff.some((e) => e.hp < e.maxHp))) this.start(s);
-        if (s.state === 'active' && (s.spawnT -= dt) <= 0) { s.spawnT = ALTAR_EVERY; this.callIn(s, 2, true); } // (until its 8 / 10 / 12 are out)
+        if (s.state === 'active' && (s.spawnT -= dt) <= 0) { s.spawnT = ALTAR_EVERY; this.callIn(s, 2, true); } // (until its 8 / 9 / 10 are out)
         if (eff.every((e) => !e.alive)) this.breakSeal(s);
       } else {
         const inside = this.playersNear(d.x, d.z, d.radius);

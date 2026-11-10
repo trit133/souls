@@ -197,7 +197,7 @@ class Game {
     });
   }
 
-  // a party fights 30% / 60% more regular enemies, placed near the originals
+  // a party fights 15% / 30% more regular enemies, placed near the originals
   extraSpawns(players, seed) {
     const share = extraEnemyShare(players), pool = this.world.spawns.filter((s) => s.type !== 'brute' && !s.o.reserve && !s.o.effigy && !s.o.elite);
     const r = rng(seed + 7), out = [];

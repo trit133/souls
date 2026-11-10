@@ -348,7 +348,7 @@ export class Dungeon {
       if (c.seal === 'elite') {
         const base = this.act > 0 && r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']);
         S.guards.push(add(base, { elite: c.trait, near: true }));
-        for (let k = 0; k < 2 + this.players; k++) S.guards.push(add(regular(true))); // 3 more with the elite, +1 a player
+        for (let k = 0; k < 3 + Math.floor((this.players - 1) / 2); k++) S.guards.push(add(regular(true))); // 3 more with the elite (4 with three players)
       } else if (c.seal === 'altar') {
         // three cursed effigies round the shrine; enemies pour out of it until they fall
         for (let k = 0; k < 3; k++) {
@@ -359,7 +359,7 @@ export class Dungeon {
           w.spawn('effigy', ex, ez, Math.atan2(S.x - ex, S.z - ez), { effigy: true });
           S.effigies.push(w.spawns[w.spawns.length - 1]);
         }
-        for (let k = 0; k < 6 + 2 * this.players; k++) { w.spawn(regular(true), S.x, S.z, 0, { reserve: true, event: true }); S.reserves.push(w.spawns[w.spawns.length - 1]); }
+        for (let k = 0; k < 7 + this.players; k++) { w.spawn(regular(true), S.x, S.z, 0, { reserve: true, event: true }); S.reserves.push(w.spawns[w.spawns.length - 1]); }
         add(regular(true));
       } else {
         // hold the circle: waves come in from the edges
