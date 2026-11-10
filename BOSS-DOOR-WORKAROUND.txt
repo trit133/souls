@@ -1,0 +1,23 @@
+BOSS DOOR WORKAROUND (for a game that was already open before the door fix)
+
+The fixed boss door only reaches you after a browser refresh. If you're mid-run and don't
+want to restart, every player does this on their own screen (it only changes your own character):
+
+1. Press F12 (Mac: Cmd + Option + J) and click the "Console" tab.
+
+2. Paste this line and press Enter:
+
+(() => { const g = game, p = g.player, e = g.seals.enc, A = e.arena, G = g.world.gates[e.gateIn], dx = A.x - G.x, dz = A.z - G.z, L = Math.hypot(dx, dz); p.pos.set(G.x + dx / L * 3.5, 0, G.z + dz / L * 3.5); g.lastGood = null; p.hp = p.maxHp; p.st = p.maxSt; p.flasks += 2; })();
+
+3. Close the console and walk forward into the arena.
+
+What it does:
+- Puts you just past the boss door (so the broken door doesn't matter).
+- Full health and stamina, and 2 more flasks on top of what you have.
+- The first player into the arena starts the boss fight, which pulls the whole party in as normal.
+
+Notes:
+- If Chrome won't let you paste, type   allow pasting   in the console, press Enter, then paste again.
+- Needs a computer: phones and tablets have no console.
+- Refresh after this run to get the fixed door for good. Gold and skill trees are saved on your
+  account, so refreshing loses nothing.
