@@ -1,5 +1,5 @@
 // The evolved Knight's Shield Charge and its leaping overhead can't be broken by hits: a light slash and a brute's
-// heavy slam land mid-charge, he takes the damage and the charge carries on. node scripts/chargearmor.mjs [url]
+// heavy slam land mid-charge: no damage, and the charge carries on. node scripts/chargearmor.mjs [url]
 import { chromium } from 'playwright';
 const url = process.argv[2] || 'http://localhost:4173/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

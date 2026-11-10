@@ -358,13 +358,13 @@ export class Player extends Actor {
   iframe() {
     if (this.state === 'roll') return this.inWindow([this.c.roll.iframes[0], this.c.roll.iframes[1] + (this.tree?.iframe || 0)], this.t);
     if (this.state === 'backstep') return this.t >= 0.02 && this.t <= 0.22;
+    if (this.chargeArmored()) return true; // Shield Charge and its leaping overhead: untouchable
     return this.state === 'knockdown' || this.state === 'riposte' || this.state === 'rest' || this.state === 'dead';
   }
 
   hyperArmor() { return this.comboArmored() || (this.state === 'attack' && this.inWindow(this.atk.def.armor)); }
   // from a combo's second move on, hits hurt but can't stagger or knock the player out of it
-  // the Knight's Shield Charge and its leaping overhead can't be broken: hits still hurt, but never stagger, knock
-  // down or shove him out of it
+  // the Knight's Shield Charge and its leaping overhead can't be broken or hurt: hits pass through him (iframe)
   chargeArmored() { return this.alive && (this.state === 'charge' || (this.state === 'attack' && this.atkKey === 'chargeSlam')); }
   comboArmored() { return this.armorSeq != null && this.armorSeq === this.stateSeq && this.alive; }
   setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; }
