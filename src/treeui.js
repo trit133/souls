@@ -159,7 +159,8 @@ export class TreeUI {
   removal() {
     const have = owned(this.data, this.kind), keep = new Set(), q = ['start'];
     keep.add('start');
-    while (q.length) for (const nb of neighbours(this.tree, q.shift())) if (have.has(nb) && !this.marked.has(nb) && !keep.has(nb)) { keep.add(nb); q.push(nb); }
+    // (paths run through evolutions still to come, like buying does: canTake)
+    while (q.length) for (const nb of neighbours(this.tree, q.shift())) if ((have.has(nb) || this.tree.nodes.get(nb)?.soon) && !this.marked.has(nb) && !keep.has(nb)) { keep.add(nb); q.push(nb); }
     return [...have].filter((id) => !keep.has(id));
   }
   toggleMark(id) {

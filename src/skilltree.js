@@ -767,7 +767,9 @@ export const owned = (data, kind) => new Set(['start', ...(data?.tree?.[kind] ||
 // buyable: not owned and touching an owned node
 export function canTake(tree, have, id) {
   if (tree.nodes.get(id)?.soon) return false; // an evolution still to come
-  return !have.has(id) && neighbours(tree, id).some((x) => have.has(x));
+  // an evolution still to come can't be taken, but you can pass through it for now: a node beside one counts as
+  // touching whatever you own on its other side
+  return !have.has(id) && neighbours(tree, id).some((x) => have.has(x) || (tree.nodes.get(x)?.soon && neighbours(tree, x).some((y) => have.has(y))));
 }
 
 // summed stats for a character (caps applied); `evolved` if the evolution node is owned
