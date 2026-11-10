@@ -51,19 +51,34 @@ const GRUNT_MOVES = {
 const SPEAR_WIND = { torso: [0.1, -0.45, 0], armR: [0.4, 0, -0.3], foreR: [-1.6, 0, 0], handR: [1.25, 0, 0], armL: [-0.8, 0, 0.1], foreL: [-0.6, 0, 0], legL: [-0.35, 0, 0], legR: [0.3, 0, 0], shinR: [0.4, 0, 0], by: -0.1 };
 const SPEAR_STRIKE = { torso: [0.35, 0.25, 0], armR: [-1.5, 0, 0], foreR: [0, 0, 0], handR: [1.45, 0, 0], armL: [-1.2, 0, 0], legL: [-0.7, 0, 0], legR: [0.55, 0, 0], shinR: [0.5, 0, 0], by: -0.18 };
 
+// spear jabs telegraph: a red glint runs up the spear, then a long, deep pull-back before the lunge
+const SPEAR_PULL = { torso: [0.05, -0.7, 0], armR: [0.7, 0, -0.35], foreR: [-1.8, 0, 0], handR: [1.2, 0, 0], armL: [-0.6, 0, 0.15], foreL: [-0.5, 0, 0], legL: [-0.45, 0, 0], legR: [0.4, 0, 0], shinR: [0.5, 0, 0], by: -0.16 };
+const spearAlert = (e, g) => {
+  const r = e.rig, a = new THREE.Vector3(), b = new THREE.Vector3();
+  if (!r.base || !r.tip) return;
+  r.base.getWorldPosition(a); r.tip.getWorldPosition(b);
+  for (let i = 0; i <= 5; i++) {
+    const q = a.clone().lerp(b, 0.3 + i * 0.14);
+    g.fx.add.spawn({ x: q.x, y: q.y, z: q.z, life: 0.45, size: i === 5 ? 0.4 : 0.18, size1: 0.05, r: 1, g: 0.12, b: 0.08, alpha: 1 });
+  }
+  r.flash(1, 0.15, 0.1);
+  g.audio.play('swing', 0.25);
+};
+
 const SPEAR_MOVES = {
   thrust: {
-    parry: true, dur: 1.15, range: 3.3, track: [0.48, 4.5], sfx: [0.5, 'swing'], trail: [0.5, 0.66], recover: 0.35,
-    keys: [[0.5, SPEAR_WIND], [0.62, SPEAR_STRIKE], [0.9, SPEAR_STRIKE]],
-    hits: [{ t0: 0.54, t1: 0.66, range: 3.4, arc: 0.6, dmg: 17, poise: 18 }],
-    move: [[0.45, 0.62, 0.7]], stopAt: 2.0,
+    parry: true, dur: 1.4, range: 3.3, track: [0.7, 4.5], sfx: [0.72, 'swing'], trail: [0.72, 0.88], recover: 0.35,
+    keys: [[0.35, SPEAR_WIND], [0.72, SPEAR_PULL], [0.84, SPEAR_STRIKE], [1.15, SPEAR_STRIKE]],
+    hits: [{ t0: 0.76, t1: 0.88, range: 3.4, arc: 0.6, dmg: 17, poise: 18 }],
+    move: [[0.67, 0.84, 0.7]], stopAt: 2.0,
+    onTime: [{ t: 0.3, fn: spearAlert }],
   },
   double: {
-    dur: 1.6, range: 3.3, track: [0.48, 4.5], sfx: [0.5, 'swing'], trail: [0.5, 1.02], recover: 0.4,
-    keys: [[0.48, SPEAR_WIND], [0.6, SPEAR_STRIKE], [0.82, SPEAR_WIND], [0.96, SPEAR_STRIKE], [1.25, SPEAR_STRIKE]],
-    hits: [{ t0: 0.52, t1: 0.63, range: 3.4, arc: 0.6, dmg: 14, poise: 16 }, { t0: 0.88, t1: 0.99, range: 3.5, arc: 0.6, dmg: 16, poise: 16 }],
-    move: [[0.45, 0.6, 0.5], [0.85, 0.96, 0.6]], stopAt: 2.0,
-    onTime: [{ t: 0.75, fn: (e) => { if (e.target) e.yaw += angDiff(e.yaw, e.yawTo(e.target.pos)) * 0.7; } }],
+    dur: 1.85, range: 3.3, track: [0.7, 4.5], sfx: [0.72, 'swing'], trail: [0.72, 1.27], recover: 0.4,
+    keys: [[0.35, SPEAR_WIND], [0.7, SPEAR_PULL], [0.85, SPEAR_STRIKE], [1.07, SPEAR_WIND], [1.21, SPEAR_STRIKE], [1.5, SPEAR_STRIKE]],
+    hits: [{ t0: 0.77, t1: 0.88, range: 3.4, arc: 0.6, dmg: 14, poise: 16 }, { t0: 1.13, t1: 1.24, range: 3.5, arc: 0.6, dmg: 16, poise: 16 }],
+    move: [[0.67, 0.85, 0.5], [1.1, 1.21, 0.6]], stopAt: 2.0,
+    onTime: [{ t: 0.3, fn: spearAlert }, { t: 1.0, fn: (e) => { if (e.target) e.yaw += angDiff(e.yaw, e.yawTo(e.target.pos)) * 0.7; } }],
   },
   sweep: {
     parry: true, dur: 1.1, range: 2.2, maxRange: 2.2, track: [0.4, 6], sfx: [0.42, 'swing'], trail: [0.42, 0.58], recover: 0.3,
