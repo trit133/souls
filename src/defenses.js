@@ -1,12 +1,12 @@
 // Enemy armour and resistances: the same rules as the player's (damage.js). Armour % cuts physical damage taken by
-// that much (capped at 50%); each 1% of an element's resistance cuts its damage by 1% and its status build-up by
+// that much (capped at 60%); each 1% of an element's resistance cuts its damage by 1% and its status build-up by
 // 3% (at most 90%; capped at 75% resistance). Every enemy rolls its own armour inside its type's range, and 1-4 resistances (bosses: their
 // own pattern) inside its type's resistance range; the rolls come from the run's seed, so a party sees the same.
 // Ranges climb with the tier (each dungeon of a section, +2 armour / +3 resistance) and jump at each new section
 // (every 4 tiers: +6 / +9 more), so the first section stays far from the caps and later sections close in on them.
 // Critical hits: each enemy also rolls a crit chance and a crit damage bonus (a crit does +50% plus that bonus), with
 // the player's caps (75% chance, +100% damage); first-section enemies stay far below them.
-export const ARMOR_MAX = 50, RES_MAX = 75, CRIT_MAX = 75, CRIT_DMG_MAX = 100, CRIT_BASE = 50;
+export const ARMOR_MAX = 60, RES_MAX = 75, CRIT_MAX = 75, CRIT_DMG_MAX = 100, CRIT_BASE = 50;
 export const RES_ELEMS = ['fire', 'bleed', 'poison', 'frost'];
 
 // [low, high] at tier 0

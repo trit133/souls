@@ -1806,7 +1806,7 @@ class Game {
     el.innerHTML = `<div class="fp-name">${name}</div>`
       + (perHit ? `<div class="fp-row"><b>Damage per hit</b><span>${perHit}</span></div>` : '')
       + `<div class="fp-row"><b>Crit chance</b><span>${d.crit || 0}%</span></div><div class="fp-row"><b>Crit damage</b><span>+${50 + (d.critDmg || 0)}%</span></div>`
-      + `<div class="fp-row"><b>Armour</b><span>${d.armor}%</span></div><div class="fp-bar"><i style="width:${d.armor * 2}%"></i></div>`
+      + `<div class="fp-row"><b>Armour</b><span>${d.armor}%</span></div><div class="fp-bar"><i style="width:${d.armor / 0.6}%"></i></div>`
       + `<div class="fp-row"><b>Resistances</b></div><div class="fp-list">${res}</div>`
       + (deals.length ? `<div class="fp-row"><b>Deals</b></div><div class="fp-list">${deals.map((k) => `<span class="fp-res" style="color:${TYPE_COLOR[k]}">${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>` : '');
   }
