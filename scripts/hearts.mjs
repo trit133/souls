@@ -1,5 +1,5 @@
-// Hearts: about a fifth of kills drop one; walking over it while hurt heals 20 (×NUM), at full health it stays;
-// a new level clears them. Also the combo window (270 ms). Screenshot /tmp/hearts.png. node scripts/hearts.mjs [url]
+// Hearts: about a third of kills drop one; walking over it while hurt heals 20 (×NUM), at full health it stays;
+// a new level clears them. Also the combo window (340 ms). Screenshot /tmp/hearts.png. node scripts/hearts.mjs [url]
 import { chromium } from 'playwright';
 const url = process.argv[2] || 'http://localhost:4173/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

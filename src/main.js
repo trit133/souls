@@ -44,7 +44,7 @@ import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
 
 const $ = (id) => document.getElementById(id);
-const HEART_CHANCE = 0.2, HEART_HEAL = 20 * NUM; // hearts: a fifth of enemies drop one, healing 20 (at the old size, like every number: scale.js)
+const HEART_CHANCE = 0.33, HEART_HEAL = 20 * NUM; // hearts: a third of enemies drop one, healing 20 (at the old size, like every number: scale.js)
 const PARRY_EARLY = 0.23, PARRY_LATE = 0; // seconds before impact
 const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
 const MANA_PER_HIT = 10;
@@ -710,7 +710,7 @@ class Game {
     let n = killGold(e);
     if (this.night && n && Math.random() < 0.5) n *= 2;
     if (n) { this.earnKill(n, e); if (this.mp.active) this.mp.sendAll({ t: 'kgold', n, id: e.netId }); }
-    // a fifth of enemies drop a heart (the host decides and tells the party)
+    // a third of enemies drop a heart (the host decides and tells the party)
     if (!e.effigy && Math.random() < HEART_CHANCE) {
       const id = `h${this.heartN = (this.heartN || 0) + 1}`;
       this.spawnHeart(e.pos.x, e.pos.z, id);

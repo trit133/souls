@@ -1,6 +1,6 @@
 // Combos. Each class has 4 to start with (one 3-move, three 4-move; 4 more come later with the evolution).
 // A combo starts with a normal attack. At a set moment in each move (`at`, in that move's own time) the weapon
-// flashes (and a red mark shows over the player), and for 270 ms the next input of a combo continues it with a combo move; a press outside that window
+// flashes (and a red mark shows over the player), and for 340 ms the next input of a combo continues it with a combo move; a press outside that window
 // does the button's normal action instead, and doing nothing ends it. Combos branch: after a move, each input
 // that some combo continues with leads on (they share the window). Combo moves cost a fixed amount of stamina
 // (more than the normal moves; every attack costs 10% less than its listed cost) and hit harder: the last move is
@@ -9,7 +9,7 @@
 // A combo staggers each enemy at most once.
 // Inputs: 'attack' (R1), 'heavy' (R2), 'roll'. A step's move: an attack key, 'roll' (roll or backstep) or 'bolt'.
 import { NUM } from './scale.js';
-export const COMBO_WINDOW = 0.27;
+export const COMBO_WINDOW = 0.34;
 export const FAST = 1.15; // moves in a 4-move combo play this much faster
 
 // ---------- pose helpers ----------
