@@ -280,9 +280,11 @@ export class Dungeon {
       else w.rect(c.cx - cw, c.cx + cw, c.cz + Math.min(b * lo, b * hi), c.cz + Math.max(b * lo, b * hi), o);
     };
     const gid = 'in' + mod.i, gd = HALF + 5;
-    seg(HALF - 0.8, gd - 2);
+    // (the pieces overlap by 1.5 m: you have to fit wholly inside one piece to stand somewhere, so a thinner overlap
+    // than a body is wide is a wall even with the door open)
+    seg(HALF - 0.8, gd - 1);
     seg(gd - 2.5, gd + 2.5, { gate: gid });
-    seg(gd + 2, CELL + 6 - A.r + 2);
+    seg(gd + 1, CELL + 6 - A.r + 2);
     w.gateAt(gid, c.cx + a * gd, c.cz + b * gd, !!a, 6, false);
     const enc = { id: 'mini' + mod.i, kind: 'mini', bossId: this.bossId, arena: { x: A.x, z: A.z, r: A.r }, gateIn: gid, gateOut: null, mod: mod.i, active: false, defeated: false, sealed: true, dungeon: true };
     w.encounters.push(enc);
