@@ -41,7 +41,15 @@ export class Seals {
         s.def.ring.scale.setScalar(s.state === 'active' ? 1 - (s.prog / HOLD_TIME) * 0.15 : 1);
       }
     }
+    // the boss door: three broken seals open it, whatever else happens (checked every frame, on every device)
+    this.checkDoor();
     if (g.isGuest) return;
+    // the host repeats which seals are broken every couple of seconds, so a teammate who missed one catches up
+    if (g.mp.active && (this.syncT = (this.syncT ?? 2) - dt) <= 0) {
+      this.syncT = 2;
+      const b = this.list.filter((x) => x.state === 'broken').map((x) => x.def.i);
+      if (b.length) g.mp.sendAll({ t: 'seal', s: 'sync', b });
+    }
     this.sendT -= dt;
     for (const s of this.list) {
       if (s.state === 'broken') continue;
@@ -94,14 +102,18 @@ export class Seals {
     const g = this.game, d = s.def;
     s.state = 'broken'; d.broken = true;
     d.crystal.visible = false; d.beam.visible = false;
+    this.broken = this.list.filter((x) => x.state === 'broken').length;
+    const opens = this.checkDoor();
     // whoever was still waiting to be called in stays away
     for (const sp of d.reserves) if (sp.enemy.reserve) g.reserves = g.reserves.filter((e) => e !== sp.enemy);
     // a held circle: everything still fighting in its chamber fades away (no gold or hearts; they count as cleared)
     if (d.kind === 'circle' && !g.isGuest) for (const e of g.enemies) {
       if (!e.alive || e.isBoss || e.mod !== d.mod) continue;
-      e.vanished = true;
-      g.fx.burst(new THREE.Vector3(e.pos.x, 1, e.pos.z), 18, [0.7, 0.5, 1], 3, 0.7, 0.25);
-      e.die(true); e.rig.root.visible = false;
+      try {
+        e.vanished = true;
+        g.fx.burst(new THREE.Vector3(e.pos.x, 1, e.pos.z), 18, [0.7, 0.5, 1], 3, 0.7, 0.25);
+        e.die(true); e.rig.root.visible = false;
+      } catch (err) { console.warn('circle clear', err); }
     }
     const at = new THREE.Vector3(d.x, 3.7, d.z);
     g.pfx?.play('parry', at);
@@ -109,19 +121,26 @@ export class Seals {
     g.fx.shockwave(d.x, d.z, 5);
     g.fx.addShake(0.4);
     g.audio.play('bonfire');
-    this.broken++;
     if (!net && g.mp.active && !g.isGuest) g.mp.sendAll({ t: 'seal', i: d.i, s: 'b' });
     g.ui.toast(this.broken <= SEALS_NEEDED ? `SEAL BROKEN ${this.broken}/${SEALS_NEEDED}` : 'SEAL BROKEN', 2.5);
-    if (this.broken === SEALS_NEEDED && this.enc) {
-      this.enc.sealed = false;
-      this.world.setGate(this.enc.gateIn, true, true); // fog you can walk through, as before any boss
-      setTimeout(() => g.ui.toast('THE SEALED DOOR HAS OPENED', 3), 2600);
-    }
+    if (opens) setTimeout(() => g.ui.toast('THE SEALED DOOR HAS OPENED', 3), 2600);
     this.drawLabel();
+  }
+
+  // the door to the mini boss opens once three seals are broken (true the moment it opens); nothing else counts.
+  // Before the fight it's fog you can walk through; once the fight starts the fight closes it as usual
+  checkDoor() {
+    if (!this.enc || !this.enc.sealed || this.enc.active) return false;
+    if (this.list.filter((x) => x.state === 'broken').length < SEALS_NEEDED) return false;
+    this.enc.sealed = false;
+    this.world.setGate(this.enc.gateIn, true, true);
+    this.drawLabel();
+    return true;
   }
 
   // party: the host's word on a seal
   onNet(d) {
+    if (d.s === 'sync') { for (const i of d.b || []) { const x = this.list.find((y) => y.def.i === i); if (x && x.state !== 'broken') this.breakSeal(x, true); } return; }
     const s = this.list.find((x) => x.def.i === d.i);
     if (!s) return;
     if (d.s === 'a') this.start(s, true);
