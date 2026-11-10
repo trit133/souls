@@ -363,6 +363,9 @@ export class Player extends Actor {
 
   hyperArmor() { return this.comboArmored() || (this.state === 'attack' && this.inWindow(this.atk.def.armor)); }
   // from a combo's second move on, hits hurt but can't stagger or knock the player out of it
+  // the Knight's Shield Charge and its leaping overhead can't be broken: hits still hurt, but never stagger, knock
+  // down or shove him out of it
+  chargeArmored() { return this.alive && (this.state === 'charge' || (this.state === 'attack' && this.atkKey === 'chargeSlam')); }
   comboArmored() { return this.armorSeq != null && this.armorSeq === this.stateSeq && this.alive; }
   setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; }
 
@@ -990,8 +993,8 @@ export class Player extends Actor {
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
-    if (this.tree.immovable) {
-      // Immovable (Knight keystone): hits hurt but never stagger or knock you down
+    if (this.tree.immovable || this.chargeArmored()) {
+      // Immovable (Knight keystone), or mid Shield Charge: hits hurt but never stagger or knock you down
     } else if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30 * NUM)) {
       this.kb.copy(away).multiplyScalar(11);
       this.yaw = toSrc;

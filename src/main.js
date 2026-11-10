@@ -1221,7 +1221,7 @@ class Game {
         this.fx.addShake(h.knock === 'heavy' ? 0.7 : 0.4);
         if (info.crit) this.critTaken(tg);
       }
-      if (h.knockback && (r === 'hit' || r === 'block') && !tg.comboArmored()) tg.kb.copy(dir).multiplyScalar(h.knockback); // (no shove mid-combo)
+      if (h.knockback && (r === 'hit' || r === 'block') && !tg.comboArmored() && !tg.chargeArmored()) tg.kb.copy(dir).multiplyScalar(h.knockback); // (no shove mid-combo or mid charge)
       return;
     }
     if (att === this.player) {
