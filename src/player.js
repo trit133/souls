@@ -7,7 +7,7 @@ import { weaponElems, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
-import { comboMoves, comboTree, COMBO_WINDOW, FAST } from './combos.js';
+import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -189,7 +189,7 @@ CHARS.mage = {
 };
 
 // each class's combo moves join its attacks (so teammates can play them too), and its combos as a tree of inputs
-for (const k of Object.keys(CHARS)) { Object.assign(CHARS[k].attacks, comboMoves(k, CHARS[k].attacks)); CHARS[k].combos = comboTree(k); }
+for (const k of Object.keys(CHARS)) { Object.assign(CHARS[k].attacks, comboMoves(k, CHARS[k].attacks)); CHARS[k].combos = comboTree(k, CHARS[k].attacks); }
 
 // ---------- critical hits ----------
 // One per character and situation (see critFor). Times are in crit time (rt = t * rate); `hitAt` is when the
@@ -840,6 +840,7 @@ export class Player extends Actor {
       if (!this.freeMove && !this.canSpend()) return false;
       if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
       if (node.fast) this.rollRate *= FAST;
+      if (node.depth >= 3) this.rollRate *= TAIL;
       return true;
     }
     if (node.move === 'bolt') return this.castBolt(dir, mag);
@@ -851,6 +852,7 @@ export class Player extends Actor {
     }
     this.doAttack(node.move, dir, mag);
     if (node.fast) this.atkRate *= FAST; // the longer combos play faster
+    if (node.depth >= 3) this.atkRate *= TAIL; // after the opening two moves the combo rolls on quickly
     return true;
   }
   // the other cue: a little red pixel mark over the player's head while the window is open

@@ -11,6 +11,9 @@
 import { NUM } from './scale.js';
 export const COMBO_WINDOW = 0.68;
 export const FAST = 1.15; // moves in a 4-move combo play this much faster
+// the opening two moves keep their pace; after them the combo rolls on: the window opens just after the move's
+// hit connects (TAIL_OPEN of the old moment at most) and every move from the third on plays TAIL times as fast
+export const TAIL = 1.6, TAIL_OPEN = 0.6;
 
 // ---------- pose helpers ----------
 const lunge = (l = 1) => ({ legL: [-0.5 * l, 0, 0.05], legR: [0.4 * l, 0, -0.05], shinL: [0.2, 0, 0], shinR: [0.45 * l, 0, 0], by: -0.1 * l });
@@ -238,12 +241,12 @@ export const COMBOS = {
 };
 
 // the combos as a tree of inputs: root[input] -> { move, at, next: { input: node }, combo (when it ends here) }
-export function comboTree(kind) {
+export function comboTree(kind, attacks = {}) {
   const root = {};
   for (const c of COMBOS[kind] || []) {
     let level = root, node = null;
     c.steps.forEach(([input, move, at], i) => {
-      node = level[input] ||= { move, at, next: {}, names: [], fast: true };
+      node = level[input] ||= { move, at, next: {}, names: [], fast: true, depth: i + 1 };
       node.names.push(c.name);
       if (c.steps.length < 4) node.fast = false; // only moves that just lead into 4-move combos speed up
       if (at != null && node.at == null) node.at = at;
@@ -251,5 +254,14 @@ export function comboTree(kind) {
       level = node.next;
     });
   }
+  // from the second move on, the window opens soon after the move has landed its hit
+  const walk = (lv) => { for (const n of Object.values(lv)) {
+    if (n.depth >= 2 && n.at != null && !n.earlyAt) {
+      const hits = attacks[n.move]?.hits, after = hits?.length ? Math.max(...hits.map((h) => h.t0)) + 0.06 : 0; // (just after its last hit connects)
+      n.at = +Math.max(after, n.at * TAIL_OPEN).toFixed(3); n.earlyAt = true;
+    }
+    walk(n.next);
+  } };
+  walk(root);
   return root;
 }
