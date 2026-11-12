@@ -443,11 +443,97 @@ const ARENAS = {
   },
 };
 
+// ---------- The Last Crusade: structures round every room's edge ----------
+// Placed without the level's random stream (a position hash picks what goes where) and with no collision: they
+// stand outside the walkable area, so layouts stay exactly as they were. Gothic buttresses, pipe runs with valves,
+// hanging cable bundles, statues of armoured saints, wrecked servitors, gun emplacements, cogitator stacks and
+// chained reliquaries.
+const hh = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
+const STRUCT = {
+  buttress: lift((w, x, z, ry) => {
+    const m = mats();
+    w.box(0.9, 4.2, 0.9, w.mats.stoneDark, x, 2.1, z, ry); w.box(1.1, 0.3, 1.1, w.mats.stone, x, 0.15, z, ry);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 4), w.mats.stoneDark); cap.position.set(x, 4.8, z); cap.rotation.y = ry + PI / 4; w.add(cap);
+    for (const y of [1.2, 2.8]) w.box(0.96, 0.14, 0.96, m.ironDark, x, y, z, ry);
+    w.box(0.08, 0.6, 0.06, m.optic, x + Math.sin(ry) * 0.47, 3.4, z + Math.cos(ry) * 0.47, ry); // a lit slit
+  }),
+  pipes: lift((w, x, z, ry) => {
+    const m = mats(), c = Math.cos(ry), sn = Math.sin(ry);
+    for (const [y, r] of [[0.5, 0.2], [0.95, 0.14]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 3.2, 8), y > 0.6 ? m.rust : m.ironDark); p.rotation.z = PI / 2; p.rotation.y = ry; p.position.set(x, y, z); w.add(p); }
+    for (const t of [-1.2, 1.2]) w.box(0.3, 1.1, 0.5, m.ironDark, x + c * t, 0.55, z - sn * t, ry);
+    const v = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 4, 10), m.gold); v.position.set(x, 0.5, z + 0.05); v.rotation.y = ry; w.add(v);
+  }),
+  cables: lift((w, x, z, ry) => {
+    const m = mats();
+    w.box(0.2, 3.4, 0.2, m.ironDark, x, 1.7, z, ry); w.box(1.6, 0.14, 0.14, m.ironDark, x, 3.4, z, ry);
+    for (let i = 0; i < 4; i++) { const h = 0.8 + hh(x, z, i) * 1.4; w.box(0.04, h, 0.04, m.crow, x + Math.cos(ry) * (0.2 + i * 0.3), 3.4 - h / 2, z - Math.sin(ry) * (0.2 + i * 0.3), ry); }
+  }),
+  saint: (w, x, z, ry) => at(w, x, z, () => {
+    // a statue of an armoured saint: a robed stone figure on a plinth with a sword point-down and a halo
+    const m = mats();
+    w.box(1.0, 0.5, 1.0, w.mats.stone, x, 0.25, z, ry);
+    robed(w, x, z, ry, { pray: true, mat: w.mats.stone, s: 1.35 });
+    w.box(0.08, 1.4, 0.08, w.mats.metal, x + Math.sin(ry) * 0.35, 1.0, z + Math.cos(ry) * 0.35, ry);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 4, 14), m.gold); halo.position.set(x - Math.sin(ry) * 0.1, 2.75, z - Math.cos(ry) * 0.1); halo.rotation.y = ry; w.add(halo);
+  }),
+  servitor: lift((w, x, z, ry) => {
+    // a wrecked servitor: a slumped plated hulk, one arm a dead claw, its optic still red
+    const m = mats();
+    w.box(0.9, 0.7, 0.6, m.iron, x, 0.4, z, ry + 0.3); w.box(0.4, 0.35, 0.35, m.ironDark, x, 0.9, z, ry + 0.5);
+    w.box(0.08, 0.06, 0.04, m.optic, x + Math.sin(ry) * 0.18, 0.95, z + Math.cos(ry) * 0.18, ry);
+    w.box(0.9, 0.18, 0.18, m.rust, x + Math.cos(ry) * 0.6, 0.15, z - Math.sin(ry) * 0.6, ry + 0.6);
+    for (let i = 0; i < 3; i++) w.box(0.05, 0.05, 0.6, m.crow, x - 0.2 + i * 0.12, 0.08, z + 0.4, ry + i * 0.4);
+  }),
+  emplacement: lift((w, x, z, ry) => {
+    // a gun emplacement: a ring of sandbags and a heavy barrel on a tripod
+    const m = mats();
+    for (let i = 0; i < 7; i++) { const a = ry + (i / 7) * PI * 1.4 - 0.7; w.box(0.6, 0.3, 0.35, m.straw, x + Math.sin(a) * 0.9, 0.15 + (i % 2) * 0.05, z + Math.cos(a) * 0.9, a); }
+    w.box(0.14, 0.14, 1.2, m.ironDark, x + Math.sin(ry) * 0.3, 0.75, z + Math.cos(ry) * 0.3, ry);
+    w.box(0.3, 0.3, 0.4, m.iron, x, 0.7, z, ry);
+    for (let i = 0; i < 3; i++) { const a = i * 2.1; const l = w.box(0.05, 0.8, 0.05, m.ironDark, x + Math.cos(a) * 0.2, 0.35, z + Math.sin(a) * 0.2); l.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3); }
+  }),
+  cogitator: lift((w, x, z, ry) => {
+    const m = mats();
+    w.box(0.9, 1.8, 0.6, m.ironDark, x, 0.9, z, ry); w.box(0.7, 0.5, 0.5, m.iron, x, 2.05, z, ry);
+    const fx = Math.sin(ry) * 0.31, fz = Math.cos(ry) * 0.31;
+    w.box(0.5, 0.35, 0.02, w.mats.glowWindow, x + fx, 1.3, z + fz, ry);
+    for (let i = 0; i < 3; i++) w.box(0.08, 0.06, 0.02, i % 2 ? m.optic : w.mats.glowAmber, x + fx + Math.cos(ry) * (-0.2 + i * 0.2), 0.7, z + fz - Math.sin(ry) * (-0.2 + i * 0.2), ry);
+  }),
+  reliquary: lift((w, x, z, ry) => {
+    // a chained reliquary: an iron casket on a plinth, chains to the ground, a seal on its lid
+    const m = mats();
+    w.box(1.0, 0.4, 0.7, w.mats.stoneDark, x, 0.2, z, ry); w.box(0.8, 0.5, 0.5, m.ironDark, x, 0.65, z, ry); w.box(0.84, 0.08, 0.54, m.gold, x, 0.92, z, ry);
+    w.box(0.1, 0.1, 0.04, m.blood, x, 0.98, z, ry);
+    for (const s2 of [-1, 1]) { const c = w.box(0.05, 0.9, 0.05, m.ironDark, x + Math.cos(ry) * s2 * 0.45, 0.5, z - Math.sin(ry) * s2 * 0.45, ry); c.rotation.z = s2 * 0.5; }
+  }),
+};
+const STRUCT_KINDS = { camp: ['emplacement', 'pipes', 'servitor', 'cables'], ruins: ['saint', 'buttress', 'reliquary', 'cables'], bridge: ['cables', 'pipes'], village: ['servitor', 'cogitator', 'pipes', 'emplacement'],
+  crypt: ['saint', 'reliquary', 'buttress', 'buttress'], bog: ['pipes', 'servitor', 'cables'], gate: ['buttress', 'emplacement', 'cogitator', 'saint'] };
+function structures(w, mod, key) {
+  const kinds = STRUCT_KINDS[key]; if (!kinds) return;
+  const placed = [], half = mod.half ?? 18, x0 = mod.cx - Math.min(half, 20) - 2, x1 = mod.cx + Math.min(half, 20) + 2, z0 = mod.z1 + 1, z1 = mod.z0 - 1;
+  for (let x = x0; x <= x1; x += 1.7) for (let z = z1; z >= z0; z -= 1.7) {
+    if (placed.length >= 7) return;
+    if (w.area(x, z, -0.6) || !w.area(x, z, -3.0)) continue; // just outside the walkable edge
+    if (mod.dungeon && w.moduleAt(x, z) !== mod) continue;
+    if (Object.values(w.gates).some((g) => Math.abs(z - g.z) < 5 && Math.abs(x - g.x) < 7)) continue;
+    if (w.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 1.2)) continue;
+    if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 4.5)) continue;
+    if (hh(x, z, 9) < 0.45) continue;
+    // face the room: toward the nearest walkable ground
+    let ry = 0, best = 9;
+    for (let a = 0; a < 8; a++) { const ang = (a / 8) * PI * 2, tx = x + Math.sin(ang) * 2.5, tz = z + Math.cos(ang) * 2.5; if (w.area(tx, tz, 0.3)) { const d = a; if (d < best) { best = d; ry = ang; } } }
+    STRUCT[kinds[Math.floor(hh(x, z, 3) * kinds.length)]](w, x, z, ry);
+    placed.push({ x, z });
+  }
+}
+
 // called by World.build after each module's own build
 export function decorate(w, key, mod) {
   mats();
   FACE = mod.dungeon ? { x: mod.cx, z: mod.cz } : { x: 0, z: null }; // figures face the room's middle
   if (ROOMS[key]) ROOMS[key](w, mod);
+  structures(w, mod, key);
 }
 export { crows, candles, bones, corpse, robed, skullStake, lanternPost, bloodStain, cage, sacks, cart, drift };
 // called by the arena builders: theme is 'pit' | 'cloister' | 'forge' | 'throne'

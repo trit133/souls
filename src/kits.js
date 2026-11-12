@@ -70,6 +70,16 @@ export const KITS = {
       for (let i = 0; i < n; i++) strip(r, hips, -0.09 + i * 0.09, -0.04, 0.13 * b, 0.08, [0.18 + Math.random() * 0.06, 0.08], i === 1 ? red : redDk, { lx: [-0.9, 0.1] });
       strip(r, hips, 0, -0.04, -0.12 * b, 0.26, [0.22, 0.1], red, { lx: [-0.1, 0.9] });
       for (const s of [1, -1]) T.add(box(0.05, 0.05, 0.12, hose, s * 0.18 * b, 0.1, 0.06)); // ammo pouches
+      // every zealot a little different
+      if (Math.random() < 0.3) { // a crusade icon on a pole across the back
+        T.add(rbox(0.035, 1.2, 0.035, r.m(0x26262a), 0.06, 0.8, -0.18 * b, 0, 0, 0.12));
+        T.add(box(0.26, 0.04, 0.04, brass, 0.13, 1.36, -0.18 * b)); strip(r, T, 0.13, 1.34, -0.19 * b, 0.22, [0.24, 0.12], red, { lx: [-0.3, 0.6], th: 0.015 });
+        T.add(box(0.1, 0.1, 0.03, r.m(0xbab09a), 0.14, 1.46, -0.18 * b));
+      }
+      if (Math.random() < 0.45) for (let i = 0; i < 5; i++) T.add(rbox(0.05, 0.06, 0.03, brass, -0.12 + i * 0.06, 0.62 - i * 0.07, 0.165 * b, 0, 0, 0.7)); // a bandolier
+      if (Math.random() < 0.5) T.add(rbox(0.18, 0.08, 0.24, vest, -r.dims.sw, 0.68, 0, 0, 0, 0.35)); // a pauldron
+      if (Math.random() < 0.25) { H.add(box(0.3, 0.2, 0.3, redDk, 0, 0.3, -0.02)); H.add(box(0.31, 0.06, 0.1, redDk, 0, 0.24, -0.14)); } // a red hood
+      if (Math.random() < 0.3) for (let i = 0; i < 3; i++) H.add(box(0.03, 0.03, 0.03, r.m(0x6a5634), (i - 1) * 0.06, 0.37, 0.12)); // brass studs
     },
   },
   // a Pike Zealot: a deep red cowl over a gunmetal helm, a vox-unit on the back with a whip antenna, a pauldron
@@ -88,6 +98,9 @@ export const KITS = {
       T.add(box(0.2, 0.24, 0.1, gun, 0.02, 0.48, -0.18)); T.add(box(0.05, 0.04, 0.02, lamp, 0.07, 0.56, -0.235)); T.add(box(0.12, 0.03, 0.02, brass, -0.02, 0.4, -0.235));
       const pp = pivot(T, 0.08, 0.6, -0.2);
       strip(r, pp, 0, 0, 0, 0.02, [0.18, 0.16], strap, { rx: Math.PI - 0.25, bend: 0.2, lx: [-0.4, 0.4], th: 0.02, spring: { ...CLOTH, k: 120 } });
+      if (Math.random() < 0.4) { H.add(box(0.14, 0.08, 0.08, strap, 0, 0.1, 0.15)); for (const s of [1, -1]) H.add(box(0.03, 0.03, 0.1, strap, s * 0.08, 0.06, 0.08)); } // rebreather
+      if (Math.random() < 0.4) { T.add(box(0.36 * b, 0.2, 0.03, gun, 0, 0.5, 0.15 * b)); T.add(box(0.06, 0.06, 0.02, brass, 0, 0.55, 0.17 * b)); } // breastplate
+      if (Math.random() < 0.35) { T.add(box(0.07, 0.07, 0.03, r.m(0x8a1a12), 0.1, 0.45, 0.16 * b)); strip(r, T, 0.1, 0.41, 0.17 * b, 0.04, [0.12, 0.06], r.m(0xc8bca0), { lx: [-0.6, 0.2], th: 0.012 }); } // a seal
     },
   },
   // a Needle Gunner: a dust cloak in two panels, a goggled hood, a power-pack on the back with a cable to the rifle
@@ -102,6 +115,9 @@ export const KITS = {
       q.add(box(0.22, 0.3, 0.12, pack, 0, -0.1, 0)); q.add(box(0.06, 0.18, 0.02, cell, 0.05, -0.1, -0.065)); q.add(box(0.03, 0.12, 0.03, strap, -0.08, 0.1, 0));
       T.add(rbox(0.05, 0.5, 0.02, strap, 0, 0.42, 0.142 * b, 0, 0, 0.62));
       r.j.foreL.add(box(0.13 * b, 0.14, 0.14 * b, pack, 0, -0.22, 0));
+      if (Math.random() < 0.4) { H.add(box(0.02, 0.3, 0.02, strap, 0.1, 0.45, -0.1)); H.add(box(0.035, 0.035, 0.035, basic(0xff3a24), 0.1, 0.6, -0.1)); } // a long antenna
+      if (Math.random() < 0.4) H.add(box(0.06, 0.06, 0.12, brass, -0.12, 0.22, 0.1)); // a range-finder over one eye
+      if (Math.random() < 0.5) T.add(box(0.3 * b, 0.08, 0.2 * b, cloak, 0, 0.7, 0.02)); // a scarf
     },
   },
   // a War Servitor: a hulk of plate and pistons, exhaust stacks on the back, cable bundles, a grilled iron face,
@@ -126,6 +142,9 @@ export const KITS = {
       // hoses off the belt (they swing like the old chains) and a loincloth of plate
       for (const s of [1, -1]) strip(r, hips, s * 0.16, -0.02, 0.1, 0.05, [0.1, 0.1, 0.08], hose, { spring: { ...PLATE, k: 160, d: 4, rattle: 0.8, lx: [-0.7, 0.4], lz: [-0.5, 0.5] }, th: 0.05 });
       strip(r, hips, 0, -0.05, 0.13 * b, 0.22, [0.22, 0.12], plateDk, { spring: HEAVY_CLOTH, lx: [-0.9, 0.1] });
+      if (Math.random() < 0.5) { const sk = box(0.18, 0.16, 0.16, r.m(0xbab09a), 0.22 * b, 0.84, 0.05); T.add(sk); T.add(box(0.04, 0.04, 0.02, glow, 0.24 * b, 0.86, 0.13)); } // a skull mounted on the shoulder
+      if (Math.random() < 0.4) for (let i = 0; i < 4; i++) T.add(box(0.06, 0.06, 0.06, rust, -0.2 + i * 0.13, 0.35, 0.18 * b)); // rivet line
+      if (Math.random() < 0.4) { T.add(box(0.3, 0.16, 0.12, plateDk, 0, 0.55, -0.26 * b)); T.add(box(0.18, 0.04, 0.02, basic(0xff6a1a), 0, 0.55, -0.325 * b)); } // a furnace pack
     },
   },
   // a Heretic Idol: a robed machine-statue with a halo of spikes, a cracked face with a burning eye-slit, chains of
