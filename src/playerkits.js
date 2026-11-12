@@ -5,10 +5,7 @@ import * as THREE from 'three';
 import { box, cyl, cone, rbox, pivot } from './mesh.js';
 import { KITS, strip, plate, basic, add, easeOut, CLOTH, RIBBON } from './kits.js';
 import { colorMat, colorHex, colorById } from './outfits.js';
-import { CRUSADE } from './crusadekit.js';
-import { KNIGHT_ARMORY } from './armory.js';
-// the crusade layer for a piece (crusadekit.js): kind, slot, piece id (or the slot's first piece)
-const cx = (kind, slot, id, ...a) => { const t = CRUSADE[kind]?.[slot]; (t?.[id] || t?.[Object.keys(t || {})[0]])?.(...a); };
+import { KNIGHT_ARMORY, ROGUE_ARMORY, MAGE_ARMORY } from './armory.js';
 
 const lighten = (hex, f) => { const c = new THREE.Color(hex); c.lerp(new THREE.Color(0xffffff), f); return c.getHex(); };
 const darken = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(1 - f); return c.getHex(); };
@@ -512,30 +509,24 @@ const ROGUE = {
     },
   },
 };
+for (const slot in ROGUE_ARMORY) Object.assign(ROGUE[slot], ROGUE_ARMORY[slot]);
 KITS.rogue = {
   weapon: true,
   build(r, o) {
     const fit = o.outfit || {}, T = r.j.torso, H = r.j.head;
-    const S = (slot, m, t) => slotMats(r, fit, slot, m, t);
-    const cl = S('cloak', 0x2c2a30, 0x4a4650); (ROGUE.cloak[cl.piece] || ROGUE.cloak.tattered)(r, cl, T, H); cx('rogue', 'cloak', cl.piece, r, cl, T, H);
-    const mk = S('mask', 0x3a2224, 0x8a2420); (ROGUE.mask[mk.piece] || ROGUE.mask.wrap)(r, mk, H, T); cx('rogue', 'mask', mk.piece, r, mk, H);
-    const sh = S('shirt', 0x4a3a2c, 0x4a3626); (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T); cx('rogue', 'shirt', sh.piece, r, sh, T);
-    for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); cx('rogue', 'band', M.piece, r, M, r.j[j]); }
-    const kn = S('knives', 0xc4cad3, 0x2a1c14);
+    const S = (slot, m, t, d, gl) => slotMats(r, fit, slot, m, t, d, gl);
+    const cl = S('cloak', 0x2c2a30, 0x4a4650, 0x1e1e22, 0xff3a24); (ROGUE.cloak[cl.piece] || ROGUE.cloak.tattered)(r, cl, T, H);
+    const mk = S('mask', 0x34343a, 0x8a2420, 0x1e1e22, 0xff3a24); (ROGUE.mask[mk.piece] || ROGUE.mask.wrap)(r, mk, H, T);
+    const sh = S('shirt', 0x4a3a2c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T);
+    for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); }
+    const kn = S('knives', 0xc4cad3, 0x2a1c14, 0x1e1e22, 0xff4a3a);
     const dagger = (ROGUE.knives[kn.piece] || ROGUE.knives.curved)(r, kn);
-    r.wpnR = dagger(r.j.handR); cx('rogue', 'knives', kn.piece, r, kn, r.wpnR);
+    r.wpnR = dagger(r.j.handR);
     r.base.position.set(0, 0, 0.12); r.wpnR.add(r.base);
     r.tip.position.set(0, 0.05, 0.5); r.wpnR.add(r.tip);
-    r.wpnL = dagger(r.j.handL); cx('rogue', 'knives', kn.piece, r, kn, r.wpnL);
+    r.wpnL = dagger(r.j.handL);
     r.tipL = new THREE.Object3D(); r.tipL.position.set(0, 0.05, 0.5); r.wpnL.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; r.wpnL.add(r.baseL);
-    // ---- The Last Crusade, on every outfit: augmetic red optics, a cloak-field generator between the shoulder blades
-    // with a cable to each wrist, and a red mono-edge along each knife
-    { const { bulk: b } = r.dims, optic = basic(0xff3a24), dark = r.m(0x1e1e22), hose = r.m(0x141416);
-      for (const s2 of [1, -1]) H.add(box(0.05, 0.035, 0.02, optic, s2 * 0.06, 0.2, 0.162));
-      T.add(box(0.18, 0.2, 0.08, dark, 0, 0.5, -0.17 * b)); T.add(box(0.05, 0.05, 0.02, optic, 0.04, 0.55, -0.215 * b)); T.add(box(0.12, 0.03, 0.02, r.m(0x6a5634), -0.02, 0.44, -0.215 * b));
-      for (const s2 of [1, -1]) T.add(rbox(0.03, 0.03, 0.26, hose, s2 * 0.13, 0.5, -0.1 * b, 0.4, s2 * 0.4, 0));
-      for (const w of [r.wpnR, r.wpnL]) w.add(box(0.012, 0.012, 0.28, basic(0xff4a3a), 0, -0.035, 0.3)); }
     // a lower, coiled stance (visual only); idle: flip the right dagger end over end every few seconds
     r.poseMod = (p) => ({ ...p, by: (p.by ?? 0) - 0.05, torso: add(p.torso, [0.08, 0, 0]), head: add(p.head, [-0.07, 0, 0]) });
     let idleT = 0, flip = -1;
@@ -740,18 +731,19 @@ const MAGE = {
     },
   },
 };
+for (const slot in MAGE_ARMORY) Object.assign(MAGE[slot], MAGE_ARMORY[slot]);
 KITS.mage = {
   weapon: true,
   build(r, o) {
     const fit = o.outfit || {}, T = r.j.torso, H = r.j.head, hips = r.j.hips;
-    const S = (slot, m, t) => slotMats(r, fit, slot, m, t);
+    const S = (slot, m, t, d, gl) => slotMats(r, fit, slot, m, t, d, gl);
     const C = { runeLo: 0x1c2d5c, runeHi: 0x9fe4ff, glyph: 0xa8e8ff, hair: 0xc8ccd8, hairDk: 0x8a90a4 };
     const rune = basic(C.runeHi);
     r.glowMats.push({ mat: rune, lo: new THREE.Color(C.runeLo), hi: new THREE.Color(C.runeHi) });
     const glyph = basic(C.glyph);
-    const shM = S('shirt', 0x22305c, 0xb89a4a); (MAGE.shirt[shM.piece] || MAGE.shirt.runecoat)(r, shM, T, rune, hips); cx('mage', 'shirt', shM.piece, r, shM, T);
-    const soM = S('shoulder', 0x22305c, 0xb89a4a); (MAGE.shoulder[soM.piece] || MAGE.shoulder.mantle)(r, soM, T, rune, H); cx('mage', 'shoulder', soM.piece, r, soM, T, H);
-    const paM = S('pants', 0x2c3a66, 0x7a86b0); (MAGE.pants[paM.piece] || MAGE.pants.trousers)(r, paM); cx('mage', 'pants', paM.piece, r, paM);
+    const shM = S('shirt', 0x22305c, 0xb89a4a, 0x2a2420, 0x9fe4ff); (MAGE.shirt[shM.piece] || MAGE.shirt.runecoat)(r, shM, T, rune, hips);
+    const soM = S('shoulder', 0x22305c, 0xb89a4a, 0x2a2420, 0x9fe4ff); (MAGE.shoulder[soM.piece] || MAGE.shoulder.mantle)(r, soM, T, rune, H);
+    const paM = S('pants', 0x2c3a66, 0x7a86b0, 0x2a2420, 0x9fe4ff); (MAGE.pants[paM.piece] || MAGE.pants.trousers)(r, paM);
     // head: silver hair with bangs, glowing eyes, a rune mark under one eye, a ponytail that swings
     const { skin } = r.mats, hair = r.m(C.hair), hairDk = r.m(C.hairDk);
     H.add(box(0.1, 0.08, 0.1, skin, 0, 0.03, 0));
@@ -766,14 +758,14 @@ KITS.mage = {
     const hp = pivot(H, 0, 0.3, -0.15);
     strip(r, hp, 0, 0, 0, 0.08, [0.14, 0.14, 0.12], hair, { rx: 0.35, bend: 0.15, taper: 0.8, th: 0.07, lx: [-0.3, 1.2] });
     // the wand in her casting hand
-    const waM = S('wand', 0x3a2a20, 0xb89a4a);
+    const waM = S('wand', 0x3a2a20, 0xb89a4a, 0x1e1e22, 0xa8e8ff);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
-    const [tip, base] = (MAGE.wand[waM.piece] || MAGE.wand.rune)(r, waM, g, glyph); cx('mage', 'wand', waM.piece, r, waM, g);
+    const [tip, base] = (MAGE.wand[waM.piece] || MAGE.wand.rune)(r, waM, g, glyph);
     r.base.position.set(0, 0, base); g.add(r.base); r.tip.position.set(0, 0, tip); g.add(r.tip);
     // the sword she fights with, in the left hand
-    const swM = S('sword', 0x7ab4ff, 0xb89a4a);
+    const swM = S('sword', 0x8c929c, 0xb89a4a, 0x2a1c14, 0x7ab4ff);
     const g2 = new THREE.Group(); r.j.handL.add(g2); r.wpnL = g2;
-    const len = (MAGE.sword[swM.piece] || MAGE.sword.runeblade)(r, swM, g2); cx('mage', 'sword', swM.piece, r, swM, g2);
+    const len = (MAGE.sword[swM.piece] || MAGE.sword.runeblade)(r, swM, g2);
     r.tipL = new THREE.Object3D(); r.tipL.position.z = len; g2.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; g2.add(r.baseL);
     // three glyphs orbiting the off hand
