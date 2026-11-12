@@ -1,6 +1,6 @@
-// The Hermitage: each character's hideout, the hub between runs. A small dark 3D scene drawn through the game's
-// pixel pass: the character sits by their fire (the Knight's stone-ringed campfire, the Rogue's spit fire, the
-// Spellsword's purple fire in a black fireplace), which is the light on them; a couple of small lights pick out
+// The Sanctum (the old Hermitage): each character's hideout, the hub between runs. A small dark 3D scene drawn
+// through the game's pixel pass: the character sits by their fire (the Templar's promethium fire-bowl, the Shrike's
+// fire drum, the Adept's plasma reactor-hearth), which is the light on them; a couple of small lights pick out
 // the rest. The things in it are the buttons: hover one and it's outlined with a label over it (on touch, the
 // first tap does that and the second opens it).
 //   the character  -> their skill tree
@@ -81,145 +81,225 @@ function fire(g, x, y, z, scale, colors) {
   };
 }
 
-// a jukebox: a wooden cabinet with an arched top, glowing side strips and a window where the record spins
+// a vox-caster (the jukebox): an iron cabinet with a brass-ringed speaker grille, valve tubes glowing amber and a
+// window where the record spins. (Same parts as before: the window, the disc, the glowing strips.)
 function jukebox(wood) {
-  const g = new THREE.Group(), M = { wood: L(wood), dark: L(0x1a120c), trim: L(0x8a6a2a), glass: new THREE.MeshBasicMaterial({ color: 0x0a0806 }), glow: new THREE.MeshBasicMaterial({ color: 0xffb060 }) };
-  box(g, 1.0, 1.25, 0.55, M.wood, 0, 0.62, 0);
-  const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.55, 14, 1, false, -Math.PI / 2, Math.PI), M.wood);
-  arch.rotation.x = Math.PI / 2; arch.rotation.y = Math.PI / 2; arch.position.set(0, 1.25, 0); g.add(arch);
-  box(g, 1.04, 0.08, 0.58, M.trim, 0, 1.25, 0); box(g, 1.04, 0.1, 0.6, M.dark, 0, 0.05, 0);
-  box(g, 0.72, 0.5, 0.03, M.glass, 0, 0.95, 0.28); // the window
-  const plat = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 16), M.dark); plat.rotation.x = Math.PI / 2; plat.position.set(0, 0.95, 0.29); g.add(plat);
+  const g = new THREE.Group(), M = { wood: L(wood), iron: L(0x2c2c30), dark: L(0x141416), trim: L(0x6a5634), grille: L(0x3a3a3e), glass: new THREE.MeshBasicMaterial({ color: 0x0a0806 }), glow: new THREE.MeshBasicMaterial({ color: 0xffb060 }) };
+  box(g, 1.0, 1.3, 0.55, M.iron, 0, 0.65, 0);
+  box(g, 1.06, 0.12, 0.6, M.trim, 0, 1.33, 0); box(g, 1.06, 0.12, 0.6, M.dark, 0, 0.06, 0);
+  box(g, 0.86, 0.2, 0.5, M.iron, 0, 1.48, 0); box(g, 0.5, 0.18, 0.4, M.wood, 0, 1.67, 0); // stepped crown
+  for (const s of [-1, 1]) { box(g, 0.1, 1.5, 0.1, M.trim, s * 0.5, 0.75, 0.27); box(g, 0.14, 0.14, 0.14, M.trim, s * 0.5, 1.55, 0.27); }
+  box(g, 0.72, 0.5, 0.03, M.glass, 0, 1.0, 0.28); // the window
+  const plat = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 16), M.dark); plat.rotation.x = Math.PI / 2; plat.position.set(0, 1.0, 0.29); g.add(plat);
+  // the speaker grille below: a brass ring and horizontal slats
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 4, 16), M.trim); ring.position.set(0, 0.42, 0.29); g.add(ring);
+  for (let i = 0; i < 5; i++) box(g, 0.34, 0.025, 0.02, M.grille, 0, 0.32 + i * 0.05, 0.3);
   const strips = [];
-  for (const s of [-1, 1]) strips.push(box(g, 0.06, 1.0, 0.04, M.glow, s * 0.44, 0.75, 0.28));
-  for (let i = 0; i < 3; i++) strips.push(box(g, 0.6, 0.035, 0.04, M.glow, 0, 0.32 + i * 0.1, 0.28));
-  // the record: a disc with a label, facing out of the window
-  const disc = new THREE.Group(); disc.position.set(0, 0.95, 0.31); g.add(disc);
+  for (const s of [-1, 1]) strips.push(box(g, 0.05, 0.9, 0.04, M.glow, s * 0.4, 0.82, 0.28));
+  for (let i = 0; i < 3; i++) strips.push(box(g, 0.07, 0.16, 0.07, M.glow, -0.16 + i * 0.16, 1.66, 0.12)); // valve tubes in the crown
+  const disc = new THREE.Group(); disc.position.set(0, 1.0, 0.31); g.add(disc);
   const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.012, 20), new THREE.MeshLambertMaterial({ color: 0x222222 })); vinyl.rotation.x = Math.PI / 2; disc.add(vinyl);
   const label = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.016, 12), new THREE.MeshBasicMaterial({ color: 0xffffff })); label.rotation.x = Math.PI / 2; disc.add(label);
   const groove = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.15, 0.014), new THREE.MeshBasicMaterial({ color: 0x000000 })); groove.position.y = 0.09; disc.add(groove); // so you can see it turn
+  // a cable from the back to the floor
+  box(g, 0.05, 0.05, 0.6, M.dark, 0.3, 0.03, -0.55);
   return { group: g, disc, vinyl, label, glowMat: M.glow, strips };
 }
-const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x4a3020 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x3a2a1c }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a1e2a } };
+const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x5a1414 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x3a3a30 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
-// the three hideouts
+// deck plating: square plates with darker seams (and the odd darker plate)
+function deck(g, M, rx, rz, r, size = 0.96) {
+  for (let x = -rx; x <= rx; x++) for (let z = -rz; z <= rz; z++) if ((x * x) / (rx * rx) + (z * z) / (rz * rz) < 1.1) flat(g, new THREE.PlaneGeometry(size, size), r() < 0.18 ? M.plate2 : M.plate, x, z, 0.01 + r() * 0.003);
+  flat(g, new THREE.CircleGeometry(16, 32), M.under, 0, 0, 0);
+}
+// cables snaking across the floor
+function cables(g, mat, r, n, cx = 0, cz = 0, spread = 8) {
+  for (let i = 0; i < n; i++) {
+    let x = cx + (r() - 0.5) * spread, z = cz + (r() - 0.5) * spread * 0.7, a = r() * 6.28;
+    for (let k = 0; k < 6; k++) { const len = 0.35 + r() * 0.3; box(g, len, 0.04, 0.05, mat, x, 0.035, z, a); x += Math.cos(a) * len * 0.9; z -= Math.sin(a) * len * 0.9; a += (r() - 0.5) * 0.9; }
+  }
+}
+// a votive cluster: candles on an iron tray (the flames are glows)
+function votives(g, x, z, n, r) {
+  box(g, 0.5, 0.05, 0.36, L(0x2a2a2e), x, 0.03, z);
+  for (let i = 0; i < n; i++) { const cx = x + (r() - 0.5) * 0.4, cz = z + (r() - 0.5) * 0.26, h = 0.08 + r() * 0.16; cyl(g, 0.03, 0.035, h, L(0xd8ccb0), cx, h / 2 + 0.05, cz, 5); box(g, 0.03, 0.05, 0.03, new THREE.MeshBasicMaterial({ color: 0xffc070 }), cx, h + 0.08, cz); }
+}
+
+// the three hideouts (The Last Crusade). The fire stays where it was (it is the light on the character), and so do
+// the seat, the lights and the usable things; only what they look like and what stands around them changed.
 const SCENES = {
   knight: {
-    fire: { at: [1.35, 0, 1.25], colors: [0xffe08a, 0xff6a1a], light: 0xff9a4a },
-    seatYaw: 0.6, sky: 0x06070a,
+    // the Templar's chapel-bunker: a promethium fire-bowl in a vented steel hearth, a crusade standard, a powered
+    // weapon rack, a shrine with a servo-skull, a cogitator, an armour cradle and an armoured reliquary chest
+    fire: { at: [1.35, 0, 1.25], colors: [0xffe08a, 0xff6a1a], light: 0xff9a4a, y: 0.4 }, // (y: the flame sits in the bowl)
+    seatYaw: 0.6, sky: 0x07060a,
     build(g, r) {
-      const M = { dirt: L(0x2e2a22), stone: L(0x5e5a52), stoneDk: L(0x3c3a35), grass: L(0x34402a), log: L(0x4a3524), logDk: L(0x2e2218), iron: L(0x55565c), cloth: L(0x6a1e1a), gold: L(0x8a6a2a), wood: L(0x5a3e24) };
-      flat(g, new THREE.CircleGeometry(16, 32), M.dirt, 0, 0, 0);
-      for (let i = 0; i < 8; i++) flat(g, new THREE.CircleGeometry(0.22 + r() * 0.18, 6), r() < 0.5 ? M.stone : M.stoneDk, -1.6 + r() * 2.4, 1.2 + r() * 1.6, 0.03, r() * 3); // a few flagstones toward you
-      for (let i = 0; i < 26; i++) { const a = r() * 6.28, d = 2.5 + r() * 5; const t = cyl(g, 0, 0.06, 0.35 + r() * 0.25, M.grass, Math.cos(a) * d, 0.15, Math.sin(a) * d - 0.5, 3); t.rotation.z = (r() - 0.5) * 0.5; }
-      for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; rock(g, 0.16, M.stoneDk, 1.35 + Math.cos(a) * 0.45, 0.06, 1.25 + Math.sin(a) * 0.45, r); } // fire ring
-      for (let i = 0; i < 3; i++) { const l = cyl(g, 0.06, 0.06, 0.7, M.logDk, 1.35, 0.1, 1.25, 5, 0, Math.PI / 2); l.rotation.y = i * 1.05; }
-      cyl(g, 0.17, 0.17, 1.6, M.log, 0, 0.17, 0, 7, 0, Math.PI / 2).rotation.y = 0.6; // the log he sits on
-      // a weapon rack and a war banner behind
-      for (const s of [-0.6, 0.6]) box(g, 0.1, 1.3, 0.1, M.wood, -2.3 + s, 0.65, -2.6);
-      box(g, 1.5, 0.08, 0.08, M.wood, -2.3, 1.15, -2.6);
-      for (let i = 0; i < 3; i++) box(g, 0.04, 1.6, 0.04, M.iron, -2.75 + i * 0.45, 0.9, -2.5, 0, -0.12);
-      cyl(g, 0.05, 0.06, 3.2, M.logDk, 2.6, 1.6, -2.8, 5);
-      box(g, 0.9, 1.6, 0.03, M.cloth, 3.08, 2.3, -2.8); box(g, 0.3, 0.3, 0.04, M.gold, 3.08, 2.45, -2.77);
+      const M = { under: L(0x161618), plate: L(0x3a3a3e), plate2: L(0x2e2e32), iron: L(0x2a2a2e), ironLt: L(0x55565c), brass: L(0x7a5e2e), red: L(0x6a1412), bone: L(0xbab09a), hazard: L(0x8a6a1e), cable: L(0x141416), amber: new THREE.MeshBasicMaterial({ color: 0xffb04a }), screen: new THREE.MeshBasicMaterial({ color: 0x8a4a1a }), green: new THREE.MeshBasicMaterial({ color: 0x9ad06a }), eye: new THREE.MeshBasicMaterial({ color: 0xff2a1a }) };
+      deck(g, M, 5, 4, r);
+      // the hearth: a hexagonal steel bowl on a vented plinth, a brass rim, coolant pipes; the fire burns in it
+      const fx = 1.35, fz = 1.25;
+      cyl(g, 0.62, 0.7, 0.16, M.iron, fx, 0.08, fz, 6);
+      cyl(g, 0.5, 0.36, 0.26, M.ironLt, fx, 0.29, fz, 6); cyl(g, 0.53, 0.53, 0.05, M.brass, fx, 0.43, fz, 6);
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.26; box(g, 0.14, 0.05, 0.03, M.amber, fx + Math.cos(a) * 0.66, 0.1, fz + Math.sin(a) * 0.66, -a + Math.PI / 2); }
+      for (const s of [-1, 1]) { const pp = cyl(g, 0.04, 0.04, 0.9, M.brass, fx + s * 0.75, 0.06, fz - 0.2, 6, 0, Math.PI / 2); pp.rotation.y = 0.8; }
+      // his seat: a sealed munitions case
+      box(g, 0.7, 0.36, 0.42, M.hazard, 0, 0.18, 0, 0.6); box(g, 0.72, 0.06, 0.44, M.iron, 0, 0.32, 0, 0.6); box(g, 0.72, 0.06, 0.44, M.iron, 0, 0.05, 0, 0.6);
+      // a powered weapon rack: two resonance blades and a maul on charging clamps
+      box(g, 1.7, 0.12, 0.4, M.iron, -2.3, 0.06, -2.6); box(g, 1.6, 1.6, 0.12, M.iron, -2.3, 0.86, -2.75);
+      box(g, 1.62, 0.06, 0.14, M.brass, -2.3, 1.68, -2.72);
+      for (let i = 0; i < 3; i++) {
+        const x = -2.85 + i * 0.55;
+        box(g, 0.06, 1.25, 0.03, i === 1 ? M.ironLt : L(0x8a8c94), x, 0.85, -2.66, 0, 0, i === 1 ? 0 : 0.04);
+        box(g, 0.28, 0.06, 0.06, M.brass, x, 0.44, -2.65); box(g, 0.1, 0.06, 0.04, M.amber, x, 1.4, -2.67);
+      }
+      // the standard: crusade red on a brass frame, a pale cross-and-cog on it, a skull at the top
+      cyl(g, 0.05, 0.06, 3.2, M.iron, 2.6, 1.6, -2.8, 5); box(g, 1.1, 0.06, 0.06, M.brass, 3.05, 3.05, -2.8);
+      box(g, 0.9, 1.6, 0.03, M.red, 3.08, 2.25, -2.8);
+      box(g, 0.12, 0.7, 0.02, M.bone, 3.08, 2.35, -2.78); box(g, 0.5, 0.12, 0.02, M.bone, 3.08, 2.45, -2.78);
+      box(g, 0.2, 0.18, 0.2, M.bone, 2.6, 3.3, -2.8); box(g, 0.04, 0.04, 0.02, M.eye, 2.64, 3.32, -2.69);
+      // a shrine in the corner: an iron niche, votive candles, a servo-skull hovering over it
+      box(g, 1.0, 1.8, 0.4, M.iron, 3.3, 0.9, 0.6, -1.0); box(g, 0.8, 0.9, 0.2, L(0x1a1a1e), 3.18, 1.1, 0.72, -1.0);
+      votives(g, 2.85, 0.95, 5, r);
+      const skull = new THREE.Group(); skull.position.set(3.0, 1.55, 0.9); g.add(skull);
+      box(skull, 0.18, 0.16, 0.2, M.bone, 0, 0, 0); box(skull, 0.2, 0.04, 0.22, M.brass, 0, 0.09, 0); box(skull, 0.05, 0.05, 0.03, M.eye, -0.04, 0.01, 0.11);
+      for (const s of [-1, 1]) box(skull, 0.16, 0.02, 0.08, M.iron, s * 0.17, 0.06, 0);
+      // a cogitator on the left wall: a hulking terminal with an amber screen and a keyboard ledge
+      box(g, 1.0, 1.4, 0.6, M.iron, -3.5, 0.7, 0.8, 1.1); box(g, 0.45, 0.3, 0.04, M.screen, -3.24, 1.05, 0.95, 1.1); for (let i = 0; i < 4; i++) box(g, 0.3 - i * 0.05, 0.025, 0.05, M.amber, -3.22, 1.14 - i * 0.06, 0.96, 1.1); // (text lines on the screen)
+      box(g, 0.8, 0.08, 0.36, M.ironLt, -3.15, 0.7, 1.05, 1.1);
+      for (let i = 0; i < 4; i++) box(g, 0.05, 0.05, 0.05, i % 2 ? M.green : M.amber, -3.3 + i * 0.08, 1.33, 1.0);
+      // pipes up the back and cables across the floor
+      for (const x of [-1.4, -1.2]) cyl(g, 0.07, 0.07, 4, M.iron, x, 2, -3.3, 6);
+      cables(g, M.cable, r, 4, 0, -0.5, 7);
     },
-    stash(g) { // an iron-bound chest
-      const M = { wood: L(0x5a3a20), iron: L(0x6a6c72), dark: L(0x2a1c10) };
+    stash(g) { // an armoured reliquary chest: plate, brass bands, a glowing seal-lock
+      const M = { wood: L(0x3a3a3e), iron: L(0x7a5e2e), dark: L(0x1a1a1e), glow: new THREE.MeshBasicMaterial({ color: 0xffb04a }), red: L(0x6a1412) };
       const c = new THREE.Group();
       box(c, 1.1, 0.55, 0.7, M.wood, 0, 0.28, 0); for (const s of [-0.38, 0.38]) box(c, 0.08, 0.57, 0.72, M.iron, s, 0.28, 0);
+      box(c, 1.14, 0.08, 0.74, M.dark, 0, 0.04, 0); box(c, 0.6, 0.18, 0.02, M.red, 0, 0.3, 0.36);
       const lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); c.add(lid);
       box(lid, 1.1, 0.22, 0.7, M.wood, 0, 0.11, 0.35); for (const s of [-0.38, 0.38]) box(lid, 0.08, 0.24, 0.72, M.iron, s, 0.11, 0.35);
-      box(lid, 0.16, 0.18, 0.04, M.iron, 0, 0.0, 0.71);
+      box(lid, 0.16, 0.18, 0.04, M.glow, 0, 0.0, 0.71); box(lid, 0.5, 0.06, 0.4, M.iron, 0, 0.25, 0.35);
       box(c, 1.0, 0.04, 0.6, M.dark, 0, 0.55, 0);
       return { group: c, lid };
     },
-    wardrobe(g) { // an armour stand with a spare suit on it
-      const M = { wood: L(0x4a3424), plate: L(0x7a7c84), dark: L(0x2a2a30), cloth: L(0x5a1a18) };
+    wardrobe(g) { // an armour cradle: a power-armour suit on a gantry frame, cables in its back, red visor
+      const M = { wood: L(0x2a2a2e), plate: L(0x7a7c84), dark: L(0x1e1e22), cloth: L(0x6a1412), brass: L(0x7a5e2e), eye: new THREE.MeshBasicMaterial({ color: 0xff3a24 }) };
       const w = new THREE.Group();
-      box(w, 0.9, 0.12, 0.9, M.wood, 0, 0.06, 0); box(w, 0.1, 1.9, 0.1, M.wood, 0, 1.0, 0); box(w, 0.9, 0.08, 0.08, M.wood, 0, 1.65, 0);
-      box(w, 0.62, 0.6, 0.34, M.plate, 0, 1.35, 0); box(w, 0.5, 0.35, 0.3, M.dark, 0, 0.95, 0);
-      for (const s of [-1, 1]) box(w, 0.26, 0.14, 0.36, M.plate, s * 0.42, 1.62, 0, 0, 0, -s * 0.3);
-      box(w, 0.3, 0.32, 0.32, M.plate, 0, 1.88, 0); box(w, 0.22, 0.04, 0.02, M.dark, 0, 1.9, 0.17);
+      box(w, 1.0, 0.14, 0.9, M.wood, 0, 0.07, 0); for (const s of [-1, 1]) box(w, 0.1, 2.3, 0.1, M.wood, s * 0.5, 1.15, -0.3); box(w, 1.1, 0.1, 0.12, M.wood, 0, 2.3, -0.3);
+      box(w, 0.66, 0.62, 0.38, M.plate, 0, 1.35, 0); box(w, 0.5, 0.35, 0.3, M.dark, 0, 0.95, 0); box(w, 0.7, 0.08, 0.4, M.brass, 0, 1.1, 0);
+      for (const s of [-1, 1]) { box(w, 0.32, 0.18, 0.4, M.plate, s * 0.45, 1.64, 0, 0, 0, -s * 0.3); box(w, 0.14, 0.5, 0.14, M.dark, s * 0.42, 1.2, 0); box(w, 0.16, 0.55, 0.16, M.plate, s * 0.16, 0.48, 0); }
+      box(w, 0.3, 0.32, 0.32, M.plate, 0, 1.88, 0); box(w, 0.24, 0.05, 0.02, M.eye, 0, 1.9, 0.17);
       box(w, 0.08, 0.6, 0.08, M.cloth, 0, 2.15, -0.05);
+      for (const s of [-1, 1]) box(w, 0.05, 0.05, 0.5, M.dark, s * 0.15, 1.5, -0.4); // the cables
       return w;
     },
     lights: [{ at: [-2.4, 1.2, -1.0], color: 0xffb060, power: 3, range: 5, lantern: true }, { at: [2.6, 0.9, 0.9], color: 0xffa050, power: 2.5, range: 4.5, candles: true }],
   },
   rogue: {
-    fire: { at: [1.3, 0, 0.9], colors: [0xffd27a, 0xff5a12], light: 0xff8a3a },
-    seatYaw: 0.8, sky: 0x050706, seatX: -0.45,
+    // the Shrike's hide: a gutted hab-room high over the burning hive. Fire in a cut-down fuel drum, a bedroll,
+    // ammo crates, a tarp over cables, a smashed window with the red skyline behind, a trophy servo-skull
+    fire: { at: [1.3, 0, 0.9], colors: [0xffd27a, 0xff5a12], light: 0xff8a3a, y: 0.58 }, // (in the drum)
+    seatYaw: 0.8, sky: 0x0a0506, seatX: -0.45,
     build(g, r) {
-      const M = { floor: L(0x2a2a1c), leaf: L(0x5a3a1c), leaf2: L(0x6a4a1a), moss: L(0x2e3e22), root: L(0x3a2818), wood: L(0x5a4430), stone: L(0x4a4840), cloth: L(0x3a3628), red: L(0x5a1a16), iron: L(0x3a3a40) };
-      flat(g, new THREE.CircleGeometry(16, 32), M.floor, 0, 0, 0);
-      for (let i = 0; i < 70; i++) flat(g, new THREE.PlaneGeometry(0.16, 0.1), r() < 0.5 ? M.leaf : M.leaf2, (r() - 0.5) * 10, (r() - 0.5) * 8, 0.025, r() * 3); // fallen leaves
-      for (let i = 0; i < 6; i++) flat(g, new THREE.CircleGeometry(0.4 + r() * 0.5, 7), M.moss, (r() - 0.5) * 9, (r() - 0.5) * 7 - 1, 0.022);
-      for (let i = 0; i < 5; i++) { const a = r() * 6.28; const t = cyl(g, 0.05, 0.1, 2.2, M.root, Math.cos(a) * 4.4, 0.04, Math.sin(a) * 3.6 - 1, 5, 0, Math.PI / 2); t.rotation.y = a + 1.5; } // roots
-      for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; rock(g, 0.13, M.stone, 1.3 + Math.cos(a) * 0.38, 0.05, 0.9 + Math.sin(a) * 0.38, r); }
-      for (const s of [-1, 1]) { const st = cyl(g, 0.03, 0.03, 0.9, M.root, 1.3 + s * 0.48, 0.42, 0.9, 4, 0, s * 0.2); void st; }
-      cyl(g, 0.025, 0.025, 1.1, M.iron, 1.3, 0.84, 0.9, 4, 0, Math.PI / 2); box(g, 0.25, 0.12, 0.12, M.wood, 1.3, 0.76, 0.9); // the spit with a bird on it
-      cyl(g, 0.24, 0.27, 0.32, M.wood, -0.45, 0.16, 0, 8); // the stump he sits on
-      // a bedroll and a few crates
-      const bed = box(g, 0.75, 0.12, 1.7, M.cloth, -2.4, 0.06, -1.6, 0.3); void bed; cyl(g, 0.17, 0.17, 0.78, M.red, -2.62, 0.17, -0.85, 7, 0, Math.PI / 2).rotation.y = 0.3;
-      box(g, 0.6, 0.55, 0.6, M.wood, 2.5, 0.28, -2.4, 0.4); box(g, 0.45, 0.42, 0.45, M.wood, 2.95, 0.21, -1.85, 0.9);
+      const M = { under: L(0x141212), plate: L(0x343230), plate2: L(0x2a2826), ferro: L(0x4a4844), iron: L(0x2a2a2c), rust: L(0x5a3622), drab: L(0x3a3a2e), tarp: L(0x2e3428), red: L(0x5a1414), brass: L(0x7a6a3a), bone: L(0xbab09a), casing: L(0x9a7a3a), cable: L(0x141414), sky: new THREE.MeshBasicMaterial({ color: 0x6a1a10 }), skyHot: new THREE.MeshBasicMaterial({ color: 0xc8401a }), eye: new THREE.MeshBasicMaterial({ color: 0xff2a1a }) };
+      deck(g, M, 5, 4, r, 0.97);
+      for (let i = 0; i < 6; i++) { const a = r() * 6.28; box(g, 0.5 + r() * 0.6, 0.12 + r() * 0.1, 0.3 + r() * 0.3, M.ferro, Math.cos(a) * 4.2, 0.08, Math.sin(a) * 3.4 - 0.8, r() * 3); } // rubble
+      for (let i = 0; i < 30; i++) box(g, 0.025, 0.025, 0.07, M.casing, (r() - 0.5) * 5, 0.02, (r() - 0.5) * 4 + 0.5, r() * 3); // spent casings
+      // the fire drum: a cut-down promethium drum with vent holes and a grille on top
+      const fx = 1.3, fz = 0.9;
+      cyl(g, 0.36, 0.34, 0.6, M.rust, fx, 0.3, fz, 8);
+      for (const y of [0.12, 0.5]) cyl(g, 0.37, 0.37, 0.05, M.iron, fx, y, fz, 8);
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; box(g, 0.08, 0.06, 0.02, new THREE.MeshBasicMaterial({ color: 0xff7a2a }), fx + Math.cos(a) * 0.36, 0.3, fz + Math.sin(a) * 0.36, -a + Math.PI / 2); }
+      for (const s of [-1, 1]) cyl(g, 0.02, 0.02, 0.8, M.iron, fx + s * 0.1, 0.62, fz, 4, Math.PI / 2, 0);
+      // his seat: an upturned ammo crate
+      box(g, 0.5, 0.34, 0.4, M.drab, -0.45, 0.17, 0, 0.2); box(g, 0.52, 0.05, 0.42, M.iron, -0.45, 0.33, 0, 0.2);
+      // a bedroll and a respirator by it; crates; a tarp strung over the corner
+      box(g, 0.75, 0.1, 1.7, M.drab, -2.4, 0.05, -1.6, 0.3); cyl(g, 0.17, 0.17, 0.78, M.red, -2.62, 0.17, -0.85, 7, 0, Math.PI / 2).rotation.y = 0.3;
+      box(g, 0.18, 0.12, 0.14, M.iron, -2.0, 0.08, -0.9); for (const s of [-1, 1]) box(g, 0.05, 0.05, 0.02, M.eye, -2.0 + s * 0.05, 0.1, -0.83);
+      box(g, 0.6, 0.55, 0.6, M.drab, 2.5, 0.28, -2.4, 0.4); box(g, 0.45, 0.42, 0.45, M.drab, 2.95, 0.21, -1.85, 0.9);
+      for (const [x, z, ry] of [[2.5, -2.4, 0.4], [2.95, -1.85, 0.9]]) box(g, 0.3, 0.06, 0.62, L(0x8a6a1e), x, 0.3, z, ry);
+      const tarp = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.6), M.tarp); tarp.material.side = THREE.DoubleSide; tarp.position.set(-2.9, 2.0, -2.2); tarp.rotation.set(-0.9, 0.5, 0.1); g.add(tarp);
+      for (const [x, z] of [[-3.8, -1.6], [-1.9, -2.9]]) cyl(g, 0.03, 0.03, 2.4, M.iron, x, 1.2, z, 4);
+      // the broken window on the back wall: a ragged frame and the burning hive skyline behind it
+      box(g, 6, 3.2, 0.3, M.ferro, 0, 1.6, -3.6); box(g, 2.6, 1.6, 0.32, M.sky, -0.6, 2.0, -3.58);
+      for (let i = 0; i < 7; i++) { const h = 0.3 + r() * 1.0; box(g, 0.3, h, 0.05, L(0x120c0c), -1.7 + i * 0.37, 1.2 + h / 2, -3.55); }
+      for (let i = 0; i < 4; i++) box(g, 0.08, 0.08, 0.05, M.skyHot, -1.6 + r() * 2, 1.4 + r() * 0.8, -3.54);
+      for (const s of [-1, 1]) box(g, 0.1, 1.7, 0.36, M.iron, -0.6 + s * 1.3, 2.0, -3.58);
+      // a trophy: a servo-skull nailed to the wall, its optic still burning
+      box(g, 0.2, 0.18, 0.18, M.bone, 2.4, 1.6, -3.42); box(g, 0.05, 0.05, 0.02, M.eye, 2.44, 1.62, -3.32); box(g, 0.24, 0.04, 0.2, M.brass, 2.4, 1.71, -3.42);
+      cables(g, M.cable, r, 3, 0.5, -1.0, 6);
     },
-    stash(g) { // a battered strongbox
-      const M = { wood: L(0x4a3424), band: L(0x2e2a26), lock: L(0x7a6a3a) };
+    stash(g) { // a battered munitions locker
+      const M = { wood: L(0x3a3a2e), band: L(0x1e1e1c), lock: L(0x8a6a1e) };
       const c = new THREE.Group();
-      box(c, 0.95, 0.5, 0.6, M.wood, 0, 0.25, 0, 0, 0, 0.02); box(c, 0.97, 0.06, 0.62, M.band, 0, 0.12, 0);
+      box(c, 0.95, 0.5, 0.6, M.wood, 0, 0.25, 0, 0, 0, 0.02); box(c, 0.97, 0.06, 0.62, M.band, 0, 0.12, 0); box(c, 0.4, 0.12, 0.02, M.lock, -0.2, 0.3, 0.31);
       const lid = new THREE.Group(); lid.position.set(0, 0.5, -0.3); c.add(lid);
       box(lid, 0.95, 0.16, 0.6, M.wood, 0, 0.08, 0.3); box(lid, 0.97, 0.05, 0.62, M.band, 0, 0.1, 0.3);
       box(lid, 0.14, 0.14, 0.05, M.lock, 0, -0.02, 0.61);
       return { group: c, lid };
     },
-    wardrobe(g) { // a post with hooks: a cloak, a hood and a belt of knives
-      const M = { wood: L(0x3a2818), cloak: L(0x24282a), hood: L(0x302a26), leather: L(0x4a3020), steel: L(0x9aa0a8) };
+    wardrobe(g) { // a stand with the Shrike's spare kit: a hooded cloak, a respirator with burning lenses, a knife bandolier
+      const M = { wood: L(0x2a2a2c), cloak: L(0x1e2224), hood: L(0x262420), leather: L(0x3a2a1e), steel: L(0x9aa0a8), eye: new THREE.MeshBasicMaterial({ color: 0xff3a24 }) };
       const w = new THREE.Group();
       box(w, 0.7, 0.1, 0.7, M.wood, 0, 0.05, 0); box(w, 0.1, 2.1, 0.1, M.wood, 0, 1.05, 0); box(w, 0.8, 0.07, 0.07, M.wood, 0, 1.95, 0);
       const cl = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.5, 6, 1, true), M.cloak); cl.position.set(0.22, 1.18, 0.12); cl.material.side = THREE.DoubleSide; w.add(cl);
-      box(w, 0.26, 0.26, 0.24, M.hood, -0.28, 1.8, 0.1);
+      box(w, 0.26, 0.26, 0.24, M.hood, -0.28, 1.8, 0.1); box(w, 0.2, 0.12, 0.06, M.wood, -0.28, 1.74, 0.23);
+      for (const s of [-1, 1]) box(w, 0.06, 0.05, 0.02, M.eye, -0.28 + s * 0.06, 1.82, 0.23);
       box(w, 0.06, 0.5, 0.06, M.leather, -0.32, 1.45, 0.12); for (let i = 0; i < 3; i++) box(w, 0.03, 0.2, 0.05, M.steel, -0.32, 1.35 - i * 0.12, 0.17);
       return w;
     },
     lights: [{ at: [-2.5, 1.5, -1.1], color: 0xffb060, power: 3, range: 5, lantern: true }, { at: [2.5, 0.6, 0.9], color: 0xff9a40, power: 2, range: 4, candles: true }],
   },
   mage: {
-    fire: { at: [1.6, 0, -0.55], colors: [0xe8b8ff, 0x8a3aff], light: 0xb070ff, fireplace: true, power: 10 },
-    seatYaw: 0.75, sky: 0x060510,
+    // the Adept's psy-sanctum: a black reactor-hearth with a plasma flame behind a coil grille, a warding circle of
+    // circuit-sigils, capacitor pylons, a cogitator-lectern with a glowing data-slate, a stasis casket and a robe
+    // in a glass tube
+    fire: { at: [1.6, 0, -0.55], colors: [0xd8f0ff, 0x4a8aff], light: 0x7aa8ff, fireplace: true, power: 10 },
+    seatYaw: 0.75, sky: 0x05060c,
     build(g, r) {
-      const M = { tile: L(0x2c2a34), tile2: L(0x24222c), rune: new THREE.MeshBasicMaterial({ color: 0x5a3aa0, transparent: true, opacity: 0.5 }), black: L(0x16141a), stone: L(0x2a2830), wood: L(0x3a2a20), book: L(0x5a1a2a), page: L(0xc8bca0), wax: L(0xd8ccb0) };
+      const M = { tile: L(0x26262e), tile2: L(0x1e1e26), rune: new THREE.MeshBasicMaterial({ color: 0x3a6ac0, transparent: true, opacity: 0.55 }), black: L(0x121216), stone: L(0x24242c), brass: L(0x7a6a3a), wood: L(0x2a2a30), book: L(0x1a2a4a), page: L(0xc8bca0), coil: L(0x8a5a2a), glow: new THREE.MeshBasicMaterial({ color: 0x8ac8ff }), slate: new THREE.MeshBasicMaterial({ color: 0x6aa8e8 }) };
       for (let x = -5; x <= 5; x++) for (let z = -4; z <= 4; z++) if (x * x + z * z < 30) flat(g, new THREE.PlaneGeometry(0.96, 0.96), (x + z) & 1 ? M.tile : M.tile2, x, z, 0.01 + r() * 0.004);
-      flat(g, new THREE.RingGeometry(1.1, 1.22, 40), M.rune, 0, 0.1, 0.03); flat(g, new THREE.RingGeometry(1.5, 1.56, 40), M.rune, 0, 0.1, 0.03);
-      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; flat(g, new THREE.PlaneGeometry(0.12, 0.26), M.rune, Math.cos(a) * 1.33, 0.1 + Math.sin(a) * 1.33, 0.031, -a); }
-      // the black fireplace (the fire sits in it)
+      // the warding circle: two rings and circuit-sigils (square traces) round it
+      flat(g, new THREE.RingGeometry(1.1, 1.22, 6), M.rune, 0, 0.1, 0.03); flat(g, new THREE.RingGeometry(1.5, 1.56, 40), M.rune, 0, 0.1, 0.03);
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; flat(g, new THREE.PlaneGeometry(0.12, 0.26), M.rune, Math.cos(a) * 1.33, 0.1 + Math.sin(a) * 1.33, 0.031, -a); flat(g, new THREE.PlaneGeometry(0.3, 0.04), M.rune, Math.cos(a) * 1.75, 0.1 + Math.sin(a) * 1.75, 0.031, -a); }
+      // the reactor-hearth (the plasma flame sits in it): black housing, copper coils either side, a vent stack
       const fx = 1.6, fz = -0.55, ry = -0.55;
       const fp = new THREE.Group(); fp.position.set(fx, 0, fz - 0.25); fp.rotation.y = ry; g.add(fp);
       box(fp, 1.9, 0.25, 0.8, M.black, 0, 0.12, 0.1); for (const s of [-1, 1]) box(fp, 0.38, 1.4, 0.7, M.black, s * 0.76, 0.82, 0);
       box(fp, 2.1, 0.3, 0.85, M.black, 0, 1.6, 0); box(fp, 1.2, 1.2, 0.18, M.stone, 0, 0.75, -0.3); box(fp, 0.8, 1.6, 0.6, M.black, 0, 2.5, -0.1);
-      cyl(g, 0.24, 0.3, 0.32, M.stone, 0, 0.16, 0, 6); // a stone seat
-      // a lectern with an open book, candles
+      for (const s of [-1, 1]) for (let i = 0; i < 5; i++) cyl(fp, 0.24, 0.24, 0.05, M.coil, s * 0.76, 0.35 + i * 0.22, 0.36, 8);
+      for (let i = 0; i < 4; i++) box(fp, 0.9, 0.04, 0.02, M.brass, 0, 0.35 + i * 0.25, 0.46); // the grille in front of the flame
+      box(fp, 0.5, 0.06, 0.04, M.glow, 0, 1.6, 0.43);
+      cyl(g, 0.24, 0.3, 0.32, M.stone, 0, 0.16, 0, 6); cyl(g, 0.31, 0.31, 0.04, M.brass, 0, 0.3, 0, 6); // her seat
+      // the cogitator-lectern: an iron stand, a data-slate glowing on it, a heavy tome beside
       box(g, 0.12, 1.0, 0.12, M.wood, -2.6, 0.5, -2.0); box(g, 0.7, 0.06, 0.5, M.wood, -2.6, 1.02, -2.0, 0.3, -0.35);
-      box(g, 0.56, 0.05, 0.38, M.page, -2.6, 1.07, -1.98, 0.3, -0.35); box(g, 0.04, 0.06, 0.4, M.book, -2.6, 1.06, -1.98, 0.3, -0.35);
+      box(g, 0.5, 0.04, 0.34, M.slate, -2.6, 1.06, -1.98, 0.3, -0.35); box(g, 0.04, 0.06, 0.4, M.brass, -2.6, 1.06, -1.98, 0.3, -0.35);
       box(g, 0.5, 0.3, 0.4, M.book, 2.9, 0.15, 1.6, 0.4); box(g, 0.42, 0.12, 0.36, M.wood, 2.9, 0.36, 1.6, 0.6);
+      // capacitor pylons with a glowing core
+      for (const [x, z] of [[-3.4, 0.6], [3.4, 0.9], [-1.6, -3.2]]) { cyl(g, 0.16, 0.22, 1.8, M.black, x, 0.9, z, 6); for (let i = 0; i < 3; i++) cyl(g, 0.2, 0.2, 0.05, M.coil, x, 0.5 + i * 0.4, z, 6); box(g, 0.12, 0.3, 0.12, M.glow, x, 1.9, z); }
+      cables(g, L(0x101014), r, 3, 0, -1, 6);
     },
-    stash(g) { // a rune-carved chest
-      const M = { stone: L(0x2a2834), trim: L(0x8a7a4a), glow: new THREE.MeshBasicMaterial({ color: 0x9a6aff }) };
+    stash(g) { // a stasis casket: black stone, brass trim, cold blue light in its seams
+      const M = { stone: L(0x22222c), trim: L(0x7a6a3a), glow: new THREE.MeshBasicMaterial({ color: 0x7ab8ff }) };
       const c = new THREE.Group();
       box(c, 1.05, 0.55, 0.66, M.stone, 0, 0.28, 0); box(c, 1.08, 0.06, 0.68, M.trim, 0, 0.04, 0);
       for (const s of [-0.3, 0, 0.3]) box(c, 0.08, 0.2, 0.02, M.glow, s, 0.3, 0.34);
       const lid = new THREE.Group(); lid.position.set(0, 0.56, -0.33); c.add(lid);
       box(lid, 1.05, 0.2, 0.66, M.stone, 0, 0.1, 0.33); box(lid, 1.08, 0.05, 0.68, M.trim, 0, 0.2, 0.33);
-      box(lid, 0.18, 0.06, 0.18, M.glow, 0, 0.24, 0.33);
+      box(lid, 0.6, 0.04, 0.1, M.glow, 0, 0.23, 0.33);
       return { group: c, lid };
     },
-    wardrobe(g) { // a tall carved wardrobe with star-cloth showing through the doors
-      const M = { wood: L(0x2a1e2a), trim: L(0x8a7a4a), cloth: L(0x2a2050), glow: new THREE.MeshBasicMaterial({ color: 0x7a5aff }) };
+    wardrobe(g) { // a stasis tube: the Adept's spare robe hanging in cold blue light behind glass ribs
+      const M = { wood: L(0x1e1e26), trim: L(0x7a6a3a), cloth: L(0x1e2a4a), glow: new THREE.MeshBasicMaterial({ color: 0x6aa8ff }) };
       const w = new THREE.Group();
-      box(w, 1.2, 2.3, 0.6, M.wood, 0, 1.15, 0); box(w, 1.3, 0.12, 0.7, M.trim, 0, 2.36, 0); box(w, 1.3, 0.1, 0.7, M.trim, 0, 0.05, 0);
-      box(w, 0.5, 1.9, 0.04, M.wood, -0.28, 1.15, 0.32, -0.5); box(w, 0.04, 1.9, 0.02, M.trim, 0.0, 1.15, 0.31);
-      box(w, 0.42, 1.7, 0.02, M.cloth, 0.2, 1.12, 0.29);
-      for (const [x, y] of [[0.12, 1.6], [0.3, 1.2], [0.18, 0.8]]) box(w, 0.04, 0.04, 0.02, M.glow, x, y, 0.31);
+      cyl(w, 0.62, 0.66, 0.16, M.wood, 0, 0.08, 0, 8); cyl(w, 0.62, 0.62, 0.2, M.wood, 0, 2.3, 0, 8); cyl(w, 0.64, 0.64, 0.05, M.trim, 0, 2.18, 0, 8);
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; box(w, 0.06, 2.1, 0.06, M.trim, Math.cos(a) * 0.58, 1.15, Math.sin(a) * 0.58); }
+      const robe = new THREE.Mesh(new THREE.ConeGeometry(0.34, 1.6, 6, 1, true), M.cloth); robe.material.side = THREE.DoubleSide; robe.position.set(0, 1.2, 0); w.add(robe);
+      box(w, 0.2, 0.22, 0.2, M.cloth, 0, 2.02, 0);
+      box(w, 0.5, 0.04, 0.5, M.glow, 0, 0.18, 0); box(w, 0.5, 0.04, 0.5, M.glow, 0, 2.18, 0);
       return w;
     },
-    lights: [{ at: [-2.6, 1.4, -1.6], color: 0xffc070, power: 2.5, range: 4.5, candles: true }, { at: [-2.5, 1.6, -1.2], color: 0x9a7aff, power: 2.2, range: 5, lantern: true }],
+    lights: [{ at: [-2.6, 1.4, -1.6], color: 0x9ac0ff, power: 2.5, range: 4.5, candles: true }, { at: [-2.5, 1.6, -1.2], color: 0x7a9aff, power: 2.2, range: 5, lantern: true }],
   },
 };
 
@@ -380,7 +460,7 @@ export class Hermitage {
     S.build(g, r);
     // the fire and its light (the main light on the character)
     const [fx, fy, fz] = S.fire.at;
-    this.fire = fire(g, fx, fy + (S.fire.fireplace ? 0.25 : 0.05), fz, S.fire.fireplace ? 1.1 : 1, S.fire.colors);
+    this.fire = fire(g, fx, fy + (S.fire.y ?? (S.fire.fireplace ? 0.25 : 0.05)), fz, S.fire.fireplace ? 1.1 : 1, S.fire.colors);
     this.firePower = (S.fire.power || 6) * 1.25;
     this.fireLight = new THREE.PointLight(S.fire.light, this.firePower, 8, 1.3); this.fireLight.position.set(fx, 1.0, fz + (S.fire.fireplace ? 0.5 : 0)); scene.add(this.fireLight);
     // small lights here and there
@@ -388,8 +468,10 @@ export class Hermitage {
     for (const l of S.lights) {
       const pl = new THREE.PointLight(l.color, l.power * 1.4, l.range * 1.2, 1.5); pl.position.set(...l.at); scene.add(pl);
       if (l.lantern) {
-        cyl(g, 0.04, 0.05, l.at[1] + 0.3, L(0x2a2018), l.at[0], (l.at[1] + 0.3) / 2, l.at[2] - 0.05, 5);
-        box(g, 0.2, 0.26, 0.2, new THREE.MeshBasicMaterial({ color: l.color }), l.at[0], l.at[1], l.at[2]);
+        // a work-lamp: an iron post, a hood and a glowing lens
+        cyl(g, 0.04, 0.05, l.at[1] + 0.3, L(0x1e1e22), l.at[0], (l.at[1] + 0.3) / 2, l.at[2] - 0.05, 5);
+        box(g, 0.28, 0.14, 0.24, L(0x2a2a2e), l.at[0], l.at[1] + 0.12, l.at[2]);
+        box(g, 0.22, 0.08, 0.2, new THREE.MeshBasicMaterial({ color: l.color }), l.at[0], l.at[1], l.at[2]);
       }
       if (l.candles) for (let i = 0; i < 3; i++) { const cx = l.at[0] + (i - 1) * 0.16, cz = l.at[2] + (i % 2) * 0.12, h = 0.14 + i * 0.06; cyl(g, 0.04, 0.045, h, L(0xd8ccb0), cx, h / 2, cz, 5); box(g, 0.04, 0.07, 0.04, new THREE.MeshBasicMaterial({ color: 0xffd080 }), cx, h + 0.04, cz); }
       this.small.push({ pl, base: l.power * 1.4, ph: r() * 6 });
