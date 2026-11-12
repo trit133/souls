@@ -29,6 +29,7 @@ const hold = async (page, key, ms) => { await page.keyboard.down(key); await pag
 await run('desktop', { viewport: { width: 1280, height: 720 } }, async (page) => {
   await shot(page, '00-title');
   await page.evaluate(() => game.hermitage.setKind('knight')); await page.click('#hm-solo');
+  await page.click('.wm-pin.open'); await page.click('#wm-go'); // (Solo Raid opens the world map)
   await page.waitForTimeout(1500);
   await shot(page, '01-start');
   await hold(page, 'KeyW', 1500);
@@ -89,6 +90,7 @@ await run('desktop', { viewport: { width: 1280, height: 720 } }, async (page) =>
 
 await run('iphone', { ...devices['iPhone 13 landscape'] }, async (page) => {
   await page.evaluate(() => game.hermitage.setKind('rogue')); await page.click('#hm-solo');
+  await page.click('.wm-pin.open'); await page.click('#wm-go');
   await page.waitForTimeout(1200);
   // drag the stick
   const cdp = await page.context().newCDPSession(page);

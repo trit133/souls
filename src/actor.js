@@ -140,7 +140,7 @@ export class Actor {
       for (const tg of targets) {
         const key = i + ':' + tg.uid;
         if (!tg.alive || a.hit.has(key)) continue;
-        if (this.hitTest(h, tg)) {
+        if (this.hitTest(h, tg) && this.game.world.lineClear(this.pos.x, this.pos.z, tg.pos.x, tg.pos.z)) { // (never through a wall)
           a.hit.add(key);
           this.game.resolveHit(this, tg, h, d);
           if (this.atk !== a) return false; // parried / interrupted mid-swing

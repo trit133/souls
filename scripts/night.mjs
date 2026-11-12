@@ -22,8 +22,10 @@ out.unlock = await page.evaluate(() => {
   g.toTitle();
   return { after1, after2: !!g.accounts.data.nightRaid, toggleHidden: document.getElementById('hm-night').classList.contains('hidden') };
 });
-await page.click('#hm-solo'); await page.waitForTimeout(150); await page.click('#hm-night'); await page.waitForTimeout(100);
-out.toggle = await page.evaluate(() => ({ on: game.nightRaid, layout: game.newLayout(), cls: document.getElementById('hm-night').classList.contains('on') }));
+// Solo Raid opens the world map; the toggle sits in the picked area's panel
+await page.click('#hm-solo'); await page.waitForTimeout(150); await page.click('.wm-pin.open'); await page.waitForTimeout(100); await page.click('#wm-night'); await page.waitForTimeout(100);
+out.toggle = await page.evaluate(() => ({ on: game.nightRaid, layout: game.newLayout(), cls: document.getElementById('wm-night').classList.contains('on') }));
+await page.click('#wm-back'); await page.click('#wm-back'); await page.waitForTimeout(100);
 // a night run against a day run with the same seed
 out.compare = await page.evaluate(() => {
   const g = game, stat = () => { const e = g.enemies.find((x) => x.type === 'grunt' && !x.elite); const B = g.world.dungeon.enc.boss; return { gruntHp: e.maxHp, dmg: +e.dmgScale.toFixed(2), spd: +e.spdScale.toFixed(2), gap: +e.gapScale.toFixed(2), watch: e.watchGap().toFixed(1), aggro: e.aggroMul, bossHp: B.maxHp, bossDmg: +B.dmgScale.toFixed(2), hemi: g.hemi.intensity, lights: g.nightLights ? g.nightLights.length : 0 }; };

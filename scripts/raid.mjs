@@ -1,6 +1,8 @@
 // A raid end to end (city.js): the map is the same every raid while shrines, the boss's stair and enemies move;
 // everything can be reached; stairs go down and back up; an enemy finds its way round walls to you; three broken
-// shrines open the boss door; the boss's death ends the raid; the world map opens from the Sanctum's Solo Raid.
+// shrines open the boss door; the boss's death ends the raid; the world map opens from the Sanctum's Solo Raid; the
+// map is small and walled; houses are dark (your cone comes on) and lift their roof only when you're in them; your
+// outline shows through a building between you and the camera; archers can't shoot through walls; the dead come back.
 // node scripts/raid.mjs [url]
 import { chromium } from 'playwright';
 const url = process.argv[2] || 'http://localhost:4173/';
@@ -58,6 +60,35 @@ const out = await page.evaluate(() => {
   let best = d0; run(600, () => { e.cd = 99; best = Math.min(best, Math.hypot(e.pos.x - p2.pos.x, e.pos.z - p2.pos.z)); });
   res.pathing = { door: dside, start: +d0.toFixed(1), closest: +best.toFixed(1), inside: b2.x0 < e.pos.x && e.pos.x < b2.x1 && b2.z0 < e.pos.z && e.pos.z < b2.z1 };
 
+  // 3b. small and walled: the city's size, how many lanes are walls
+  { const D = g.world.dungeon, L = D.layers[0]; res.size = { w: L.W, h: L.H, walls: D.walls.length, lanes: D.open.size, enemies: g.enemies.length }; }
+
+  // 3c. a roofed house is dark inside and your cone comes on; a building between you and the camera shows your outline
+  { g.start('knight'); const D = g.world.dungeon, p = g.player; p.hp = p.maxHp = 1e7; for (const e of g.enemies) e.update = () => {};
+    const h = D.buildings.find((b) => !b.ruin && !b.yard && b.doors.length);
+    p.pos.set(h.cx, 0, h.cz); g.lastGood = null; run(90);
+    res.dark = { inside: g.world.dungeon.darkAt(p.pos.x, p.pos.z), hemi: +g.hemi.intensity.toFixed(2), cone: +(g.nightLights?.[0].cone.intensity || 0).toFixed(1), roofOff: h.cut };
+    const o = D.occluders.find((q) => q.b && !q.b.ruin && D.reach((q.x0 + q.x1) / 2, q.z0 - 1.2));
+    p.pos.set((o.x0 + o.x1) / 2, 0, o.z0 - 1.2); g.lastGood = null; run(60);
+    res.outline = { hidden: D.hides(p.pos.x, p.pos.z), shown: !!p.ghostOn, darkHere: D.darkAt(p.pos.x, p.pos.z), roofOn: !o.b.cut };
+    // 3d. an archer can't shoot you through a lane wall
+    const W = D.walls.find((R) => R.alongX && D.reach((R.x0 + R.x1) / 2, R.z0 - 2.5) && D.reach((R.x0 + R.x1) / 2, R.z1 + 2.5));
+    const arch = g.enemies.find((e) => e.type === 'archer' && !e.guard && !e.elite);
+    for (const e of g.enemies) if (e !== arch) e.die(true);
+    delete arch.update; // (back to its own update)
+    const mx = (W.x0 + W.x1) / 2;
+    arch.pos.set(mx, 0, W.z0 - 2.5); arch.home = { x: mx, z: W.z0 - 2.5, yaw: 0 }; arch.mod = D.modAt(mx, W.z0 - 2.5).i; arch.roam = D.roam(arch.mod);
+    p.pos.set(mx, 0, W.z1 + 2.5); g.lastGood = null; p.hp = p.maxHp;
+    const hp0 = p.hp; let shots = 0; const n0 = g.projectiles.length;
+    arch.setState('chase');
+    run(600, () => { arch.pos.z = Math.min(arch.pos.z, W.z0 - 1.5); if (g.projectiles.length > n0) shots++; });
+    res.wallShot = { wall: +(W.z1 - W.z0).toFixed(1), hpLost: Math.round(hp0 - p.hp), shotFrames: shots, archerState: arch.state };
+    // 3e. a dead enemy comes back after a while, once nobody is near; a shrine's guard never does
+    const e = arch; e.die(true); e.diedAt = g.time - 200; p.pos.set(e.home.x > 0 ? -44 : 44, 0, e.home.z > 0 ? -44 : 44); g.lastGood = null; run(80);
+    const guard = g.enemies.find((x) => x.guard); if (guard) { guard.die(true); guard.diedAt = g.time - 200; } run(80);
+    res.respawn = { back: e.alive && e.state !== 'dead', atHome: Math.hypot(e.pos.x - e.home.x, e.pos.z - e.home.z) < 1, guardStaysDead: !guard || !guard.alive };
+  }
+
   // 4. three shrines open the boss door; the boss's death ends the raid
   g.start('knight'); const D3 = g.world.dungeon, p3 = g.player; p3.hp = p3.maxHp = 1e7;
   const enc = D3.enc, gate = g.world.gates[enc.gateIn];
@@ -83,7 +114,9 @@ await page.evaluate(() => { document.getElementById('wm-back').click(); });
 await page.screenshot({ path: '/tmp/cityshots/worldmap-world.png' });
 await b.close();
 console.log(JSON.stringify(out, null, 1));
-const ok = out.sameMap && out.enemiesMoved && Object.values(out.allReach).every(Boolean) && out.down.under && out.down.lightAfter < 1 && !out.backUp.under && out.backUp.nearStair
+const ok = out.size.w < 130 && out.size.walls >= 20 && out.dark.inside && out.dark.hemi < 0.6 && out.dark.cone > 10 && out.dark.roofOff
+  && out.outline.hidden && out.outline.shown && out.wallShot.hpLost === 0 && out.respawn.back && out.respawn.atHome && out.respawn.guardStaysDead
+  && out.sameMap && out.enemiesMoved && Object.values(out.allReach).every(Boolean) && out.down.under && out.down.lightAfter < 1 && !out.backUp.under && out.backUp.nearStair
   && out.pathing.closest < 3 && out.doorShut.sealed && !out.doorShut.open && !out.doorAfter.sealed && out.doorAfter.open && out.fight.active && out.defeated && out.victory.shown && out.map.deploy;
 console.log(ok ? 'raid works' : 'RAID PROBLEM');
 console.log(errs.length ? 'ERRORS\n' + errs.join('\n') : 'OK no errors');

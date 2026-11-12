@@ -62,11 +62,12 @@ await page.screenshot({ path: '/tmp/herm-mage.png' });
 out.bottom = await page.evaluate(() => [...document.querySelectorAll('.hm-bottom > button, .hm-bottom .hm-solo-wrap > button')].filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
 await page.evaluate(() => { game.accounts.data.nightRaid = true; game.refreshNight(); });
 await page.click('#hm-solo'); await page.waitForTimeout(200);
-out.soloAsks = await page.evaluate(() => !document.getElementById('hm-go').classList.contains('hidden'));
-await page.click('#hm-night'); await page.waitForTimeout(100);
+out.soloAsks = await page.evaluate(() => !document.getElementById('worldmap').classList.contains('hidden')); // (the world map opens)
+await page.click('.wm-pin.open'); await page.waitForTimeout(100);
+await page.click('#wm-night'); await page.waitForTimeout(100);
 out.nightOn = await page.evaluate(() => [game.nightRaid, game.newLayout()]);
 await page.screenshot({ path: '/tmp/herm-solo-night.png' });
-await page.click('#hm-night'); await page.click('#hm-begin'); await page.waitForTimeout(400);
+await page.click('#wm-night'); await page.click('#wm-go'); await page.waitForTimeout(400);
 out.run = await page.evaluate(() => ({ mode: game.mode, kind: game.kind, herm: game.hermitage.active }));
 await page.evaluate(() => game.toTitle()); await page.waitForTimeout(300);
 out.back = await page.evaluate(() => ({ herm: game.hermitage.active, kind: game.hermitage.kind, last: game.accounts.data.lastKind }));

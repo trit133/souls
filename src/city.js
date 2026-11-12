@@ -1,46 +1,43 @@
-// A raid map: Ashfall Ward, a burned-out hab-ward (regions.js). Unlike the dungeons the map is hand-laid and the same
-// every raid: a 236 m square of streets on a grid (avenues through the middle), 36 blocks of tenements, markets,
-// yards, a chapel, two manufactoria, a barracks and collapsed heaps you have to go round, and barricades across a
-// few streets. Most buildings can be walked into (walls are solids with doorways; the roof and walls lift off the
-// one you're in or behind), and some have stairs down to cellars, vaults and bunkers, built far off to the east
-// (x > 300) and joined by the stairs. What changes each raid (from the run's seed, so a party shares it): where
-// the three shrines are (surface squares and yards, or down in the vaults), which of three buildings hides the stair
-// down to the boss, and where every enemy stands.
+// A raid map: Ashfall Ward, a burned-out hab-ward (regions.js). The map is laid by hand and the same every raid: a
+// tight maze about 100 m across. Lanes 4 m wide run between 7 x 7 junctions; where a lane wasn't carved there's a
+// wall of brick and rubble instead, so the lanes wind, branch and dead-end (a spanning tree over the junctions, plus
+// a few loops). Between the lanes, 36 blocks of 12 m: houses you walk into through their doorways (dark inside unless
+// they're roofless ruins), walled yards, heaps of rubble, four small squares, and three big buildings over two
+// blocks each (a chapel, a manufactorum, a barracks). Some buildings have stairs down to vaults and bunkers built
+// far off to the east (x > 300). What changes each raid (from the run's seed, so a party shares it): where the three
+// shrines are (on the squares or down in the vaults), which big building hides the stair to the boss, and where
+// every enemy stands. Enemies come back a while after they die (main.js: respawns).
 //
-// It stands in for a dungeon (world.dungeon): mods are 40 m chunks of the city (each enemy keeps to its chunk and
+// It stands in for a dungeon (world.dungeon): mods are 25 m chunks of the city (each enemy keeps to its chunk and
 // the ones round it), every basement and the arena; seals.js runs the shrines and the boss door as before. Enemies
-// find their way round walls with a flow field on a 1 m grid (steer).
+// find their way round walls with a flow field on a 1 m grid (steer). A building's roof only lifts off when you're
+// inside it; when a building or a wall stands between you and the camera, main.js shows your outline through it.
 import * as THREE from 'three';
 import { rng } from './world.js';
-import { mix, ELITES, SEALS_NEEDED } from './dungeon.js';
+import { mix, ELITES } from './dungeon.js';
 import { arenaFurnish, stoneRing } from './modules.js';
 import { decorateArena, candles, bones, corpse, sacks, cart, crows, bloodStain, cage, skullStake } from './decor.js';
 
-const MAP_SEED = 0x5a11f; // the map's own stream: the same streets and buildings every raid
-const EDGE = 118, CH = 40, NC = 6, C0 = -120; // walkable -118..118; 6 x 6 chunks of 40 m from -120
+const MAP_SEED = 0x5a11f; // the map's own stream: the same lanes and buildings every raid
+const N = 7, SP = 16, X0 = -48, LW = 4; // junctions on a 7 x 7 grid 16 m apart; lanes 4 m wide
+const EDGE = 50, CH = 25, NC = 4, C0 = -50; // walkable -50..50 (and the camp south of it); 4 x 4 chunks of 25 m
 const UNDER = 300; // beyond this x it's underground
 const T = 0.5; // wall thickness
-// block edges along each axis (streets run between: avenues at 0 are 12 m wide, the rest 8 m, a ring road round)
-const SPAN = [[-112, -84], [-76, -44], [-36, -6], [6, 36], [44, 76], [84, 112]];
-// rows north (-z) to south (+z), columns west to east
+const X = (i) => X0 + i * SP;
+// blocks, rows north (-z) to south, columns west to east (a big building's second block is 'merged')
 const BLOCKS = [
-  ['collapse', 'tenement', 'chapel', 'tenement', 'works', 'collapse'],
-  ['tenement', 'market', 'tenement', 'yard', 'tenement', 'tenement'],
-  ['tenement', 'tenement', 'square', 'square', 'tenement', 'barracks'],
-  ['yard', 'tenement', 'square', 'square', 'market', 'tenement'],
-  ['tenement', 'works', 'tenement', 'tenement', 'collapse', 'tenement'],
-  ['collapse', 'tenement', 'yard', 'camp', 'tenement', 'tenement'],
+  ['house', 'house', 'chapel', 'merged', 'house', 'ruin'],
+  ['yard', 'plaza', 'house', 'ruin', 'plaza', 'house'],
+  ['works', 'house', 'yard', 'house', 'house', 'barracks'],
+  ['merged', 'ruin', 'house', 'house', 'yard', 'merged'],
+  ['house', 'plaza', 'ruin', 'house', 'plaza', 'house'],
+  ['ruin', 'house', 'house', 'yard', 'house', 'rubble'],
 ];
-const CELLARS = new Set(['0,1', '1,0', '2,4', '3,5', '4,2', '5,1', '1,5', '4,3']); // tenement blocks with a cellar under one building
-const VAULTS = new Set(['4,3']); // ...of which these are whole vaults
-const VAULT_SITES = ['4,3', '4,1']; // vaults a shrine can wait in (with the two boss sites the boss didn't take)
-const BOSS_SITES = ['0,2', '0,4', '2,5']; // the chapel, the north manufactorum, the barracks: one hides the boss's stair
-const SURFACE_SHRINES = ['1,1', '1,3', '3,4', '3,0'];
-// barricades across streets: [x0, x1, z0, z1]; a gap = two pieces
-const BARRICADES = [
-  [-44, -36, 58, 59.2], [36, 38.6, -20, -18.8], [41.4, 44, -20, -18.8], [-60, -58.8, 36, 44], [58, 59.2, -44, -41.4], [58, 59.2, -38.6, -36],
-  [-100, -98.8, 76, 84], [-84, -76, -100, -98.8], [76, 84, 22, 23.2], [-20, -18.8, 76, 78.6], [-20, -18.8, 81.4, 84],
-];
+const MERGED_EDGES = ['v3,0', 'h0,3', 'h5,3']; // the lanes the big buildings stand over
+const LOOPS = 2; // extra lanes on top of the spanning tree
+const BOSS_SITES = ['0,2', '2,0', '2,5']; // the chapel, the manufactorum, the barracks: one hides the boss's stair
+const VAULT_SITES = ['2,1', '3,3', '4,5']; // houses over a vault (a shrine can wait down there, or in the boss sites the boss didn't take)
+const SURFACE_SHRINES = ['1,1', '1,4', '4,1', '4,4']; // the squares
 const ARENAS = { hask: { theme: 'pit', name: 'The Penitent Pit', ground: 'arena' }, vael: { theme: 'cloister', name: 'The Cryo Cloister', ground: 'crypt' }, gorrath: { theme: 'forge', name: 'The Slag Foundry', ground: 'ash' } };
 
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -49,6 +46,12 @@ function weighted(r, w) { let x = r() * Object.values(w).reduce((a, b) => a + b,
 // a visual-only random 0..1 from a position (wall heights, windows): never the level's streams
 const vh = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
 const inside = (b, x, z, m = 0) => x > b.x0 - m && x < b.x1 + m && z > b.z0 - m && z < b.z1 + m;
+// a lane (an edge between two junctions) as a rect: 'h' runs east from junction (i, j), 'v' runs south
+const edgeRect = (e) => {
+  const t = e[0], [i, j] = e.slice(1).split(',').map(Number);
+  return t === 'h' ? { x0: X(i) + LW / 2, x1: X(i + 1) - LW / 2, z0: X(j) - LW / 2, z1: X(j) + LW / 2, alongX: true }
+    : { x0: X(i) - LW / 2, x1: X(i) + LW / 2, z0: X(j) + LW / 2, z1: X(j + 1) - LW / 2, alongX: false };
+};
 
 export class City {
   constructor(seed, area, players = 1) {
@@ -68,81 +71,64 @@ export class City {
   // ---------- the plan (data only, the map's own stream) ----------
   plan() {
     const r = rng(MAP_SEED);
+    // the lanes: a winding spanning tree over the junctions from the gate (south middle), the squares opened all
+    // round, then a few loops
+    const open = new Set(), closed = new Set(MERGED_EDGES);
+    const nbrs = (i, j) => [[i + 1, j, `h${i},${j}`], [i - 1, j, `h${i - 1},${j}`], [i, j + 1, `v${i},${j}`], [i, j - 1, `v${i},${j - 1}`]]
+      .filter(([a, b, e]) => a >= 0 && b >= 0 && a < N && b < N && !closed.has(e));
+    const seen = new Set(['3,6']), stack = [[3, 6]];
+    while (stack.length) {
+      const [i, j] = stack[stack.length - 1];
+      const nx = nbrs(i, j).filter(([a, b]) => !seen.has(a + ',' + b));
+      if (!nx.length) { stack.pop(); continue; }
+      const [a, b, e] = pick(r, nx);
+      open.add(e); seen.add(a + ',' + b); stack.push([a, b]);
+    }
+    for (const key of SURFACE_SHRINES) { const [bj, bi] = key.split(',').map(Number); for (const e of [`h${bi},${bj}`, `h${bi},${bj + 1}`, `v${bi},${bj}`, `v${bi + 1},${bj}`]) open.add(e); }
+    const all = [];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { if (i < N - 1) all.push(`h${i},${j}`); if (j < N - 1) all.push(`v${i},${j}`); }
+    for (const e of shuffle(all.filter((e) => !open.has(e) && !closed.has(e)), r).slice(0, LOOPS)) open.add(e);
+    this.open = open;
+
+    // the blocks
     this.blocks = []; this.buildings = [];
-    for (let j = 0; j < NC; j++) for (let i = 0; i < NC; i++) {
-      const [x0, x1] = SPAN[i], [z0, z1] = SPAN[j], key = j + ',' + i;
-      const B = { key, i, j, type: BLOCKS[j][i], x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, bld: [] };
+    const sideEdges = (bi, bj) => ({ n: `h${bi},${bj}`, s: `h${bi},${bj + 1}`, w: `v${bi},${bj}`, e: `v${bi + 1},${bj}` });
+    for (let bj = 0; bj < 6; bj++) for (let bi = 0; bi < 6; bi++) {
+      const x0 = X(bi) + LW / 2, x1 = X(bi + 1) - LW / 2, z0 = X(bj) + LW / 2, z1 = X(bj + 1) - LW / 2, key = bj + ',' + bi;
+      const B = { key, i: bi, j: bj, type: BLOCKS[bj][bi], x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, bld: [] };
       this.blocks.push(B);
+      const E = sideEdges(bi, bj), opens = Object.keys(E).filter((s) => open.has(E[s]));
       const add = (o) => { const b = { block: B, h: 3.8, ruin: false, doors: [], part: null, kind: 'house', ...o }; b.cx = (b.x0 + b.x1) / 2; b.cz = (b.z0 + b.z1) / 2; B.bld.push(b); this.buildings.push(b); return b; };
-      const doors = (b, n) => {
-        const sides = shuffle(['n', 's', 'e', 'w'], r).filter((s) => ((s === 'n' || s === 's') ? b.x1 - b.x0 : b.z1 - b.z0) > 4.5);
-        for (const s of sides.slice(0, n)) b.doors.push({ s, t: 0.3 + r() * 0.4, w: b.kind === 'works' ? 4 : 2.4 });
-      };
-      const partition = (b) => {
-        const w = b.x1 - b.x0, d = b.z1 - b.z0;
-        if (Math.max(w, d) < 12) return;
-        b.part = w > d ? { axis: 'z', at: b.x0 + w * (0.42 + r() * 0.16), t: 0.25 + r() * 0.5 } : { axis: 'x', at: b.z0 + d * (0.42 + r() * 0.16), t: 0.25 + r() * 0.5 };
-      };
+      if ((B.type === 'house' || B.type === 'ruin' || B.type === 'yard') && !opens.length) B.type = 'rubble'; // (walled in on every side)
       switch (B.type) {
-        case 'tenement': {
-          // split the block (less a pavement) into two to four buildings with alleys between
-          let rects = [[x0 + 1.6, x1 - 1.6, z0 + 1.6, z1 - 1.6]];
-          for (let pass = 0; pass < 2; pass++) {
-            const next = [];
-            for (const [a0, a1, b0, b1] of rects) {
-              const w = a1 - a0, d = b1 - b0, long = Math.max(w, d);
-              if (long < 15 || (pass === 1 && r() < 0.35)) { next.push([a0, a1, b0, b1]); continue; }
-              const cut = 0.4 + r() * 0.2, gap = 2.6 + r() * 1.4;
-              if (w >= d) { const m = a0 + w * cut; next.push([a0, m - gap / 2, b0, b1], [m + gap / 2, a1, b0, b1]); }
-              else { const m = b0 + d * cut; next.push([a0, a1, b0, m - gap / 2], [a0, a1, m + gap / 2, b1]); }
-            }
-            rects = next;
-          }
-          rects.forEach(([a0, a1, b0, b1], n) => {
-            if (n > 0 && r() < 0.12 && rects.length > 2) return; // an empty lot
-            const b = add({ x0: a0, x1: a1, z0: b0, z1: b1, h: r() < 0.5 ? 6.6 + r() * 1.4 : 3.8 + r() * 0.6, ruin: r() < 0.3, kind: 'house' });
-            doors(b, 1 + (r() < 0.6 ? 1 : 0)); partition(b);
-            if (n === 0 && CELLARS.has(key)) b.basement = VAULTS.has(key) ? 'vault' : 'cellar';
-          });
-          break;
-        }
-        case 'chapel': {
-          const b = add({ x0: x0 + 2.5, x1: x1 - 2.5, z0: z0 + 1.5, z1: z1 - 2, h: 9, kind: 'chapel', basement: 'site' });
-          b.doors.push({ s: 's', t: 0.5, w: 3.6 }, { s: 'e', t: 0.65, w: 2.4 }, { s: 'w', t: 0.35, w: 2.4 });
-          break;
-        }
-        case 'works': {
-          const b = add({ x0: x0 + 2, x1: x1 - 2, z0: z0 + 2, z1: z1 - 2, h: 8, kind: 'works', basement: key === '4,1' ? 'vault' : 'site' });
-          b.doors.push({ s: 's', t: 0.3 + r() * 0.2, w: 4 }, { s: r() < 0.5 ? 'e' : 'w', t: 0.5, w: 4 });
-          b.part = { axis: 'z', at: (b.x0 + b.x1) / 2 + (r() - 0.5) * 4, t: 0.5, w: 4 };
-          break;
-        }
-        case 'barracks': {
-          const b = add({ x0: x0 + 2, x1: x1 - 2, z0: z0 + 3, z1: z1 - 9, h: 4.6, kind: 'barracks', basement: 'site' });
-          b.doors.push({ s: 's', t: 0.5, w: 2.4 }, { s: 'w', t: 0.5, w: 2.4 });
-          b.part = { axis: 'z', at: (b.x0 + b.x1) / 2, t: 0.5 };
-          break;
-        }
-        case 'market': {
-          // an open square with a kiosk in one corner (the middle stays clear for a shrine)
-          const cx = r() < 0.5 ? x0 + 2 : x1 - 8, cz = r() < 0.5 ? z0 + 2 : z1 - 8;
-          const b = add({ x0: cx, x1: cx + 6, z0: cz, z1: cz + 6, h: 3.6, kind: 'kiosk' }); doors(b, 1);
+        case 'house': case 'ruin': {
+          const b = add({ x0, x1, z0, z1, h: B.type === 'ruin' ? 4.5 + r() * 2 : r() < 0.5 ? 6.6 + r() * 1.2 : 4.0 + r() * 0.6, ruin: B.type === 'ruin' });
+          for (const s of shuffle([...opens], r).slice(0, 1 + (r() < 0.45 ? 1 : 0))) b.doors.push({ s, t: 0.3 + r() * 0.4, w: B.type === 'ruin' ? 3 : 2.4 });
+          if (r() < 0.65) b.part = r() < 0.5 ? { axis: 'z', at: x0 + 12 * (0.4 + r() * 0.2), t: 0.3 + r() * 0.4 } : { axis: 'x', at: z0 + 12 * (0.4 + r() * 0.2), t: 0.3 + r() * 0.4 };
+          if (VAULT_SITES.includes(key)) b.basement = 'vault';
           break;
         }
         case 'yard': {
-          const cx = r() < 0.5 ? x0 + 2 : x1 - 9, cz = z0 + 2;
-          const b = add({ x0: cx, x1: cx + 7, z0: cz, z1: cz + 6, h: 3.4, ruin: true, kind: 'shed' }); doors(b, 1);
+          const b = add({ x0, x1, z0, z1, h: 2.4, kind: 'yard', yard: true });
+          for (const s of shuffle([...opens], r).slice(0, 1 + (r() < 0.3 ? 1 : 0))) b.doors.push({ s, t: 0.3 + r() * 0.4, w: 2.6 });
           break;
         }
-        case 'square': {
-          // the four quarters round the crossroads: one building in the outer corner, the rest paved and open
-          const ox = i === 2 ? x0 + 1.6 : x1 - 15.6, oz = j === 2 ? z0 + 1.6 : z1 - 13.6;
-          const b = add({ x0: ox, x1: ox + 14, z0: oz, z1: oz + 12, h: 7.2, kind: 'house' }); doors(b, 2); partition(b);
+        case 'chapel': case 'works': case 'barracks': {
+          // over two blocks (east for the chapel, south for the others) and the lane between them
+          const wide = B.type === 'chapel', bx1 = wide ? X(bi + 2) - LW / 2 : x1, bz1 = wide ? z1 : X(bj + 2) - LW / 2;
+          const b = add({ x0, x1: bx1, z0, z1: bz1, h: B.type === 'chapel' ? 9 : B.type === 'works' ? 8 : 5, kind: B.type, basement: 'site' });
+          // a doorway in each open lane along its sides (the halves of a long side are separate lanes)
+          const halves = wide ? { n: [`h${bi},${bj}`, `h${bi + 1},${bj}`], s: [`h${bi},${bj + 1}`, `h${bi + 1},${bj + 1}`], w: [`v${bi},${bj}`], e: [`v${bi + 2},${bj}`] }
+            : { n: [`h${bi},${bj}`], s: [`h${bi},${bj + 2}`], w: [`v${bi},${bj}`, `v${bi},${bj + 1}`], e: [`v${bi + 1},${bj}`, `v${bi + 1},${bj + 1}`] };
+          for (const [s, list] of Object.entries(halves)) list.forEach((e, n) => { if (open.has(e)) b.doors.push({ s, t: (n + 0.5) / list.length, w: B.type === 'works' ? 3.2 : 2.6 }); });
+          if (!b.doors.length) { open.add(halves.s[0]); b.doors.push({ s: 's', t: 0.5 / halves.s.length, w: 2.6 }); } // (never walled in)
+          if (B.type !== 'chapel') b.part = wide ? null : { axis: 'x', at: (z0 + bz1) / 2, t: 0.5, w: 3 };
           break;
         }
-        default: break; // collapse, camp
+        default: break; // plaza, rubble, merged
       }
     }
+    this.walls = all.filter((e) => !open.has(e) && !closed.has(e)).map(edgeRect); // a wall wherever there's no lane
   }
 
   // ---------- queries ----------
@@ -163,28 +149,35 @@ export class City {
   }
   roam(i) { return this.w.mods[i]?.roamSet ?? null; }
   buildingAt(x, z) { for (const b of this.bAt.get(Math.floor(x / 10) * 1000 + Math.floor(z / 10)) || []) if (inside(b, x, z)) return b; return null; }
+  // dark: underground, or under a roof (a house, not a ruin or a yard)
+  darkAt(x, z) { if (x > UNDER) return true; const b = this.buildingAt(x, z); return !!b && !b.ruin && !b.yard; }
+  // hidden from the camera: something tall stands just south of (x, z), between it and the camera (a building whose
+  // roof is on, a lane wall), or it's under a roof you aren't under
+  hides(x, z) {
+    if (x > UNDER) return false;
+    for (const o of this.occluders) {
+      if (o.b?.cut || x < o.x0 - 0.2 || x > o.x1 + 0.2 || z >= o.z0 + 0.3 || z < o.z0 - o.h / 1.25) continue;
+      return true;
+    }
+    return false;
+  }
   // the stair you're standing at, if any
   stairAt(x, z) { return this.stairs.find((s) => Math.hypot(x - s.x, z - s.z) < 1.5) || null; }
   // map layers for the minimap: the streets, and each basement on its own
   layerAt(x, z) { return x <= UNDER ? this.layers[0] : this.layers.find((L) => L.u && x >= L.x0 && x <= L.x0 + L.W && z >= L.z0 && z <= L.z0 + L.H) || this.layers[0]; }
 
-  // floor colours: pavements round the blocks, boards and tiles inside, paving on the squares, scorch by the heaps
+  // floor colours: boards and tiles indoors, packed dirt in the yards, paving on the squares, mud in the camp
   groundTint(x, z, c, n) {
     if (x > UNDER) return;
     const b = this.buildingAt(x, z);
-    if (b) {
+    if (b && !b.yard) {
       const tile = ((Math.floor(x * 1.25) + Math.floor(z * 1.25)) & 1) ? 0.92 : 1;
       c.setHex(b.kind === 'chapel' ? 0x55504a : b.kind === 'works' ? 0x3a3a3c : 0x3e352c).multiplyScalar(tile * (0.94 + n * 0.08));
       return;
     }
-    for (const B of this.blocks) {
-      if (!inside(B, x, z, 0.3)) continue;
-      if (B.type === 'square' || B.type === 'market') { c.setHex(0x55524c).multiplyScalar(((Math.floor(x / 1.5) + Math.floor(z / 1.5)) & 1 ? 0.93 : 1) * (0.95 + n * 0.08)); return; }
-      if (B.type === 'yard') { c.setHex(0x3a362c).multiplyScalar(0.9 + n * 0.2); return; }
-      if (B.type === 'collapse') { c.multiplyScalar(0.7); return; }
-      if (!inside(B, x, z, -1.6)) c.setHex(0x5a5650).multiplyScalar(0.95 + n * 0.08); // pavement
-      return;
-    }
+    if (b?.yard || z > EDGE) { c.setHex(0x3a362c).multiplyScalar(0.9 + n * 0.2); return; }
+    const B = this.blocks.find((q) => inside(q, x, z, 0.3));
+    if (B?.type === 'plaza') c.setHex(0x55524c).multiplyScalar(((Math.floor(x / 1.5) + Math.floor(z / 1.5)) & 1 ? 0.93 : 1) * (0.95 + n * 0.08));
   }
 
   // ---------- building ----------
@@ -196,28 +189,31 @@ export class City {
     const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
     this.facade = [lam(0x6e665a), lam(0x6a4a3a), lam(0x575450), lam(0x7a6e5e)];
     this.facadeDark = lam(0x3a3430);
-    this.stairs = []; this.unders = []; this.layers = [];
+    this.brick = lam(0x5a3e30);
+    this.stairs = []; this.unders = []; this.layers = []; this.occluders = [];
     this.bAt = new Map();
     for (const b of this.buildings) for (let i = Math.floor(b.x0 / 10); i <= Math.floor(b.x1 / 10); i++) for (let j = Math.floor(b.z0 / 10); j <= Math.floor(b.z1 / 10); j++) {
       const k = i * 1000 + j; if (!this.bAt.has(k)) this.bAt.set(k, []); this.bAt.get(k).push(b);
     }
-    // 1. the chunks and the city floor (one walkable square, cut per chunk with overlaps)
+    // 1. the chunks and the city floor (one walkable square, cut per chunk with overlaps), and the camp to the south
     this.chunks = [];
     for (let j = 0; j < NC; j++) for (let i = 0; i < NC; i++) {
       const group = new THREE.Group(); w.root.add(group);
       const cx = C0 + CH * (i + 0.5), cz = C0 + CH * (j + 0.5);
-      const mod = { i: w.mods.length, key: 'city', name: this.def.name, cx, cz, z0: cz + CH / 2, z1: cz - CH / 2, len: CH, half: CH / 2, r: 14, group, ground: 'city', dungeon: true, zone: true, ci: i, cj: j };
+      const mod = { i: w.mods.length, key: 'city', name: this.def.name, cx, cz, z0: cz + CH / 2, z1: cz - CH / 2, len: CH, half: CH / 2, r: 6, group, ground: 'city', dungeon: true, zone: true, ci: i, cj: j };
       w.mods.push(mod); this.chunks.push(mod); w.cur = mod;
       const o = 1.6;
       w.rect(Math.max(-EDGE, cx - CH / 2 - o), Math.min(EDGE, cx + CH / 2 + o), Math.max(-EDGE, cz - CH / 2 - o), Math.min(EDGE, cz + CH / 2 + o));
     }
     for (const m of this.chunks) m.roamSet = new Set(this.chunks.filter((n) => Math.abs(n.ci - m.ci) <= 1 && Math.abs(n.cj - m.cj) <= 1).map((n) => n.i));
-    this.layers.push({ id: 'city', x0: -EDGE - 4, z0: -EDGE - 4, W: 2 * EDGE + 8, H: 2 * EDGE + 8 });
+    this.at(w, 0, EDGE); w.rect(-8, 8, EDGE - 4, EDGE + 13);
+    this.layers.push({ id: 'city', x0: -EDGE - 4, z0: -EDGE - 4, W: 2 * EDGE + 8, H: 2 * EDGE + 22 });
 
-    // 2. blocks, buildings, streets
+    // 2. the lane walls, the blocks and their buildings, the camp, round the edge
+    this.laneWalls(w);
     for (const B of this.blocks) this.dressBlock(w, B);
     for (const b of this.buildings) this.buildBuilding(w, b);
-    this.streets(w);
+    this.camp(w);
     this.rim(w);
 
     // 3. basements (and the boss's vault and arena)
@@ -247,7 +243,7 @@ export class City {
         w.tiles.push(tile);
       }
     };
-    tiles(-EDGE - 16, EDGE + 16, -EDGE - 16, EDGE + 16);
+    tiles(-EDGE - 14, EDGE + 14, -EDGE - 14, EDGE + 26);
     for (const L of this.layers) if (L.u) tiles(L.x0 - 12, L.x0 + L.W + 12, L.z0 - 12, L.z0 + L.H + 12);
     // each building's two halves merge on their own (so they can swap), then everything else per module
     for (const b of this.buildings) for (const g of [b.tall, b.low]) { w.mergeStatic(g); for (const c of g.children) c.userData.noMerge = true; }
@@ -265,7 +261,8 @@ export class City {
     const mod = this.at(w, b.cx, b.cz), M = w.mats;
     const tall = new THREE.Group(), low = new THREE.Group(); low.visible = false;
     mod.group.add(tall, low);
-    b.tall = tall; b.low = low; b.cut = false; b.shadow = b.h / 1.2 + 1.2;
+    b.tall = tall; b.low = low; b.cut = false;
+    if (!b.yard) this.occluders.push({ b, x0: b.x0, x1: b.x1, z0: b.z0, h: b.h });
     const wall = b.kind === 'chapel' ? M.stone : b.kind === 'works' ? this.facade[2] : this.facade[Math.floor(vh(b.cx, b.cz, 4) * 4)], trim = b.kind === 'works' ? M.rust : this.facadeDark;
     const segs = [];
     // the four outer walls, broken by doorways
@@ -292,6 +289,7 @@ export class City {
     };
     for (const s of segs) {
       if (s.door) {
+        if (b.yard) { for (const e of [s.a0, s.a1]) this.into(w, tall, () => (s.alongX ? w.box(0.4, 2.9, 0.7, trim, e, 1.45, s.line) : w.box(0.7, 2.9, 0.4, trim, s.line, 1.45, e))); continue; } // (gateposts)
         // a lintel over the doorway, and a dark threshold
         if (!b.ruin) boxAt(s, s.a0, s.a1, 2.7, b.h, wall, tall, T);
         boxAt(s, s.a0 - 0.15, s.a1 + 0.15, 2.55, 2.75, trim, tall, T * 0.6);
@@ -305,7 +303,7 @@ export class City {
         for (let a = s.a0; a < s.a1 - 0.05; a += 1.6) { const e = Math.min(s.a1, a + 1.6); boxAt(s, a, e, 0, b.h * (0.35 + vh(a, s.line, 2) * 0.65), wall, tall, a === s.a0 ? T : 0); }
       } else boxAt(s, s.a0, s.a1, 0, b.h, wall, tall, T);
       // windows along the outer walls (never in a ruin's broken tops), pilasters between them
-      if (!s.outer) continue;
+      if (!s.outer || b.yard) continue;
       const out = (s.outer === 's' || s.outer === 'e') ? 1 : -1;
       for (let a = s.a0 + 0.2; a < s.a1 - 0.1; a += 3) {
         const ph = b.ruin ? b.h * (0.35 + vh(a, s.line, 2) * 0.65) : b.h;
@@ -325,7 +323,7 @@ export class City {
     }
     // roof, parapet and a storey ledge
     const W = b.x1 - b.x0, D = b.z1 - b.z0;
-    this.into(w, tall, () => {
+    if (!b.yard) this.into(w, tall, () => {
       if (!b.ruin) {
         w.box(W + 0.3, 0.3, D + 0.3, trim, b.cx, b.h + 0.15, b.cz);
         for (const [x, z, ww, dd] of [[b.cx, b.z0, W + 0.3, 0.3], [b.cx, b.z1, W + 0.3, 0.3], [b.x0, b.cz, 0.3, D + 0.3], [b.x1, b.cz, 0.3, D + 0.3]]) w.box(ww, 0.5, dd, wall, x, b.h + 0.55, z);
@@ -358,11 +356,12 @@ export class City {
       this.stairDown(w, b.stair.x, b.stair.z);
     }
     if (b.kind === 'chapel') {
-      for (let z = b.z0 + 5; z < b.z1 - 4; z += 4.5) for (const s of [-1, 1]) w.pillar(b.cx + s * (b.x1 - b.x0) * 0.3, z, 5.5, vh(z, s, 3) < 0.25);
-      for (let z = b.z0 + 8; z < b.z1 - 5; z += 2.2) for (const s of [-1, 1]) w.box(3.2, 0.5, 0.5, M.logDark, b.cx + s * 2.6, 0.25, z, (vh(z, s) - 0.5) * 0.3);
-      w.box(3.2, 1.0, 1.4, M.stoneDark, b.cx, 0.5, b.z0 + 3); w.ob(b.cx, b.z0 + 3, 1.2);
-      candles(w, b.cx - 1, b.z0 + 3, 5); w.banner(b.cx - 4, b.z0 + 1.4); w.banner(b.cx + 4, b.z0 + 1.4);
-      w.torch(b.x0 + 1.5, b.z0 + 1.5, 0xff5030); w.torch(b.x1 - 1.5, b.z1 - 1.5, 0xff5030);
+      // a nave running east-west: two rows of columns, pews between, the altar on the north wall lit by candles alone
+      for (let x = b.x0 + 3; x < b.x1 - 2; x += 4.5) if (Math.abs(x - b.cx) > 3) for (const z of [b.z0 + 4.6, b.z1 - 2.6]) w.pillar(x, z, 5.5, vh(x, z, 3) < 0.25);
+      for (let x = b.x0 + 4; x < b.x1 - 3; x += 2.4) if (Math.abs(x - b.cx) > 2.4) w.box(0.5, 0.5, 2.6, M.logDark, x, 0.25, b.cz + 1.2, (vh(x, 1) - 0.5) * 0.3);
+      w.box(3.2, 1.0, 1.2, M.stoneDark, b.cx, 0.5, b.z0 + 1.6); w.ob(b.cx, b.z0 + 1.6, 1.1);
+      candles(w, b.cx - 1, b.z0 + 1.6, 6); w.banner(b.cx - 3, b.z0 + 0.9); w.banner(b.cx + 3, b.z0 + 0.9);
+      w.lights.push({ x: b.cx, y: 1.6, z: b.z0 + 2.4, color: 0xffb060, power: 3.5, range: 6, src: {} }); // (the candles)
       return;
     }
     if (b.kind === 'works') {
@@ -375,7 +374,14 @@ export class City {
         w.solids.push({ x0: p.x - ww / 2, x1: p.x + ww / 2, z0: p.z - dd / 2, z1: p.z + dd / 2 });
       }
       for (let k = 0; k < 3; k++) { const p = spot(1); if (p) { w.barrel(p.x, p.z); } }
-      w.torch(b.x0 + 1.4, b.cz, 0xffb04a); w.torch(b.x1 - 1.4, b.cz, 0xffb04a);
+      return;
+    }
+    if (b.yard) {
+      // a walled yard: dead trees, graves, a cart, a cage
+      for (let k = 0; k < 4; k++) { const p = spot(1.2); if (p) w.box(0.6, 0.9, 0.2, M.stone, p.x, 0.45, p.z, (r() - 0.5) * 0.4); }
+      for (let k = 0; k < 2; k++) { const p = spot(1.4); if (p) { w.deadTree(p.x, p.z, 2.6 + r() * 1.4); w.ob(p.x, p.z, 0.4); } }
+      const p = spot(1.6); if (p) (r() < 0.5 ? cart : cage)(w, p.x, p.z, r() * 6);
+      if (r() < 0.5) { const q = spot(1); if (q) skullStake(w, q.x, q.z); }
       return;
     }
     const n = Math.floor((b.x1 - b.x0) * (b.z1 - b.z0) / 30);
@@ -389,7 +395,7 @@ export class City {
       else if (q < 0.9) corpse(w, p.x, p.z, r() * 6);
       else sacks(w, p.x, p.z);
     }
-    if (r() < 0.4) { const p = spot(0.8); if (p) w.torch(p.x, p.z); }
+    if (b.ruin && r() < 0.5) { const p = spot(0.8); if (p) w.torch(p.x, p.z); } // (a roofed house has no light of its own)
     if (b.kind === 'barracks') { for (let k = 0; k < 3; k++) { const p = spot(1); if (p) w.rack(p.x, p.z); } w.banner(b.cx, b.z0 + 1); }
   }
 
@@ -418,127 +424,93 @@ export class City {
     w.torch(x - 2, z - 1.2, 0x9ad0ff, true);
   }
 
+  // ---------- the maze's walls: wherever no lane was carved, a broken brick wall with rubble banked either side
+  laneWalls(w) {
+    const M = w.mats;
+    for (const R of this.walls) {
+      this.at(w, (R.x0 + R.x1) / 2, (R.z0 + R.z1) / 2);
+      w.solids.push({ x0: R.x0, x1: R.x1, z0: R.z0, z1: R.z1 });
+      const len = R.alongX ? R.x1 - R.x0 : R.z1 - R.z0, mid = R.alongX ? (R.z0 + R.z1) / 2 : (R.x0 + R.x1) / 2;
+      let hMax = 0;
+      for (let a = 0; a < len - 0.05; a += 1.5) {
+        const e = Math.min(len, a + 1.5), h = 2.6 + vh(a + R.x0, mid + R.z0, 3) * 1.6, c = (a + e) / 2;
+        hMax = Math.max(hMax, h);
+        const mat = vh(c, mid, 5) < 0.7 ? this.brick : this.facade[2];
+        if (R.alongX) w.box(e - a + 0.02, h, 0.8, mat, R.x0 + c, h / 2, mid); else w.box(0.8, h, e - a + 0.02, mat, mid, h / 2, R.z0 + c);
+      }
+      // rubble along both faces, low to the south (it never hides you)
+      for (let a = 0.6; a < len - 0.4; a += 1.3) for (const s of [-1, 1]) {
+        const off = s * (1.0 + vh(a, s, 1) * 0.5), x = R.alongX ? R.x0 + a : mid + off, z = R.alongX ? mid + off : R.z0 + a;
+        w.rock(x, z, 0.35 + vh(x, z) * 0.35, vh(x, z, 2) < 0.5);
+      }
+      this.occluders.push({ x0: R.x0, x1: R.x1, z0: R.z0, h: hMax });
+    }
+    // chokepoints: a heap of rubble and scrap across a lane, leaving a 2 m gap down one side (never by a square or the gate)
+    const r = w.rand, sq = new Set(), plz = this.blocks.filter((B) => B.type === 'plaza');
+    for (const B of plz) for (const e of [`h${B.i},${B.j}`, `h${B.i},${B.j + 1}`, `v${B.i},${B.j}`, `v${B.i + 1},${B.j}`]) sq.add(e);
+    const lanes = shuffle([...this.open].filter((e) => !sq.has(e) && e !== 'v3,5'), r);
+    const doors = this.buildings.flatMap((b) => b.doors.map((d) => this.doorPos(b, d)[0]));
+    let placed = 0;
+    for (const e of lanes) {
+      if (placed >= 8) break;
+      const R = edgeRect(e), side = r() < 0.5 ? 0 : 1, gap = 2.0, t = 0.35 + r() * 0.3;
+      const along = R.alongX ? R.x0 + (R.x1 - R.x0) * t : R.z0 + (R.z1 - R.z0) * t;
+      const a0 = (R.alongX ? R.z0 : R.x0) + (side ? gap : 0), a1 = (R.alongX ? R.z1 : R.x1) - (side ? 0 : gap);
+      const S = R.alongX ? { x0: along - 0.8, x1: along + 0.8, z0: a0, z1: a1 } : { x0: a0, x1: a1, z0: along - 0.8, z1: along + 0.8 };
+      if (doors.some((d) => d.x > S.x0 - 3 && d.x < S.x1 + 3 && d.z > S.z0 - 3 && d.z < S.z1 + 3)) continue; // (never in front of a doorway)
+      placed++;
+      this.at(w, (S.x0 + S.x1) / 2, (S.z0 + S.z1) / 2);
+      w.solids.push(S);
+      for (let a = 0.3; a < (R.alongX ? S.z1 - S.z0 : S.x1 - S.x0); a += 0.9) {
+        const x = R.alongX ? along : S.x0 + a, z = R.alongX ? S.z0 + a : along;
+        if (vh(x, z, 7) < 0.5) w.rock(x, z, 0.5 + vh(x, z) * 0.4, true); else w.box(0.9, 0.7 + vh(x, z, 2) * 0.6, 0.9, vh(x, z, 3) < 0.5 ? M.rust : M.cloth, x, 0.5, z, vh(x, z, 4));
+      }
+    }
+  }
+
   // ---------- blocks: what's out in the open ----------
   dressBlock(w, B) {
     const r = w.rand, M = w.mats, { x0, x1, z0, z1, cx, cz } = B;
     this.at(w, cx, cz);
-    const clearOf = (x, z, m) => !w.blocked(x, z, m) && !B.bld.some((b) => inside(b, x, z, m));
-    switch (B.type) {
-      case 'collapse': {
-        // a block that came down: a heap you can't cross, highest at the back so it never hides you
-        w.solids.push({ x0: x0 + 0.6, x1: x1 - 0.6, z0: z0 + 0.6, z1: z1 - 0.6 });
-        for (let x = x0 + 1.5; x < x1 - 1; x += 2.2) for (let z = z0 + 1.5; z < z1 - 1; z += 2.2) {
-          const back = (z1 - z) / (z1 - z0), s = 0.6 + back * 1.6 + vh(x, z) * 0.7;
-          w.rock(x + (vh(x, z, 1) - 0.5) * 1.2, z + (vh(x, z, 2) - 0.5) * 1.2, s, vh(x, z, 3) < 0.5);
-        }
-        for (let k = 0; k < 3; k++) { const x = x0 + 4 + r() * (x1 - x0 - 8), z = z0 + 3 + r() * (z1 - z0) * 0.5; w.box(0.5, 4 + r() * 5, 6 + r() * 4, M.char, x, 2.5, z, r() * 3); }
-        w.box(x1 - x0 - 6, 0.6, 1.0, M.logDark, cx, 3.2, z0 + 4, 0.15); // a girder across the top
-        crows(w, cx, cz + 4, 4);
-        break;
-      }
-      case 'market': {
-        // stalls: canvas on poles round the edges, crates and sacks, a burned cart; the middle stays open
-        for (let k = 0; k < 7; k++) {
-          const a = (k / 7) * Math.PI * 2 + r() * 0.4, d = 9 + r() * 3, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
-          if (!clearOf(x, z, 2)) continue;
-          for (const [px, pz] of [[-1, -0.8], [1, -0.8], [-1, 0.8], [1, 0.8]]) w.cyl(0.05, 0.05, 2.2, M.logDark, x + px, 1.1, z + pz, 4);
-          w.box(2.4, 0.05, 2.0, k % 3 ? M.cloth : M.clothRed, x, 2.25, z, (r() - 0.5) * 0.2);
-          w.box(1.8, 0.8, 0.8, M.plank, x, 0.4, z); w.ob(x, z, 1.0);
-        }
-        cart(w, cx + 6, cz - 8, r() * 6); sacks(w, cx - 7, cz + 6); bloodStain(w, cx + 2, cz + 3, 1.4);
-        w.torch(cx - 8, cz - 8); w.torch(cx + 8, cz + 8);
-        break;
-      }
-      case 'yard': {
-        // dead ground: graves, dead trees, a broken fence; the middle open
-        for (let k = 0; k < 10; k++) { const x = x0 + 2 + r() * (x1 - x0 - 4), z = z0 + 2 + r() * (z1 - z0 - 4); if (Math.hypot(x - cx, z - cz) < 7 || !clearOf(x, z, 1.5)) continue; w.box(0.6, 0.9, 0.2, M.stone, x, 0.45, z, (r() - 0.5) * 0.4); }
-        for (let k = 0; k < 4; k++) { const x = x0 + 2 + r() * (x1 - x0 - 4), z = z0 + 2 + r() * (z1 - z0 - 4); if (Math.hypot(x - cx, z - cz) < 8 || !clearOf(x, z, 1.5)) continue; w.deadTree(x, z, 3 + r() * 2); w.ob(x, z, 0.4); }
-        skullStake(w, cx + 5, cz - 6); cage(w, cx - 6, cz + 5, r() * 6);
-        break;
-      }
-      case 'square': {
-        // paving, planters with dead trees, a toppled saint near the crossroads
-        const ix = B.i === 2 ? x1 : x0, iz = B.j === 2 ? z1 : z0;
-        w.fallenColumn(ix + (B.i === 2 ? -6 : 6), iz + (B.j === 2 ? -5 : 5), 4, r() * 3);
-        for (let k = 0; k < 3; k++) {
-          const x = cx + (r() - 0.5) * 18, z = cz + (r() - 0.5) * 18;
-          if (!clearOf(x, z, 2)) continue;
-          w.box(2.2, 0.6, 2.2, M.stoneDark, x, 0.3, z); w.deadTree(x, z, 2.5 + r()); w.solids.push({ x0: x - 1.1, x1: x + 1.1, z0: z - 1.1, z1: z + 1.1 });
-        }
-        w.brazier(cx + (r() - 0.5) * 8, cz + (r() - 0.5) * 8, { light: true });
-        break;
-      }
-      case 'camp': {
-        // the crusade's foothold: sandbag walls, tents, crates, the beacon
-        const bx = cx, bz = cz + 2;
-        const bag = (a0, a1, z) => { w.box(a1 - a0, 0.9, 0.9, M.cloth, (a0 + a1) / 2, 0.45, z); w.solids.push({ x0: a0, x1: a1, z0: z - 0.45, z1: z + 0.45 }); };
-        bag(x0 + 1, cx - 3, z0 + 2); bag(cx + 3, x1 - 1, z0 + 2);
-        for (let k = 0; k < 3; k++) w.tent(x0 + 5 + k * 8, z1 - 5, r() * 3, 0.9);
-        for (let k = 0; k < 4; k++) w.crate(x1 - 3, z0 + 6 + k * 1.2);
-        w.banner(cx - 3.4, z0 + 1.4); w.banner(cx + 3.4, z0 + 1.4);
-        w.brazier(cx - 6, bz - 3, { light: true }); w.brazier(cx + 6, bz - 3, { light: true });
-        const fire = w.bonfire(bx, bz - 6.7); fire.lit = true;
-        candles(w, bx - 1.4, bz - 7.1, 4);
-        this.startAt = { x: bx, z: bz };
-        break;
-      }
-      default: {
-        // a tenement block's alleys: bins, rubble, a lamp
-        for (let k = 0; k < 4; k++) {
-          const x = x0 + 1 + r() * (x1 - x0 - 2), z = z0 + 1 + r() * (z1 - z0 - 2);
-          if (!clearOf(x, z, 1.2)) continue;
-          if (k === 0) w.torch(x, z); else if (k === 1) bones(w, x, z); else w.barrel(x, z);
-        }
-      }
-    }
-  }
-
-  // the streets: lamp posts, burned-out wrecks, craters, barricades, the toppled saint at the crossroads
-  streets(w) {
-    const r = w.rand, M = w.mats;
-    for (const [x0, x1, z0, z1] of BARRICADES) {
-      this.at(w, (x0 + x1) / 2, (z0 + z1) / 2);
+    if (B.type === 'rubble') {
+      // a block that came down: a heap you can't cross, highest at the back so it never hides you
       w.solids.push({ x0, x1, z0, z1 });
-      const alongX = x1 - x0 > z1 - z0;
-      for (let a = alongX ? x0 : z0; a < (alongX ? x1 : z1) - 0.2; a += 1.1) {
-        const x = alongX ? a + 0.55 : (x0 + x1) / 2, z = alongX ? (z0 + z1) / 2 : a + 0.55;
-        w.box(alongX ? 1.1 : 1.2, 0.8 + vh(x, z) * 0.5, alongX ? 1.2 : 1.1, vh(x, z, 2) < 0.5 ? M.cloth : M.rust, x, 0.5, z, (vh(x, z, 3) - 0.5) * 0.3);
-        if (vh(x, z, 4) < 0.3) w.box(0.08, 1.6, 0.08, M.logDark, x, 1.2, z, 0.4);
+      for (let x = x0 + 0.8; x < x1 - 0.4; x += 1.8) for (let z = z0 + 0.8; z < z1 - 0.4; z += 1.8) {
+        const back = (z1 - z) / (z1 - z0);
+        w.rock(x + (vh(x, z, 1) - 0.5), z + (vh(x, z, 2) - 0.5), 0.5 + back * 1.3 + vh(x, z) * 0.5, vh(x, z, 3) < 0.5);
       }
-    }
-    // the saint at the crossroads: a plinth you go round
-    this.at(w, 0, 0);
-    w.box(4, 1.2, 4, M.stoneDark, 0, 0.6, 0); w.box(3.2, 0.4, 3.2, M.stone, 0, 1.4, 0);
-    w.box(1.0, 3.4, 0.8, M.stone, 0.3, 3.2, 0, 0.3); w.box(2.6, 0.5, 0.6, M.stone, 1.4, 1.9, 1.2, 1.1); // (its arm, broken off)
-    w.solids.push({ x0: -2, x1: 2, z0: -2, z1: 2 });
-    candles(w, -1.4, 2.4, 6);
-    // street furniture along every street line
-    const lines = [-80, -40, 0, 40, 80];
-    for (const L of lines) for (let a = -110; a <= 110; a += 18) {
-      for (const [x, z] of [[L + (L === 0 ? 5.4 : 3.4), a + 4], [a + 4, L + (L === 0 ? 5.4 : 3.4)]]) {
-        if (w.blocked(x, z, 1) || Math.abs(x) < 3 && Math.abs(z) < 3) continue;
-        this.at(w, x, z);
-        const v = vh(x, z, 11);
-        if (v < 0.3) w.torch(x, z);
-        else if (v < 0.42) { const ry = Math.abs(x - L) < 7 ? 0 : Math.PI / 2; w.box(1.9, 1.2, 4.2, M.rust, x, 0.6, z, ry); w.box(1.7, 0.7, 2.2, M.logDark, x, 1.5, z, ry); w.solids.push(ry ? { x0: x - 2.1, x1: x + 2.1, z0: z - 0.95, z1: z + 0.95 } : { x0: x - 0.95, x1: x + 0.95, z0: z - 2.1, z1: z + 2.1 }); }
-        else if (v < 0.55) { const m = new THREE.Mesh(new THREE.CircleGeometry(1.6 + vh(x, z) , 9), M.ash); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.03, z); w.add(m); }
-        else if (v < 0.62) corpse(w, x, z, v * 30);
-      }
+      w.box(0.5, 3 + r() * 3, 5, M.char, cx - 2, 2, cz - 3, r() * 3);
+      crows(w, cx, cz + 2, 3);
+    } else if (B.type === 'plaza') {
+      // a little square: a dry fountain basin you go round, a lamp or two, litter; the middle stays clear for a shrine
+      for (const [px, pz] of [[x0 + 1.2, z0 + 1.2], [x1 - 1.2, z1 - 1.2]]) w.torch(px, pz);
+      bloodStain(w, cx + 3, cz + 3, 1.2); bones(w, x0 + 2, z1 - 1.5); sacks(w, x1 - 1.5, z0 + 1.5);
     }
   }
 
-  // round the city: ruined facades on three sides, rubble along the south (low, so it never hides you), the breach
+  // the crusade's camp south of the ward: sandbags, tents, the beacon; the gate into the maze at its north end
+  camp(w) {
+    const M = w.mats, z0 = EDGE, cx = 0;
+    this.at(w, 0, EDGE + 4);
+    for (const s of [-1, 1]) { w.box(1.0, 1.0, 12, M.cloth, s * 7.6, 0.5, z0 + 7); w.tent(s * 5, z0 + 10, s, 0.85); w.banner(s * 2.6, z0 + 0.8); }
+    for (let k = 0; k < 3; k++) w.crate(-5.5 + k * 0.9, z0 + 4);
+    w.brazier(5.5, z0 + 3.5, { light: true });
+    const fire = w.bonfire(cx, z0 + 2.3); fire.lit = true;
+    candles(w, cx - 1.4, z0 + 1.9, 4);
+    this.startAt = { x: cx, z: z0 + 9 };
+  }
+
+  // round the ward: ruined facades on three sides, rubble along the south (low, so it never hides you)
   rim(w) {
-    const M = w.mats;
-    for (let a = -124; a <= 124; a += 6) {
-      for (const [x, z, alongX] of [[a, -122, true], [-122, a, false], [122, a, false]]) {
-        this.at(w, Math.max(-118, Math.min(118, x)), Math.max(-118, Math.min(118, z)));
-        const h = 5 + vh(x, z) * 9, ww = 5 + vh(x, z, 1) * 2;
-        w.box(alongX ? ww : 4, h, alongX ? 4 : ww, vh(x, z, 2) < 0.5 ? M.char : M.stoneDark, x, h / 2, z);
+    const M = w.mats, E = EDGE + 3;
+    for (let a = -E; a <= E; a += 5) {
+      for (const [x, z, alongX] of [[a, -E, true], [-E, a, false], [E, a, false]]) {
+        this.at(w, Math.max(-EDGE, Math.min(EDGE, x)), Math.max(-EDGE, Math.min(EDGE, z)));
+        const h = 5 + vh(x, z) * 7, ww = 5.2;
+        w.box(alongX ? ww : 4, h, alongX ? 4 : ww, vh(x, z, 2) < 0.5 ? this.facade[0] : this.facade[2], x, h / 2, z);
         for (let y = 2; y < h - 1; y += 3) w.box(alongX ? 1 : 4.1, 0.8, alongX ? 4.1 : 1, vh(x, y, 3) < 0.1 ? M.glowWindow : M.logDark, x, y, z);
       }
-      this.at(w, a, 118);
-      w.rock(a, 121.5, 0.6 + vh(a, 5) * 0.6, vh(a, 6) < 0.5);
+      if (Math.abs(a) > 9) { this.at(w, a, EDGE); w.rock(a, E - 1, 0.6 + vh(a, 5) * 0.5, vh(a, 6) < 0.5); }
     }
   }
 
@@ -731,8 +703,8 @@ export class City {
   // ---------- enemies (this raid's stream: they stand somewhere new every time) ----------
   populate(w) {
     const r = this.r, mixW = this.area.mix, look = this.area.look, placed = [];
-    const free = (x, z, gap = 2.4) => w.walkable(x, z, 0.6) && this.reach(x, z) && !placed.some((p) => Math.hypot(p.x - x, p.z - z) < gap)
-      && !this.stairs.some((s) => Math.hypot(s.x - x, s.z - z) < 3) && Math.hypot(x - this.startAt.x, z - this.startAt.z) > 30
+    const free = (x, z, gap = 2.2) => w.walkable(x, z, 0.6) && this.reach(x, z) && !placed.some((p) => Math.hypot(p.x - x, p.z - z) < gap)
+      && !this.stairs.some((s) => Math.hypot(s.x - x, s.z - z) < 3) && Math.hypot(x - this.startAt.x, z - this.startAt.z) > 18
       && !w.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 0.7);
     const spotIn = (x0, x1, z0, z1, o = {}) => {
       for (let t = 0; t < 40; t++) {
@@ -751,16 +723,16 @@ export class City {
       return w.spawns[w.spawns.length - 1];
     };
     const regular = (noBrute) => { let t = weighted(r, mixW); if (t === 'brute' && noBrute) t = 'grunt'; return t; };
-    const pack = (n, x0, x1, z0, z1, o) => { let brute = false; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === 'brute') brute = true; add(t, p); } };
+    const pack = (n, x0, x1, z0, z1, o = {}) => { let brute = false; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === 'brute') brute = true; add(t, p); } };
 
-    // the shrines' guards first (so nothing else crowds them)
+    // the shrines' guards first (so nothing else crowds them); they never come back
     for (const S of this.sites) {
       const d = S.rec, near = { ring: { x: d.x, z: d.z, r: 7 }, avoid: d, avoidR: 2.4, gap: 2 };
       const box = [d.x - 8, d.x + 8, d.z - 8, d.z + 8];
       if (S.kind === 'elite') {
         const p = spotIn(...box, near) || { x: d.x + 3, z: d.z + 3 };
-        d.guards.push(add(r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']), p, { elite: this.shrineTrait }));
-        for (let k = 0; k < 3 + Math.floor((this.players - 1) / 2); k++) { const q = spotIn(...box, near); if (q) d.guards.push(add(regular(true), q)); }
+        d.guards.push(add(r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']), p, { elite: this.shrineTrait, guard: true }));
+        for (let k = 0; k < 3 + Math.floor((this.players - 1) / 2); k++) { const q = spotIn(...box, near); if (q) d.guards.push(add(regular(true), q, { guard: true })); }
       } else if (S.kind === 'altar') {
         for (let k = 0; k < 3; k++) {
           let a = k / 3 * Math.PI * 2 + 0.5, ex = d.x, ez = d.z;
@@ -772,57 +744,41 @@ export class City {
         }
         this.at(w, d.x, d.z);
         for (let k = 0; k < 7 + this.players; k++) { w.spawn(regular(true), d.x, d.z, 0, { reserve: true, event: true, look }); d.reserves.push(w.spawns[w.spawns.length - 1]); }
-        const q = spotIn(...box, near); if (q) add(regular(true), q);
+        const q = spotIn(...box, near); if (q) add(regular(true), q, { guard: true });
       } else {
         this.at(w, d.x, d.z);
         for (let k = 0; k < 4 * (2 + this.players); k++) { w.spawn(regular(true), d.x, d.z, 0, { reserve: true, event: true, look }); d.reserves.push(w.spawns[w.spawns.length - 1]); }
       }
       placed.push({ x: d.x, z: d.z }); // (and keep everyone else off the shrine itself)
     }
-    const nearShrine = (x, z) => this.sites.some((S) => !S.under && Math.hypot(S.x - x, S.z - z) < 14);
 
-    // the streets and blocks
-    for (const B of this.blocks) {
-      if (B.type === 'collapse' || B.type === 'camp') continue;
-      const shrine = this.sites.some((S) => S.key === B.key && !S.under);
-      // inside the buildings
-      for (const b of B.bld) {
-        const area = (b.x1 - b.x0) * (b.z1 - b.z0), n = b.kind === 'chapel' || b.kind === 'works' ? 3 + Math.floor(r() * 2) : b.kind === 'barracks' ? 4 : r() < 0.5 ? 1 + Math.floor(area / 160 * r()) : 0;
-        pack(Math.min(n, 5), b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1, {});
-      }
-      // out in the open (a shrine's square has its guards already)
-      if (shrine) continue;
-      const n = B.type === 'market' ? 3 : B.type === 'square' || B.type === 'yard' ? 1 + Math.floor(r() * 2) : r() < 0.3 ? 1 : 0;
-      pack(n, B.x0, B.x1, B.z0, B.z1, {});
+    // in the buildings and yards: most houses hold someone in the dark
+    for (const b of this.buildings) {
+      const n = b.basement === 'site' ? 4 + Math.floor(r() * 2) : b.yard ? 1 + Math.floor(r() * 2) : b.ruin ? 1 + Math.floor(r() * 2) : r() < 0.8 ? 1 + Math.floor(r() * 3) : 0;
+      pack(n, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
     }
-    // gangs loitering out on the streets
-    for (let k = 0; k < 9; k++) {
-      const L = pick(r, [-80, -40, 0, 40, 80]), a = -105 + r() * 210, onX = r() < 0.5;
-      const x = onX ? a : L + (r() - 0.5) * 5, z = onX ? L + (r() - 0.5) * 5 : a;
-      if (nearShrine(x, z)) continue;
-      pack(2 + Math.floor(r() * 2), x - 4, x + 4, z - 4, z + 4, {});
-    }
+    // the squares that aren't a shrine's
+    for (const B of this.blocks) if (B.type === 'plaza' && !this.sites.some((S) => S.key === B.key && !S.under)) pack(2 + Math.floor(r() * 2), B.x0, B.x1, B.z0, B.z1);
+    // gangs in the lanes
+    const lanes = shuffle([...this.open].map(edgeRect), r);
+    for (const L of lanes.slice(0, 18)) pack(1 + (r() < 0.5 ? 1 : 0), L.x0, L.x1, L.z0, L.z1, { gap: 1.8 });
     // the basements
     for (const u of this.unders) {
-      if (this.sites.some((S) => S.under && S.rec.mod === u.mod.i)) { pack(2, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 4, {}); continue; }
+      if (this.sites.some((S) => S.under && S.rec.mod === u.mod.i)) { pack(2, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 4); continue; }
       const L = this.layers.find((l) => l.u === u);
-      const n = u.kind === 'cellar' ? 2 + Math.floor(r() * 2) : u.kind === 'vault' ? 4 + Math.floor(r() * 2) : 3;
-      if (u.kind === 'boss') pack(n, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 5, {}); // (the corridor past the room is the arena's)
-      else pack(n, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H, {});
+      if (u.kind === 'boss') pack(3, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 5); // (the corridor past the room is the arena's)
+      else pack(u.kind === 'vault' ? 4 + Math.floor(r() * 2) : 3, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H);
     }
   }
 
   // ---------- per frame ----------
-  // the building you're in, or just behind (between you and the camera), shows only its walls' bottom metre
+  // the building you're in shows only its walls' bottom metre (no roof); from outside a building stays whole
   update(dt, time, focus) {
     for (const b of this.buildings) {
-      const near = Math.abs(b.cx - focus.x) < 45 && Math.abs(b.cz - focus.z) < 45;
-      const cut = near && focus.x > b.x0 - 0.8 && focus.x < b.x1 + 0.8 && focus.z > b.z0 - b.shadow && focus.z < b.z1 + 0.6;
+      if (b.yard) continue;
+      const cut = focus.x > b.x0 + 0.1 && focus.x < b.x1 - 0.1 && focus.z > b.z0 + 0.1 && focus.z < b.z1 - 0.1;
       if (cut === b.cut) continue;
       b.cut = cut; b.tall.visible = !cut; b.low.visible = cut;
     }
   }
 }
-
-// how many shrines a raid needs (the same as a dungeon's three)
-export const CITY_SHRINES = SEALS_NEEDED;

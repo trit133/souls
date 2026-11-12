@@ -297,6 +297,7 @@ export class Multiplayer {
       case 'room': g.openRoom(d.i, d.n, d.k); break;
       // dungeons: seal events, enemies they call in, the clear count, the way down
       case 'seal': g.seals.onNet(d); break;
+      case 'respawn': { const e = this.entity(d.id); if (e) g.respawnEnemy(e); break; }
       case 'rsv': { const e = this.entity(d.id); if (e) g.activateReserve(e, d.x, d.z); break; }
       case 'prog': g.clearKilled = d.k; break;
       case 'clear100': g.fullClear(true); break;

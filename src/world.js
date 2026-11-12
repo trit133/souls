@@ -181,6 +181,12 @@ export class World {
     }
     return this.shash.get(Math.floor(x / 8) * 100003 + Math.floor(z / 8)) || [];
   }
+  // no solid between two points (walls stop sight, shots and swings)
+  lineClear(ax, az, bx, bz) {
+    const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3);
+    for (let i = 1; i < n; i++) if (this.blocked(ax + (bx - ax) * i / n, az + (bz - az) * i / n, 0)) return false;
+    return true;
+  }
   // inside a solid (a wall, a rubble heap)
   blocked(x, z, r = 0) {
     for (const s of this.solidBucket(x, z)) if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) return true;

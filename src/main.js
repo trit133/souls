@@ -46,6 +46,7 @@ import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './
 
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
 
+const RESPAWN_AFTER = 90; // s before a raid's dead enemy comes back (stepRespawns)
 const $ = (id) => document.getElementById(id);
 const HEART_CHANCE = 0.33, HEART_HEAL = 20 * NUM; // hearts: a third of enemies drop one, healing 20 (at the old size, like every number: scale.js)
 const PARRY_EARLY = 0.23, PARRY_LATE = 0; // seconds before impact
@@ -159,9 +160,9 @@ class Game {
   refreshNight() {
     const on = this.nightUnlocked, label = `Night Raid: ${this.nightRaid && on ? 'On' : 'Off'}`;
     if (!on) this.nightRaid = false;
-    for (const id of ['hm-night', 'lobby-night']) {
+    for (const id of ['hm-night', 'lobby-night', 'wm-night']) {
       const b = $(id); if (!b) continue;
-      b.classList.toggle('hidden', !on || (id === 'lobby-night' && !this.mp.isHost));
+      if (id !== 'wm-night') b.classList.toggle('hidden', !on || (id === 'lobby-night' && !this.mp.isHost)); // (the map's own panel shows its toggle)
       b.classList.toggle('on', !!this.nightRaid);
       const lab = b.querySelector('.tile-t');
       if (lab?.plabel) lab.plabel.set(label); else if (lab) lab.textContent = label; else b.textContent = label;
@@ -172,14 +173,15 @@ class Game {
   // their surroundings, glowing eyes and fires show in the dark
   setNight(on) {
     // a faint cold moonlight: walls show as dark blue shapes, nothing more
-    this.underK = 0; // (a raid's basements dim this again: underLight)
+    this.darkK = 0; // (a raid's dark places dim this again: darkLight)
     this.hemi.intensity = on ? 0.3 : 2.0;
     this.hemi.color.set(on ? 0x40507a : 0x9aa6c8); this.hemi.groundColor.set(on ? 0x08080a : 0x4a3a28);
     this.sun.intensity = on ? 0 : 2.0;
     this.world.nightLight = on ? { power: 0.3, range: 0.6 } : null; // torches, braziers and bonfires: 30% as bright, 60% the reach
     this.scene.background.set(on ? 0x040508 : 0x15130f);
     this.scene.fog.color.set(on ? 0x040508 : 0x1a1712);
-    if (on && !this.nightLights) {
+    const cones = on || !!this.run?.raid; // (a raid has dark places too: houses, basements)
+    if (cones && !this.nightLights) {
       // one cone and one glow per player (up to 3); added once, so shaders compile once
       this.nightLights = [0, 1, 2].map(() => {
         const cone = new THREE.SpotLight(0xffdcae, 0, 8, 1.05, 0.45, 1.2), glow = new THREE.PointLight(0xffc890, 0, 2.4, 1.5);
@@ -187,15 +189,18 @@ class Game {
         return { cone, glow };
       });
     }
-    if (!on && this.nightLights) { for (const L of this.nightLights) this.scene.remove(L.cone, L.cone.target, L.glow); this.nightLights = null; }
+    if (!cones && this.nightLights) { for (const L of this.nightLights) this.scene.remove(L.cone, L.cone.target, L.glow); this.nightLights = null; }
   }
 
   updateNightLights() {
     if (!this.nightLights) return;
-    const players = this.mode === 'title' ? [] : this.allPlayers();
+    const players = this.mode === 'title' ? [] : this.allPlayers(), D = this.world.dungeon;
     this.nightLights.forEach((L, i) => {
       const p = players[i];
-      L.cone.intensity = p && p.alive !== false ? 17 : 0; L.glow.intensity = p ? 0.7 : 0;
+      // at night always; in a raid by day, wherever that player is in the dark (a house, a basement)
+      const want = !p ? 0 : this.night ? 1 : D?.darkAt?.(p.pos.x, p.pos.z) ? 1 : 0;
+      L.k = (L.k || 0) + (want - (L.k || 0)) * 0.12;
+      L.cone.intensity = p && p.alive !== false ? 17 * L.k : 0; L.glow.intensity = p ? 0.7 * L.k : 0;
       if (!p) return;
       const f = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
       L.cone.position.set(p.pos.x - f.x * 1.2, 3.4, p.pos.z - f.z * 1.2); // from above and behind: lights the ground ahead, not you
@@ -262,6 +267,7 @@ class Game {
     const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
     const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players, night: this.night })));
     for (const e of all) e.roam = this.world.dungeon?.roam(e.mod) ?? null;
+    for (const s of spawns) if (s.o.guard) s.enemy.guard = true; // (a shrine's guards never come back)
     this.enemies = all.filter((e) => !e.reserve);
     this.reserves = all.filter((e) => e.reserve); // seal events call these in (seals.js)
     this.clearTotal = this.enemies.filter((e) => !e.event && !e.effigy).length; this.clearKilled = 0; this.clearPaid = false;
@@ -346,12 +352,17 @@ class Game {
     this.ui.toastSmall(s.name.toUpperCase());
   }
 
-  // underground the sky's light fades out (the lamps carry it); back up it returns
-  underLight(dt) {
+  // in a raid's dark places (under a roof, underground) the daylight goes, as at night: you see by your cone and
+  // the lamps; back out in the open it returns
+  darkLight(dt) {
     const D = this.world.dungeon;
-    if (!D?.isUnder || this.night) return;
-    const k = (this.underK = (this.underK || 0) + ((this.player && D.isUnder(this.player.pos.x) ? 1 : 0) - (this.underK || 0)) * Math.min(1, dt * 3));
-    this.hemi.intensity = 2.0 - 1.1 * k; this.sun.intensity = 2.0 * (1 - 0.75 * k);
+    if (!D?.darkAt || this.night) return;
+    const dark = this.player && D.darkAt(this.player.pos.x, this.player.pos.z) ? 1 : 0;
+    const k = (this.darkK = (this.darkK || 0) + (dark - (this.darkK || 0)) * Math.min(1, dt * 4));
+    this.hemi.intensity = 2.0 - 1.72 * k; this.sun.intensity = 2.0 * (1 - k);
+    (this._sky ||= [new THREE.Color(0x9aa6c8), new THREE.Color(0x40507a), new THREE.Color(0x1a1712), new THREE.Color(0x040508)]);
+    this.hemi.color.lerpColors(this._sky[0], this._sky[1], k);
+    this.scene.fog.color.lerpColors(this._sky[2], this._sky[3], k);
   }
 
   openPortal(enc) {
@@ -762,7 +773,8 @@ class Game {
       this.spawnHeart(e.pos.x, e.pos.z, id);
       if (this.mp.active) this.mp.sendAll({ t: 'heart', x: e.pos.x, z: e.pos.z, id });
     }
-    if (this.world.dungeon && !e.event && !e.effigy) {
+    e.diedAt = this.time; // (a raid brings it back after a while: stepRespawns)
+    if (this.world.dungeon && !e.event && !e.effigy && !e.respawned) {
       this.clearKilled++;
       if (this.mp.active) this.mp.sendAll({ t: 'prog', k: this.clearKilled });
       if (this.clearKilled >= this.clearTotal) this.fullClear();
@@ -1656,7 +1668,9 @@ class Game {
       const b = q.kind === 'fire' ? [1, 0.45, 0.1] : [0.45, 0.7, 1];
       this.fx.add.spawn({ x: q.pos.x + (Math.random() - 0.5) * q.r, y: q.pos.y + (Math.random() - 0.5) * q.r, z: q.pos.z + (Math.random() - 0.5) * q.r, life: 0.3, size: q.r * 0.8, size1: 0.03, r: b[0], g: b[1], b: b[2] });
     }
-    let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5);
+    const wall = this.hitsWall(q, dt);
+    if (wall) q.pos.addScaledVector(q.vel, -dt); // (bursts on the wall's face, not inside it)
+    let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || wall;
     let hit = null;
     if (!dead) for (const e of this.enemiesAll()) {
       if (e.alive && e.y < 1.5 && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.r + e.radius) { hit = e; dead = true; break; }
@@ -1669,7 +1683,7 @@ class Game {
       this.fx.shockwave(q.pos.x, q.pos.z, q.aoe, 0xff8a30, 0.4);
       this.fx.burst(q.pos, 40, [1, 0.5, 0.1], 7, 0.7, 0.4);
       this.fx.addShake(0.35);
-      for (const e of this.enemiesAll()) if (e.alive && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.aoe + e.radius) this.spellDamage(q, e);
+      for (const e of this.enemiesAll()) if (e.alive && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.aoe + e.radius && this.world.lineClear(q.pos.x, q.pos.z, e.pos.x, e.pos.z)) this.spellDamage(q, e);
     } else if (hit) this.spellDamage(q, hit);
     return true;
   }
@@ -1680,6 +1694,51 @@ class Game {
     this.audio.play('fire');
   }
 
+  // a raid: a killed enemy comes back at its post after RESPAWN_AFTER s, once nobody is near it (never a shrine's
+  // guards, elites, idols or anything a shrine called in). The host decides and tells the party
+  stepRespawns(dt) {
+    if (!this.run?.raid || this.isGuest || (this.respawnT = (this.respawnT || 0) - dt) > 0) return;
+    this.respawnT = 1;
+    const ps = this.allPlayers();
+    for (const e of this.enemies) {
+      if (e.alive || e.event || e.effigy || e.elite || e.guard || e.diedAt === undefined || this.time - e.diedAt < RESPAWN_AFTER) continue;
+      if (ps.some((p) => Math.hypot(p.pos.x - e.home.x, p.pos.z - e.home.z) < 22)) continue;
+      this.respawnEnemy(e);
+      if (this.mp.active) this.mp.sendAll({ t: 'respawn', id: e.netId });
+    }
+  }
+  respawnEnemy(e) { e.reset(); e.respawned = true; e.diedAt = undefined; }
+
+  // an outline that shows through whatever stands between the camera and an actor (a raid's buildings and walls)
+  ghostSet(a, on, color) {
+    if (!on && !a.ghost) return;
+    if (!a.ghost) {
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, depthTest: false, depthWrite: false });
+      const list = [];
+      a.rig.root.traverse((o) => { if (o.isMesh && o.geometry && !o.userData.ghost) list.push(o); });
+      a.ghost = list.map((o) => { const g = new THREE.Mesh(o.geometry, mat); g.userData.ghost = true; g.renderOrder = 20; g.visible = false; o.add(g); return g; });
+      a.ghostOn = false;
+    }
+    if (a.ghostOn === on) return;
+    a.ghostOn = on;
+    for (const g of a.ghost) g.visible = on;
+  }
+  updateGhosts() {
+    const D = this.world.dungeon;
+    if (!D?.hides) return;
+    for (const p of this.allPlayers()) this.ghostSet(p, p.alive !== false && D.hides(p.pos.x, p.pos.z), 0xf0e0b8);
+    const me = this.player.pos;
+    for (const e of this.enemies) {
+      const near = e.alive && e.rig.root.visible && Math.abs(e.pos.x - me.x) < 20 && Math.abs(e.pos.z - me.z) < 20;
+      this.ghostSet(e, near && D.hides(e.pos.x, e.pos.z), 0xd04030);
+    }
+  }
+
+  // a shot that has gone into a wall this frame (checked at its end and half way back, so a fast one can't skip it)
+  hitsWall(q, dt) {
+    return this.world.blocked(q.pos.x, q.pos.z, 0.05) || this.world.blocked(q.pos.x - q.vel.x * dt / 2, q.pos.z - q.vel.z * dt / 2, 0.05);
+  }
+
   updateProjectiles(dt) {
     const p = this.player;
     this.projectiles = this.projectiles.filter((q) => {
@@ -1688,7 +1747,7 @@ class Game {
       if (q.mesh) q.mesh.position.copy(q.pos);
       if (q.ghost) {
         if (!q.mesh && q.kind === 'fire') for (let i = 0; i < 3; i++) this.fx.flame({ x: q.pos.x, y: 0.1, z: q.pos.z }, 1.1);
-        const over = q.life <= 0;
+        const over = q.life <= 0 || this.hitsWall(q, dt);
         if (over && q.mesh) { this.scene.remove(q.mesh); q.mesh.geometry.dispose(); }
         if (over && q.pfx) this.pfx.kill(q.pfx);
         return !over;
@@ -1703,7 +1762,7 @@ class Game {
         if (Math.random() < dt * 20) this.fx.scorch(q.pos.x, q.pos.z, 0.7);
       }
       if (q.kind === 'rock') { q.mesh.rotation.x += dt * 8; q.mesh.rotation.z += dt * 5; }
-      let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < 0.25;
+      let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < 0.25 || this.hitsWall(q, dt);
       if (dead && q.kind === 'rock') this.impact(q.pos.x, q.pos.z, 1.6, 0.35);
       // the evolved spectral shield stops shots at the wall, ahead of the knight
       if (!dead) for (const t of this.allPlayers()) {
@@ -1794,6 +1853,7 @@ class Game {
         this.updateProjectiles(dt);
         this.updateHearts(dt);
         this.seals.update(dt);
+        this.stepRespawns(dt);
         this.mp.tick(dt);
         this.stepRevive(dt);
       } else {
@@ -1854,7 +1914,8 @@ class Game {
     tickOutfitColors(this.time); // effect colours on outfits (molten, frost, void, gilded)
     if (this.mode === 'play' || this.mode === 'wait') this.weaponFx.update(dt);
     this.updateCamera(rdt);
-    if (this.mode !== 'title') this.underLight(rdt);
+    if (this.mode !== 'title') this.darkLight(rdt);
+    if (this.mode === 'play' && this.player) this.updateGhosts();
   }
 
   // the enemy you're locked on to: its armour, resistances and elements in a small panel at the top right (under the map)

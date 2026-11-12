@@ -360,7 +360,8 @@ export class Enemy extends Actor {
         // step in for one attack every 10-15s. `urgent` = quicker counter after being hit.
         this.watchCd -= dt;
         if (this.cd <= 0 && (this.engaged || this.watchCd <= 0)) {
-          const m = this.chooseMove(dist, behind);
+          let m = this.chooseMove(dist, behind);
+          if (m && T.moves[m].range > 4 && !this.game.world.lineClear(this.pos.x, this.pos.z, p.pos.x, p.pos.z)) m = null; // (a shot needs a clear line)
           if (m) {
             if (!this.engaged) this.watchCd = this.watchGap();
             this.atkSpeed = this.urgent ? 1.3 : 1;
