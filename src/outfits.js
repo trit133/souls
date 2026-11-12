@@ -3,6 +3,7 @@
 // 3 saved outfits per character. The pieces' geometry lives in playerkits.js; this file is the catalogue, the
 // prices, what an account owns and wears, and the one-time move from the old kill-unlocked skins.
 import * as THREE from 'three';
+import { CRUSADE_NAMES } from './crusadekit.js';
 
 // big pieces (chest, legs, shield, cloak, shirt, pants) cost half as much as the small ones' old price did; small
 // pieces (helmets, shoulders, masks, bands, weapons) a quarter
@@ -74,6 +75,11 @@ export const PIECES = {
     sword: [{ id: 'runeblade', name: 'Rune Blade', desc: 'A blade of blue light.' }, { id: 'steel', name: 'Steel Sword', desc: 'A plain arming sword.' }, { id: 'moonblade', name: 'Moonblade', desc: 'A crescent of pale moonlight.', special: true }, { id: 'voidedge', name: 'Voidedge', desc: 'Black steel with a violet void at its core.', special: true }],
   },
 };
+// The Last Crusade: the pieces' display names and descriptions (crusadekit.js); ids unchanged
+for (const [kind, slots] of Object.entries(PIECES)) for (const [slot, list] of Object.entries(slots)) {
+  const N = CRUSADE_NAMES[kind]?.[slot.replace(/[LR]$/, '')];
+  if (N) for (const p of list) if (N[p.id]) [p.name, p.desc] = N[p.id];
+}
 export const pieceList = (kind, slot) => PIECES[kind]?.[slot] || [];
 export const pieceById = (kind, slot, id) => pieceList(kind, slot).find((p) => p.id === id) || pieceList(kind, slot)[0];
 export const piecePrice = (p, i, slot) => (i === 0 ? 0 : BIG.has(slot) ? (p.special ? PRICE.special : PRICE.piece) : (p.special ? PRICE.smallSpecial : PRICE.smallPiece));

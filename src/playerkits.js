@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import { box, cyl, cone, rbox, pivot } from './mesh.js';
 import { KITS, strip, plate, basic, add, easeOut, CLOTH, RIBBON } from './kits.js';
 import { colorMat, colorHex, colorById } from './outfits.js';
+import { CRUSADE } from './crusadekit.js';
+// the crusade layer for a piece (crusadekit.js): kind, slot, piece id (or the slot's first piece)
+const cx = (kind, slot, id, ...a) => { const t = CRUSADE[kind]?.[slot]; (t?.[id] || t?.[Object.keys(t || {})[0]])?.(...a); };
 
 const lighten = (hex, f) => { const c = new THREE.Color(hex); c.lerp(new THREE.Color(0xffffff), f); return c.getHex(); };
 const darken = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(1 - f); return c.getHex(); };
@@ -153,7 +156,7 @@ const KNIGHT = {
     radiant(r, M, T, hips) {
       KNIGHT.chest.plate(r, M, T, hips);
       const { bulk: b } = r.dims;
-      for (const x of [-0.16, 0, 0.16]) strip(r, T, x * b, 0.66, -0.16 * b, 0.18 * b, [0.42, 0.4, 0.26], r.m(lighten(M.mainHex, 0.4)), { trim: M.trim, lx: [-0.1, 1.2], lx2: [-0.3, 0.7], taper: 0.92 });
+      for (const x of [-0.16, 0, 0.16]) strip(r, T, x * b, 0.66, -0.16 * b, 0.18 * b, [0.42, 0.4, 0.26], M.trim, { trim: r.m(0x8a6a34), lx: [-0.1, 1.2], lx2: [-0.3, 0.7], taper: 0.92 }); // (the martyr's cape: the trim colour, crusade red by default)
     },
       // overlapping dragon scales with a glowing heart stone
     dragonscale(r, M, T, hips) {
@@ -289,14 +292,14 @@ KITS.knight = {
   build(r, o) {
     const fit = o.outfit || {}, T = r.j.torso, H = r.j.head, hips = r.j.hips;
     const S = (slot, m, t) => slotMats(r, fit, slot, m, t);
-    const helm = S('helmet', 0x7a7e86, 0x8a1a14); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H);
-    for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); }
-    const ch = S('chest', 0x7a7e86, 0x6a1412); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips);
-    const lg = S('legs', 0x7a7e86, 0x2a2a30); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips);
-    const shM = S('shield', 0x5a1412, 0x8a6a34); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
+    const helm = S('helmet', 0x7a7e86, 0x8a1a14); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H); cx('knight', 'helmet', helm.piece, r, helm, H);
+    for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); cx('knight', 'pauldron', M.piece, r, M, T, s); }
+    const ch = S('chest', 0x7a7e86, 0x6a1412); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips); cx('knight', 'chest', ch.piece, r, ch, T, hips);
+    const lg = S('legs', 0x7a7e86, 0x2a2a30); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips); cx('knight', 'legs', lg.piece, r, lg, hips);
+    const shM = S('shield', 0x5a1412, 0x8a6a34); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); cx('knight', 'shield', shM.piece, r, shM, sh); T.add(sh); r.shield = sh;
     const swM = S('sword', 0x8c929c, 0x8a6a34);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
-    const [len, baseZ] = (KNIGHT.sword[swM.piece] || KNIGHT.sword.longsword)(r, swM, g);
+    const [len, baseZ] = (KNIGHT.sword[swM.piece] || KNIGHT.sword.longsword)(r, swM, g); cx('knight', 'sword', swM.piece, r, swM, g);
     r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
     // ---- The Last Crusade, on every outfit: a resonance core down the blade, a reactor pack on the back with
     // exhaust stacks and cables to the shoulders, a glowing visor slit, a purity seal, an aegis emitter on the shield
@@ -522,16 +525,16 @@ KITS.rogue = {
   build(r, o) {
     const fit = o.outfit || {}, T = r.j.torso, H = r.j.head;
     const S = (slot, m, t) => slotMats(r, fit, slot, m, t);
-    const cl = S('cloak', 0x2c2a30, 0x4a4650); (ROGUE.cloak[cl.piece] || ROGUE.cloak.tattered)(r, cl, T, H);
-    const mk = S('mask', 0x3a2224, 0x8a2420); (ROGUE.mask[mk.piece] || ROGUE.mask.wrap)(r, mk, H, T);
-    const sh = S('shirt', 0x4a3a2c, 0x4a3626); (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T);
-    for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); }
+    const cl = S('cloak', 0x2c2a30, 0x4a4650); (ROGUE.cloak[cl.piece] || ROGUE.cloak.tattered)(r, cl, T, H); cx('rogue', 'cloak', cl.piece, r, cl, T, H);
+    const mk = S('mask', 0x3a2224, 0x8a2420); (ROGUE.mask[mk.piece] || ROGUE.mask.wrap)(r, mk, H, T); cx('rogue', 'mask', mk.piece, r, mk, H);
+    const sh = S('shirt', 0x4a3a2c, 0x4a3626); (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T); cx('rogue', 'shirt', sh.piece, r, sh, T);
+    for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); cx('rogue', 'band', M.piece, r, M, r.j[j]); }
     const kn = S('knives', 0xc4cad3, 0x2a1c14);
     const dagger = (ROGUE.knives[kn.piece] || ROGUE.knives.curved)(r, kn);
-    r.wpnR = dagger(r.j.handR);
+    r.wpnR = dagger(r.j.handR); cx('rogue', 'knives', kn.piece, r, kn, r.wpnR);
     r.base.position.set(0, 0, 0.12); r.wpnR.add(r.base);
     r.tip.position.set(0, 0.05, 0.5); r.wpnR.add(r.tip);
-    r.wpnL = dagger(r.j.handL);
+    r.wpnL = dagger(r.j.handL); cx('rogue', 'knives', kn.piece, r, kn, r.wpnL);
     r.tipL = new THREE.Object3D(); r.tipL.position.set(0, 0.05, 0.5); r.wpnL.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; r.wpnL.add(r.baseL);
     // ---- The Last Crusade, on every outfit: augmetic red optics, a cloak-field generator between the shoulder blades
@@ -754,9 +757,9 @@ KITS.mage = {
     const rune = basic(C.runeHi);
     r.glowMats.push({ mat: rune, lo: new THREE.Color(C.runeLo), hi: new THREE.Color(C.runeHi) });
     const glyph = basic(C.glyph);
-    const shM = S('shirt', 0x22305c, 0xb89a4a); (MAGE.shirt[shM.piece] || MAGE.shirt.runecoat)(r, shM, T, rune, hips);
-    const soM = S('shoulder', 0x22305c, 0xb89a4a); (MAGE.shoulder[soM.piece] || MAGE.shoulder.mantle)(r, soM, T, rune, H);
-    const paM = S('pants', 0x2c3a66, 0x7a86b0); (MAGE.pants[paM.piece] || MAGE.pants.trousers)(r, paM);
+    const shM = S('shirt', 0x22305c, 0xb89a4a); (MAGE.shirt[shM.piece] || MAGE.shirt.runecoat)(r, shM, T, rune, hips); cx('mage', 'shirt', shM.piece, r, shM, T);
+    const soM = S('shoulder', 0x22305c, 0xb89a4a); (MAGE.shoulder[soM.piece] || MAGE.shoulder.mantle)(r, soM, T, rune, H); cx('mage', 'shoulder', soM.piece, r, soM, T, H);
+    const paM = S('pants', 0x2c3a66, 0x7a86b0); (MAGE.pants[paM.piece] || MAGE.pants.trousers)(r, paM); cx('mage', 'pants', paM.piece, r, paM);
     // head: silver hair with bangs, glowing eyes, a rune mark under one eye, a ponytail that swings
     const { skin } = r.mats, hair = r.m(C.hair), hairDk = r.m(C.hairDk);
     H.add(box(0.1, 0.08, 0.1, skin, 0, 0.03, 0));
@@ -773,12 +776,12 @@ KITS.mage = {
     // the wand in her casting hand
     const waM = S('wand', 0x3a2a20, 0xb89a4a);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
-    const [tip, base] = (MAGE.wand[waM.piece] || MAGE.wand.rune)(r, waM, g, glyph);
+    const [tip, base] = (MAGE.wand[waM.piece] || MAGE.wand.rune)(r, waM, g, glyph); cx('mage', 'wand', waM.piece, r, waM, g);
     r.base.position.set(0, 0, base); g.add(r.base); r.tip.position.set(0, 0, tip); g.add(r.tip);
     // the sword she fights with, in the left hand
     const swM = S('sword', 0x7ab4ff, 0xb89a4a);
     const g2 = new THREE.Group(); r.j.handL.add(g2); r.wpnL = g2;
-    const len = (MAGE.sword[swM.piece] || MAGE.sword.runeblade)(r, swM, g2);
+    const len = (MAGE.sword[swM.piece] || MAGE.sword.runeblade)(r, swM, g2); cx('mage', 'sword', swM.piece, r, swM, g2);
     r.tipL = new THREE.Object3D(); r.tipL.position.z = len; g2.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; g2.add(r.baseL);
     // three glyphs orbiting the off hand
