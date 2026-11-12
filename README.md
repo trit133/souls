@@ -147,7 +147,7 @@ It runs in desktop browsers and on iPhone (landscape, touch controls). You can a
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173 (also exposed on LAN for phone testing)
+npm run dev      # http://localhost:5181 (also exposed on LAN for phone testing)
 npm run build    # static build in dist/ — deployable to any static host
 ```
 

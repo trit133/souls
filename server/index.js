@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 
 const PORT = +(process.env.PORT || 4100);
 const DB = process.env.DB_PATH || new URL('./data/souls.db', import.meta.url).pathname;
-const ORIGINS = new Set(['https://trit133.github.io', 'http://localhost:4173', 'http://localhost:5173', 'http://127.0.0.1:4173']);
+const ORIGINS = new Set(['https://trit133.github.io', 'http://localhost:4173', 'http://localhost:5173', 'http://localhost:5181', 'http://localhost:9222','http://127.0.0.1:4173']);
 const MAX_SAVE = 16 * 1024, MAX_PARTY = 3;
 
 if (DB !== ':memory:') mkdirSync(new URL('.', 'file://' + DB).pathname, { recursive: true });
