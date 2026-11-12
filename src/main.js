@@ -46,7 +46,6 @@ import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './
 
 // render no more than ~1080p worth of pixels; bigger screens (ultrawide, 4K) are upscaled
 
-const RESPAWN_AFTER = 90; // s before a raid's dead enemy comes back (stepRespawns)
 const $ = (id) => document.getElementById(id);
 const HEART_CHANCE = 0.33, HEART_HEAL = 20 * NUM; // hearts: a third of enemies drop one, healing 20 (at the old size, like every number: scale.js)
 const PARRY_EARLY = 0.23, PARRY_LATE = 0; // seconds before impact
@@ -267,7 +266,6 @@ class Game {
     const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
     const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players, night: this.night })));
     for (const e of all) e.roam = this.world.dungeon?.roam(e.mod) ?? null;
-    for (const s of spawns) if (s.o.guard) s.enemy.guard = true; // (a shrine's guards never come back)
     this.enemies = all.filter((e) => !e.reserve);
     this.reserves = all.filter((e) => e.reserve); // seal events call these in (seals.js)
     this.clearTotal = this.enemies.filter((e) => !e.event && !e.effigy).length; this.clearKilled = 0; this.clearPaid = false;
@@ -773,8 +771,7 @@ class Game {
       this.spawnHeart(e.pos.x, e.pos.z, id);
       if (this.mp.active) this.mp.sendAll({ t: 'heart', x: e.pos.x, z: e.pos.z, id });
     }
-    e.diedAt = this.time; // (a raid brings it back after a while: stepRespawns)
-    if (this.world.dungeon && !e.event && !e.effigy && !e.respawned) {
+    if (this.world.dungeon && !e.event && !e.effigy) {
       this.clearKilled++;
       if (this.mp.active) this.mp.sendAll({ t: 'prog', k: this.clearKilled });
       if (this.clearKilled >= this.clearTotal) this.fullClear();
@@ -1694,21 +1691,6 @@ class Game {
     this.audio.play('fire');
   }
 
-  // a raid: a killed enemy comes back at its post after RESPAWN_AFTER s, once nobody is near it (never a shrine's
-  // guards, elites, idols or anything a shrine called in). The host decides and tells the party
-  stepRespawns(dt) {
-    if (!this.run?.raid || this.isGuest || (this.respawnT = (this.respawnT || 0) - dt) > 0) return;
-    this.respawnT = 1;
-    const ps = this.allPlayers();
-    for (const e of this.enemies) {
-      if (e.alive || e.event || e.effigy || e.elite || e.guard || e.diedAt === undefined || this.time - e.diedAt < RESPAWN_AFTER) continue;
-      if (ps.some((p) => Math.hypot(p.pos.x - e.home.x, p.pos.z - e.home.z) < 22)) continue;
-      this.respawnEnemy(e);
-      if (this.mp.active) this.mp.sendAll({ t: 'respawn', id: e.netId });
-    }
-  }
-  respawnEnemy(e) { e.reset(); e.respawned = true; e.diedAt = undefined; }
-
   // an outline that shows through whatever stands between the camera and an actor (a raid's buildings and walls)
   ghostSet(a, on, color) {
     if (!on && !a.ghost) return;
@@ -1729,6 +1711,7 @@ class Game {
     for (const p of this.allPlayers()) this.ghostSet(p, p.alive !== false && D.hides(p.pos.x, p.pos.z), 0xf0e0b8);
     const me = this.player.pos;
     for (const e of this.enemies) {
+      if (D.fadedAt?.(e.pos.x, e.pos.z)) { e.rig.root.visible = false; continue; } // (in a building faded to glass: unseen)
       const near = e.alive && e.rig.root.visible && Math.abs(e.pos.x - me.x) < 20 && Math.abs(e.pos.z - me.z) < 20;
       this.ghostSet(e, near && D.hides(e.pos.x, e.pos.z), 0xd04030);
     }
@@ -1853,7 +1836,6 @@ class Game {
         this.updateProjectiles(dt);
         this.updateHearts(dt);
         this.seals.update(dt);
-        this.stepRespawns(dt);
         this.mp.tick(dt);
         this.stepRevive(dt);
       } else {

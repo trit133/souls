@@ -6,12 +6,13 @@
 // blocks each (a chapel, a manufactorum, a barracks). Some buildings have stairs down to vaults and bunkers built
 // far off to the east (x > 300). What changes each raid (from the run's seed, so a party shares it): where the three
 // shrines are (on the squares or down in the vaults), which big building hides the stair to the boss, and where
-// every enemy stands. Enemies come back a while after they die (main.js: respawns).
+// every enemy stands.
 //
 // It stands in for a dungeon (world.dungeon): mods are 25 m chunks of the city (each enemy keeps to its chunk and
 // the ones round it), every basement and the arena; seals.js runs the shrines and the boss door as before. Enemies
 // find their way round walls with a flow field on a 1 m grid (steer). A building's roof only lifts off when you're
-// inside it; when a building or a wall stands between you and the camera, main.js shows your outline through it.
+// inside it; a building standing between you and the camera fades to glass with its inside blacked out, and behind a
+// lane wall main.js shows your outline through it.
 import * as THREE from 'three';
 import { rng } from './world.js';
 import { mix, ELITES } from './dungeon.js';
@@ -156,7 +157,7 @@ export class City {
   hides(x, z) {
     if (x > UNDER) return false;
     for (const o of this.occluders) {
-      if (o.b?.cut || x < o.x0 - 0.2 || x > o.x1 + 0.2 || z >= o.z0 + 0.3 || z < o.z0 - o.h / 1.25) continue;
+      if (o.b?.cut || o.b?.faded || x < o.x0 - 0.2 || x > o.x1 + 0.2 || z >= o.z0 + 0.3 || z < o.z0 - o.h / 1.25) continue;
       return true;
     }
     return false;
@@ -190,6 +191,8 @@ export class City {
     this.facade = [lam(0x6e665a), lam(0x6a4a3a), lam(0x575450), lam(0x7a6e5e)];
     this.facadeDark = lam(0x3a3430);
     this.brick = lam(0x5a3e30);
+    this.shroudMat = new THREE.MeshBasicMaterial({ color: 0x17130f });
+    this.glass = new Map(); // a faded copy of each material a building uses
     this.stairs = []; this.unders = []; this.layers = []; this.occluders = [];
     this.bAt = new Map();
     for (const b of this.buildings) for (let i = Math.floor(b.x0 / 10); i <= Math.floor(b.x1 / 10); i++) for (let j = Math.floor(b.z0 / 10); j <= Math.floor(b.z1 / 10); j++) {
@@ -262,7 +265,13 @@ export class City {
     const tall = new THREE.Group(), low = new THREE.Group(); low.visible = false;
     mod.group.add(tall, low);
     b.tall = tall; b.low = low; b.cut = false;
-    if (!b.yard) this.occluders.push({ b, x0: b.x0, x1: b.x1, z0: b.z0, h: b.h });
+    if (!b.yard) {
+      this.occluders.push({ b, x0: b.x0, x1: b.x1, z0: b.z0, h: b.h });
+      // the dark that fills it while it's faded to glass (so you never see in), over the floor and the furniture; anyone in there is hidden too
+      const sh = new THREE.Mesh(new THREE.BoxGeometry(b.x1 - b.x0 - 2 * T - 0.1, 1.15, b.z1 - b.z0 - 2 * T - 0.1), this.shroudMat);
+      sh.position.set(b.cx, 0.575, b.cz); sh.visible = false; sh.userData.noMerge = true; mod.group.add(sh);
+      b.shroud = sh;
+    }
     const wall = b.kind === 'chapel' ? M.stone : b.kind === 'works' ? this.facade[2] : this.facade[Math.floor(vh(b.cx, b.cz, 4) * 4)], trim = b.kind === 'works' ? M.rust : this.facadeDark;
     const segs = [];
     // the four outer walls, broken by doorways
@@ -725,14 +734,14 @@ export class City {
     const regular = (noBrute) => { let t = weighted(r, mixW); if (t === 'brute' && noBrute) t = 'grunt'; return t; };
     const pack = (n, x0, x1, z0, z1, o = {}) => { let brute = false; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === 'brute') brute = true; add(t, p); } };
 
-    // the shrines' guards first (so nothing else crowds them); they never come back
+    // the shrines' guards first (so nothing else crowds them)
     for (const S of this.sites) {
       const d = S.rec, near = { ring: { x: d.x, z: d.z, r: 7 }, avoid: d, avoidR: 2.4, gap: 2 };
       const box = [d.x - 8, d.x + 8, d.z - 8, d.z + 8];
       if (S.kind === 'elite') {
         const p = spotIn(...box, near) || { x: d.x + 3, z: d.z + 3 };
-        d.guards.push(add(r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']), p, { elite: this.shrineTrait, guard: true }));
-        for (let k = 0; k < 3 + Math.floor((this.players - 1) / 2); k++) { const q = spotIn(...box, near); if (q) d.guards.push(add(regular(true), q, { guard: true })); }
+        d.guards.push(add(r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']), p, { elite: this.shrineTrait }));
+        for (let k = 0; k < 3 + Math.floor((this.players - 1) / 2); k++) { const q = spotIn(...box, near); if (q) d.guards.push(add(regular(true), q)); }
       } else if (S.kind === 'altar') {
         for (let k = 0; k < 3; k++) {
           let a = k / 3 * Math.PI * 2 + 0.5, ex = d.x, ez = d.z;
@@ -744,7 +753,7 @@ export class City {
         }
         this.at(w, d.x, d.z);
         for (let k = 0; k < 7 + this.players; k++) { w.spawn(regular(true), d.x, d.z, 0, { reserve: true, event: true, look }); d.reserves.push(w.spawns[w.spawns.length - 1]); }
-        const q = spotIn(...box, near); if (q) add(regular(true), q, { guard: true });
+        const q = spotIn(...box, near); if (q) add(regular(true), q);
       } else {
         this.at(w, d.x, d.z);
         for (let k = 0; k < 4 * (2 + this.players); k++) { w.spawn(regular(true), d.x, d.z, 0, { reserve: true, event: true, look }); d.reserves.push(w.spawns[w.spawns.length - 1]); }
@@ -754,31 +763,45 @@ export class City {
 
     // in the buildings and yards: most houses hold someone in the dark
     for (const b of this.buildings) {
-      const n = b.basement === 'site' ? 4 + Math.floor(r() * 2) : b.yard ? 1 + Math.floor(r() * 2) : b.ruin ? 1 + Math.floor(r() * 2) : r() < 0.8 ? 1 + Math.floor(r() * 3) : 0;
+      const n = b.basement === 'site' ? 2 + (r() < 0.5 ? 1 : 0) : b.yard ? (r() < 0.5 ? 1 : 0) : b.ruin ? 1 : r() < 0.5 ? 1 + (r() < 0.35 ? 1 : 0) : 0;
       pack(n, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
     }
     // the squares that aren't a shrine's
-    for (const B of this.blocks) if (B.type === 'plaza' && !this.sites.some((S) => S.key === B.key && !S.under)) pack(2 + Math.floor(r() * 2), B.x0, B.x1, B.z0, B.z1);
+    for (const B of this.blocks) if (B.type === 'plaza' && !this.sites.some((S) => S.key === B.key && !S.under)) pack(1 + (r() < 0.5 ? 1 : 0), B.x0, B.x1, B.z0, B.z1);
     // gangs in the lanes
     const lanes = shuffle([...this.open].map(edgeRect), r);
-    for (const L of lanes.slice(0, 18)) pack(1 + (r() < 0.5 ? 1 : 0), L.x0, L.x1, L.z0, L.z1, { gap: 1.8 });
+    for (const L of lanes.slice(0, 6)) pack(1 + (r() < 0.4 ? 1 : 0), L.x0, L.x1, L.z0, L.z1, { gap: 1.8 });
     // the basements
     for (const u of this.unders) {
       if (this.sites.some((S) => S.under && S.rec.mod === u.mod.i)) { pack(2, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 4); continue; }
       const L = this.layers.find((l) => l.u === u);
-      if (u.kind === 'boss') pack(3, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 5); // (the corridor past the room is the arena's)
-      else pack(u.kind === 'vault' ? 4 + Math.floor(r() * 2) : 3, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H);
+      if (u.kind === 'boss') pack(2, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 5); // (the corridor past the room is the arena's)
+      else pack(u.kind === 'vault' ? 2 + (r() < 0.5 ? 1 : 0) : 2, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H);
     }
   }
 
   // ---------- per frame ----------
-  // the building you're in shows only its walls' bottom metre (no roof); from outside a building stays whole
+  // the building you're in shows only its walls' bottom metre (no roof); from outside a building stays whole, but
+  // one standing between you and the camera fades to glass, its inside filled with dark
   update(dt, time, focus) {
     for (const b of this.buildings) {
       if (b.yard) continue;
       const cut = focus.x > b.x0 + 0.1 && focus.x < b.x1 - 0.1 && focus.z > b.z0 + 0.1 && focus.z < b.z1 - 0.1;
-      if (cut === b.cut) continue;
-      b.cut = cut; b.tall.visible = !cut; b.low.visible = cut;
+      if (cut !== b.cut) { b.cut = cut; b.tall.visible = !cut; b.low.visible = cut; }
+      const fade = !cut && focus.x > b.x0 - 0.6 && focus.x < b.x1 + 0.6 && focus.z < b.z0 + 0.3 && focus.z > b.z0 - b.h / 1.25 - 0.6;
+      if (fade !== !!b.faded) this.setFaded(b, fade);
     }
   }
+  setFaded(b, on) {
+    b.faded = on;
+    b.tall.traverse((o) => {
+      if (!o.isMesh) return;
+      const m0 = (o.userData.mat0 ||= o.material);
+      if (on && !this.glass.has(m0)) { const g = m0.clone(); g.transparent = true; g.opacity = 0.38; g.depthWrite = false; this.glass.set(m0, g); }
+      o.material = on ? this.glass.get(m0) : m0;
+    });
+    b.shroud.visible = on;
+  }
+  // inside a building that's faded to glass (whoever is in there stays hidden)
+  fadedAt(x, z) { const b = this.buildingAt(x, z); return !!b?.faded; }
 }
