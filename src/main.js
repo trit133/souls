@@ -1706,7 +1706,6 @@ class Game {
 
       if (dt > 0) {
         if (!this.isGuest) { this.assignEngagement(); this.stepRooms(); }
-        this.input.aim = this.cursorFloor();
         p.update(dt, this.input, presses);
         const ps = this.allPlayers().map((x) => x.pos);
         const close = (o, r) => ps.some((q) => Math.abs(o.pos.z - q.z) < r && Math.abs(o.pos.x - q.x) < r);
@@ -1829,24 +1828,11 @@ class Game {
     }
   }
 
-  // the point on the floor under the mouse cursor (null on touch, or before the mouse has moved)
-  cursorFloor() {
-    const m = this.input.mouse;
-    if (!m || this.input.lastDevice !== 'kb' || this.debugCam) return null;
-    const r = this.canvas.getBoundingClientRect();
-    this._ray ||= new THREE.Raycaster();
-    this._ndc ||= new THREE.Vector2();
-    this._floor ||= new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    this._ndc.set((m.x - r.left) / r.width * 2 - 1, -(m.y - r.top) / r.height * 2 + 1);
-    this._ray.setFromCamera(this._ndc, this.camera);
-    return this._ray.ray.intersectPlane(this._floor, new THREE.Vector3());
-  }
-
   toggleLock() {
     const p = this.player;
     if (p.lock) { p.lock = null; return; }
     const mv = this.input.move();
-    const aim = p.cursorYaw() ?? (Math.hypot(mv.x, mv.y) > 0.2 ? Math.atan2(mv.x, -mv.y) : p.yaw);
+    const aim = Math.hypot(mv.x, mv.y) > 0.2 ? Math.atan2(mv.x, -mv.y) : p.yaw;
     let best = null, bs = Infinity;
     for (const e of this.enemiesAll()) {
       if (!e.alive) continue;
