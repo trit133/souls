@@ -15,6 +15,8 @@ export class Input {
     // a phone or tablet: a finger is the main pointer and nothing hovers (a touchscreen laptop still has a mouse, so it isn't)
     this.isPhone = matchMedia('(pointer: coarse) and (hover: none)').matches;
     this.lastDevice = this.isTouch ? 'touch' : 'kb';
+    this.mouse = null; // last cursor position over the game (client px)
+    this.aim = null; // the floor point under the cursor, set by the game each frame (null: no mouse aim)
     this.capture = null; // set while the settings screen waits for a key
     this.layoutEdit = false; // touch controls are being dragged around, not pressed
     this.setBinds(DEFAULT_BINDS);
@@ -73,6 +75,12 @@ export class Input {
       this._down('Mouse' + e.button);
     });
     addEventListener('mouseup', (e) => this._up('Mouse' + e.button));
+    // the cursor's screen position, for facing (the game turns it into a point on the floor: `aim`)
+    canvas.addEventListener('mousemove', (e) => {
+      if (this.isPhone) return; // (a tap fakes mouse moves)
+      this.mouse = { x: e.clientX, y: e.clientY };
+      this.lastDevice = 'kb';
+    });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 

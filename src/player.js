@@ -373,6 +373,17 @@ export class Player extends Actor {
 
   push(a) { this.buf = { a, t: 0.4 }; }
 
+  // facing toward the mouse cursor on the floor (null on touch, where there's no cursor; holds still with it on the body)
+  cursorYaw() {
+    const c = this.cursor;
+    if (!c) return null;
+    const dx = c.x - this.pos.x, dz = c.z - this.pos.z;
+    return dx * dx + dz * dz > 0.09 ? Math.atan2(dx, dz) : this.yaw;
+  }
+
+  // where a move points: the cursor, else the stick, else straight ahead
+  aimYaw(dir, mag) { return this.cursorYaw() ?? (mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw); }
+
   // nearest enemy in a cone around `yaw` (used for attack aim assist + riposte)
   findTarget(range, cone, yaw = this.yaw, filter = null) {
     let best = null, bs = Infinity;
@@ -409,6 +420,7 @@ export class Player extends Actor {
     const mv = input.move();
     const dir = this.worldDir(mv);
     const mag = Math.min(1, dir.length());
+    this.cursor = input.aim;
     this.comboTick();
     for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && !this.comboPress(a, dir, mag)) this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
@@ -437,16 +449,19 @@ export class Player extends Actor {
         this.vel.lerp(tv, 1 - Math.exp(-14 * dt));
         this.move(this.vel.x * dt, this.vel.z * dt);
         this.speed = this.vel.length();
+        // facing: the lock target, else the cursor; a sprint turns to where you run
+        const cy = this.cursorYaw();
+        const aimed = !this.sprinting && (this.lock || cy !== null);
         if (this.lock && !this.sprinting) this.turnToward(this.yawTo(this.lock.pos), 12, dt);
+        else if (aimed) this.turnToward(cy, 16, dt);
         else if (mag > 0.05) this.turnToward(Math.atan2(dir.x, dir.z), 13, dt);
-        this.phase += dt * (2.5 + this.speed * 1.6);
+        const side = aimed && this.speed > 0.3 ? angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z)) : 0;
+        // backpedalling plays the walk cycle in reverse
+        this.phase += dt * (2.5 + this.speed * 1.6) * (Math.abs(side) > 2.3 ? -1 : 1);
         const s = this.speed / this.c.walk;
         pose = locomotion(style, this.phase, s, this.sprinting, this.game.time);
-        if (this.lock && !this.sprinting && this.speed > 0.3) {
-          // strafing: swing legs sideways when moving perpendicular to facing
-          const side = angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z));
-          if (Math.abs(side) > 0.8 && Math.abs(side) < 2.3) { pose.hips = [0, -Math.sign(side) * 0.5, 0]; pose.torso[1] = Math.sign(side) * 0.5; }
-        }
+        // strafing: swing legs sideways when moving perpendicular to facing
+        if (Math.abs(side) > 0.8 && Math.abs(side) < 2.3) { pose.hips = [0, -Math.sign(side) * 0.5, 0]; pose.torso[1] = Math.sign(side) * 0.5; }
         if (this.blocking) Object.assign(pose, this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
         if (this.speed > 1 && (this.stepT -= dt) <= 0) { this.stepT = this.sprinting ? 0.28 : 0.38; if (this.sprinting) this.game.fx.dust(this.pos, 1, 0.3); }
         // holding the shield up drains stamina; regen resumes shortly after lowering it
@@ -458,6 +473,7 @@ export class Player extends Actor {
         const d = this.atk.def;
         if (this.atk.t < (d.track ?? 0)) {
           if (this.lock) this.turnToward(this.yawTo(this.lock.pos), 20, dt);
+          else if (this.cursor) this.turnToward(this.cursorYaw(), 9, dt);
           else if (mag > 0.2) this.turnToward(Math.atan2(dir.x, dir.z), 9, dt);
         }
         // fatigue makes each swing in a long string slower (down to ~70% speed)
@@ -534,7 +550,8 @@ export class Player extends Actor {
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.05 ? this.c.walk * 0.32 : 0);
         this.vel.lerp(tv, 1 - Math.exp(-10 * dt));
         this.move(this.vel.x * dt, this.vel.z * dt);
-        if (mag > 0.05) this.turnToward(Math.atan2(dir.x, dir.z), 5, dt);
+        if (this.cursor) this.turnToward(this.cursorYaw(), 5, dt);
+        else if (mag > 0.05) this.turnToward(Math.atan2(dir.x, dir.z), 5, dt);
         pose = { ...locomotion(style, this.phase += dt * 4 * (this.vel.length() > 0.2 ? 1 : 0), this.vel.length() / this.c.walk, false, this.game.time), ...P.heal };
         if (this.t > 0.2 && this.t < 0.8) this.game.fx.heal(this.pos);
         if (!this.healDone && this.t >= 0.55) {
@@ -707,8 +724,7 @@ export class Player extends Actor {
       this.buf = null;
       this.parryCd = Math.max(2, (this.evolved ? PARRY_CD_EVO : PARRY_CD) - (this.tree.parryCd || 0));
       this.spend(PARRY.cost);
-      if (mag > 0.2 && !this.lock) this.yaw = Math.atan2(dir.x, dir.z);
-      else if (this.lock) this.yaw = this.yawTo(this.lock.pos);
+      this.yaw = this.lock ? this.yawTo(this.lock.pos) : this.aimYaw(dir, mag);
       // The parry is judged on the attacker's clock: it only works if a parryable
       // hit lands within the next 0.25s (small tolerance for frame timing).
       const tgt = this.game.parryTargets(this, 0.03)[0];
@@ -733,7 +749,7 @@ export class Player extends Actor {
   }
 
   tryRiposte(dir, mag) {
-    const aim = mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw;
+    const aim = this.aimYaw(dir, mag);
     const tg = this.findTarget(2.2, 1.2, aim, (e) => e.critable && e.critable());
     if (!tg) return false;
     // must be in front of the victim
@@ -755,8 +771,7 @@ export class Player extends Actor {
   startCharge(dir, mag) {
     this.chargeCd = CHARGE_CD - (this.tree.chargeCd || 0);
     this.spend(20);
-    if (this.lock) this.yaw = this.yawTo(this.lock.pos);
-    else if (mag > 0.2) this.yaw = Math.atan2(dir.x, dir.z);
+    this.yaw = this.lock ? this.yawTo(this.lock.pos) : this.aimYaw(dir, mag);
     this.chargeHits = new Set();
     this.blocking = false;
     { const f = this.fwd(); this.game.pfx?.play('aegis', new THREE.Vector3(this.pos.x + f.x * 0.4, 0.05, this.pos.z + f.z * 0.4), { dir: f }); } // (the barrier flares up)
@@ -890,6 +905,7 @@ export class Player extends Actor {
   // ---------- Spellsword ----------
   aimAt(dir, mag) {
     if (this.lock) { this.yaw = this.yawTo(this.lock.pos); return; }
+    if (this.cursor) { this.yaw = this.cursorYaw(); return; } // the cursor is the aim: no assist
     const aim = mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw;
     const tg = this.findTarget(14, 0.5, aim);
     this.yaw = tg ? this.yawTo(tg.pos) : aim;
@@ -931,8 +947,9 @@ export class Player extends Actor {
     // swinging with an empty bar is very slow (down to ~0.3x at zero stamina)
     const low = Math.min(1, this.st / (this.maxSt * 0.3));
     this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low) * this.aspdMul * (this.c.meleeRate ?? 1);
-    // initial facing: lock target > stick > aim-assist toward a nearby enemy
+    // initial facing: lock target > cursor > stick with aim-assist toward a nearby enemy
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
+    else if (this.cursor) this.yaw = this.cursorYaw();
     else {
       const aim = mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw;
       const tg = this.findTarget(3.6, def.comboMove ? Math.PI : 1.0, aim); // a combo move turns to an enemy behind you too (after a roll)
