@@ -695,7 +695,7 @@ export class Player extends Actor {
     }
     if (a === 'heal') {
       this.buf = null;
-      if (this.flasks <= 0) { this.game.ui.toastSmall?.('No flasks left'); return false; }
+      if (this.flasks <= 0) { this.game.ui.toastSmall?.('No injectors left'); return false; }
       this.flasks--; this.healDone = false; this.setState('heal');
       this.game.vfx('heal', this.game.myRef());
       return true;

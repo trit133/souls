@@ -13,7 +13,7 @@ import { outfitModel } from './playerkits.js';
 import { SLOTS, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
 
 const $ = (id) => document.getElementById(id);
-const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
+const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
 const hexCss = (h) => '#' + h.toString(16).padStart(6, '0');
 
 export class SkinMenu {

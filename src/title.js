@@ -13,7 +13,7 @@ export class FireTitle {
     this.ctx = canvas.getContext('2d');
     this.frame = createFrame(w, h, -ox, -oy);
     this.img = new ImageData(w, h);
-    this.fx = createFx(fireTitle, { text });
+    this.fx = createFx(fireTitle, { text, scale: 3 }); // (scale 3: THE LAST CRUSADE fits the logo canvas)
     this.acc = 1; this.last = 0;
     this.draw();
     requestAnimationFrame((t) => this.loop(t));

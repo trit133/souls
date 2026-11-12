@@ -1,5 +1,7 @@
 # Ashen Vigil
 
+> **Retheme in progress: THE LAST CRUSADE** (grimdark dark science fantasy). Visuals and names only; gameplay is untouched and internal ids stay the same (saves, accounts and skill trees carry over). Display names: Knight → **Templar**, Rogue → **Shrike**, Spellsword → **Adept**; Hermitage → **Sanctum**; flasks → **injectors**; seals → **ward shrines** (the circle is an **uplink**, the altar's effigies **heretic idols**); bosses **Executor Hask, the Iron Penitent**, **Sister Vael, Blade of the Cryo Choir**, **Gorrath, the Slag Engine**, **Archon Varek, the Last Sentinel**; dungeons **The Rust Warrens**, **The Hollow Forge-Deep**, **The Coolant Drowns**. Elements keep their names; music unchanged for now. Stages: names/UI (done), world, characters and enemies, effects.
+
 A pseudo-3D souls-like roguelite built with Three.js + Vite. A run is three open dungeons, each ending in a mini boss that rewards you with a power-up or a full rest, then the approach to a two-phase final boss. There are no bonfires: death ends the run.
 
 ## Number size

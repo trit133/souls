@@ -46,7 +46,7 @@ import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './
 const $ = (id) => document.getElementById(id);
 const HEART_CHANCE = 0.33, HEART_HEAL = 20 * NUM; // hearts: a third of enemies drop one, healing 20 (at the old size, like every number: scale.js)
 const PARRY_EARLY = 0.23, PARRY_LATE = 0; // seconds before impact
-const CHAR_NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
+const CHAR_NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' };
 const MANA_PER_HIT = 10;
 // player spells: little blue bolts, and exploding fireballs (bigger once evolved)
 const SPELLS = {
@@ -120,7 +120,7 @@ class Game {
     this.buildRun();
 
     this.bindUI();
-    new FireTitle($('title-fire'), 'ASHEN VIGIL');
+    new FireTitle($('title-fire'), 'THE LAST CRUSADE');
     this.home ||= new Home(this);
     pixelMenus();
     document.querySelectorAll('.pick[data-pick]').forEach((el) => attachCardFx(el, el.dataset.pick));
@@ -586,7 +586,7 @@ class Game {
     if (!this.layoutEditor?.layout) applyLayout(s.touchLayout);
     if (this.camera) this.resize();
     const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
-    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} heal · ${k('lock')} lock-on · ${k('interact')} interact · ${k('pause')} pause`;
+    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('pause')} pause`;
   }
 
   saveSettings() {
@@ -782,7 +782,7 @@ class Game {
     this.clearPaid = true; this.clearKilled = this.clearTotal;
     if (!net && this.mp.active) this.mp.sendAll({ t: 'clear100' });
     this.addEmeralds(FULL_CLEAR_EMERALDS);
-    this.ui.toast(`DUNGEON CLEARED · +${FULL_CLEAR_EMERALDS} EMERALDS`, 3.5);
+    this.ui.toast(`SECTOR PURGED · +${FULL_CLEAR_EMERALDS} EMERALDS`, 3.5);
     this.audio.play('victory');
   }
 
@@ -1071,7 +1071,7 @@ class Game {
     this.mode = 'reward';
     this.input.reset();
     const cards = rollBoons().map((k) => ({ key: k, name: BOONS[k].name, color: BOONS[k].color, desc: BOONS[k].desc(p) }));
-    cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all health (${Math.round(p.hp)}/${p.maxHp}) and refill your flasks (${p.flasks}/${p.maxFlasks}).` });
+    cards.push({ key: 'rest', rest: true, name: 'Rest', desc: `Restore all vital function (${Math.round(p.hp)}/${p.maxHp}) and refill your injectors (${p.flasks}/${p.maxFlasks}).` });
     this.ui.showReward(cards, (k) => this.claimReward(k), '');
     $('cashout').classList.add('hidden'); // gold is banked as you go, so there is nothing to cash out
   }
@@ -1145,7 +1145,7 @@ class Game {
         if (this.mode !== 'play' || !this.player.alive) return;
         this.audio.play('victory');
         this.audio.calm();
-        this.ui.toast('GREAT FOE FELLED', 2);
+        this.ui.toast('THE HERETIC IS PURGED', 2);
         this.ui.show('boss', false);
         setTimeout(() => this.mode === 'play' && this.player.alive && this.offerReward(), 1300);
       }, 2000);

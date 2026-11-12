@@ -24,7 +24,7 @@ import { ownedRecords, currentRecord, recordById } from './records.js';
 import { SONG_NAMES } from './music.js';
 
 const $ = (id) => document.getElementById(id);
-const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
+const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
 export const STASH_SLOTS = 48;
 const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 // every usable thing has a faint outline round its edge; the one under the pointer a bright one. The outlines are
@@ -240,7 +240,7 @@ export class Hermitage {
     el.innerHTML = `
       <div class="hm-top">
         <button class="mini-btn" id="hm-back">Title</button>
-        <div class="hm-pick"><span id="hm-name">Knight</span><button class="mini-btn hm-icon" id="hm-chars" title="Characters" aria-label="Characters"><span id="hm-chars-ic"></span></button><div id="hm-list" class="hidden"></div></div>
+        <div class="hm-pick"><span id="hm-name">Templar</span><button class="mini-btn hm-icon" id="hm-chars" title="Characters" aria-label="Characters"><span id="hm-chars-ic"></span></button><div id="hm-list" class="hidden"></div></div>
         <div id="hm-gold"></div>
       </div>
       <div id="hm-label" class="hidden"></div>
@@ -309,7 +309,7 @@ export class Hermitage {
         list.querySelector('.hm-ask')?.remove();
         const ask = document.createElement('div'); ask.className = 'hm-ask';
         const gold = this.game.accounts.data?.gold || 0, can = gold >= MAGE_UNLOCK;
-        ask.innerHTML = `<div>Unlock the Spellsword for ◆ ${MAGE_UNLOCK}?${can ? '' : `<br><i>You have ◆ ${gold}</i>`}</div><button class="hm-yes"${can ? '' : ' disabled'}>Yes</button><button class="hm-no">No</button>`;
+        ask.innerHTML = `<div>Unlock the Adept for ◆ ${MAGE_UNLOCK}?${can ? '' : `<br><i>You have ◆ ${gold}</i>`}</div><button class="hm-yes"${can ? '' : ' disabled'}>Yes</button><button class="hm-no">No</button>`;
         ask.querySelector('.hm-no').addEventListener('click', (ev) => { ev.stopPropagation(); ask.remove(); });
         ask.querySelector('.hm-yes').addEventListener('click', (ev) => { ev.stopPropagation(); if (this.unlockMage()) { list.classList.add('hidden'); this.setKind('mage'); } });
         b.after(ask);
@@ -401,9 +401,9 @@ export class Hermitage {
     const J = JUKEBOX[kind], juke = jukebox(J.wood); juke.group.position.set(J.at[0], 0, J.at[1]); juke.group.rotation.y = J.ry; g.add(juke.group);
     this.juke = juke; this.jukeLight = new THREE.PointLight(0xffb060, 1.6, 3, 1.5); this.jukeLight.position.set(J.at[0], 1.0, J.at[1] + 0.7); scene.add(this.jukeLight);
     this.items = [
-      { id: 'stash', group: stash.group, label: 'Stash', sub: 'Shared by all your characters' },
-      { id: 'wardrobe', group: wardrobe, label: 'Wardrobe', sub: 'Change your look' },
-      { id: 'jukebox', group: juke.group, label: 'Jukebox', sub: 'Choose the music' },
+      { id: 'stash', group: stash.group, label: 'Reliquary', sub: 'Shared by all your characters' },
+      { id: 'wardrobe', group: wardrobe, label: 'Armoury', sub: 'Change your look' },
+      { id: 'jukebox', group: juke.group, label: 'Vox-Caster', sub: 'Choose the music' },
     ];
     this.showRecord(false);
     this.scene = scene;
@@ -422,7 +422,7 @@ export class Hermitage {
     rig.apply(P.rest, 1, 60);
     this.scene.add(rig.root);
     this.rig = rig;
-    const item = { id: 'char', group: rig.root, label: NAMES[kind], sub: 'Skill tree' };
+    const item = { id: 'char', group: rig.root, label: NAMES[kind], sub: 'Rites of augmentation (skill tree)' };
     this.items = this.items.filter((x) => x.id !== 'char');
     this.items.push(item);
     this.addOutline(item);

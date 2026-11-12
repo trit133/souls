@@ -20,8 +20,8 @@ export const STATS = {
   stPct: { name: 'Endurance', fmt: (v) => `+${v}% stamina`, icon: 'st' },
   move: { name: 'Swiftness', fmt: (v) => `+${v}% move speed`, icon: 'move' },
   aspd: { name: 'Quickness', fmt: (v) => `+${v}% attack speed`, icon: 'aspd' },
-  potion: { name: 'Alchemy', fmt: (v) => `+${v}% potion healing`, icon: 'potion' },
-  flask: { name: 'Extra Flask', fmt: (v) => `+${v} flask`, icon: 'flask' },
+  potion: { name: 'Stim Synthesis', fmt: (v) => `+${v}% injector healing`, icon: 'potion' },
+  flask: { name: 'Spare Injector', fmt: (v) => `+${v} injector`, icon: 'flask' },
   // knight
   armor: { name: 'Armour', fmt: (v) => `+${v}% armour (less physical damage taken)`, icon: 'dr' },
   blockDrain: { name: 'Steady Guard', fmt: (v) => `${v}% less stamina drain while blocking`, icon: 'blockDrain' },
@@ -107,9 +107,9 @@ const PCT_MID = [{ hpPct: 2 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }];
 const PCT_OUTER = [{ hpPct: 3 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }, { potion: 5 }];
 
 export const EVOS = {
-  knight: { key: 'evo_knight', name: 'Shield Charge', desc: 'Block + heavy charges behind a spectral shield, knocking enemies back (20 s cooldown); attack right after it for a leaping overhead.' },
+  knight: { key: 'evo_knight', name: 'Aegis Ram', desc: 'Block + heavy charges behind an electromagnetic barrier, knocking enemies back (20 s cooldown); attack right after it for a leaping overhead.' },
   rogue: { key: 'evo_rogue', name: 'Red Riposte', desc: 'Parry window +50 ms, a 5 s parry cooldown, and a parry blinks you behind the enemy for an instant backstab.' },
-  mage: { key: 'evo_mage', name: 'Twin Inferno', desc: 'Your fireball splits into two larger fireballs.' },
+  mage: { key: 'evo_mage', name: 'Twin Plasma', desc: 'Your plasma charge splits into two larger plasma charges.' },
 };
 
 // ---------- shapes ----------
@@ -415,7 +415,7 @@ const KNIGHT = {
      ['Charging Bull', { chargeCd: 2, chargeKb: 25 }], ['Guarded Heart', { blockDrain: 10, hpPct: 5 }], ['Bastion', { armor: 3, chip: 2 }]],
     [["Executioner's Mark", { execute: 25 }], ['Brutal Edge', { physDmg: 4, physPct: 8 }], ['Crushing Weight', { stun: 10, physPct: 5 }],
      ['Crowning Blow', { finisherPct: 25 }], ['Relentless', { aspd: 6, physDmg: 2 }], ['Last Stand', { lowHpDmg: 25 }]],
-    [['Pyre', { burnDmg: 20 }], ['Kindled Steel', { fireDmg: 4, firePct: 25 }], ['Holy Charge', { chargeCd: 2, fireDmg: 2 }],
+    [['Immolation Rite', { burnDmg: 20 }], ['Kindled Steel', { fireDmg: 4, firePct: 25 }], ['Sanctified Ram', { chargeCd: 2, fireDmg: 2 }],
      ['Flame Warden', { fireRes: 10, firePct: 15 }], ['Zeal', { move: 5, aspd: 4 }], ['Smoulder', { firePct: 30 }]],
     [['Second Wind', { killHeal: 3 }], ['Thick Hide', { hp: 15, hpPct: 6 }], ['Endurance', { st: 8, stPct: 8 }],
      ['Wardstone', { fireRes: 8, bleedRes: 8, poisonRes: 8, frostRes: 8 }], ['Field Medic', { potion: 15, hp: 6 }], ['Deep Breath', { stPct: 10, potion: 6 }]],
@@ -453,7 +453,7 @@ const ROGUE = {
   keystones: [['Fleeting', { fleeting: 1 }], ['Glass Fang', { glassFang: 1 }], ['Plaguelord', { plague: 1 }], ['Blade Dance', { bladeDance: 1 }]],
   soon: [null,
     { name: 'Crimson Fan', desc: 'Evolves a thrown-knife volley still to come: a fan of blades that opens deep bleeding wounds on everything it passes through.' },
-    { name: 'Plague Cloud', desc: 'Evolves a poison flask still to come: it bursts into a lingering cloud that poisons and slows anything inside it.' },
+    { name: 'Plague Cloud', desc: 'Evolves a toxin canister still to come: it bursts into a lingering cloud that poisons and slows anything inside it.' },
     { name: 'Blade Waltz', desc: 'Evolves a spinning dash still to come: a whirl of cuts through a crowd that leaves you briefly untouchable.' }],
   extra: [{ parryWin: 2 }, { parryWin: 2 }], // the only parry window in the tree, in Shadow
 };
@@ -471,7 +471,7 @@ const MAGE = {
   defensive: 3, // Spellward
   notables: [
     [['Inferno', { firePct: 30 }], ['Wide Blast', { fireRadius: 15, fireCost: 4 }], ['Kindling', { fireCost: 6, fireDmg: 2 }],
-     ['Pyre', { burnDmg: 20 }], ['Fire Soul', { firePct: 15, fireRes: 10 }], ['Searing', { spellDmg: 10, fireDmg: 3 }]],
+     ['Immolation Rite', { burnDmg: 20 }], ['Fire Soul', { firePct: 15, fireRes: 10 }], ['Searing', { spellDmg: 10, fireDmg: 3 }]],
     [['Rime Edge', { frostPct: 30 }], ['Frozen Steel', { frostDmg: 4, knifeDmg: 8 }], ['Shatterpoint', { frozenDmg: 20 }],
      ['Cold Steel', { knifeDmg: 10, aspd: 4 }], ["Winter's Grip", { frostPct: 15, frostRes: 10 }], ['Glacial', { frostDmg: 3, physDmg: 2 }]],
     [['Deep Well', { mana: 20 }], ['Siphon', { manaHit: 2 }], ['Thrift', { boltCost: 2, fireCost: 4 }],

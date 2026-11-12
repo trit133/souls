@@ -16,7 +16,7 @@ const searchText = (n) => (n._search ??= (() => {
 })());
 
 const $ = (id) => document.getElementById(id);
-const NAMES = { knight: 'Knight', rogue: 'Rogue', mage: 'Spellsword' };
+const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
 const THEME = { knight: '#9ab4e8', rogue: '#e05a48', mage: '#b48aff' };
 export const MAGE_UNLOCK = 100 * NUM;
 // light-hit damage each character's weapon starts from (Knight first swing, Rogue first stab, Spellsword knife)
@@ -199,7 +199,7 @@ export class TreeUI {
     const cap = nodeCap(this.data, this.kind), full = have.size - 1 >= cap;
     $('tree-count').textContent = `${NAMES[this.kind]} · ${have.size - 1} / ${cap} nodes${full ? ' · limit reached' : ''}`;
     $('tree-lock').classList.toggle('hidden', !this.locked);
-    $('tree-unlock').textContent = `Unlock Spellsword · ◆ ${MAGE_UNLOCK}`;
+    $('tree-unlock').textContent = `Unlock the Adept · ◆ ${MAGE_UNLOCK}`;
     $('tree-unlock').disabled = !this.game.accounts.user || gold < MAGE_UNLOCK;
     const R = this.radius();
     let s = `<defs><radialGradient id="tg-bg"><stop offset="0" stop-color="${col}" stop-opacity=".14"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>`;
@@ -273,7 +273,7 @@ export class TreeUI {
     const st = (S) => Math.round((c.st + (S.st || 0)) * (1 + (S.stPct || 0) / 100));
     let h = head(`${NAMES[kind]} · from the tree`);
     h += row('Health', (S) => `${hp(S)}`) + row('Stamina', (S) => `${st(S)}`);
-    h += row('Flasks', (S) => `${c.flasks + (S.flask || 0)}`) + row('Potion healing', (S) => `+${fmt(S.potion || 0)}%`);
+    h += row('Injectors', (S) => `${c.flasks + (S.flask || 0)}`) + row('Injector healing', (S) => `+${fmt(S.potion || 0)}%`);
     h += row('Move speed', (S) => `+${fmt(S.move || 0)}%`) + row('Attack speed', (S) => `+${fmt(S.aspd || 0)}%`);
     h += head(`Damage · light hit ${LIGHT[kind]} base`);
     for (const k of TYPES) {
@@ -318,7 +318,7 @@ export class TreeUI {
     const cap = nodeCap(this.data, this.kind), atCap = have.size - 1 >= cap, phone = this.game.input.isPhone;
     const buyable = !got && !this.locked && signed && can && !atCap && gold >= cost;
     const status = got ? (this.resetting ? (phone ? 'Tap to mark for reset' : 'Click to mark for reset') : 'Owned')
-      : this.locked ? 'Unlock the Spellsword first' : !signed ? 'Sign in to buy' : !can ? 'Connect to it from a node you own'
+      : this.locked ? 'Unlock the Adept first' : !signed ? 'Sign in to buy' : !can ? 'Connect to it from a node you own'
         : atCap ? `Node limit ${cap} reached. ${capHint(cap)}.`
           : gold >= cost ? (phone ? 'Ready to unlock' : 'Click to unlock') : `Need ◆ ${cost - gold} more`;
     tip.innerHTML = `<div class="tt-name"></div>${lines.map(() => '<div class="tt-line"></div>').join('')}<div class="tt-ring">Ring ${n.ring}${cost ? ` · ◆ ${cost}` : ''}</div><div class="tt-status"></div>`

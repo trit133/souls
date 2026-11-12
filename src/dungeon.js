@@ -20,11 +20,11 @@ const key = (i, j) => i + ',' + j;
 const THEME_GROUND = { camp: 'dirt', ruins: 'stone', bridge: 'chasm', village: 'ash', crypt: 'crypt', bog: 'bog', gate: 'stone', start: 'stone' };
 // the three dungeons of a run, in order, and the enemies in them (weights)
 export const ACTS = [
-  { name: 'The Ashen Warrens', themes: ['camp', 'ruins', 'bridge'], ground: 'dirt', mix: { grunt: 4, spear: 2, archer: 2, brute: 0.35 } },
-  { name: 'The Hollow Deep', themes: ['village', 'crypt', 'ruins'], ground: 'ash', mix: { grunt: 3, spear: 3, archer: 2, brute: 0.6 } },
-  { name: 'The Drowned Halls', themes: ['bog', 'gate', 'crypt'], ground: 'bog', mix: { grunt: 3, spear: 3, archer: 3, brute: 0.8 } },
+  { name: 'The Rust Warrens', themes: ['camp', 'ruins', 'bridge'], ground: 'dirt', mix: { grunt: 4, spear: 2, archer: 2, brute: 0.35 } },
+  { name: 'The Hollow Forge-Deep', themes: ['village', 'crypt', 'ruins'], ground: 'ash', mix: { grunt: 3, spear: 3, archer: 2, brute: 0.6 } },
+  { name: 'The Coolant Drowns', themes: ['bog', 'gate', 'crypt'], ground: 'bog', mix: { grunt: 3, spear: 3, archer: 3, brute: 0.8 } },
 ];
-const ARENAS = { hask: { theme: 'pit', name: "The Executioner's Pit", ground: 'arena' }, vael: { theme: 'cloister', name: 'The Moonlit Cloister', ground: 'crypt' }, gorrath: { theme: 'forge', name: 'The Slag Forge', ground: 'ash' } };
+const ARENAS = { hask: { theme: 'pit', name: 'The Penitent Pit', ground: 'arena' }, vael: { theme: 'cloister', name: 'The Cryo Cloister', ground: 'crypt' }, gorrath: { theme: 'forge', name: 'The Slag Foundry', ground: 'ash' } };
 export const ELITES = ['frenzied', 'armoured', 'blazing'];
 export const SEALS_NEEDED = 3;
 

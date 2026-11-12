@@ -93,7 +93,7 @@ export class Seals {
     s.state = 'active';
     const g = this.game;
     g.audio.play('fog');
-    g.ui.toast(s.def.kind === 'circle' ? 'HOLD THE CIRCLE' : 'BREAK THE CURSED EFFIGIES', 2.2);
+    g.ui.toast(s.def.kind === 'circle' ? 'HOLD THE UPLINK' : 'DESTROY THE HERETIC IDOLS', 2.2);
     if (!net && g.mp.active && !g.isGuest) g.mp.sendAll({ t: 'seal', i: s.def.i, s: 'a' });
   }
 
@@ -122,8 +122,8 @@ export class Seals {
     g.fx.addShake(0.4);
     g.audio.play('bonfire');
     if (!net && g.mp.active && !g.isGuest) g.mp.sendAll({ t: 'seal', i: d.i, s: 'b' });
-    g.ui.toast(this.broken <= SEALS_NEEDED ? `SEAL BROKEN ${this.broken}/${SEALS_NEEDED}` : 'SEAL BROKEN', 2.5);
-    if (opens) setTimeout(() => g.ui.toast('THE SEALED DOOR HAS OPENED', 3), 2600);
+    g.ui.toast(this.broken <= SEALS_NEEDED ? `WARD SHRINE BROKEN ${this.broken}/${SEALS_NEEDED}` : 'WARD SHRINE BROKEN', 2.5);
+    if (opens) setTimeout(() => g.ui.toast('THE BLAST DOOR GRINDS OPEN', 3), 2600);
     this.drawLabel();
   }
 
@@ -168,7 +168,7 @@ export class Seals {
     s.visible = !open;
     g.font = 'bold 34px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.lineWidth = 6; g.strokeStyle = '#000';
-    const t = `SEALED ${Math.min(this.broken, SEALS_NEEDED)}/${SEALS_NEEDED}`;
+    const t = `LOCKED ${Math.min(this.broken, SEALS_NEEDED)}/${SEALS_NEEDED}`;
     g.strokeText(t, 128, 32); g.fillStyle = '#c99aff'; g.fillText(t, 128, 32);
     tex.needsUpdate = true;
   }
@@ -181,9 +181,9 @@ export class Seals {
       if (Math.hypot(p.pos.x - d.x, p.pos.z - d.z) > 16) continue;
       if (d.kind === 'circle') {
         const inside = Math.hypot(p.pos.x - d.x, p.pos.z - d.z) < d.radius;
-        return `${inside ? 'HOLD THE CIRCLE' : 'GET IN THE CIRCLE'} · ${Math.max(0, Math.ceil(HOLD_TIME - s.prog))}s`;
+        return `${inside ? 'HOLD THE UPLINK' : 'GET IN THE UPLINK'} · ${Math.max(0, Math.ceil(HOLD_TIME - s.prog))}s`;
       }
-      if (d.kind === 'altar') return `BREAK THE EFFIGIES · ${d.effigies.filter((sp) => !sp.enemy.alive).length}/3`;
+      if (d.kind === 'altar') return `DESTROY THE IDOLS · ${d.effigies.filter((sp) => !sp.enemy.alive).length}/3`;
     }
     return null;
   }

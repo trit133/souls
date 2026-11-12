@@ -4,7 +4,7 @@
 export const ACTIONS = [
   ['up', 'Move up'], ['down', 'Move down'], ['left', 'Move left'], ['right', 'Move right'],
   ['sprint', 'Sprint'], ['attack', 'Light attack (R1)'], ['heavy', 'Heavy / Bolt (R2)'], ['roll', 'Roll / backstep'],
-  ['special', 'Block / Parry / Fireball (L1)'], ['heal', 'Heal'], ['lock', 'Lock on'], ['interact', 'Interact / revive'], ['map', 'Map'], ['pause', 'Pause'],
+  ['special', 'Block / Parry / Plasma (L1)'], ['heal', 'Inject (heal)'], ['lock', 'Lock on'], ['interact', 'Interact / revive'], ['map', 'Map'], ['pause', 'Pause'],
 ];
 
 export const DEFAULT_BINDS = {

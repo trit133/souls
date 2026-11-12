@@ -18,7 +18,7 @@ function ends(w, mod, len, half = 2.5) {
 
 export const MODULES = {
   ruins: {
-    name: 'The Broken Road', len: 42, ground: 'stone',
+    name: 'The Shattered Causeway', len: 42, ground: 'stone',
     build(w, Z, mod) {
       ends(w, mod, 42);
       w.rect(-4, 4, 0, 12); w.rect(-10, 2, 10, 24); w.rect(-3, 8, 22, 34); w.rect(-4, 4, 32, 42);
@@ -34,7 +34,7 @@ export const MODULES = {
   },
 
   camp: {
-    name: 'The Ashen Camp', len: 44, ground: 'dirt',
+    name: 'The Siege Bivouac', len: 44, ground: 'dirt',
     build(w, Z, mod) {
       ends(w, mod, 44);
       w.rect(-15, 15, 3, 41);
@@ -59,7 +59,7 @@ export const MODULES = {
   },
 
   bridge: {
-    name: 'The Hanging Span', len: 46, ground: 'chasm',
+    name: 'The Hanging Gantry', len: 46, ground: 'chasm',
     build(w, Z, mod) {
       ends(w, mod, 46);
       w.rect(-7, 7, 0, 9); w.rect(-1.7, 1.7, 8, 38); w.rect(-4.5, 4.5, 19, 26); w.rect(-7, 7, 37, 46);
@@ -84,7 +84,7 @@ export const MODULES = {
   },
 
   village: {
-    name: 'The Burned Hamlet', len: 48, ground: 'ash',
+    name: 'The Burned Hab-Block', len: 48, ground: 'ash',
     build(w, Z, mod) {
       ends(w, mod, 48);
       w.rect(-13, 13, 3, 45);
@@ -102,7 +102,7 @@ export const MODULES = {
   },
 
   crypt: {
-    name: 'The Ossuary Hall', len: 46, ground: 'crypt',
+    name: 'The Ossuary Reliquary', len: 46, ground: 'crypt',
     build(w, Z, mod) {
       ends(w, mod, 46);
       w.rect(-6.5, 6.5, 0, 46);
@@ -122,7 +122,7 @@ export const MODULES = {
   },
 
   bog: {
-    name: 'The Sunken Mire', len: 48, ground: 'bog',
+    name: 'The Coolant Mire', len: 48, ground: 'bog',
     build(w, Z, mod) {
       ends(w, mod, 48);
       w.rect(-13, 13, 3, 45);
@@ -237,7 +237,7 @@ export const MINI_ARENAS = {
 };
 
 export const BOSS_ARENA = {
-  name: 'The Throne of Ash', len: 58, ground: 'arena',
+  name: 'The Throne of the Last Sentinel', len: 58, ground: 'arena',
   build(w, Z, mod) {
     w.rect(-3, 3, 0, 8);
     w.rect(-3, 3, 5, 13, { gate: 'boss_in' });
