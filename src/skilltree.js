@@ -102,7 +102,7 @@ export const EVOS = {
 // ---------- travel nodes ----------
 // Blank until bought; then you pick what each gives (and can change it any time). Strength, Dexterity or Intelligence
 // (Intelligence feeds mana, which only the Adept uses for now), or on a resistance travel node one element.
-export const TRAVEL = { str: { hp: 5 * NUM }, dex: { st: 4 }, int: { mana: 6 } };
+export const TRAVEL = { str: { hp: 3 * NUM }, dex: { st: 4 }, int: { mana: 6 } };
 export const TRAVEL_NAME = { str: 'Strength', dex: 'Dexterity', int: 'Intelligence' };
 export const RES_PICKS = ['fire', 'frost', 'bleed', 'poison'];
 export const RES_PICK = 10; // a resistance travel node: +10% to the element picked (20 of them: 50% to all four)
@@ -128,7 +128,7 @@ const SHAPES = {
 // a cluster: [region, ring, small nodes' gives (cycled), notable, its gives]; opts: n (small nodes, else by ring),
 // fixed (values not scaled by distance)
 const CL = (g, ring, smalls, name, give, o = {}) => ({ g, ring, smalls, name, give, ...o });
-const life = (g, r, name, k = 1) => CL(g, r, [{ hp: 5 * k }], name, { hp: 15 * k, hpPct: 2 * k });
+const life = (g, r, name, k = 1) => CL(g, r, [{ hp: 5 * k }], name, { hp: 10.5 * k, hpPct: 2 * k });
 const vit = (g, r, name, k = 1, extra = {}) => CL(g, r, [{ hpPct: 2 * k }], name, { hpPct: 6 * k, ...extra });
 const stam = (g, r, name, extra = {}) => CL(g, r, [{ st: 3 }, { stPct: 2 }], name, { st: 6, stPct: 6, ...extra });
 const medic = (g, r, name, extra = {}) => CL(g, r, [{ potion: 4 }], name, { potion: 10, flask: 1, ...extra });
@@ -157,7 +157,7 @@ const KNIGHT = {
     resC(0, 12, 'frost', 'Hearthguard'), resC(1, 12, 'bleed', 'Clotting Salve'), resC(2, 12, 'fire', 'Flame Warden'), resC(3, 12, 'poison', 'Antitoxin'),
     armour(0, 13, 'Bastion', 3, 4, 6), phys(1, 13, 'Brutal Edge'), CL(2, 13, [{ chargeCd: 0.5 }, { chargeKb: 10 }], 'Charging Bull', { chargeCd: 2, chargeKb: 25 }), life(3, 14, 'Bulwark of Flesh', 2),
     CL(0, 16, [{ counter: 5 }], 'Riposte Master', { counter: 15, counterSt: 15 }), critP(1, 16, 'Crowning Blow', { finisherPct: 20 }), elem(2, 16, 'fire', 'Immolation Rite', { firePct: 10, burnDmg: 20 }), vit(3, 16, 'Second Wind', 1.5, { killHeal: 3 }),
-    armour(0, 18, 'Aegis of Faith', 3, 5, 17), phys(1, 18, "Executioner's Mark", { execute: 25, physPct: 5 }), elem(2, 18, 'poison', 'Venom Edge'), medic(3, 18, 'Battle Medic', { hp: 10 }),
+    armour(0, 18, 'Aegis of Faith', 3, 5, 17), phys(1, 18, "Executioner's Mark", { execute: 25, physPct: 5 }), elem(2, 18, 'poison', 'Venom Edge'), medic(3, 18, 'Battle Medic', { hp: 7 }),
     life(0, 19, "Titan's Vigour", 2), elem(1, 19, 'bleed', 'Serrated', { bleedDmg: 3, bleedPct: 20, lowHpDmg: 20 }),
     critP(1, 10, 'Ferocity'), crit(1, 15, 'Deadeye'),
   ],
@@ -178,7 +178,7 @@ const ROGUE = {
     resC(0, 12, 'frost', 'Warm Blood'), resC(1, 12, 'bleed', 'Clotting'), resC(2, 12, 'poison', 'Antitoxin'), resC(3, 12, 'fire', 'Fireproof'),
     life(0, 13, 'Shadow Vigour'), critP(1, 13, 'Cruel Edge'), elem(2, 13, 'poison', 'Virulence', { poisonPct: 30 }), phys(3, 13, "Duelist's Focus", { ripDmg: 8, physPct: 6 }),
     CL(0, 16, [{ ripDmg: 4 }], 'Riposte Artist', { ripDmg: 10, parryWin: 2 }), elem(1, 16, 'bleed', 'Exsanguinate', { bleedTgt: 20 }), elem(2, 16, 'poison', 'Wither', { poisonedDmg: 20 }), CL(3, 16, [{ aspd: 2 }, { physPct: 3 }], 'Finishing Flourish', { finisherPct: 25 }),
-    CL(0, 18, [{ rollCost: 4 }, { move: 2 }], 'Untouchable', { iframe: 0.02, move: 4 }), crit(1, 18, "Executioner's Kiss", { execute: 20 }), vit(2, 18, 'Venom Blood', 1, { hp: 10 }), elem(3, 18, 'frost', 'Rime Edge'),
+    CL(0, 18, [{ rollCost: 4 }, { move: 2 }], 'Untouchable', { iframe: 0.02, move: 4 }), crit(1, 18, "Executioner's Kiss", { execute: 20 }), vit(2, 18, 'Venom Blood', 1, { hp: 7 }), elem(3, 18, 'frost', 'Rime Edge'),
     medic(3, 19, 'Red Harvest', { killHeal: 2 }), elem(2, 19, 'fire', 'Ember Edge'), critP(1, 10, 'Ferocity'),
   ],
   keystones: [['Fleeting', { fleeting: 1 }], ['Glass Fang', { glassFang: 1 }], ['Plaguelord', { plague: 1 }], ['Blade Dance', { bladeDance: 1 }]],
@@ -484,7 +484,7 @@ export function describe(n, pick = null) {
   if (n.role === 'socket') return { name: 'Rune Socket', lines: ['An empty socket. Runes found later in the game will fit here.'] };
   if (n.soon) return { name: `Evolution · ${n.soon.name}`, lines: [n.soon.desc, 'Coming soon: its ability isn\'t in the game yet'] };
   if (isTravel(n) && n.res) return { name: 'Resistance Node', lines: pick ? [`+${RES_PICK}% ${pick} resistance`, 'Click to change the element'] : [`Pick an element: +${RES_PICK}% Fire, Frost, Bleed or Poison resistance`] };
-  if (isTravel(n)) return { name: pick ? `Travel · ${TRAVEL_NAME[pick]}` : 'Travel Node', lines: pick ? [STATS[Object.keys(TRAVEL[pick])[0]].fmt(Object.values(TRAVEL[pick])[0]), 'Click to change the stat'] : ['Pick one: Strength (+50 health), Dexterity (+4 stamina) or Intelligence (+6 mana)'] };
+  if (isTravel(n)) return { name: pick ? `Travel · ${TRAVEL_NAME[pick]}` : 'Travel Node', lines: pick ? [STATS[Object.keys(TRAVEL[pick])[0]].fmt(Object.values(TRAVEL[pick])[0]), 'Click to change the stat'] : ['Pick one: Strength (+30 health), Dexterity (+4 stamina) or Intelligence (+6 mana)'] };
   const lines = Object.entries(n.give).map(([k, v]) => STATS[k].fmt(+v.toFixed(2)));
   const k = Object.keys(n.give)[0];
   if (n.keystone) return { name: `Keystone · ${n.notable}`, lines };
