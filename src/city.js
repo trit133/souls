@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { rng } from './world.js';
 import { mix, ELITES } from './dungeon.js';
 import { arenaFurnish, stoneRing } from './modules.js';
+import { buildChest } from './chests.js';
 import { decorateArena, candles, bones, corpse, sacks, cart, crows, bloodStain, cage, skullStake } from './decor.js';
 
 const MAP_SEED = 0x5a11f; // the map's own stream: the same lanes and buildings every raid
@@ -732,7 +733,7 @@ export class City {
       return w.spawns[w.spawns.length - 1];
     };
     const regular = (noBrute) => { let t = weighted(r, mixW); if (t === 'brute' && noBrute) t = 'grunt'; return t; };
-    const pack = (n, x0, x1, z0, z1, o = {}) => { let brute = false; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === 'brute') brute = true; add(t, p); } };
+    const pack = (n, x0, x1, z0, z1, o = {}) => { let brute = false; const out = []; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === 'brute') brute = true; out.push(add(t, p)); } return out; };
 
     // the shrines' guards first (so nothing else crowds them)
     for (const S of this.sites) {
@@ -761,10 +762,19 @@ export class City {
       placed.push({ x: d.x, z: d.z }); // (and keep everyone else off the shrine itself)
     }
 
+    // supply chests (chests.js): 2-4 buildings each hide one, with a couple more enemies than usual round it
+    const chestAt = new Set(shuffle(this.buildings.filter((b) => !b.yard), r).slice(0, 2 + Math.floor(r() * 3)));
     // in the buildings and yards: most houses hold someone in the dark
     for (const b of this.buildings) {
-      const n = b.basement === 'site' ? 2 + (r() < 0.5 ? 1 : 0) : b.yard ? (r() < 0.5 ? 1 : 0) : b.ruin ? 1 : r() < 0.5 ? 1 + (r() < 0.35 ? 1 : 0) : 0;
-      pack(n, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
+      let n = b.basement === 'site' ? 2 + (r() < 0.5 ? 1 : 0) : b.yard ? (r() < 0.5 ? 1 : 0) : b.ruin ? 1 : r() < 0.5 ? 1 + (r() < 0.35 ? 1 : 0) : 0;
+      const c = chestAt.has(b) && spotIn(b.x0 + 1.3, b.x1 - 1.3, b.z0 + 1.3, b.z1 - 1.3, { gap: 3 });
+      if (c) {
+        this.at(w, c.x, c.z);
+        placed.push(c);
+        const chest = buildChest(w, c.x, c.z, pick(r, [0, Math.PI / 2, Math.PI, -Math.PI / 2]));
+        chest.guards = pack(n + 2, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
+        w.chests.push(chest);
+      } else pack(n, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
     }
     // the squares that aren't a shrine's
     for (const B of this.blocks) if (B.type === 'plaza' && !this.sites.some((S) => S.key === B.key && !S.under)) pack(1 + (r() < 0.5 ? 1 : 0), B.x0, B.x1, B.z0, B.z1);

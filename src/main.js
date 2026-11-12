@@ -15,6 +15,7 @@ import { AREAS } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
+import { Chests } from './chests.js';
 import { Minimap } from './minimap.js';
 import { Player } from './player.js';
 import { Enemy, NIGHT } from './enemies.js';
@@ -119,6 +120,7 @@ class Game {
     this.deaths = 0;
     this.reserves = [];
     this.seals = new Seals(this);
+    this.chests = new Chests(this);
     this.minimap = new Minimap(this);
     this.buildRun();
 
@@ -292,6 +294,7 @@ class Game {
     this.tokens = 0;
     this.resetEncounters();
     this.seals.setup(this.world);
+    this.chests.setup(this.world);
     this.minimap.setup(this.world);
   }
 
@@ -1836,6 +1839,7 @@ class Game {
         this.updateProjectiles(dt);
         this.updateHearts(dt);
         this.seals.update(dt);
+        this.chests.update(dt);
         this.mp.tick(dt);
         this.stepRevive(dt);
       } else {
@@ -1848,6 +1852,7 @@ class Game {
       const atPortal = this.portal && p.alive && Math.hypot(p.pos.x - this.portal.x, p.pos.z - this.portal.z) < 2.2;
       const sealLine = this.seals.promptFor(p);
       const stair = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.stairAt?.(p.pos.x, p.pos.z) : null;
+      const chest = this.chests.promptFor(p, this.input.lastDevice === 'touch' ? 'Tap' : 'F');
       if (down) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Revive ${down.name} (all lose 10% max health)`);
         if (presses.has('interact')) this.startRevive(down);
@@ -1857,6 +1862,9 @@ class Game {
       } else if (stair) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: ${stair.label}`);
         if (presses.has('interact')) this.takeStair(stair);
+      } else if (chest) {
+        this.ui.prompt(chest.line);
+        if (presses.has('interact')) this.chests.tryOpen(chest.c);
       } else if (sealLine) this.ui.prompt(sealLine);
       else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
       if (this.portal) this.portal.ring.material.opacity = 0.6 + Math.sin(this.time * 5) * 0.3;
