@@ -17,6 +17,7 @@ import * as fireball from './pixelfx/fx/fire/fireball.js';
 import * as explosion from './pixelfx/fx/explosions/small-explosion.js';
 import * as swordSlash from './pixelfx/fx/melee/sword-slash.js';
 import * as groundSlam from './pixelfx/fx/impacts/ground-slam.js';
+import * as shieldBlock from './pixelfx/fx/impacts/shield-block.js';
 
 const ICE = ['#10203a', '#1c3a6a', '#2c5ca8', '#4a8ae0', '#6ab4ff', '#9fd8ff', '#d4f0ff', '#ffffff'];
 const BLOOD = ['#2a0808', '#5a1010', '#8a1a14', '#c42a1e', '#ff5a3a', '#ffb08a', '#ffffff'];
@@ -24,6 +25,11 @@ const STEEL = ['#3a3a44', '#6a6e7a', '#9aa0aa', '#c8ccd4', '#e8ecf2', '#f8faff',
 const RED = ['#1a0404', '#4a0808', '#8a1010', '#c41a14', '#ff3a2a', '#ff8a6a', '#ffd8c8', '#ffffff'];
 const BLACK = ['#020202', '#080708', '#100e10', '#1a171a', '#262226', '#332e33', '#403a40', '#4e474e'];
 const GOLD = ['#1a1206', '#3a2810', '#6a4a18', '#a87a28', '#e0b040', '#ffd870', '#fff0b0', '#ffffff'];
+// The Last Crusade: crimson plasma for the "fireball", electric blue for parries and the aegis, bio-green for the
+// regeneration injector
+const PLASMA = ['#1a0408', '#4a0a14', '#8a1420', '#d02a20', '#ff6a2a', '#ffb05a', '#ffe8c0', '#ffffff'];
+const ELECTRIC = ['#0a0a2a', '#16205a', '#2a3aa0', '#3a6ae0', '#5aa0ff', '#9ad0ff', '#dcf0ff', '#ffffff'];
+const BIO = ['#06140a', '#0e2e16', '#16502a', '#22803e', '#44b85a', '#86e07a', '#d0ffc0', '#ffffff'];
 const ASH = ['#1a1612', '#2e2822', '#4a423a', '#6e655a', '#948a7c', '#b8ae9e', '#d8d0c0', '#f0ead8'];
 
 // name -> effect, options, size on screen (game px per effect px), how long a loop lasts before it fades
@@ -39,17 +45,18 @@ export const PRESETS = {
   redSlash: { mod: swordSlash, scale: 0.75, aim: true, opts: { palette: RED } },
   shroud: { mod: poof, scale: 0.75, opts: { palette: BLACK } },
   redPoof: { mod: poof, scale: 0.55, opts: { palette: RED } },
-  parry: { mod: parry, scale: 0.5 },
-  heal: { mod: heal, scale: 0.8 },
+  parry: { mod: parry, scale: 0.5, opts: { palette: ELECTRIC } },
+  heal: { mod: heal, scale: 0.8, opts: { palette: BIO } },
+  aegis: { mod: shieldBlock, scale: 0.55, aim: true, opts: { palette: ELECTRIC } }, // the Templar's Aegis Ram barrier
   poof: { mod: poof, scale: 0.5, opts: { palette: ASH } },
   bolt: { mod: plasma, scale: 0.5, aim: true, opts: { palette: ICE } },
   boltHit: { mod: manaBurst, scale: 0.28, opts: { palette: ICE } },
-  fireball: { mod: fireball, scale: 0.55, aim: true },
-  bigFireball: { mod: fireball, scale: 0.75, aim: true },
-  explosion: { mod: explosion, scale: 0.48, cut: 2.2 },
-  charge: { mod: spellCharge, scale: 0.42 },
+  fireball: { mod: plasma, scale: 0.6, aim: true, opts: { palette: PLASMA } }, // a plasma charge (the Fire element)
+  bigFireball: { mod: plasma, scale: 0.85, aim: true, opts: { palette: PLASMA } },
+  explosion: { mod: explosion, scale: 0.48, cut: 2.2, opts: { palette: PLASMA } },
+  charge: { mod: spellCharge, scale: 0.42, opts: { palette: ELECTRIC } },
   chargeIce: { mod: spellCharge, scale: 0.3, opts: { palette: ICE } },
-  circle: { mod: magicCircle, scale: 0.36, cut: 1.6 },
+  circle: { mod: magicCircle, scale: 0.36, cut: 1.6, opts: { palette: ELECTRIC } },
   blast: { mod: explosion, scale: 0.55, cut: 3 },
   // combo finishers
   goldSlam: { mod: groundSlam, scale: 0.5, cut: 1.5, opts: { palette: GOLD } },

@@ -344,7 +344,7 @@ export class Player extends Actor {
     const torso = 0.46 * this.c.model.bulk;
     this.spectralWidth = torso * 1.2;
     const m = new THREE.Mesh(new THREE.BoxGeometry(this.spectralWidth, 1.7, 0.06),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+      new THREE.MeshBasicMaterial({ color: 0x7ac0ff, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending })); // (an electromagnetic barrier)
     m.position.set(0, 1.05, 0.75); m.visible = false;
     this.rig.root.add(m);
     this.spectral = m;
@@ -759,6 +759,7 @@ export class Player extends Actor {
     else if (mag > 0.2) this.yaw = Math.atan2(dir.x, dir.z);
     this.chargeHits = new Set();
     this.blocking = false;
+    { const f = this.fwd(); this.game.pfx?.play('aegis', new THREE.Vector3(this.pos.x + f.x * 0.4, 0.05, this.pos.z + f.z * 0.4), { dir: f }); } // (the barrier flares up)
     this.setState('charge');
     this.game.audio.play('roll', 1); this.game.audio.play('clang', 0.4);
     this.game.vfx('chargeStart', this.pos.clone());

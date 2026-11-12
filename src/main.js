@@ -1042,7 +1042,7 @@ class Game {
       b.setAttribute('aria-pressed', b.dataset.pick === this.lobbyKind);
     });
     const lock = document.querySelector('[data-pick="mage"] > span'); // (the name above is a pixel label)
-    lock.textContent = mageOpen ? 'Hits build mana · bolt & fireball' : 'Locked · tap to unlock in Skill Trees';
+    lock.textContent = mageOpen ? 'Hits build mana · cryo lance & plasma' : 'Locked · tap to unlock in Skill Trees';
     this.renderChat();
   }
 
