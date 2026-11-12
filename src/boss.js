@@ -493,7 +493,7 @@ export const BOSSES = {
     id: 'varek', name: 'Archon Varek, the Last Sentinel', hp: 1300, poise: 170, radius: 1.05, walk: 2.2, gap: [0.45, 1.2],
     phase2: true, moves: BOSS_MOVES, weights: VAREK_WEIGHTS,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 6 ? 'leap' : 'thrust') : 'sweep'),
-    model: { scale: 2.1, cloth: 0x2a2624, armor: 0x3c3c44, accent: 0x5a1a14, skin: 0x5a5048, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25, kit: 'varek' },
+    model: { scale: 2.1, cloth: 0x1e1c20, armor: 0x34343c, accent: 0x6a1412, skin: 0x5a5048, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, pauldrons: true, cape: true, bulk: 1.25, kit: 'varek' },
   },
   hask: {
     id: 'hask', name: 'Executor Hask, the Iron Penitent', elems: { bleed: 0.3 }, hp: 700, poise: 115, radius: 0.8, walk: 3.0, gap: [0.3, 0.9],
@@ -637,14 +637,14 @@ Object.assign(BOSSES, {
     id: 'vael', name: 'Sister Vael, Blade of the Cryo Choir', elems: { frost: 0.15, bleed: 0.15 }, elemBuild: 0.5, hp: 540, poise: 75, radius: 0.6, walk: 3.6, gap: [0.25, 0.7],
     phase2: false, kneels: false, evade: true, moves: VAEL_MOVES, weights: VAEL_WEIGHTS, leapH: 3.5, leapR: 2.2, leapAir: 0.5, leapCd: 5,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'lunge') : 'slash2'),
-    model: { scale: 1.25, cloth: 0x1e2032, armor: 0x2c2e44, accent: 0x5a5a9a, skin: 0xb8a090, head: 'none', weapon: 'daggers', eyes: 0xa0c8ff, eyeZ: 0.17, cape: true, bulk: 0.95, kit: 'vael' },
+    model: { scale: 1.25, cloth: 0x1e2232, armor: 0x2c3244, accent: 0x5a7aaa, skin: 0xb8a090, head: 'none', weapon: 'daggers', eyes: 0xa0c8ff, eyeZ: 0.17, cape: true, bulk: 0.95, kit: 'vael' },
   },
   gorrath: {
     // faster than he was (walk 1.9, attacks 1x), still slower than Hask (3.0) and Vael (3.6)
     id: 'gorrath', name: 'Gorrath, the Slag Engine', elems: { fire: 0.3 }, hp: 980, poise: 230, radius: 1.15, walk: 2.5, gap: [0.4, 1.0], atkSpeed: 1.25,
     phase2: false, kneels: false, moves: GORRATH_MOVES, weights: GORRATH_WEIGHTS, leapH: 4.2, leapR: 3.4, leapAir: 0.75, leapCd: 8,
     punish: (b, dist) => (dist > 4 ? (b.leapCd <= 0 && dist > 5 ? 'leap' : 'hurl') : 'swat'),
-    model: { scale: 2.0, cloth: 0x3a3a2a, armor: 0x4a4a3a, accent: 0x2a2a1a, skin: 0x5a6a4a, head: 'horned', weapon: 'maul', eyes: 0x8aff4a, bulk: 1.5, pauldrons: true, kit: 'gorrath' },
+    model: { scale: 2.0, cloth: 0x2a2826, armor: 0x3e3c3a, accent: 0x1e1c1a, skin: 0x4a4644, head: 'helm', weapon: 'maul', eyes: 0xff8a2a, bulk: 1.5, pauldrons: true, kit: 'gorrath' },
   },
 });
 

@@ -359,13 +359,22 @@ export function attachWeapon(r, kind, o) {
     r.base.position.set(0, 0, baseZ); g.add(r.base);
     r.tip.position.set(0, 0, len); g.add(r.tip);
   };
-  if (kind === 'sword' || kind === 'rusty') {
-    const blade = kind === 'rusty' ? r.m(0x8a6a50) : steel;
-    const len = kind === 'rusty' ? 0.85 : 1.05;
-    g.add(box(0.05, 0.05, 0.22, grip, 0, 0, 0));
-    g.add(box(0.26, 0.05, 0.05, kind === 'rusty' ? grip : gold, 0, 0, 0.12));
-    g.add(box(0.03, 0.08, len - 0.15, blade, 0, 0, 0.12 + (len - 0.15) / 2));
-    if (kind === 'rusty') g.add(box(0.035, 0.03, 0.16, r.m(0x5a3a28), 0, 0.03, 0.5)); // notch of rust
+  if (kind === 'rusty') {
+    // a zealot's chain-blade: a dark housing with a running line of red teeth, a pistol grip and a fuel cell
+    const len = 0.85, house = r.m(0x2e2e32), teeth = r.m(0x8a1a12), steelD = r.m(0x6a6c72);
+    g.add(box(0.05, 0.06, 0.2, grip, 0, 0, 0));
+    g.add(box(0.1, 0.1, 0.16, house, 0, 0.02, 0.15)); g.add(box(0.06, 0.04, 0.08, r.m(0x8a6a1e), 0, 0.08, 0.15)); // motor and its hazard tab
+    g.add(box(0.05, 0.11, len - 0.2, house, 0, 0, 0.23 + (len - 0.2) / 2));
+    g.add(box(0.03, 0.03, len - 0.22, steelD, 0, 0.065, 0.23 + (len - 0.22) / 2));
+    for (let i = 0; i < 7; i++) g.add(box(0.04, 0.035, 0.05, teeth, 0, -0.07, 0.28 + i * 0.085)); // the teeth
+    put(len, 0.25);
+  } else if (kind === 'sword') {
+    // a resonance blade: steel with a glowing blue core line, a brass guard and a power-cell pommel
+    const len = 1.05;
+    g.add(box(0.05, 0.05, 0.22, grip, 0, 0, 0)); g.add(box(0.07, 0.07, 0.06, r.m(0x4a8ab0), 0, 0, -0.12));
+    g.add(box(0.28, 0.06, 0.06, gold, 0, 0, 0.12)); g.add(box(0.1, 0.1, 0.05, gold, 0, 0, 0.12));
+    g.add(box(0.03, 0.09, len - 0.15, steel, 0, 0, 0.12 + (len - 0.15) / 2));
+    g.add(box(0.034, 0.025, len - 0.3, new THREE.MeshBasicMaterial({ color: 0x8ad8ff }), 0, 0, 0.2 + (len - 0.3) / 2));
     put(len, 0.25);
   } else if (kind === 'greatsword') {
     g.add(box(0.07, 0.07, 0.42, grip, 0, 0, -0.05));
@@ -374,6 +383,10 @@ export function attachWeapon(r, kind, o) {
     r.bladeMat = bl;
     g.add(box(0.05, 0.2, 1.75, bl, 0, 0, 0.18 + 0.88));
     g.add(box(0.06, 0.05, 1.5, r.m(0x2a2a30), 0, 0, 1.0)); // fuller
+    // a relic blade: reliquary housing at the cross, a skull pommel, chained purity seal
+    g.add(box(0.16, 0.16, 0.14, r.m(0x3a3a40), 0, 0, 0.3)); g.add(box(0.06, 0.06, 0.06, new THREE.MeshBasicMaterial({ color: 0xff7a2a }), 0, 0.09, 0.3));
+    g.add(box(0.1, 0.1, 0.1, r.m(0xbab09a), 0, 0, -0.3));
+    g.add(box(0.06, 0.06, 0.04, r.m(0x8a1a12), 0.06, -0.08, 0.22)); g.add(box(0.03, 0.16, 0.01, r.m(0xc8bca0), 0.06, -0.18, 0.22));
     put(2.0, 0.4);
   } else if (kind === 'axe') {
     // long-hafted executioner's axe; blade near the tip
@@ -384,15 +397,20 @@ export function attachWeapon(r, kind, o) {
     g.add(box(0.07, 0.12, 0.5, head, 0, -0.05, 1.28));
     g.add(box(0.08, 0.08, 0.1, gold, 0, 0, 1.52));
     g.add(box(0.055, 0.06, 0.4, r.m(0xa8a8b0), 0, 0.52, 1.28)); // bright edge
+    // a chain-axe: a row of red teeth round the edge, a motor housing on the haft
+    for (let i = 0; i < 6; i++) g.add(box(0.06, 0.05, 0.05, r.m(0x8a1a12), 0, 0.56, 1.1 + i * 0.07));
+    g.add(box(0.12, 0.14, 0.2, r.m(0x2e2e32), 0, 0, 0.95)); g.add(box(0.06, 0.06, 0.06, r.m(0x8a6a1e), 0, 0.09, 0.95));
     put(1.6, 0.9);
   } else if (kind === 'maul') {
     // great stone maul
     g.add(box(0.08, 0.08, 1.7, grip, 0, 0, 0.5));
-    const stone = r.m(0x6a665e);
+    // an industrial piston maul: an iron block head with a glowing slag core and banded ends
+    const stone = r.m(0x4a4846);
     r.bladeMat = stone;
     g.add(box(0.5, 0.42, 0.5, stone, 0, 0, 1.38));
-    g.add(box(0.56, 0.08, 0.56, r.m(0x3a3a3a), 0, 0, 1.12));
-    g.add(box(0.52, 0.1, 0.3, r.m(0x4a5a34), 0, 0.2, 1.4)); // moss
+    g.add(box(0.56, 0.08, 0.56, r.m(0x2a2a2a), 0, 0, 1.12)); g.add(box(0.56, 0.08, 0.56, r.m(0x2a2a2a), 0, 0, 1.64));
+    g.add(box(0.52, 0.12, 0.3, new THREE.MeshBasicMaterial({ color: 0xff6a1a }), 0, 0, 1.38)); // the slag core showing through
+    for (const s of [-1, 1]) g.add(box(0.08, 0.5, 0.08, r.m(0x6a6c72), s * 0.2, 0, 0.9));
     put(1.65, 0.9);
   } else if (kind === 'daggers') {
     g.add(box(0.04, 0.04, 0.14, grip, 0, 0, 0));
@@ -406,25 +424,39 @@ export function attachWeapon(r, kind, o) {
     r.tipL = new THREE.Object3D(); r.tipL.position.z = 0.5; g2.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; g2.add(r.baseL);
   } else if (kind === 'spear') {
-    const shaft = box(0.04, 0.04, 2.3, grip, 0, 0, 0.45); g.add(shaft);
+    // a shock-pike: a dark haft with grip bands, a power coil below a forked head whose prongs glow blue
+    const shaft = box(0.045, 0.045, 2.3, r.m(0x26262a), 0, 0, 0.45); g.add(shaft);
+    for (const z of [-0.2, 0.1, 0.4]) g.add(box(0.06, 0.06, 0.08, r.m(0x5a1414), 0, 0, z));
+    for (let i = 0; i < 3; i++) g.add(box(0.09, 0.09, 0.03, r.m(0x8a5a2a), 0, 0, 1.4 + i * 0.05)); // the coil
+    g.add(box(0.11, 0.05, 0.14, r.m(0x3a3a40), 0, 0, 1.56));
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 4), steel);
     head.rotation.x = Math.PI / 2; head.position.z = 1.72; g.add(head);
-    g.add(box(0.07, 0.07, 0.06, r.m(0x7a2a1e), 0, 0, 1.52)); // binding below the head
+    const arc = new THREE.MeshBasicMaterial({ color: 0x8ad8ff });
+    for (const s of [-1, 1]) { g.add(box(0.025, 0.025, 0.2, steel, s * 0.07, 0, 1.68)); g.add(box(0.03, 0.03, 0.05, arc, s * 0.07, 0, 1.79)); }
     put(1.85, 1.0);
   } else if (kind === 'club') {
-    g.add(box(0.07, 0.07, 0.5, grip, 0, 0, 0.1));
-    const c = cyl(0.17, 0.09, 0.85, r.m(0x5a4030), 6); c.rotation.x = Math.PI / 2; c.position.z = 0.75; g.add(c);
+    // a servitor's piston hammer: a hydraulic ram on a heavy haft, a hazard-striped head and exhaust ports
+    g.add(box(0.08, 0.08, 0.5, r.m(0x26262a), 0, 0, 0.1));
+    const c = cyl(0.12, 0.1, 0.7, r.m(0x4a4a50), 6); c.rotation.x = Math.PI / 2; c.position.z = 0.6; g.add(c);
+    g.add(box(0.36, 0.3, 0.3, r.m(0x3a3a40), 0, 0, 0.98));
+    g.add(box(0.38, 0.08, 0.32, r.m(0x9a7a1e), 0, 0.05, 0.98));
     for (let i = 0; i < 4; i++) {
-      const sp = box(0.05, 0.05, 0.05, steel, Math.cos(i * 1.57) * 0.17, Math.sin(i * 1.57) * 0.17, 0.95); g.add(sp);
+      const sp = box(0.05, 0.05, 0.05, r.m(0xff6a2a, { emissive: 0x6a1a00 }), Math.cos(i * 1.57) * 0.17, Math.sin(i * 1.57) * 0.17, 0.85); g.add(sp);
     }
     put(1.15, 0.4);
   } else if (kind === 'bow') {
+    // a needle rifle held out in the off hand (it stands where the bow stood): a long dark receiver, a scope, a
+    // magazine and a glowing muzzle; the "arrow" in the right hand is a glowing needle round being chambered
     const bg = new THREE.Group(); r.j.handL.add(bg);
-    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.025, 4, 10, Math.PI * 0.9), grip);
-    bow.rotation.set(0, Math.PI / 2, Math.PI / 2 + Math.PI * 0.05);
-    bow.position.z = -0.12; bg.add(bow);
+    const body = r.m(0x2a2a2e), metalD = r.m(0x55565c);
+    bg.add(box(0.06, 0.95, 0.09, body, 0, 0.05, -0.1));
+    bg.add(box(0.03, 0.4, 0.03, metalD, 0, 0.62, -0.1)); // barrel
+    bg.add(box(0.05, 0.05, 0.05, new THREE.MeshBasicMaterial({ color: 0x9ad06a }), 0, 0.84, -0.1)); // muzzle glow
+    bg.add(box(0.05, 0.2, 0.05, metalD, 0, 0.25, -0.18)); // scope
+    bg.add(box(0.05, 0.08, 0.1, body, 0, -0.1, 0.0)); // magazine
+    bg.add(box(0.07, 0.25, 0.12, r.m(0x3a3228), 0, -0.45, -0.1)); // stock
     bg.position.z = 0.05;
-    const arrow = box(0.02, 0.02, 0.7, r.m(0xa08a60), 0, 0, 0.25); hand.add(arrow);
+    const arrow = box(0.02, 0.02, 0.7, new THREE.MeshBasicMaterial({ color: 0x9ad06a }), 0, 0, 0.25); hand.add(arrow);
     r.arrow = arrow;
     put(0.6, 0.1);
   }

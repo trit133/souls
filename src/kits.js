@@ -42,67 +42,104 @@ function plate(r, parent, x, y, z, w, h, d, m, o = {}) {
 
 export const KITS = {
   // ---------------- enemies ----------------
+  // ---------------- enemies (The Last Crusade) ----------------
+  // a Zealot: fatigues under a gunmetal vest, a crusade-red tabard in tatters, a rebreather mask with hoses or a
+  // brass-ringed helm, purity seals (red wax and parchment) on the chest, a cult brand on the shoulder
   grunt: {
     build(r, o) {
       const { bulk: b } = r.dims;
-      const rag = r.m(0x5a4a36), rust = r.m(0x6a4a34), iron = r.m(0x55524c);
+      const red = r.m(0x6a1412), redDk = r.m(0x3e0c0a), vest = r.m(0x3a3a40), brass = r.m(0x7a5e2e), hose = r.m(0x1e1e20), wax = r.m(0x8a1a12), parch = r.m(0xc8bca0);
       const T = r.j.torso, H = r.j.head, hips = r.j.hips;
-      // a dented half-helm or a rag headband
-      if (Math.random() < 0.6) { H.add(box(0.27, 0.12, 0.28, iron, 0, 0.3, -0.005)); H.add(box(0.05, 0.05, 0.05, rust, 0.08, 0.34, 0.12)); }
-      else H.add(box(0.26, 0.05, 0.27, rag, 0, 0.27, 0));
-      // mail patch, shoulder strap, torn tunic strips that swing
-      T.add(box(0.3 * b, 0.18, 0.02, iron, 0.02, 0.5, 0.142 * b));
-      T.add(rbox(0.05, 0.5, 0.02, r.m(0x3a2a1c), 0, 0.42, 0.146 * b, 0, 0, 0.6));
-      const n = 3 + (Math.random() * 2 | 0);
-      for (let i = 0; i < n; i++) {
-        const x = -0.15 + (0.3 * i) / (n - 1);
-        strip(r, hips, x, -0.06, 0.12 * b, 0.07, [0.14 + Math.random() * 0.08, 0.08], rag, { lx: [-0.9, 0.1] });
+      if (Math.random() < 0.55) {
+        // a rebreather: a snout box, two hoses round to the back
+        H.add(box(0.16, 0.1, 0.1, hose, 0, 0.11, 0.15)); H.add(box(0.06, 0.06, 0.04, brass, 0, 0.1, 0.21));
+        for (const s of [1, -1]) H.add(rbox(0.03, 0.03, 0.22, hose, s * 0.09, 0.06, 0.04, 0.5, 0, 0));
+        H.add(box(0.27, 0.07, 0.28, vest, 0, 0.3, -0.005));
+      } else {
+        H.add(box(0.28, 0.13, 0.29, vest, 0, 0.3, -0.005)); H.add(box(0.3, 0.035, 0.3, brass, 0, 0.245, 0));
+        H.add(box(0.05, 0.12, 0.05, vest, 0, 0.42, -0.02)); // a crest stub
       }
-      strip(r, hips, 0, -0.04, -0.12 * b, 0.26, [0.2, 0.1], rag, { lx: [-0.1, 0.9] });
+      // the vest, a strap, a purity seal: wax disc and a hanging parchment strip
+      T.add(box(0.34 * b, 0.34, 0.03, vest, 0, 0.45, 0.142 * b));
+      T.add(rbox(0.05, 0.5, 0.02, hose, 0, 0.42, 0.162 * b, 0, 0, 0.6));
+      T.add(box(0.08, 0.08, 0.03, wax, 0.09, 0.56, 0.165 * b));
+      strip(r, T, 0.09, 0.52, 0.17 * b, 0.04, [0.12, 0.06], parch, { lx: [-0.6, 0.3], th: 0.012 });
+      T.add(box(0.06, 0.06, 0.02, brass, -0.1, 0.6, 0.165 * b)); // a cog badge
+      // the tabard: a red panel front and back, torn into strips
+      const n = 3;
+      for (let i = 0; i < n; i++) strip(r, hips, -0.09 + i * 0.09, -0.04, 0.13 * b, 0.08, [0.18 + Math.random() * 0.06, 0.08], i === 1 ? red : redDk, { lx: [-0.9, 0.1] });
+      strip(r, hips, 0, -0.04, -0.12 * b, 0.26, [0.22, 0.1], red, { lx: [-0.1, 0.9] });
+      for (const s of [1, -1]) T.add(box(0.05, 0.05, 0.12, hose, s * 0.18 * b, 0.1, 0.06)); // ammo pouches
     },
   },
+  // a Pike Zealot: a deep red cowl over a gunmetal helm, a vox-unit on the back with a whip antenna, a pauldron
   spear: {
     build(r, o) {
       const { bulk: b } = r.dims;
-      const scarf = r.m(0x6a3a24), strap = r.m(0x3a2a1c), plume = r.m(0x8a2a20);
+      const cowl = r.m(0x5a1414), strap = r.m(0x1e1e20), gun = r.m(0x55565c), brass = r.m(0x7a5e2e), lamp = basic(0xff3a24);
       const T = r.j.torso, H = r.j.head;
-      T.add(box(0.3, 0.08, 0.3, scarf, 0, 0.68, 0));
-      for (const s of [1, -1]) strip(r, T, s * 0.05, 0.68, -0.15, 0.08, [0.2, 0.16], scarf, { spring: RIBBON, lx: [-0.2, 1.5], taper: 0.85 });
+      T.add(box(0.32, 0.1, 0.32, cowl, 0, 0.68, 0));
+      for (const s of [1, -1]) strip(r, T, s * 0.06, 0.68, -0.15, 0.1, [0.22, 0.18], cowl, { spring: RIBBON, lx: [-0.2, 1.5], taper: 0.85 });
+      H.add(box(0.29, 0.06, 0.06, gun, 0, 0.2, 0.15)); // a visor bar
       T.add(rbox(0.05, 0.5, 0.02, strap, 0, 0.42, 0.142 * b, 0, 0, -0.6));
       T.add(box(0.38 * b, 0.06, 0.24 * b, strap, 0, 0.07, 0));
-      const pp = pivot(H, 0, 0.45, 0);
-      strip(r, pp, 0, 0, 0, 0.05, [0.1, 0.1], plume, { rx: Math.PI - 0.6, bend: 0.4, lx: [-0.6, 0.6], th: 0.04, spring: { ...CLOTH, k: 90 } });
+      T.add(rbox(0.16, 0.08, 0.22, gun, -0.2 * b, 0.66, 0, 0, 0, 0.35)); // a single pauldron
+      // the vox-unit and antenna (the antenna whips like the old plume did)
+      T.add(box(0.2, 0.24, 0.1, gun, 0.02, 0.48, -0.18)); T.add(box(0.05, 0.04, 0.02, lamp, 0.07, 0.56, -0.235)); T.add(box(0.12, 0.03, 0.02, brass, -0.02, 0.4, -0.235));
+      const pp = pivot(T, 0.08, 0.6, -0.2);
+      strip(r, pp, 0, 0, 0, 0.02, [0.18, 0.16], strap, { rx: Math.PI - 0.25, bend: 0.2, lx: [-0.4, 0.4], th: 0.02, spring: { ...CLOTH, k: 120 } });
     },
   },
+  // a Needle Gunner: a dust cloak in two panels, a goggled hood, a power-pack on the back with a cable to the rifle
   archer: {
     build(r, o) {
       const { bulk: b } = r.dims;
-      const cloak = r.m(0x26301f), quiver = r.m(0x4a3220), fletch = r.m(0xd8d0b8), strap = r.m(0x3a2a1c);
-      const T = r.j.torso;
-      // cloak in two panels, quiver of arrows on the back, a bracer
-      for (const s of [1, -1]) strip(r, T, s * 0.11, 0.66, -0.16 * b, 0.2, [0.4, 0.3], cloak, { lx: [-0.1, 1.3], ry: s * 0.25, taper: 0.85 });
-      const q = pivot(T, 0.08, 0.55, -0.2, 0, 0, 0.35);
-      q.add(box(0.13, 0.42, 0.12, quiver, 0, -0.12, 0));
-      for (const x of [-0.03, 0.0, 0.03]) q.add(box(0.02, 0.12, 0.02, fletch, x, 0.13, 0.01 * (x * 30)));
+      const cloak = r.m(0x2e2e28), pack = r.m(0x3a3a40), cell = basic(0x9ad06a), strap = r.m(0x1e1e20), lens = basic(0x9ad06a), brass = r.m(0x7a5e2e);
+      const T = r.j.torso, H = r.j.head;
+      for (const s of [1, -1]) strip(r, T, s * 0.11, 0.66, -0.16 * b, 0.2, [0.42, 0.32], cloak, { lx: [-0.1, 1.3], ry: s * 0.25, taper: 0.85 });
+      for (const s of [1, -1]) { H.add(box(0.07, 0.06, 0.04, brass, s * 0.06, 0.21, 0.155)); H.add(box(0.05, 0.04, 0.02, lens, s * 0.06, 0.21, 0.175)); }
+      const q = pivot(T, 0.0, 0.55, -0.2, 0, 0, 0);
+      q.add(box(0.22, 0.3, 0.12, pack, 0, -0.1, 0)); q.add(box(0.06, 0.18, 0.02, cell, 0.05, -0.1, -0.065)); q.add(box(0.03, 0.12, 0.03, strap, -0.08, 0.1, 0));
       T.add(rbox(0.05, 0.5, 0.02, strap, 0, 0.42, 0.142 * b, 0, 0, 0.62));
-      r.j.foreL.add(box(0.13 * b, 0.14, 0.14 * b, quiver, 0, -0.22, 0));
+      r.j.foreL.add(box(0.13 * b, 0.14, 0.14 * b, pack, 0, -0.22, 0));
     },
   },
+  // a War Servitor: a hulk of plate and pistons, exhaust stacks on the back, cable bundles, a grilled iron face,
+  // hazard paint, hanging hoses that swing
   brute: {
     build(r, o) {
-      const { bulk: b, sw } = r.dims;
-      const fur = r.m(0x5e4c38), furHi = r.m(0x7a6650), iron = r.m(0x4a4844), plateM = r.m(0x6b5a48);
-      const T = r.j.torso, hips = r.j.hips;
-      // fur mantle
-      T.add(box(0.66 * b, 0.18, 0.4 * b, fur, 0, 0.68, -0.02));
-      for (const [x, z] of [[-0.22, 0.1], [0.0, 0.16], [0.22, 0.1], [-0.25, -0.12], [0.25, -0.12]]) T.add(box(0.12, 0.08, 0.1, furHi, x * b, 0.75, z * b));
-      // belly plates that rattle, a chain across the chest
-      plate(r, T, -0.08, 0.44, 0.15 * b, 0.16, 0.16, 0.03, plateM, { edge: iron, spring: { lx: [-0.6, 0.15] } });
-      plate(r, T, 0.08, 0.44, 0.15 * b, 0.16, 0.16, 0.03, plateM, { edge: iron, spring: { lx: [-0.6, 0.15] } });
-      for (let i = 0; i < 6; i++) T.add(rbox(0.05, 0.05, 0.05, iron, -0.2 + i * 0.08, 0.62 - i * 0.05, 0.16 * b, 0, 0, 0.7));
-      // hanging chains off the belt
-      for (const s of [1, -1]) strip(r, hips, s * 0.16, -0.02, 0.1, 0.04, [0.1, 0.1, 0.08], iron, { spring: { ...PLATE, k: 160, d: 4, rattle: 0.8, lx: [-0.7, 0.4], lz: [-0.5, 0.5] }, th: 0.04 });
-      strip(r, hips, 0, -0.05, 0.13 * b, 0.22, [0.22, 0.12], fur, { spring: HEAVY_CLOTH, lx: [-0.9, 0.1] });
+      const { bulk: b } = r.dims;
+      const plateM = r.m(0x5a5c62), plateDk = r.m(0x3a3a40), hazard = r.m(0x9a7a1e), hose = r.m(0x1e1e20), rust = r.m(0x5a3622), glow = basic(0xff5a2a);
+      const T = r.j.torso, hips = r.j.hips, H = r.j.head;
+      // the carapace over the shoulders, rivets, hazard chevrons
+      T.add(box(0.7 * b, 0.2, 0.44 * b, plateDk, 0, 0.7, -0.02));
+      for (const [x, z] of [[-0.24, 0.12], [0.0, 0.18], [0.24, 0.12]]) T.add(box(0.05, 0.05, 0.05, plateM, x * b, 0.82, z * b));
+      for (let i = 0; i < 3; i++) T.add(rbox(0.1, 0.04, 0.02, hazard, -0.12 + i * 0.12, 0.3, 0.17 * b, 0, 0, 0.6));
+      // belly plates that rattle, a pipe across the chest
+      plate(r, T, -0.08, 0.44, 0.15 * b, 0.16, 0.16, 0.03, plateM, { edge: hazard, spring: { lx: [-0.6, 0.15] } });
+      plate(r, T, 0.08, 0.44, 0.15 * b, 0.16, 0.16, 0.03, plateM, { edge: hazard, spring: { lx: [-0.6, 0.15] } });
+      T.add(rbox(0.05, 0.05, 0.5, rust, 0, 0.6, 0.17 * b, 0, Math.PI / 2, 0));
+      // two exhaust stacks on the back, glowing at the lip
+      for (const s of [1, -1]) { const st = cyl(0.06, 0.07, 0.42, plateDk, 7); st.position.set(s * 0.14 * b, 0.95, -0.2 * b); T.add(st); T.add(box(0.1, 0.03, 0.1, glow, s * 0.14 * b, 1.17, -0.2 * b)); }
+      // a grilled iron face plate over the head
+      H.add(box(0.22, 0.18, 0.04, plateDk, 0, 0.16, 0.16)); for (let i = 0; i < 3; i++) H.add(box(0.16, 0.02, 0.02, hose, 0, 0.1 + i * 0.04, 0.185));
+      // hoses off the belt (they swing like the old chains) and a loincloth of plate
+      for (const s of [1, -1]) strip(r, hips, s * 0.16, -0.02, 0.1, 0.05, [0.1, 0.1, 0.08], hose, { spring: { ...PLATE, k: 160, d: 4, rattle: 0.8, lx: [-0.7, 0.4], lz: [-0.5, 0.5] }, th: 0.05 });
+      strip(r, hips, 0, -0.05, 0.13 * b, 0.22, [0.22, 0.12], plateDk, { spring: HEAVY_CLOTH, lx: [-0.9, 0.1] });
+    },
+  },
+  // a Heretic Idol: a robed machine-statue with a halo of spikes, a cracked face with a burning eye-slit, chains of
+  // purity seals, and heretical runes glowing on its chest
+  effigy: {
+    build(r, o) {
+      const { bulk: b } = r.dims;
+      const iron = r.m(0x3a3a40), dark = r.m(0x1a181a), rune = basic(0xff3a1a), wax = r.m(0x8a1a12), parch = r.m(0xc8bca0);
+      const T = r.j.torso, H = r.j.head;
+      for (let i = 0; i < 7; i++) { const a = -1.2 + (i / 6) * 2.4, sp = cone(0.035, 0.32, iron); sp.position.set(Math.sin(a) * 0.24, 0.34 + Math.cos(a) * 0.24, -0.05); sp.rotation.z = -a; H.add(sp); }
+      H.add(box(0.2, 0.03, 0.02, rune, 0, 0.2, 0.16));
+      for (const [x, y] of [[-0.06, 0.5], [0.05, 0.42], [0, 0.3], [0.08, 0.56]]) T.add(box(0.05, 0.08, 0.02, rune, x, y, 0.15 * b));
+      for (const s of [1, -1]) { T.add(box(0.07, 0.07, 0.03, wax, s * 0.13, 0.62, 0.16 * b)); strip(r, T, s * 0.13, 0.58, 0.17 * b, 0.04, [0.14, 0.08], parch, { lx: [-0.5, 0.2], th: 0.012 }); }
+      strip(r, r.j.hips, 0, -0.04, 0.13 * b, 0.34, [0.3, 0.16], dark, { spring: HEAVY_CLOTH, lx: [-0.4, 0.1] });
     },
   },
 
@@ -129,17 +166,30 @@ export const KITS = {
       // a heavy torn cape in three panels and a front loincloth
       for (const x of [-0.17, 0, 0.17]) strip(r, T, x * b, 0.66, -0.16 * b, 0.19 * b, [0.4, 0.36, 0.2], accent, { spring: HEAVY_CLOTH, lx: [-0.1, 1.1], lx2: [-0.3, 0.6], taper: 0.9 });
       strip(r, hips, 0, -0.05, 0.13 * b, 0.22, [0.26, 0.18], accent, { spring: HEAVY_CLOTH, lx: [-0.9, 0.08] });
+      // The Last Sentinel: a spiked iron halo behind the head (its spikes glow when he ignites), a reactor on his back
+      // with two exhaust stacks, gold trim on the chest, purity seals on the pauldrons
+      const gold = r.m(0x8a6a2a), wax = r.m(0x8a1a12), parch = r.m(0xc8bca0);
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 4, 16), hi); halo.position.set(0, 0.3, -0.2); H.add(halo);
+      for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2, sp = cone(0.025, 0.14, ember); sp.position.set(Math.sin(a) * 0.36, 0.3 + Math.cos(a) * 0.36, -0.2); sp.rotation.z = -a; H.add(sp); }
+      T.add(box(0.36 * b, 0.4, 0.2, dark, 0, 0.5, -0.24 * b)); T.add(box(0.2, 0.12, 0.02, ember, 0, 0.5, -0.345 * b));
+      for (const s of [1, -1]) { const st = cyl(0.05, 0.06, 0.4, hi, 6); st.position.set(s * 0.12, 0.85, -0.26 * b); T.add(st); }
+      T.add(box(0.36 * b, 0.03, 0.02, gold, 0, 0.62, 0.155 * b)); T.add(box(0.03, 0.3, 0.02, gold, 0, 0.47, 0.155 * b));
+      for (const s of [1, -1]) { T.add(box(0.07, 0.07, 0.03, wax, s * 0.22, 0.62, 0.16 * b)); strip(r, T, s * 0.22, 0.58, 0.17 * b, 0.04, [0.14, 0.08], parch, { lx: [-0.6, 0.2], th: 0.012 }); }
       r.setGlow(0);
     },
   },
   hask: {
     build(r, o) {
       const { bulk: b } = r.dims;
-      const leather = r.m(0x4a3020), stain = r.m(0x5a1410), hoodM = r.m(0x1c1612), iron = r.m(0x4a4844);
+      const leather = r.m(0x3a2a20), stain = r.m(0x5a1410), hoodM = r.m(0x1c1612), iron = r.m(0x4a4844), wax = r.m(0x8a1a12), parch = r.m(0xc8bca0), ember = basic(0xff4a2a);
       const T = r.j.torso, hips = r.j.hips, H = r.j.head;
-      // tall executioner's hood
+      // the Iron Penitent: a riveted iron mask with a grille and a slit that burns, a hood over it, a collar of chain
       H.add(box(0.29, 0.3, 0.3, hoodM, 0, 0.19, 0));
       const c = cone(0.17, 0.3, hoodM, 4); c.position.set(0, 0.46, -0.02); c.rotation.y = Math.PI / 4; H.add(c);
+      H.add(box(0.23, 0.24, 0.04, iron, 0, 0.17, 0.16)); for (let i = 0; i < 3; i++) H.add(box(0.16, 0.02, 0.02, hoodM, 0, 0.08 + i * 0.04, 0.185));
+      H.add(box(0.16, 0.025, 0.02, ember, 0, 0.21, 0.185));
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; T.add(box(0.06, 0.04, 0.06, iron, Math.cos(a) * 0.17, 0.74, Math.sin(a) * 0.17)); }
+      for (const s of [1, -1]) { T.add(box(0.07, 0.07, 0.03, wax, s * 0.12, 0.55, 0.17 * b)); strip(r, T, s * 0.12, 0.51, 0.18 * b, 0.04, [0.14, 0.08], parch, { lx: [-0.6, 0.2], th: 0.012 }); }
       // leather apron, stained, and a chain belt
       strip(r, T, 0, 0.5, 0.15 * b, 0.32 * b, [0.4, 0.34], leather, { spring: HEAVY_CLOTH, lx: [-0.9, 0.06] });
       T.add(box(0.12, 0.1, 0.01, stain, 0.06, 0.25, 0.16 * b));
@@ -188,6 +238,8 @@ export const KITS = {
         strip(r, T, s * 0.2, 0.62, -0.1 * b, 0.14, [0.34, 0.26], night, { trim: silver, rx: 0.15, ry: s * 0.6, lx: [0, 1.2], taper: 0.8, lz: s > 0 ? [-0.2, 0.7] : [-0.7, 0.2] });
       }
       T.add(box(0.3, 0.32, 0.01, cloakIn, 0, 0.5, -0.17 * b));
+      // the Cryo Choir: two coolant cylinders across the back, glowing blue, hoses to the forearms
+      for (const s of [1, -1]) { const tb = cyl(0.045, 0.045, 0.34, steel, 6); tb.position.set(s * 0.07, 0.48, -0.2 * b); T.add(tb); T.add(box(0.05, 0.22, 0.02, edge, s * 0.07, 0.48, -0.25 * b)); }
       // half-cape over the left shoulder
       const hc = pivot(T, sw, 0.68, 0, 0, 0, -0.35);
       hc.add(box(0.16 * b, 0.06, 0.26 * b, night, 0.02, 0, 0));
@@ -223,17 +275,18 @@ export const KITS = {
   gorrath: {
     build(r, o) {
       const { bulk: b, sw } = r.dims;
-      const stone = r.m(0x5e5a50), moss = r.m(0x4a5a34), hide = r.m(0x3a3a2a);
+      // the Slag Engine: slab iron plates with molten seams, a furnace grate in its chest, exhaust stacks for a spine
+      const stone = r.m(0x3e3c3a), moss = basic(0xff6a1a), hide = r.m(0x2a2624), grate = r.m(0x1a1816);
       const T = r.j.torso, hips = r.j.hips;
-      // stone plates with moss on top, spines down the back
       for (const s of [1, -1]) {
         const pv = pivot(T, s * sw, 0.68, 0, 0, 0, -s * 0.4);
         pv.add(box(0.3 * b, 0.16, 0.34 * b, stone, s * 0.03, 0, 0));
-        pv.add(box(0.28 * b, 0.05, 0.3 * b, moss, s * 0.03, 0.09, 0));
+        pv.add(box(0.28 * b, 0.025, 0.3 * b, moss, s * 0.03, 0.09, 0));
       }
       T.add(box(0.4 * b, 0.3, 0.04, stone, 0, 0.5, 0.15 * b));
-      T.add(box(0.38 * b, 0.05, 0.05, moss, 0, 0.66, 0.15 * b));
-      for (let i = 0; i < 4; i++) { const c = cone(0.06, 0.2, stone, 4); c.position.set(0, 0.68 - i * 0.14, -0.17 * b); c.rotation.x = -1.2; T.add(c); }
+      T.add(box(0.22, 0.16, 0.02, moss, 0, 0.5, 0.165 * b)); for (let i = 0; i < 4; i++) T.add(box(0.03, 0.18, 0.025, grate, -0.075 + i * 0.05, 0.5, 0.175 * b));
+      T.add(box(0.38 * b, 0.025, 0.05, moss, 0, 0.66, 0.15 * b));
+      for (let i = 0; i < 4; i++) { const c = cyl(0.05, 0.06, 0.24, stone, 6); c.position.set((i % 2 ? 0.08 : -0.08), 0.78 - i * 0.12, -0.18 * b); T.add(c); T.add(box(0.07, 0.03, 0.07, moss, (i % 2 ? 0.08 : -0.08), 0.9 - i * 0.12, -0.18 * b)); }
       strip(r, hips, 0, -0.05, 0.13 * b, 0.26, [0.28, 0.16], hide, { spring: HEAVY_CLOTH, lx: [-0.9, 0.08] });
       strip(r, hips, 0, -0.05, -0.13 * b, 0.3, [0.26, 0.16], hide, { spring: HEAVY_CLOTH, lx: [-0.08, 0.9] });
     },
