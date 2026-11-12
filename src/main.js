@@ -10,6 +10,9 @@ import { VFX, pack, unpack } from './vfx.js';
 import { WeaponFx } from './weaponfx.js';
 import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
+import { City } from './city.js';
+import { AREAS } from './regions.js';
+import { WorldMap } from './worldmap.js';
 import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
 import { Minimap } from './minimap.js';
@@ -141,11 +144,14 @@ class Game {
     return enc && enc.boss.alive ? [...this.enemies, enc.boss] : this.enemies;
   }
 
-  // A run: three dungeons, each ending in a mini boss (in a random order), then the approach to Varek.
-  // (?chain in the address plays the old chain of rooms instead: the older test scripts use it)
+  // A raid: one area off the world map (regions.js), picked there (the first area by default).
+  // (?chain in the address plays the old chain of rooms instead, ?dungeon the old run of three dungeons and Varek:
+  // the older test scripts use them)
   newLayout() {
-    if (new URLSearchParams(location.search).has('chain')) return pickLayout();
-    return this.nightRaid && this.nightUnlocked ? 'night' : 'dungeon';
+    const q = new URLSearchParams(location.search), night = !!(this.nightRaid && this.nightUnlocked);
+    if (q.has('chain')) return pickLayout();
+    if (q.has('dungeon')) return night ? 'night' : 'dungeon';
+    return { raid: AREAS[this.raidArea]?.open ? this.raidArea : 'r1a1', night };
   }
 
   // Night Raid unlocks (for the whole account) once you beat the second mini boss of a run
@@ -166,6 +172,7 @@ class Game {
   // their surroundings, glowing eyes and fires show in the dark
   setNight(on) {
     // a faint cold moonlight: walls show as dark blue shapes, nothing more
+    this.underK = 0; // (a raid's basements dim this again: underLight)
     this.hemi.intensity = on ? 0.3 : 2.0;
     this.hemi.color.set(on ? 0x40507a : 0x9aa6c8); this.hemi.groundColor.set(on ? 0x08080a : 0x4a3a28);
     this.sun.intensity = on ? 0 : 2.0;
@@ -216,6 +223,13 @@ class Game {
   // layout: 'dungeon' for a run of dungeons, or a list of module keys (a chain, as the tests use)
   buildRun(layout = this.newLayout(), seed = (Math.random() * 1e9) | 0, players = 1) {
     this.runSeed = seed; this.runPlayers = players;
+    if (layout?.raid) {
+      // a raid: one hand-built area, its shrines and its boss (city.js)
+      const area = AREAS[layout.raid];
+      this.run = { raid: area.id, night: !!layout.night, minis: [area.boss] };
+      this.act = 0;
+      return this.buildLevel({ dungeon: new City(seed, area, players) }, seed, players);
+    }
     if (layout === 'dungeon' || layout === 'night') {
       const r = rng(mix(seed + 3)), minis = ['hask', 'vael', 'gorrath'];
       for (let i = 2; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [minis[i], minis[j]] = [minis[j], minis[i]]; }
@@ -322,6 +336,24 @@ class Game {
     this.enterAct(n);
   }
 
+  // a raid's stairs: down into a basement or back up (each player goes alone; the party sees you blink across)
+  takeStair(s) {
+    const p = this.player;
+    p.pos.set(s.to.x, 0, s.to.z); p.vel.set(0, 0, 0); p.lock = null;
+    this.lastGood = null;
+    this.camPos.set(p.pos.x, 14, p.pos.z + 12); this.camLook.set(p.pos.x, 0.8, p.pos.z);
+    this.audio.play('roll', 0.6);
+    this.ui.toastSmall(s.name.toUpperCase());
+  }
+
+  // underground the sky's light fades out (the lamps carry it); back up it returns
+  underLight(dt) {
+    const D = this.world.dungeon;
+    if (!D?.isUnder || this.night) return;
+    const k = (this.underK = (this.underK || 0) + ((this.player && D.isUnder(this.player.pos.x) ? 1 : 0) - (this.underK || 0)) * Math.min(1, dt * 3));
+    this.hemi.intensity = 2.0 - 1.1 * k; this.sun.intensity = 2.0 * (1 - 0.75 * k);
+  }
+
   openPortal(enc) {
     const A = enc.arena, group = this.world.mods[enc.mod].group;
     const g = new THREE.Group(); g.position.set(A.x, 0, A.z);
@@ -355,13 +387,14 @@ class Game {
       $(btn).disabled = true;
       this.mp.setReady();
     };
-    $('again').addEventListener('click', readyOr('again', () => this.toTitle()));
+    $('again').addEventListener('click', readyOr('again', () => (this.run?.raid ? this.backToMap() : this.toTitle())));
     $('retry').addEventListener('click', readyOr('retry', () => { this.audio.unlock(); this.start(this.kind); }));
     $('go-title').addEventListener('click', () => this.toTitle());
     // after a run: solo opens the upgrade shop here; a party goes back to the room's lobby (upgrades inside)
     for (const id of ['go-lobby', 'victory-lobby']) $(id).addEventListener('click', () => this.afterRunLobby());
     $('btn-settings').addEventListener('click', () => this.openSettings());
     this.hermitage = new Hermitage(this);
+    this.worldMap = new WorldMap(this);
     $('btn-herm').addEventListener('click', () => { this.audio.unlock(); this.hermitage.open(); });
     $('lobby-night').addEventListener('click', () => { this.nightRaid = !this.nightRaid; this.refreshNight(); });
     $('set-signout').addEventListener('click', () => { this.accounts.signOut(); this.closeSettings(); this.refreshTitle(); });
@@ -454,6 +487,17 @@ class Game {
     addEventListener('touchstart', () => this.audio.ctx && this.audio.ctx.state !== 'running' && this.audio.unlock(), { passive: true });
   }
 
+  // the world map (worldmap.js) over the Sanctum: pick an area and the raid begins
+  openWorldMap() {
+    this.audio.unlock();
+    this.worldMap.open((id) => { this.raidArea = id; this.hermitage.begin(); });
+  }
+  backToMap() {
+    this.toTitle();
+    this.hermitage.open(this.kind);
+    if (this.hermitage.active) this.openWorldMap();
+  }
+
   get isGuest() { return this.mp.active && !this.mp.isHost; }
 
   // every player in the run: this device's plus teammates
@@ -487,6 +531,8 @@ class Game {
     if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
     this.ui.setBoons([]);
     this.ui.setProgress(1, this.run ? 4 : this.world.mods.length);
+    $('progress').classList.toggle('hidden', !!this.run?.raid);
+    document.querySelector('#victory .banner').textContent = 'THE LAST SENTINEL FALLS';
     this.minimap.el.classList.toggle('touch', this.input.isTouch);
     this.ui.show('gameover', false); this.ui.show('reward', false);
     this.lastGood = null;
@@ -824,7 +870,7 @@ class Game {
   stepRooms() {
     if (this.world.dungeon) {
       for (const m of this.world.mods) {
-        if (m.cleared || !m.cell || this.enemies.some((e) => e.alive && e.mod === m.i) || this.reserves.some((e) => e.mod === m.i)) continue;
+        if (m.cleared || (!m.cell && !m.zone) || this.enemies.some((e) => e.alive && e.mod === m.i) || this.reserves.some((e) => e.mod === m.i)) continue;
         m.cleared = true;
         const n = this.roomGold[m.i] || 0, k = this.roomKills[m.i] || 0;
         this.roomGold[m.i] = 0; this.roomKills[m.i] = 0;
@@ -929,7 +975,7 @@ class Game {
       if (this.accounts.data) { this.accounts.data.stats.bestArea = Math.max(this.accounts.data.stats.bestArea, this.seenMod + 1); this.accounts.save(); }
       $('gameover-stats').innerHTML = [
         `Banked this run: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
-        this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
+        this.run?.raid ? `Fell in ${this.areaName} · shrines broken ${Math.min(3, this.seals.broken)}/3` : this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
         `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
         `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
         `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
@@ -984,7 +1030,7 @@ class Game {
     $('retry').textContent = party ? 'Ready Up' : 'Try Again';
     $('retry').disabled = false;
     $('ready-status').textContent = '';
-    $('again').textContent = party ? 'Ready Up' : 'Play Again';
+    $('again').textContent = party ? 'Ready Up' : this.run?.raid ? 'Back to Map' : 'Play Again';
     $('go-lobby').textContent = $('victory-lobby').textContent = party ? 'Lobby & Skill Trees' : 'Skill Trees';
     $('go-lobby').classList.toggle('hidden', !party && !this.accounts.user);
     $('victory-lobby').classList.toggle('hidden', !party && !this.accounts.user);
@@ -1132,6 +1178,7 @@ class Game {
         setTimeout(() => this.ui.toast('NIGHT RAID UNLOCKED', 3), 4800);
       }
       this.announceBossDeath(enc, pay);
+      if (enc.raid) { this.raidComplete(enc); return; } // a raid ends with its boss
       // the way on opens right away (in a dungeon: a stair down in the arena); fanfare, then the reward choice
       this.world.setGate(enc.gateIn, true, false);
       if (enc.gateOut) this.world.setGate(enc.gateOut, true, false);
@@ -1171,6 +1218,27 @@ class Game {
       this.ui.show('victory');
       this.ui.show('boss', false);
       this.world.setGate(enc.gateIn, true, false);
+    }, 2600);
+  }
+
+  // the raid's boss is dead: the area is won (gold banked as it came), then back to the map
+  raidComplete(enc) {
+    this.world.setGate(enc.gateIn, true, false);
+    this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
+    if (this.mp.active && !this.player.alive && this.mode === 'play') { this.player.revive(0.5); this.mp.sendAll({ t: 'up' }); }
+    const d = this.accounts.data;
+    if (d) { d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1; this.accounts.save(); }
+    setTimeout(() => {
+      if (this.mode !== 'play') return;
+      this.audio.play('victory');
+      this.audio.ambience(null);
+      const s = Math.round(this.time - this.startTime);
+      document.querySelector('#victory .banner').textContent = `${this.areaName.toUpperCase()} IS PURGED`;
+      $('victory-stats').innerHTML = `${enc.boss.name.split(',')[0]} has fallen  ·  ${CHAR_NAMES[this.kind]}<br>Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${this.clearPct()}% of the ward cleared<br>Banked this raid: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`;
+      this.showRetry();
+      this.ui.show('victory');
+      this.ui.show('boss', false);
+      this.mode = 'over';
     }, 2600);
   }
 
@@ -1737,12 +1805,16 @@ class Game {
       const down = this.mp.active && p.alive && p.state === 'move' ? [...this.mp.peers.values()].find((x) => !x.alive && p.distTo(x) < 2.4) : null;
       const atPortal = this.portal && p.alive && Math.hypot(p.pos.x - this.portal.x, p.pos.z - this.portal.z) < 2.2;
       const sealLine = this.seals.promptFor(p);
+      const stair = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.stairAt?.(p.pos.x, p.pos.z) : null;
       if (down) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Revive ${down.name} (all lose 10% max health)`);
         if (presses.has('interact')) this.startRevive(down);
       } else if (atPortal) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Descend${this.mp.active ? ' (takes the whole party)' : ''}`);
         if (presses.has('interact')) this.descend();
+      } else if (stair) {
+        this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: ${stair.label}`);
+        if (presses.has('interact')) this.takeStair(stair);
       } else if (sealLine) this.ui.prompt(sealLine);
       else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
       if (this.portal) this.portal.ring.material.opacity = 0.6 + Math.sin(this.time * 5) * 0.3;
@@ -1782,6 +1854,7 @@ class Game {
     tickOutfitColors(this.time); // effect colours on outfits (molten, frost, void, gilded)
     if (this.mode === 'play' || this.mode === 'wait') this.weaponFx.update(dt);
     this.updateCamera(rdt);
+    if (this.mode !== 'title') this.underLight(rdt);
   }
 
   // the enemy you're locked on to: its armour, resistances and elements in a small panel at the top right (under the map)

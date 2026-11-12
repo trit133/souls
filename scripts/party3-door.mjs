@@ -1,7 +1,7 @@
 // Three players in a dungeon: the host breaks three seals; on every screen the door opens and you can walk through
 // it into the boss arena. node scripts/party3-door.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?dungeon&server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'] });
 const errs = [];
 const device = async (n) => { const page = await (await b.newContext({ viewport: { width: 480, height: 270 } })).newPage(); page.on('pageerror', (e) => errs.push(n + ': ' + e.message + ' ' + (e.stack || '').split('\n')[1])); await page.goto(URL); await page.waitForTimeout(500); return page; };

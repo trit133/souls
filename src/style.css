@@ -890,3 +890,28 @@ html.phone .fp-row b { font-size: 7px; letter-spacing: 0; }
 html.phone .fp-bar { height: 2px; margin-top: 1px; }
 html.phone .fp-list { gap: 1px 5px; margin-top: 1px; }
 html.phone .fp-res { font-size: 8px; } html.phone .fp-none { font-size: 8px; }
+
+/* the world map (worldmap.js): pixel art scaled up hard, region and area pins over it, a panel for the picked area */
+#worldmap { position: fixed; inset: 0; z-index: 11; background: #0a0806; display: flex; flex-direction: column; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
+#worldmap.hidden { display: none; }
+.wm-top { position: absolute; left: 0; right: 0; top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; padding: 0 calc(14px + env(safe-area-inset-left)); z-index: 2; pointer-events: none; }
+.wm-top > * { pointer-events: auto; }
+.wm-sp { width: 80px; }
+#wm-title { filter: drop-shadow(0 2px 3px #000); }
+#wm-frame { position: relative; margin-top: 30px; box-shadow: 0 0 0 3px #2a2018, 0 0 0 6px #120e0a, 0 10px 40px #000; }
+#wm-art { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+#wm-pins { position: absolute; inset: 0; }
+.wm-pin { position: absolute; transform: translate(-50%, -50%); background: none; border: 0; padding: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font: bold 13px monospace; color: #e8d8b0; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
+.wm-pin .wm-dot { width: 12px; height: 12px; background: #ff9a3a; box-shadow: 0 0 0 2px #000, 0 0 10px #ff8a2a; animation: wm-pulse 1.4s ease-in-out infinite; }
+.wm-pin.locked { color: #7a7266; cursor: default; }
+.wm-pin.locked .wm-dot { background: #4a443c; box-shadow: 0 0 0 2px #000; animation: none; }
+.wm-pin.sel .wm-dot { background: #fff2c0; box-shadow: 0 0 0 2px #000, 0 0 14px #ffd070; }
+.wm-pin:hover:not(.locked) .wm-lab { color: #fff; }
+@keyframes wm-pulse { 50% { transform: scale(1.25); } }
+#wm-panel { position: absolute; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); width: min(340px, 44vw); background: rgba(14,10,8,0.92); border: 2px solid #4a3a28; box-shadow: 0 0 0 2px #000, 0 8px 30px #000; padding: 12px 14px; color: #d8c8a8; font: 13px/1.45 monospace; }
+#wm-panel.hidden { display: none; }
+#wm-name { font: bold 17px monospace; color: #f0c070; margin-bottom: 6px; letter-spacing: 1px; }
+#wm-boss { color: #e07050; margin-top: 6px; }
+#wm-boss:empty { display: none; }
+.wm-btns { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; }
+html.phone #wm-panel { width: 46vw; font-size: 11px; padding: 8px 10px; }

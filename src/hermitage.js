@@ -363,12 +363,8 @@ export class Hermitage {
     $('hm-chars').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
     $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
-    // Solo Raid starts at once; once Night Raid is unlocked it first asks (Night Raid on/off, Begin)
-    $('hm-solo').addEventListener('click', (e) => {
-      e.stopPropagation(); this.game.audio.unlock();
-      if (!this.game.nightUnlocked) return this.begin();
-      $('hm-go').classList.toggle('hidden');
-    });
+    // Solo Raid opens the world map (worldmap.js): pick an area there (Night Raid is toggled there too) to begin
+    $('hm-solo').addEventListener('click', (e) => { e.stopPropagation(); this.game.openWorldMap(); });
     $('hm-begin').addEventListener('click', () => this.begin());
     $('hm-party').addEventListener('click', () => { this.game.audio.unlock(); this.game.lobbyKind = this.kind; this.game.openLobby(); });
     $('hm-night').addEventListener('click', (e) => { e.stopPropagation(); this.game.nightRaid = !this.game.nightRaid; this.game.refreshNight(); });

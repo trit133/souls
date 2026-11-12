@@ -3,7 +3,7 @@
 // they land, the enemies' rolled crit ranges per dungeon, and the lock-on panel. Screenshots /tmp/crit-tree-*.png
 // and /tmp/crit-panel.png. node scripts/crit.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:5180/';
+const url = process.argv[2] || 'http://localhost:5180/?dungeon';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

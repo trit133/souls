@@ -21,6 +21,10 @@ const GROUND = {
   bog: { walk: [0x3e4a40, 0x323c34], out: [0x1c2620, 0x2a3a30] },
   chasm: { walk: [0x58585a, 0x48484c], out: [0x0a0a0c, 0x121214], void: true, grid: 2, seam: 0.7 },
   arena: { walk: [0x5a5a5e, 0x48484e], out: [0x262628, 0x3e3e44], grid: 2.5, seam: 0.7 },
+  // a raid's ruined city (city.js): cracked ferrocrete streets (interiors and pavements are tinted by the city)
+  city: { walk: [0x4c4a46, 0x3e3c39], out: [0x24221f, 0x36332f], grid: 4, seam: 0.86, sub: 2 },
+  // cellars, sewers and bunkers under it: wet walls stepping up round the rooms
+  under: { walk: [0x3c403c, 0x303430], out: [0x121412, 0x20241f], wall: true, grid: 2, seam: 0.74 },
 };
 // a visual-only random 0..1 from a position (never the world's rand: that stream lays out the levels)
 const vh = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
@@ -137,7 +141,7 @@ export class World {
     this.ambient = [];
     this.tiles = [];
     this.dungeon = null; this.cutaway = false; this.seals = [];
-    this.hash = null; this.hashN = -1;
+    this.hash = null; this.hashN = -1; this.shash = null; this.shashN = -1;
     this.start = { x: 0, z: -3 };
   }
 
@@ -159,6 +163,28 @@ export class World {
       }
     }
     return this.hash.get(Math.floor(x / 8) * 100003 + Math.floor(z / 8)) || [];
+  }
+
+  // solids bucketed the same way (a city has a thousand wall pieces); each sits in every bucket within 3 m of it
+  solidBucket(x, z) {
+    if (this.shashN !== this.solids.length) {
+      this.shash = new Map(); this.shashN = this.solids.length;
+      for (const s of this.solids) {
+        for (let i = Math.floor((s.x0 - 3) / 8); i <= Math.floor((s.x1 + 3) / 8); i++) {
+          for (let j = Math.floor((s.z0 - 3) / 8); j <= Math.floor((s.z1 + 3) / 8); j++) {
+            const k = i * 100003 + j;
+            let l = this.shash.get(k); if (!l) this.shash.set(k, (l = []));
+            l.push(s);
+          }
+        }
+      }
+    }
+    return this.shash.get(Math.floor(x / 8) * 100003 + Math.floor(z / 8)) || [];
+  }
+  // inside a solid (a wall, a rubble heap)
+  blocked(x, z, r = 0) {
+    for (const s of this.solidBucket(x, z)) if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) return true;
+    return false;
   }
 
   // ---------- collision primitives (module-aware) ----------
@@ -207,7 +233,7 @@ export class World {
   }
 
   walkable(x, z, r = 0, mod = null, ignoreGates = false) {
-    for (const s of this.solids) if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) return false;
+    if (this.blocked(x, z, r)) return false;
     for (const s of this.bucket(x, z)) {
       if (mod !== null && (typeof mod === 'number' ? s.mod !== mod : !mod.has(s.mod))) continue; // a module, or a set of them
       if (s.gate && !ignoreGates && !this.gates[s.gate].open) continue;
@@ -283,7 +309,7 @@ export class World {
   // a patch of terrain centred on (cx, cz), w × l metres
   groundMesh(cx, cz, W, L, ground) {
     const st = GROUND[ground] || GROUND.dirt;
-    const sub = st.grid ? 3 : 1; // (plated floors get a finer mesh so the seams read as lines)
+    const sub = st.sub ?? (st.grid ? 3 : 1); // (plated floors get a finer mesh so the seams read as lines)
     const g = new THREE.PlaneGeometry(W, L, W * sub, Math.round(L) * sub);
     g.rotateX(-Math.PI / 2);
     g.translate(cx, 0, cz);
@@ -295,6 +321,7 @@ export class World {
       const n = Math.sin(x * 0.7) * Math.cos(z * 0.6) * 0.5 + Math.sin(x * 2.3 + z * 1.7) * 0.25 + (this.rand() - 0.5) * 0.4;
       if (this.area(x, z, -0.6)) {
         c.copy(w0).lerp(w1, 0.5 + n * (st.grid ? 0.25 : 0.5));
+        this.dungeon?.groundTint?.(x, z, c, n); // (a city: pavements, interiors, rubble)
         // deck plating: darker seams on a grid, the odd plate a shade off
         if (st.grid) {
           const gx = Math.abs(((x / st.grid) % 1 + 1) % 1 - 0.5) > 0.5 - 0.18 / st.grid, gz = Math.abs(((z / st.grid) % 1 + 1) % 1 - 0.5) > 0.5 - 0.18 / st.grid;
@@ -628,6 +655,7 @@ export class World {
       if (Math.random() < dt * 26) fx.add.spawn({ x: b.x + (Math.random() - 0.5) * 0.35, y: 0.45, z: b.z + (Math.random() - 0.5) * 0.35, vy: 1.6 + Math.random(), life: 0.55, size: 0.42, size1: 0.05, r: 0.45, g: 0.8, b: 1, alpha: 0.85 });
       if (Math.random() < dt * 6) fx.add.spawn({ x: b.x, y: 1.2, z: b.z, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.6, size: 0.07, size1: 0.02, r: 0.85, g: 0.95, b: 1, alpha: 1 });
     }
+    if (focus) this.dungeon?.update?.(dt, time, focus); // (a city: roofs lift off the building you're in)
     // module culling: only the current module and its neighbours are drawn
     if (focus && this.dungeon) {
       // a dungeon: chambers and terrain tiles near you

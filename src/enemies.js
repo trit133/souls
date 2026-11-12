@@ -198,7 +198,7 @@ export class Enemy extends Actor {
     const T = TYPES[type], E = ELITE[opts.elite];
     // tier = mini bosses passed before this module
     const tier = opts.tier || 0, ts = tierStats(tier, opts.players || 1), party = partyScale(opts.players || 1, type === 'brute');
-    const rig = buildHumanoid({ ...T.model, scale: T.scale * (E ? 1.2 : 1), eyes: E ? E.color : TIER_EYES[tier] ?? T.model.eyes, eyeGlow: E ? 0xffffff : tier >= 3 ? 0xff1a10 : null });
+    const rig = buildHumanoid({ ...T.model, ...(opts.look?.[type] || {}), scale: T.scale * (E ? 1.2 : 1), eyes: E ? E.color : TIER_EYES[tier] ?? T.model.eyes, eyeGlow: E ? 0xffffff : tier >= 3 ? 0xff1a10 : null });
     super(game, rig, { x, z, yaw, hp: Math.round(T.hp * ts.hp * party.hp * (E ? 2.6 : 1)), radius: T.radius * (E ? 1.15 : 1), poise: T.poise * (E ? 2 : 1) });
     this.tier = tier; this.dmgScale = ts.dmg * party.dmg; this.spdScale = ts.spd * party.spd;
     this.atkScale = ts.atk * party.atk; this.gapScale = party.gap; this.moves = T.moves;
@@ -290,6 +290,18 @@ export class Enemy extends Actor {
     return opts[0][0];
   }
 
+  // a raid's city has walls between you and them: which way to go to get to `to` (null: straight there). Asked a
+  // few times a second, not every frame
+  path(to) {
+    const D = this.game.world.dungeon;
+    if (!D?.steer) return null;
+    if (this.game.time - (this.pathAt ?? -9) > 0.15 || Math.hypot(to.x - (this.pathTo?.x ?? 1e9), to.z - (this.pathTo?.z ?? 1e9)) > 2) {
+      this.pathAt = this.game.time; this.pathTo = { x: to.x, z: to.z };
+      this.pathDir = D.steer(this, to.x, to.z);
+    }
+    return this.pathDir;
+  }
+
   update(dt) {
     if (this.T.still) return this.stillUpdate(dt);
     if (this.elite && this.alive && Math.random() < dt * 14) {
@@ -365,7 +377,9 @@ export class Enemy extends Actor {
         // watchers hover just out of reach, drifting in and out
         const waiting = !this.engaged && this.watchCd > 0;
         const want = waiting ? Math.max(T.prefer, 4.6 + Math.sin(this.game.time * 0.8 + this.netId * 1.7) * 0.9) : T.prefer;
-        if (T.backoff && dist < T.backoff) { mx = -dx; mz = -dz; sp = T.walk * 1.2; }
+        const around = this.path(p.pos); // (a raid's city: a wall between you, so go round it first)
+        if (around) { mx = around.x; mz = around.z; sp = T.run * 0.85; }
+        else if (T.backoff && dist < T.backoff) { mx = -dx; mz = -dz; sp = T.walk * 1.2; }
         else if (dist > want + 0.6) { mx = dx; mz = dz; sp = dist > want + 4 ? T.run : T.run * 0.7; }
         else {
           this.strafeT -= dt;
@@ -446,8 +460,9 @@ export class Enemy extends Actor {
       }
       case 'return': {
         const d = Math.hypot(this.home.x - this.pos.x, this.home.z - this.pos.z);
-        const y = Math.atan2(this.home.x - this.pos.x, this.home.z - this.pos.z);
-        this.turnToward(y, 6, dt);
+        const pw = d > 0.5 ? this.path(this.home) : null; // (round a wall on the way back)
+        const y = pw ? Math.atan2(pw.x, pw.z) : Math.atan2(this.home.x - this.pos.x, this.home.z - this.pos.z);
+        this.turnToward(y, pw ? 10 : 6, dt);
         if (d > 0.5) { const f = this.fwd(); this.move(f.x * T.run * dt, f.z * T.run * dt); }
         this.phase += dt * 8;
         pose = locomotion(T.style, this.phase, d > 0.5 ? 0.9 : 0, false, this.game.time);

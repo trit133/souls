@@ -3,7 +3,7 @@
 // gaps, watchers every 5 s), half of all gold drops are doubled and boss drops double. Screenshots in /tmp/night-*.png.
 // node scripts/night.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:5180/?server=' + encodeURIComponent('http://127.0.0.1:4111');
+const url = process.argv[2] || 'http://localhost:5180/?dungeon&server=' + encodeURIComponent('http://127.0.0.1:4111');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

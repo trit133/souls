@@ -1,7 +1,7 @@
 // The mini boss door: shut, you can't walk through it; once three seals break you walk straight through into the
 // arena (several dungeons, all three acts' first maps). node scripts/door-walk.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/';
+const url = process.argv[2] || 'http://localhost:4173/?dungeon';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 480, height: 270 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
