@@ -171,7 +171,7 @@ export const CHARS = {
     hp: 150 * NUM, st: 75, walk: 4.3, sprint: 6.6, flasks: 4, style: 'sword',
     roll: { dur: 0.6, dist: 4.6, iframes: [0.03, 0.4], cost: 22 },
     attacks: KNIGHT_ATTACKS, light: 'k1', critDmg: 110, trail: 0xdfe8ff,
-    model: { cloth: 0x2c3e66, armor: 0x8d939c, accent: 0x2d4a7a, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08, kit: 'knight' },
+    model: { cloth: 0x2a2a30, armor: 0x7a7e86, accent: 0x6a1412, skin: 0xc49a7a, head: 'helm', weapon: 'sword', shield: true, tabard: true, pauldrons: true, bulk: 1.08, kit: 'knight' },
   },
   rogue: {
     hp: 105 * NUM, st: 85, walk: 4.8, sprint: 7.4, flasks: 4, style: 'daggers',

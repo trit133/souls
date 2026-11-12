@@ -20,7 +20,7 @@ function slotMats(r, fit, slot, mainHex, trimHex) {
 // ---------- the base body's colours from the outfit ----------
 export function outfitModel(base, kind, fit) {
   const c = (slot, which, dflt) => colorHex(fit?.[slot]?.[which], dflt);
-  if (kind === 'knight') return { ...base, head: 'none', shield: false, armor: c('chest', 'main', 0x8d939c), accent: c('chest', 'trim', 0x2d4a7a), cloth: c('legs', 'trim', 0x2c3e66), legs: { thigh: c('legs', 'trim', 0x2c3e66), shin: c('legs', 'main', 0x8d939c) }, outfit: fit };
+  if (kind === 'knight') return { ...base, head: 'none', shield: false, armor: c('chest', 'main', 0x7a7e86), accent: c('chest', 'trim', 0x6a1412), cloth: c('legs', 'trim', 0x2a2a30), legs: { thigh: c('legs', 'trim', 0x2a2a30), shin: c('legs', 'main', 0x7a7e86) }, outfit: fit };
   if (kind === 'rogue') return { ...base, armor: c('shirt', 'main', 0x4a3a2c), outfit: fit };
   if (kind === 'mage') return { ...base, armor: c('shirt', 'main', 0x7a86b0) === 0x7a86b0 ? 0x7a86b0 : lighten(c('shirt', 'main', 0x22305c), 0.15), legs: { thigh: c('pants', 'main', 0x2c3a66), shin: c('pants', 'trim', 0x7a86b0) }, outfit: fit };
   return base;
@@ -289,15 +289,29 @@ KITS.knight = {
   build(r, o) {
     const fit = o.outfit || {}, T = r.j.torso, H = r.j.head, hips = r.j.hips;
     const S = (slot, m, t) => slotMats(r, fit, slot, m, t);
-    const helm = S('helmet', 0x8d939c, 0x3f63a3); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H);
-    for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x8d939c, 0xb9bfc9); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); }
-    const ch = S('chest', 0x8d939c, 0x2d4a7a); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips);
-    const lg = S('legs', 0x8d939c, 0x2c3e66); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips);
-    const shM = S('shield', 0x3a5078, 0xb89a4a); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
-    const swM = S('sword', 0x8c929c, 0xb89a4a);
+    const helm = S('helmet', 0x7a7e86, 0x8a1a14); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H);
+    for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); }
+    const ch = S('chest', 0x7a7e86, 0x6a1412); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips);
+    const lg = S('legs', 0x7a7e86, 0x2a2a30); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips);
+    const shM = S('shield', 0x5a1412, 0x8a6a34); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
+    const swM = S('sword', 0x8c929c, 0x8a6a34);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
     const [len, baseZ] = (KNIGHT.sword[swM.piece] || KNIGHT.sword.longsword)(r, swM, g);
     r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
+    // ---- The Last Crusade, on every outfit: a resonance core down the blade, a reactor pack on the back with
+    // exhaust stacks and cables to the shoulders, a glowing visor slit, a purity seal, an aegis emitter on the shield
+    const { bulk: b } = r.dims, core = basic(0x8ad8ff), pack = r.m(0x2e2e34), packHi = r.m(0x55565c), brass = r.m(0x8a6a34), hose = r.m(0x161618);
+    g.add(box(0.034, 0.02, (len - 0.3) * 0.85, core, 0, 0, 0.22 + (len - 0.3) * 0.425));
+    T.add(box(0.32 * b, 0.36, 0.16, pack, 0, 0.5, -0.22 * b)); T.add(box(0.34 * b, 0.05, 0.18, brass, 0, 0.7, -0.22 * b));
+    T.add(box(0.16, 0.05, 0.02, core, 0, 0.45, -0.305 * b));
+    for (const s of [1, -1]) {
+      const st = cyl(0.04, 0.05, 0.3, packHi, 6); st.position.set(s * 0.11, 0.82, -0.25 * b); T.add(st);
+      T.add(box(0.07, 0.025, 0.07, basic(0xff8a3a), s * 0.11, 0.98, -0.25 * b));
+      T.add(rbox(0.035, 0.035, 0.22, hose, s * 0.16, 0.66, -0.12 * b, 0.6, 0, 0));
+    }
+    H.add(box(0.17, 0.022, 0.015, core, 0, 0.2, 0.158));
+    T.add(box(0.08, 0.08, 0.03, r.m(0x8a1a12), -0.11, 0.56, 0.17 * b)); strip(r, T, -0.11, 0.52, 0.18 * b, 0.04, [0.14, 0.08], r.m(0xc8bca0), { lx: [-0.6, 0.2], th: 0.012 });
+    const em = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 0), core); em.position.set(0, 0.1, 0.1); sh.add(em);
   },
 };
 
@@ -520,6 +534,13 @@ KITS.rogue = {
     r.wpnL = dagger(r.j.handL);
     r.tipL = new THREE.Object3D(); r.tipL.position.set(0, 0.05, 0.5); r.wpnL.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; r.wpnL.add(r.baseL);
+    // ---- The Last Crusade, on every outfit: augmetic red optics, a cloak-field generator between the shoulder blades
+    // with a cable to each wrist, and a red mono-edge along each knife
+    { const { bulk: b } = r.dims, optic = basic(0xff3a24), dark = r.m(0x1e1e22), hose = r.m(0x141416);
+      for (const s2 of [1, -1]) H.add(box(0.05, 0.035, 0.02, optic, s2 * 0.06, 0.2, 0.162));
+      T.add(box(0.18, 0.2, 0.08, dark, 0, 0.5, -0.17 * b)); T.add(box(0.05, 0.05, 0.02, optic, 0.04, 0.55, -0.215 * b)); T.add(box(0.12, 0.03, 0.02, r.m(0x6a5634), -0.02, 0.44, -0.215 * b));
+      for (const s2 of [1, -1]) T.add(rbox(0.03, 0.03, 0.26, hose, s2 * 0.13, 0.5, -0.1 * b, 0.4, s2 * 0.4, 0));
+      for (const w of [r.wpnR, r.wpnL]) w.add(box(0.012, 0.012, 0.28, basic(0xff4a3a), 0, -0.035, 0.3)); }
     // a lower, coiled stance (visual only); idle: flip the right dagger end over end every few seconds
     r.poseMod = (p) => ({ ...p, by: (p.by ?? 0) - 0.05, torso: add(p.torso, [0.08, 0, 0]), head: add(p.head, [-0.07, 0, 0]) });
     let idleT = 0, flip = -1;
@@ -764,6 +785,15 @@ KITS.mage = {
     const orbit = pivot(r.j.handL, 0, 0, 0);
     for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2; orbit.add(rbox(0.04, 0.04, 0.012, glyph, Math.cos(a) * 0.17, 0.04 * Math.sin(a * 2), Math.sin(a) * 0.17, 0, a, 0.78)); }
     r.spinners.push({ obj: orbit, axis: 'y', speed: 3.2 });
+    // ---- The Last Crusade: a halo emitter turning behind her head (a brass ring with four glowing nodes), neural
+    // ports at the temples, a cable down her spine
+    { const { bulk: b } = r.dims, brass = r.m(0x8a6a34), hose = r.m(0x161618);
+      const hp2 = pivot(H, 0, 0.24, -0.2), ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.018, 4, 18), brass); hp2.add(ring);
+      for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; hp2.add(box(0.05, 0.05, 0.03, glyph, Math.cos(a) * 0.24, Math.sin(a) * 0.24, 0)); }
+      r.spinners.push({ obj: hp2, axis: 'z', speed: 0.8 });
+      for (const s2 of [1, -1]) H.add(box(0.03, 0.05, 0.05, brass, s2 * 0.13, 0.2, 0.04));
+      H.add(box(0.04, 0.04, 0.04, brass, 0, 0.12, -0.15));
+      T.add(rbox(0.035, 0.035, 0.5, hose, 0, 0.42, -0.15 * b, Math.PI / 2 - 0.15, 0, 0)); }
     r.setGlow(1);
   },
 };
