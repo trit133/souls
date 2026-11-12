@@ -1,7 +1,7 @@
 // Skill tree screen: the selected character's web drawn in SVG. Hover (or tap) a node to see what it
 // gives; buy it from the tooltip. Drag to pan, wheel / pinch / buttons to zoom.
 import { NUM } from './scale.js';
-import { REGIONS, TREES, RING, nodeCost, owned, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
+import { REGIONS, TREES, RING, nodeCost, refundOf, owned, picksOf, isTravel, pickLabel, TRAVEL, RES_PICKS, canTake, describe, iconKey, neighbours, nodeCap, capHint, sumStats, STATS, CAPS } from './skilltree.js';
 import { CHARS } from './player.js';
 import { playerParts, TYPES, TYPE_NAME, TYPE_COLOR, RES_CAP, ARMOR_CAP } from './damage.js';
 import { iconPath } from './icons.js';
@@ -40,7 +40,11 @@ export class TreeUI {
     $('tree-unlock').addEventListener('click', () => this.unlockMage());
     $('tree-stats-btn').addEventListener('click', () => $('tree-stats').classList.toggle('open'));
     // phone: the tapped node's card has an Upgrade button
-    $('tree-tip').addEventListener('click', (e) => { if (e.target.closest('.tt-buy') && this.sel) this.buy(this.sel); });
+    $('tree-tip').addEventListener('click', (e) => {
+      const pk = e.target.closest('[data-pick]');
+      if (pk && this.picking) { this.pick(this.picking, pk.dataset.pick); return; }
+      if (e.target.closest('.tt-buy') && this.sel) this.buy(this.sel);
+    });
     // search: every node whose name or description has all the words typed lights up
     const sIn = $('tree-search-input');
     sIn.addEventListener('input', () => this.applySearch());
@@ -58,6 +62,7 @@ export class TreeUI {
   get data() { return this.game.accounts.data; }
   get tree() { return TREES[this.kind]; }
   get locked() { return this.kind === 'mage' && !this.data?.upgrades?.mage; }
+  get picks() { return picksOf(this.data, this.kind); }
 
   open(kind) {
     this.kind = kind || this.game.lobbyKind || this.game.kind || 'knight';
@@ -108,6 +113,7 @@ export class TreeUI {
       if (!pts.has(e.pointerId)) {
         // mouse hover shows a node's tooltip
         const id = e.target.closest?.('[data-node]')?.dataset.node || null;
+        if (this.picking) return; // (a travel node's pick stays open until a choice or a click elsewhere)
         if (id !== this.hover) { this.hover = id; this.sel = null; if (id) this.showTip(id); else this.hideTip(); this.renderStats(); }
         return;
       }
@@ -136,7 +142,7 @@ export class TreeUI {
       }
     };
     svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
-    svg.addEventListener('pointerleave', () => { this.hover = null; if (!this.sel) this.hideTip(); this.renderStats(); });
+    svg.addEventListener('pointerleave', () => { this.hover = null; if (!this.sel && !this.picking) this.hideTip(); this.renderStats(); });
     svg.addEventListener('wheel', (e) => { e.preventDefault(); const p = this.toTree(e.clientX, e.clientY); this.zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y); this.applyView(); }, { passive: false });
   }
 
@@ -144,14 +150,25 @@ export class TreeUI {
   // mouse: the tooltip just follows the hover; touch (no hover): a tap shows it until the next tap
   // phone: a tap only opens the node's card; buying is its Upgrade button
   click(id, touch = false) {
+    this.picking = null;
     if (!id) { this.sel = null; this.hideTip(); if (this.game.input.isPhone) this.render(); return; }
     if (this.resetting) { this.toggleMark(id); return; }
-    if (this.game.input.isPhone) { this.sel = id; this.render(); return; }
     const have = this.data ? owned(this.data, this.kind) : new Set(['start']);
     const n = this.tree.nodes.get(id);
-    if (!have.has(id) && canTake(this.tree, have, id) && this.game.accounts.user && !this.locked && (this.data?.gold ?? 0) >= nodeCost(n)) this.buy(id);
+    // an owned travel node: open its pick to change the stat
+    if (have.has(id) && isTravel(n) && this.game.accounts.user) { this.sel = id; this.picking = id; this.render(); return; }
+    if (this.game.input.isPhone) { this.sel = id; this.render(); return; }
+    if (!have.has(id) && canTake(this.tree, have, id) && this.game.accounts.user && !this.locked && (this.data?.gold ?? 0) >= nodeCost(n, have, this.tree)) { this.buy(id); if (this.picking) return; }
     this.sel = touch ? id : null;
     this.showTip(id);
+  }
+  // set what a travel node gives
+  pick(id, p) {
+    const d = this.data; if (!d) return;
+    ((d.treePick ??= {})[this.kind] ??= {})[id] = p;
+    this.game.accounts.save();
+    this.picking = null; this.sel = this.game.input.isPhone ? id : null;
+    this.render();
   }
 
   // ---------- reset ----------
@@ -172,8 +189,9 @@ export class TreeUI {
   confirmReset() {
     const d = this.data, gone = this.removal();
     if (!d || !gone.length) { this.resetting = false; this.render(); return; }
-    const refund = gone.reduce((s, id) => s + nodeCost(this.tree.nodes.get(id)), 0);
+    const refund = refundOf(this.tree, owned(d, this.kind), gone);
     d.tree[this.kind] = (d.tree[this.kind] || []).filter((id) => !gone.includes(id));
+    for (const id of gone) delete d.treePick?.[this.kind]?.[id];
     d.gold += refund;
     this.game.accounts.save();
     this.game.audio.play('fog');
@@ -186,7 +204,7 @@ export class TreeUI {
   render() {
     const T = this.tree, have = this.data ? owned(this.data, this.kind) : new Set(['start']);
     const gone = this.resetting ? new Set(this.removal()) : new Set();
-    const refund = [...gone].reduce((s, id) => s + nodeCost(T.nodes.get(id)), 0);
+    const refund = refundOf(T, have, gone), picks = this.picks;
     $('tree-wrap').classList.toggle('resetting', this.resetting);
     $('tree-resetbar').classList.toggle('hidden', !this.resetting);
     $('tree-reset').textContent = this.resetting ? 'Resetting…' : 'Reset';
@@ -224,14 +242,14 @@ export class TreeUI {
     }
     for (const n of T.nodes.values()) {
       const got = have.has(n.id), can = !got && canTake(T, have, n.id) && !this.locked;
-      const r = n.role === 'start' ? 4.6 : n.keystone ? 6 : n.role === 'socket' || n.evo || n.soon ? 5 : n.notable ? 4.4 : n.big ? 3.8 : /^(hp|st|dmg)$/.test(Object.keys(n.give)[0] || '') ? 2.6 : 3.1;
-      const cls = `tn ${got ? 'own' : can ? 'can' : ''} ${gone.has(n.id) ? (this.marked.has(n.id) ? 'mark' : 'orphan') : ''} ${n.role} ${n.big ? 'big' : ''} ${n.keystone ? 'keystone' : n.notable ? 'notable' : ''} ${n.soon ? 'evo soon' : ''} ${this.sel === n.id ? 'sel' : ''}`;
+      const r = n.role === 'start' ? 4.6 : n.keystone ? 6 : n.role === 'socket' || n.evo || n.soon ? 5 : n.notable ? 4.6 : isTravel(n) ? 2.5 : 3.1;
+      const cls = `tn ${got ? 'own' : can ? 'can' : ''} ${n.res ? 'res' : ''} ${gone.has(n.id) ? (this.marked.has(n.id) ? 'mark' : 'orphan') : ''} ${n.role} ${n.big ? 'big' : ''} ${n.keystone ? 'keystone' : n.notable ? 'notable' : ''} ${n.soon ? 'evo soon' : ''} ${this.sel === n.id ? 'sel' : ''}`;
       const shape = n.role === 'socket'
         ? `<polygon points="${[0, 1, 2, 3, 4, 5].map((i) => `${Math.cos(Math.PI / 6 + (i * Math.PI) / 3) * r},${Math.sin(Math.PI / 6 + (i * Math.PI) / 3) * r}`).join(' ')}"/>`
         : `<circle r="${r}"/>`;
-      const ir = r * 1.25;
+      const ir = r * 1.25, ik = iconKey(n, got ? picks[n.id] : null);
       s += `<g class="${cls}" data-node="${n.id}" transform="translate(${n.x} ${n.y})" style="--c:${col}">${shape}`
-        + `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(iconKey(n))}</svg></g>`;
+        + (ik ? `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(ik)}</svg>` : '') + '</g>';
     }
     $('tree-svg').innerHTML = s;
     this.applySearch();
@@ -261,7 +279,7 @@ export class TreeUI {
     if (!el) return;
     const kind = this.kind, c = CHARS[kind], have = this.data ? owned(this.data, kind) : new Set(['start']);
     const peek = this.sel || this.hover, n = peek && this.tree.nodes.get(peek);
-    const cur = sumStats(kind, have), next = n && !have.has(peek) ? sumStats(kind, new Set([...have, peek])) : null;
+    const picks = picksOf(this.data, kind), cur = sumStats(kind, have, picks), next = n && !have.has(peek) ? sumStats(kind, new Set([...have, peek]), picks) : null;
     const fmt = (v) => (Math.round(v * 100) / 100).toString();
     // one row: label, the value now, and the value after the hovered node if it changes
     const row = (label, f, cls = '', style = '') => {
@@ -313,7 +331,7 @@ export class TreeUI {
     const n = id && this.tree.nodes.get(id);
     if (!n) { this.hideTip(); return; }
     const have = this.data ? owned(this.data, this.kind) : new Set(['start']);
-    const { name, lines } = describe(n), cost = nodeCost(n), got = have.has(id), can = canTake(this.tree, have, id);
+    const got = have.has(id), { name, lines } = describe(n, got ? this.picks[id] : null), cost = got ? 0 : nodeCost(n, have, this.tree), can = canTake(this.tree, have, id);
     const gold = this.data?.gold ?? 0, signed = !!this.game.accounts.user;
     const cap = nodeCap(this.data, this.kind), atCap = have.size - 1 >= cap, phone = this.game.input.isPhone;
     const buyable = !got && !this.locked && signed && can && !atCap && gold >= cost;
@@ -321,11 +339,14 @@ export class TreeUI {
       : this.locked ? 'Unlock the Adept first' : !signed ? 'Sign in to buy' : !can ? 'Connect to it from a node you own'
         : atCap ? `Node limit ${cap} reached. ${capHint(cap)}.`
           : gold >= cost ? (phone ? 'Ready to unlock' : 'Click to unlock') : `Need ◆ ${cost - gold} more`;
+    const picking = this.picking === id && got, opts = n.res ? RES_PICKS : Object.keys(TRAVEL), cur = this.picks[id];
     tip.innerHTML = `<div class="tt-name"></div>${lines.map(() => '<div class="tt-line"></div>').join('')}<div class="tt-ring">Ring ${n.ring}${cost ? ` · ◆ ${cost}` : ''}</div><div class="tt-status"></div>`
+      + (picking ? `<div class="tt-picks">${opts.map((p) => `<button class="menu-btn tt-pick${p === cur ? ' on' : ''}" data-pick="${p}">${pickLabel(n, p)}</button>`).join('')}</div>` : '')
       + (phone && !got && !this.resetting ? `<button class="menu-btn tt-buy"${buyable ? '' : ' disabled'}>Upgrade${cost ? ` · ◆ ${cost}` : ''}</button>` : '');
+    tip.classList.toggle('picking', picking);
     tip.querySelector('.tt-name').textContent = name;
     tip.querySelectorAll('.tt-line').forEach((el, i) => { el.textContent = lines[i]; });
-    tip.querySelector('.tt-status').textContent = status;
+    tip.querySelector('.tt-status').textContent = picking ? (n.res ? 'Pick an element' : 'Pick a stat') : got && isTravel(n) && !this.resetting ? (phone ? 'Tap to change' : 'Click to change') : status;
     // phone: the card sits at the bottom of the screen (style.css), out from under the finger
     if (phone) { tip.style.left = tip.style.top = ''; tip.classList.remove('hidden'); return; }
     // place it beside the node
@@ -342,11 +363,13 @@ export class TreeUI {
   buy(id) {
     const d = this.data, n = this.tree.nodes.get(id);
     if (!d || !n || this.locked) return;
-    const have = owned(d, this.kind), cost = nodeCost(n);
+    const have = owned(d, this.kind), cost = nodeCost(n, have, this.tree);
     if (have.has(id) || !canTake(this.tree, have, id) || d.gold < cost || have.size - 1 >= nodeCap(d, this.kind)) return;
     d.gold -= cost;
     d.tree = d.tree || {};
     (d.tree[this.kind] = d.tree[this.kind] || []).push(id);
+    // a travel node starts as Strength (or Fire); its pick opens straight away
+    if (isTravel(n)) { ((d.treePick ??= {})[this.kind] ??= {})[id] = n.res ? 'fire' : 'str'; this.picking = id; this.sel = id; }
     this.game.accounts.save();
     this.game.audio.play('heal');
     this.render();

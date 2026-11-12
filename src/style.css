@@ -339,6 +339,16 @@ svg .solid { fill: currentColor; } /* filled icons (crit chance star) */
 #tree-tip .tt-ring { font-size: 11px; opacity: .7; margin-top: 5px; letter-spacing: 1px; }
 #tree-tip .tt-status { font-size: 11px; color: #c8a070; }
 #tree-tip button { margin-top: 6px; }
+#tree-tip.picking { pointer-events: auto; }
+#tree-tip .tt-picks { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+#tree-tip .tt-pick { margin: 0; padding: 4px 8px; font-size: 12px; text-align: left; }
+#tree-tip .tt-pick.on { border-color: #f0c860; color: #fff2c8; }
+#tree-svg .tn.travel circle { fill: #1a1820; stroke: #5a5664; stroke-width: .5; }
+#tree-svg .tn.travel.can circle { stroke: #b8b4c4; stroke-width: .8; }
+#tree-svg .tn.travel.own circle { fill: #3a2e14; stroke: #f0c860; }
+#tree-svg .tn.travel.res circle { stroke: #6a9a8a; stroke-width: .8; stroke-dasharray: 1 .5; }
+#tree-svg .tn.travel.res.can circle { stroke: #8ae0c8; }
+#tree-svg .tn.travel.res.own circle { stroke: #8ae0c8; stroke-dasharray: none; }
 #tree-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
 #tree-search { position: absolute; right: 8px; top: 8px; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 #tree-search input { width: 190px; padding: 6px 9px; background: rgba(8,7,10,.85); border: 1px solid #5a4a30; color: #f0e6d0; font: 13px Georgia, serif; outline: none; }

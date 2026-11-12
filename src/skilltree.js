@@ -1,15 +1,15 @@
-// Per-character skill trees (replacing the old upgrade shop). Each tree is a web around a start node:
-// spokes run outward ring by ring, side branches fork off them and ring links join neighbouring spokes,
-// so there is more than one way out. Inner rings give small flat stats, outer rings bigger flat chunks,
-// small percentages and the character's own stats; damage nodes for each damage type (leaning to the character's
-// own: Knight physical, Rogue bleed, Spellsword frost), resistances to the four elements and the Knight's armour
-// are spread through it. The evolution sits 6 rings out; 3 rune sockets sit at ring 10 (empty for now). A node
-// can be bought when it touches one you own; price grows with the ring.
+// Per-character skill trees (replacing the old upgrade shop). Travel nodes run out from the start along spokes and
+// two rings; you pick what each gives (Strength: health, Dexterity: stamina, Intelligence: mana; or on a resistance
+// node, an element). Off the paths hang clusters: small nodes of one theme round a notable, much stronger further out.
+// A keystone ends a spoke in each region; the evolution sits 6 links out (with three more still to come); three rune
+// sockets sit on ring 10. Centre nodes get steeply dearer the more of them you own. A node can be bought when it
+// touches one you own.
 import { NUM } from './scale.js';
 import { UPGRADES, upgradeCost } from './progress.js';
 import { LAYOUT } from './treelayout.js';
 import { COST_V5 } from './treecost-v5.js';
 import { COST_V6 } from './treecost-v6.js';
+import { COST_V7T } from './treecost-v7.js';
 
 // ---------- what nodes can give ----------
 // fmt: how a value reads in the tooltip
@@ -89,22 +89,9 @@ export const STATS = {
   spellblade: { name: 'Spellblade', fmt: () => 'Spell damage +30%; knife damage −20%', icon: 'spellDmg' },
 };
 
-// the character's own stats: [small, large] values
-const SPECIAL = {
-  knight: [['blockDrain', 6, 12], ['chip', 1.5, 3], ['stun', 3, 6], ['counter', 6, 12], ['chargeCd', 1, 2], ['chargeKb', 10, 20]],
-  rogue: [['parryCd', 0.25, 0.5], ['ripDmg', 4, 8], ['iframe', 0.01, 0.02], ['atkCost', 3, 6], ['parryWin', 1, 3], ['rollCost', 4, 8]],
-  mage: [['mana', 5, 10], ['manaHit', 0.5, 1], ['boltCost', 0.5, 1], ['fireCost', 2, 4], ['spellDmg', 3, 6], ['fireRadius', 5, 10], ['knifeDmg', 3, 6]],
-};
 // limits so a full tree stays fair
 export const CAPS = { bleedTgt: 60, poisonedDmg: 60, frozenDmg: 60, counterSt: 30, execute: 60, lowHpDmg: 60, finisherPct: 60, burnDmg: 60, killHeal: 6, armor: 60, physPct: 50, firePct: 125, bleedPct: 125, poisonPct: 125, frostPct: 125, fireRes: 75, bleedRes: 75, poisonRes: 75, frostRes: 75, blockDrain: 50, chip: 12, parryCd: 5, boltCost: 4, fireCost: 20, iframe: 0.08, atkCost: 25, rollCost: 30,
   parryWin: 4, potion: 40, ripDmg: 30, critChance: 75, critPower: 100, counter: 35, chargeCd: 6, stun: 25, spellDmg: 20, knifeDmg: 20, fireRadius: 30 };
-
-const INNER = [{ hp: 3 }, { st: 2 }];
-const MID = [{ hp: 4 }, { st: 2 }];
-const EARLY_PCT = [{ hpPct: 1 }, { stPct: 1 }];
-const OUTER = [{ hp: 8 }, { st: 4 }];
-const PCT_MID = [{ hpPct: 2 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }];
-const PCT_OUTER = [{ hpPct: 3 }, { stPct: 2 }, { move: 1 }, { aspd: 1 }, { potion: 5 }];
 
 export const EVOS = {
   knight: { key: 'evo_knight', name: 'Aegis Ram', desc: 'Block + heavy charges behind an electromagnetic barrier, knocking enemies back (20 s cooldown); attack right after it for a leaping overhead.' },
@@ -112,36 +99,115 @@ export const EVOS = {
   mage: { key: 'evo_mage', name: 'Twin Plasma', desc: 'Your plasma charge splits into two larger plasma charges.' },
 };
 
-// ---------- shapes ----------
-// spokes and how far each runs, twist per ring (spiral), the first spoke's angle, ring links [ring, nodes
-// between neighbouring spokes], star chords to the spoke two over [ring], and how the gaps are filled:
-// 'wheel' (a hub ringed by small nodes), 'arc' (a curved chain sweeping toward the next spoke), 'gem' (wheels
-// set out at the star's points and forks between them)
+// ---------- travel nodes ----------
+// Blank until bought; then you pick what each gives (and can change it any time). Strength, Dexterity or Intelligence
+// (Intelligence feeds mana, which only the Adept uses for now), or on a resistance travel node one element.
+export const TRAVEL = { str: { hp: 5 * NUM }, dex: { st: 4 }, int: { mana: 6 } };
+export const TRAVEL_NAME = { str: 'Strength', dex: 'Dexterity', int: 'Intelligence' };
+export const RES_PICKS = ['fire', 'frost', 'bleed', 'poison'];
+export const RES_PICK = 10; // a resistance travel node: +10% to the element picked (20 of them: 50% to all four)
+const RES_TRAVEL = 20;
+// what a travel node gives with its pick (unpicked: Strength, or Fire on a resistance node)
+export const travelGive = (n, pick) => (n.res ? { [(RES_PICKS.includes(pick) ? pick : 'fire') + 'Res']: RES_PICK } : { ...TRAVEL[TRAVEL[pick] ? pick : 'str'] });
+
+// ---------- the tree's shape ----------
+// Travel nodes run out from the start along spokes, round an inner ring (ring 4) and round the socket ring (ring 10).
+// Off them hang clusters: a notable in the middle ringed by small nodes of one theme; the entry is the small node
+// nearest the path and the notable sits across from it. Clusters get much stronger the further out they are.
+// Built once by scripts/gen-trees.mjs (positions, links and stats) and loaded from treelayout.js.
+export const TOTAL = 280;
+export const RING = 12; // distance between rings in tree units
+export const RINGS = 22;
+export const EVO_RING = 6, SOCKET_RING = 10, SOCKET_GAP = 3, CENTRE = 4;
 const SHAPES = {
-  // (the Knight's four straight lines keep only rings 1-10 and the rings where things join them further out: the rest
-  // of his nodes sit in the quarters' clusters; rings 7-8 stay so no shortcut brings the evolutions under 6 links apart)
-  knight: { spokes: 4, lens: [22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1], [9, 2], [13, 2], [18, 1], [21, 1]], star: [], style: 'wheel', keep: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 18, 21, 22] },
-  rogue: { spokes: 6, lens: [22, 17, 22, 17, 22, 17], twist: 0.09, start: -Math.PI / 2, links: [[5, 1], [13, 1]], star: [], style: 'arc' },
-  mage: { spokes: 5, lens: [22, 22, 22, 22, 22], twist: 0, start: -Math.PI / 2, links: [[4, 1]], star: [12, 16], style: 'gem' },
+  knight: { spokes: 4, lens: [20, 20, 20, 20], twist: 0 },
+  rogue: { spokes: 6, lens: [18, 12, 18, 12, 18, 12], twist: 0.09 },
+  mage: { spokes: 5, lens: [17, 17, 17, 17, 17], twist: 0 },
 };
 
-export const RING = 12; // distance between rings in tree units
-// the three price bands, spread over 22 rings: 1-8: 10 -> 80, 9-15: 100 -> 200, 16-22: 250 -> 350
-const COST = [0, 10, 14, 20, 28, 38, 50, 65, 80, 100, 115, 130, 150, 165, 180, 200, 250, 265, 285, 300, 320, 335, 350];
-export const RINGS = 22;
-// every tree has the same number of nodes in each band of rings (about 10 a ring): [first ring, last ring, nodes]
-export const BANDS = [[1, 8, 80], [9, 15, 70], [16, 22, 65]];
-// the most nodes a tree can hold: 45 in the first section, 70 once that character beats it (Varek),
-// 100 in the second section, 130 once that is beaten (the second section is still to come)
-export function nodeCap(data, kind) {
-  const st = data?.stats || {};
-  if (st.section2WinsBy?.[kind]) return 130;
-  if (st.section2By?.[kind]) return 100;
-  if (st.winsBy?.[kind]) return 70;
-  return 45;
-}
-export const capHint = (cap) => (cap <= 45 ? 'Beat Varek with this character to raise the limit to 70' : cap <= 70 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
-export const EVO_RING = 6, SOCKET_RING = 10, SOCKET_GAP = 3;
+// a cluster: [region, ring, small nodes' gives (cycled), notable, its gives]; opts: n (small nodes, else by ring),
+// fixed (values not scaled by distance)
+const CL = (g, ring, smalls, name, give, o = {}) => ({ g, ring, smalls, name, give, ...o });
+const life = (g, r, name, k = 1) => CL(g, r, [{ hp: 5 * k }], name, { hp: 15 * k, hpPct: 2 * k });
+const vit = (g, r, name, k = 1, extra = {}) => CL(g, r, [{ hpPct: 2 * k }], name, { hpPct: 6 * k, ...extra });
+const stam = (g, r, name, extra = {}) => CL(g, r, [{ st: 3 }, { stPct: 2 }], name, { st: 6, stPct: 6, ...extra });
+const medic = (g, r, name, extra = {}) => CL(g, r, [{ potion: 4 }], name, { potion: 10, flask: 1, ...extra });
+const crit = (g, r, name, extra = {}) => CL(g, r, [{ critChance: 3 }], name, { critChance: 8, ...extra });
+const critP = (g, r, name, extra = {}) => CL(g, r, [{ critPower: 4 }], name, { critPower: 12, ...extra });
+const phys = (g, r, name, give = { physDmg: 3, physPct: 8 }) => CL(g, r, [{ physDmg: 1 }, { physPct: 3 }], name, give);
+const elem = (g, r, e, name, give = { [e + 'Dmg']: 3, [e + 'Pct']: 20 }) => CL(g, r, [{ [e + 'Dmg']: 1 }, { [e + 'Pct']: 8 }], name, give);
+// a resistance cluster: three 5% nodes and a 10% notable (25%: the other half of the 75% after the travel nodes)
+const resC = (g, r, e, name) => CL(g, r, [{ [e + 'Res']: 5 }], name, { [e + 'Res']: 10 }, { n: 3, fixed: true });
+// the Templar's armour: 60% in all over four clusters
+const armour = (g, r, name, small, n, top) => CL(g, r, [{ armor: small }], name, { armor: top }, { n, fixed: true });
+// values that don't grow with distance (switches, flasks, mechanics with their own caps)
+const NOSCALE = new Set(['flask', 'parryWin', 'killHeal', 'execute', 'lowHpDmg', 'finisherPct', 'burnDmg', 'bleedTgt', 'poisonedDmg', 'frozenDmg', 'counterSt']);
+const mulAt = (ring) => Math.max(1, 1 + 0.12 * (ring - 3)); // ring 3: ×1, ring 10: ×1.84, ring 20: ×3
+const scaleGive = (give, m) => Object.fromEntries(Object.entries(give).map(([k, v]) => [k, NOSCALE.has(k) ? v : v * m >= 2 ? Math.round(v * m) : Math.round(v * m * 100) / 100]));
+
+export const REGIONS = { knight: ['Bulwark', 'Executioner', 'Crusader', 'Warden'], rogue: ['Shadow', 'Bloodletter', 'Venom', 'Duelist'], mage: ['Pyromancer', 'Frostblade', 'Arcanist', 'Spellward'] };
+// the Templar: up BULWARK (armour, guard, charge, health), right EXECUTIONER (physical, crits, stun), down CRUSADER
+// (fire, speed, charge), left WARDEN (health, stamina, injectors). His health clusters are twice as strong
+const KNIGHT = {
+  clusters: [
+    armour(0, 4, 'Shield Wall', 2, 3, 4), life(3, 4, 'Thick Hide', 2), phys(1, 4, 'Honed Steel'), CL(2, 4, [{ move: 2 }, { aspd: 2 }], 'Zeal', { move: 5, aspd: 4 }),
+    medic(3, 6, 'Field Medic'), CL(0, 7, [{ blockDrain: 5 }, { chip: 1 }], 'Iron Wall', { blockDrain: 15, chip: 3 }), crit(1, 7, 'Precision'), elem(2, 7, 'fire', 'Kindled Steel'),
+    vit(3, 8, 'Iron Constitution', 1.5), life(0, 9, 'Unbroken', 2), CL(1, 9, [{ stun: 3 }], 'Crushing Weight', { stun: 10, physPct: 5 }), elem(2, 9, 'frost', 'Rime Edge'),
+    stam(3, 10, 'Deep Breath'),
+    resC(0, 12, 'frost', 'Hearthguard'), resC(1, 12, 'bleed', 'Clotting Salve'), resC(2, 12, 'fire', 'Flame Warden'), resC(3, 12, 'poison', 'Antitoxin'),
+    armour(0, 13, 'Bastion', 3, 4, 6), phys(1, 13, 'Brutal Edge'), CL(2, 13, [{ chargeCd: 0.5 }, { chargeKb: 10 }], 'Charging Bull', { chargeCd: 2, chargeKb: 25 }), life(3, 14, 'Bulwark of Flesh', 2),
+    CL(0, 16, [{ counter: 5 }], 'Riposte Master', { counter: 15, counterSt: 15 }), critP(1, 16, 'Crowning Blow', { finisherPct: 20 }), elem(2, 16, 'fire', 'Immolation Rite', { firePct: 10, burnDmg: 20 }), vit(3, 16, 'Second Wind', 1.5, { killHeal: 3 }),
+    armour(0, 18, 'Aegis of Faith', 3, 5, 17), phys(1, 18, "Executioner's Mark", { execute: 25, physPct: 5 }), elem(2, 18, 'poison', 'Venom Edge'), medic(3, 18, 'Battle Medic', { hp: 10 }),
+    life(0, 19, "Titan's Vigour", 2), elem(1, 19, 'bleed', 'Serrated', { bleedDmg: 3, bleedPct: 20, lowHpDmg: 20 }),
+    critP(1, 10, 'Ferocity'), crit(1, 15, 'Deadeye'),
+  ],
+  keystones: [['Immovable', { immovable: 1 }], ['Headsman', { headsman: 1 }], ['Ember Oath', { emberOath: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
+  // one evolution per region: Shield Charge (Bulwark) is in; the other three evolve abilities still to come
+  soon: [null,
+    { name: 'Guillotine', desc: 'Evolves a heavy execution strike still to come: a leaping downward blow that cleaves anything under 30% health clean through.' },
+    { name: 'Sun Brand', desc: 'Evolves a holy brand still to come: the brand bursts into a ring of fire on the ground that burns enemies and heals you while you stand in it.' },
+    { name: 'Rallying Cry', desc: 'Evolves a war cry still to come: a shout that restores stamina and grants armour to you and nearby allies, and staggers enemies close by.' }],
+};
+// the Shrike: up SHADOW (rolls, i-frames, parry), right BLOODLETTER (bleed, crits), down VENOM (poison, injectors),
+// left DUELIST (attack speed, stamina, finishers). The parry window only grows +4 ms in all (two notables)
+const ROGUE = {
+  clusters: [
+    CL(0, 4, [{ rollCost: 4 }, { move: 2 }], 'Fade', { move: 6, rollCost: 6 }), elem(1, 4, 'bleed', 'Serrated'), life(2, 4, 'Hardy'), stam(3, 4, 'Second Breath'),
+    CL(0, 7, [{ iframe: 0.01 }, { rollCost: 4 }], 'Ghost Step', { iframe: 0.02, rollCost: 10 }), crit(1, 7, 'Precision'), elem(2, 7, 'poison', 'Toxic Edge'), CL(3, 7, [{ aspd: 2 }, { atkCost: 3 }], 'Flurry', { aspd: 8 }),
+    CL(0, 9, [{ parryCd: 0.25 }], 'Quick Hands', { parryCd: 1, parryWin: 2 }), elem(1, 9, 'bleed', 'Hemorrhage', { bleedPct: 25, bleedDmg: 3 }), medic(2, 9, 'Lingering Death'), vit(3, 9, 'Iron Will'),
+    resC(0, 12, 'frost', 'Warm Blood'), resC(1, 12, 'bleed', 'Clotting'), resC(2, 12, 'poison', 'Antitoxin'), resC(3, 12, 'fire', 'Fireproof'),
+    life(0, 13, 'Shadow Vigour'), critP(1, 13, 'Cruel Edge'), elem(2, 13, 'poison', 'Virulence', { poisonPct: 30 }), phys(3, 13, "Duelist's Focus", { ripDmg: 8, physPct: 6 }),
+    CL(0, 16, [{ ripDmg: 4 }], 'Riposte Artist', { ripDmg: 10, parryWin: 2 }), elem(1, 16, 'bleed', 'Exsanguinate', { bleedTgt: 20 }), elem(2, 16, 'poison', 'Wither', { poisonedDmg: 20 }), CL(3, 16, [{ aspd: 2 }, { physPct: 3 }], 'Finishing Flourish', { finisherPct: 25 }),
+    CL(0, 18, [{ rollCost: 4 }, { move: 2 }], 'Untouchable', { iframe: 0.02, move: 4 }), crit(1, 18, "Executioner's Kiss", { execute: 20 }), vit(2, 18, 'Venom Blood', 1, { hp: 10 }), elem(3, 18, 'frost', 'Rime Edge'),
+    medic(3, 19, 'Red Harvest', { killHeal: 2 }), elem(2, 19, 'fire', 'Ember Edge'), critP(1, 10, 'Ferocity'),
+  ],
+  keystones: [['Fleeting', { fleeting: 1 }], ['Glass Fang', { glassFang: 1 }], ['Plaguelord', { plague: 1 }], ['Blade Dance', { bladeDance: 1 }]],
+  soon: [null,
+    { name: 'Crimson Fan', desc: 'Evolves a thrown-knife volley still to come: a fan of blades that opens deep bleeding wounds on everything it passes through.' },
+    { name: 'Plague Cloud', desc: 'Evolves a toxin canister still to come: it bursts into a lingering cloud that poisons and slows anything inside it.' },
+    { name: 'Blade Waltz', desc: 'Evolves a spinning dash still to come: a whirl of cuts through a crowd that leaves you briefly untouchable.' }],
+};
+// the Adept: up PYROMANCER (fire, fireball), right FROSTBLADE (frost, knife), down ARCANIST (mana, spells), left
+// SPELLWARD (health, injectors)
+const MAGE = {
+  clusters: [
+    elem(0, 4, 'fire', 'Searing'), elem(1, 4, 'frost', 'Glacial'), CL(2, 4, [{ mana: 5 }], 'Focused Mind', { mana: 12, spellDmg: 4 }), life(3, 4, 'Thick Hide'),
+    CL(0, 7, [{ fireRadius: 5 }, { fireCost: 2 }], 'Wide Blast', { fireRadius: 15, fireCost: 4 }), CL(1, 7, [{ knifeDmg: 3 }, { aspd: 2 }], 'Cold Steel', { knifeDmg: 10, aspd: 4 }), CL(2, 7, [{ spellDmg: 3 }], 'Arcane Power', { spellDmg: 10 }), medic(3, 6, 'Field Medic'),
+    crit(0, 9, 'Precision'), critP(1, 9, 'Ferocity'), CL(2, 9, [{ manaHit: 0.5 }, { mana: 5 }], 'Siphon', { manaHit: 2 }), stam(3, 9, 'Endurance'),
+    resC(0, 12, 'fire', 'Fire Soul'), resC(1, 12, 'frost', "Winter's Grip"), resC(2, 12, 'bleed', 'Clotting'), resC(3, 12, 'poison', 'Antitoxin'),
+    elem(0, 13, 'fire', 'Inferno', { firePct: 30 }), elem(1, 13, 'frost', 'Rime Edge', { frostPct: 30 }), CL(2, 13, [{ boltCost: 0.5 }, { fireCost: 2 }], 'Thrift', { boltCost: 2, fireCost: 4 }), vit(3, 13, 'Iron Will'),
+    elem(0, 16, 'fire', 'Immolation Rite', { burnDmg: 20 }), elem(1, 16, 'frost', 'Shatterpoint', { frozenDmg: 20 }), CL(2, 16, [{ spellDmg: 3 }], 'Desperation', { lowHpDmg: 20 }), vit(3, 16, 'Second Wind', 1, { killHeal: 3 }),
+    CL(0, 18, [{ fireCost: 2 }, { fireDmg: 1 }], 'Kindling', { fireCost: 6, fireDmg: 2 }), elem(1, 18, 'bleed', 'Serrated'), elem(2, 18, 'poison', 'Toxin'), medic(3, 18, 'Battle Medic'),
+    life(3, 19, 'Spellward Vigour'), crit(1, 19, 'Deadeye'), critP(0, 15, 'Searing Focus'),
+  ],
+  keystones: [['Pyromania', { pyromania: 1 }], ['Rime Heart', { rimeHeart: 1 }], ['Spellblade', { spellblade: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
+  soon: [null,
+    { name: 'Glacier Prison', desc: 'Evolves a frost nova still to come: a ring of ice that freezes enemies in place and shatters for frost damage.' },
+    { name: 'Arcane Echo', desc: 'Evolves an arcane missile still to come: each missile repeats itself a moment later at half strength.' },
+    { name: 'Runic Aegis', desc: 'Evolves a rune ward still to come: a ward that soaks damage and bursts outward when it breaks.' }],
+};
+const PLANS = { knight: KNIGHT, rogue: ROGUE, mage: MAGE };
+
 function segCross(a, b, c, d) {
   const o = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
   return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
@@ -153,608 +219,226 @@ function segDist(c, a, b) {
 }
 // drawn sizes (tree units), used to keep nodes apart
 const SIZE = (n) => (n.role === 'start' ? 4.6 : n.role === 'socket' || n.role === 'evo' ? 5 : 3.9);
-const GAP = 2.4;
+const GAP = 2.4, CR = 12; // CR: a cluster's radius (notable to its ring of small nodes)
+const regionOf = (p) => ((Math.round((Math.atan2(p.y, p.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
 
-export function build(kind, opts = {}) {
-  const S = SHAPES[kind], nodes = new Map(), edges = [];
+// builds a tree from scratch (scripts/gen-trees.mjs); `log` reports clusters that found no room
+export function generate(kind, log = () => {}) {
+  const S = SHAPES[kind], P = PLANS[kind], N = S.spokes, nodes = new Map(), edges = [];
   const add = (n) => { nodes.set(n.id, n); return n; };
   const link = (a, b) => edges.push([a, b]);
-  const ang = (i, d) => S.start + (i * Math.PI * 2) / S.spokes + S.twist * d;
+  const ang = (i, d) => -Math.PI / 2 + (i * Math.PI * 2) / N + S.twist * d;
   const at = (a, r) => ({ x: Math.cos(a) * r, y: Math.sin(a) * r });
-  const ringOf = (x, y) => Math.max(1, Math.round(Math.hypot(x, y) / RING));
-  add({ id: 'start', ring: 0, role: 'start', x: 0, y: 0, pin: true });
-  // spokes
-  for (let i = 0; i < S.spokes; i++) for (let d = 1, prev = 'start'; d <= S.lens[i]; d++) {
-    if (S.keep && !S.keep.includes(d)) continue;
-    add({ id: `s${i}-${d}`, ring: d, role: 'main', spoke: i, pin: true, ...at(ang(i, d), d * RING) });
+  const ringAt = (p) => Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
+  add({ id: 'start', ring: 0, role: 'start', x: 0, y: 0 });
+  // spokes of travel nodes
+  for (let i = 0; i < N; i++) for (let d = 1, prev = 'start'; d <= S.lens[i]; d++) {
+    add({ id: `s${i}-${d}`, ring: d, role: 'travel', spoke: i, ...at(ang(i, d), d * RING) });
     link(prev, `s${i}-${d}`); prev = `s${i}-${d}`;
   }
-  const has = (id) => nodes.has(id);
-  // ring links between neighbouring spokes (only where both reach)
-  for (const [d, m] of S.links) for (let i = 0; i < S.spokes; i++) {
-    const j = (i + 1) % S.spokes;
-    if (!has(`s${i}-${d}`) || !has(`s${j}-${d}`)) continue;
-    let a0 = ang(i, d), a1 = ang(j, d);
-    if (a1 < a0) a1 += Math.PI * 2;
-    let prev = `s${i}-${d}`;
-    for (let k = 1; k <= m; k++) {
-      const id = `l${i}-${d}-${k}`;
-      add({ id, ring: d, role: 'link', ...at(a0 + ((a1 - a0) * k) / (m + 1), d * RING) });
-      link(prev, id); prev = id;
-    }
-    link(prev, `s${j}-${d}`);
-  }
-  // the star (spellsword): from each spoke's point at the outer star ring, a line dips to a valley between
-  // the spokes at the inner star ring and back out to the next spoke's point: a five-point star outline
-  if (S.star.length) {
-    const [inner, outer] = S.star;
-    for (let i = 0; i < S.spokes; i++) {
-      const j = (i + 1) % S.spokes, A = nodes.get(`s${i}-${outer}`), B = nodes.get(`s${j}-${outer}`);
-      const va = ang(i, inner) + Math.PI / S.spokes, V = at(va, inner * RING), vid = `x${i}-v`;
-      add({ id: vid, ring: inner, role: 'link', ...V });
-      for (const [P, side] of [[A, 'a'], [B, 'b']]) {
-        const mx = (P.x + V.x) / 2, my = (P.y + V.y) / 2, id = `x${i}-${side}`;
-        add({ id, ring: ringOf(mx, my), role: 'link', x: mx, y: my });
-        link(P.id, id); link(id, vid);
-      }
-    }
-  }
-  nodes.get(`s0-${EVO_RING}`).role = 'evo';
-  // ring 10 is a full circle of 12 nodes passing through every spoke's ring-10 node (lines only meet at nodes);
-  // the three rune sockets sit 4 steps apart on it, so going socket to socket crosses the same 3 nodes on every
-  // tree. Spokes that are sockets themselves stay spokes.
-  const RN = 3 * (SOCKET_GAP + 1), per = Array(S.spokes).fill(Math.floor((RN - S.spokes) / S.spokes));
-  for (let k = 0; k < (RN - S.spokes) % S.spokes; k++) per[Math.floor((k * S.spokes) / ((RN - S.spokes) % S.spokes))]++;
-  const ringIds = [];
-  for (let g = 0; g < S.spokes; g++) {
-    const sid = `s${g}-${SOCKET_RING}`;
-    nodes.get(sid).socketRing = true; ringIds.push(sid);
-    let a0 = ang(g, SOCKET_RING), a1 = ang((g + 1) % S.spokes, SOCKET_RING);
+  // the inner ring joining the spokes at ring 4
+  for (let i = 0; i < N; i++) {
+    const j = (i + 1) % N; let a0 = ang(i, CENTRE), a1 = ang(j, CENTRE);
     if (a1 <= a0) a1 += Math.PI * 2;
-    for (let k = 1; k <= per[g]; k++) {
-      const id = `q${g}-${k}`;
-      add({ id, ring: SOCKET_RING, role: 'link', socketRing: true, ...at(a0 + ((a1 - a0) * k) / (per[g] + 1), SOCKET_RING * RING) });
-      ringIds.push(id);
-    }
+    const m = Math.max(1, Math.round(((a1 - a0) * CENTRE * RING) / 15) - 1);
+    let prev = `s${i}-${CENTRE}`;
+    for (let k = 1; k <= m; k++) { const id = `l${i}-${k}`; add({ id, ring: CENTRE, role: 'travel', ...at(a0 + ((a1 - a0) * k) / (m + 1), CENTRE * RING) }); link(prev, id); prev = id; }
+    link(prev, `s${j}-${CENTRE}`);
+  }
+  // the socket ring at ring 10: 12 nodes through every spoke; the three rune sockets 4 apart on it
+  const RN = 3 * (SOCKET_GAP + 1), per = Array(N).fill(Math.floor((RN - N) / N));
+  for (let k = 0; k < (RN - N) % N; k++) per[Math.floor((k * N) / ((RN - N) % N))]++;
+  const ringIds = [];
+  for (let g = 0; g < N; g++) {
+    const sid = `s${g}-${SOCKET_RING}`; nodes.get(sid).socketRing = true; ringIds.push(sid);
+    let a0 = ang(g, SOCKET_RING), a1 = ang((g + 1) % N, SOCKET_RING);
+    if (a1 <= a0) a1 += Math.PI * 2;
+    for (let k = 1; k <= per[g]; k++) { const id = `q${g}-${k}`; add({ id, ring: SOCKET_RING, role: 'travel', socketRing: true, ...at(a0 + ((a1 - a0) * k) / (per[g] + 1), SOCKET_RING * RING) }); ringIds.push(id); }
   }
   ringIds.forEach((id, k) => link(id, ringIds[(k + 1) % RN]));
-  // pick the socket places: every 4th node, starting where the most of them land between spokes
   let bestO = 0, bestN = -1;
-  for (let o = 0; o <= SOCKET_GAP; o++) {
-    const n = [0, 1, 2].filter((k) => !ringIds[o + k * (SOCKET_GAP + 1)].startsWith('s')).length;
-    if (n > bestN) { bestN = n; bestO = o; }
-  }
+  for (let o = 0; o <= SOCKET_GAP; o++) { const n = [0, 1, 2].filter((k) => !ringIds[o + k * (SOCKET_GAP + 1)].startsWith('s')).length; if (n > bestN) { bestN = n; bestO = o; } }
   for (let k = 0; k < 3; k++) nodes.get(ringIds[bestO + k * (SOCKET_GAP + 1)]).role = 'socket';
+  nodes.get(`s0-${EVO_RING}`).role = 'evo';
 
-  // ---- fill each band to its share with the character's own features, out in the gaps between spokes ----
-  const inBand = (lo, hi) => [...nodes.values()].filter((n) => n.ring >= lo && n.ring <= hi).length;
+  // ---- room checks ----
+  const lineGap = (p) => { let d = 1e9; for (const [a, b] of edges) d = Math.min(d, segDist(p, nodes.get(a), nodes.get(b))); return d; };
+  const blocked = (p, q, skip) => {
+    for (const [a, b] of edges) { if (skip.has(a) || skip.has(b)) continue; if (segCross(p, q, nodes.get(a), nodes.get(b))) return true; }
+    for (const n of nodes.values()) if (!skip.has(n.id) && segDist(n, p, q) < SIZE(n) + 1.5) return true;
+    return false;
+  };
+  const roomAt = (p, extra) => [...nodes.values(), ...extra].every((n) => Math.hypot(n.x - p.x, n.y - p.y) >= SIZE(n) + 3.9 + GAP) && lineGap(p) >= 3.9 + 2;
   let uid = 0;
-  // the nearest node a new line from (x, y) can reach without crossing anything
-  const nearest = (x, y, lo, hi, not = new Set(), from = null) => {
-    const cands = [...nodes.values()].filter((n) => !not.has(n.id) && n.role !== 'socket' && n.ring >= lo && n.ring <= hi)
-      .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
-    for (const n of cands.slice(0, 12)) if (!blocked(from || { x, y }, n, new Set([...not, n.id]))) return n.id;
-    return cands[0]?.id ?? null;
-  };
-  const clampRing = (x, y, lo, hi) => Math.min(hi, Math.max(lo, ringOf(x, y)));
-  // would a new line p-q cross an existing line, or pass over a node?
-  const blocked = (p, q, skip = new Set()) => {
-    for (const [a, b] of edges) {
-      if (skip.has(a) || skip.has(b)) continue;
-      if (segCross(p, q, nodes.get(a), nodes.get(b))) return true;
-    }
-    for (const n of nodes.values()) if (!skip.has(n.id) && n !== p && n !== q && segDist(n, p, q) < SIZE(n) + 1.5) return true;
-    return false;
-  };
-  const lineGap = (x, y) => { let d = 1e9; for (const [a, b] of edges) d = Math.min(d, segDist({ x, y }, nodes.get(a), nodes.get(b))); return d; };
-  // the clearest point near (x, y): most room from every node already placed
-  const freeSpot = (x, y, reach) => {
-    const r0 = Math.hypot(x, y), a0 = Math.atan2(y, x);
-    let bx = x, by = y, bc = -1;
-    for (let dr = -0.9; dr <= 0.91; dr += 0.3) for (let da = -0.36; da <= 0.361; da += 0.06) {
-      const r = r0 + dr * RING, cx = Math.cos(a0 + da) * r, cy = Math.sin(a0 + da) * r;
-      let c = 1e9;
-      for (const n of nodes.values()) c = Math.min(c, Math.hypot(n.x - cx, n.y - cy) - SIZE(n));
-      c = Math.min(c, lineGap(cx, cy)) - reach;
-      if (c > bc) { bc = c; bx = cx; by = cy; }
-    }
-    return [bx, by];
-  };
-  const wheel = (gx0, gy0, size, lo, hi) => {
-    // a hub with `size - 1` nodes round it, joined in a loop; one entry to the web
-    const [gx, gy] = freeSpot(gx0, gy0, RING * 0.95 + 4);
-    const hub = `w${uid++}`, hr = clampRing(gx, gy, lo, hi), ids = [];
-    add({ id: hub, ring: hr, role: 'tip', x: gx, y: gy });
-    const m = size - 1, rad = RING * 0.95;
-    for (let k = 0; k < m; k++) {
-      const a = (k / m) * Math.PI * 2 + Math.atan2(gy, gx), x = gx + Math.cos(a) * rad, y = gy + Math.sin(a) * rad;
-      const id = `w${uid++}`;
-      add({ id, ring: clampRing(x, y, lo, hi), role: 'main', x, y });
-      link(hub, id); ids.push(id);
-    }
-    for (let k = 0; k < m - 1 && m > 2; k++) if (k % 2 === 0) link(ids[k], ids[k + 1]);
-    const inner = ids.length ? ids.reduce((a, b) => (Math.hypot(nodes.get(a).x, nodes.get(a).y) < Math.hypot(nodes.get(b).x, nodes.get(b).y) ? a : b)) : hub;
-    const n = nodes.get(inner);
-    link(nearest(n.x, n.y, Math.max(0, lo - 2), hi, new Set([hub, ...ids]), n), inner);
-  };
-  // can a node go at p? (room from every node and every line)
-  const roomAt = (p, extra = []) => [...nodes.values(), ...extra].every((n) => Math.hypot(n.x - p.x, n.y - p.y) >= SIZE(n) + 3.9 + GAP)
-    && lineGap(p.x, p.y) >= 3.9 + 2;
-  // add a planned group: points, their roles, and its lines ([i, j] into the group, or [nodeId, j] to the web)
-  const group = (pts, roles, lines, lo, hi, prefix) => {
-    for (let k = 0; k < pts.length; k++) if (!roomAt(pts[k], pts.slice(0, k).map((q) => ({ ...q, role: 'main' })))) return false;
-    const P = (e) => (typeof e === 'number' ? pts[e] : nodes.get(e));
-    const planned = lines.map(([u, v]) => [P(u), P(v)]);
+  // a planned group: points, roles, lines ([i, j] within it, or [nodeId, j] to the tree); added only if it all fits
+  const group = (pts, roles, lines, prefix) => {
+    for (let k = 0; k < pts.length; k++) if (!roomAt(pts[k], pts.slice(0, k).map((q) => ({ ...q, role: 'x' })))) return null;
+    const Pt = (e) => (typeof e === 'number' ? pts[e] : nodes.get(e));
+    const planned = lines.map(([u, v]) => [Pt(u), Pt(v)]);
     for (let i = 0; i < planned.length; i++) {
-      const [A, B] = planned[i];
-      if (blocked(A, B, new Set([typeof lines[i][0] === 'string' ? lines[i][0] : '', typeof lines[i][1] === 'string' ? lines[i][1] : '']))) return false;
-      for (let j = 0; j < i; j++) {
-        const [C, D] = planned[j];
-        if (A !== C && A !== D && B !== C && B !== D && segCross(A, B, C, D)) return false;
-      }
-      for (const q of pts) if (q !== A && q !== B && segDist(q, A, B) < 3.9 + 1.5) return false;
+      const [A, B] = planned[i], skip = new Set(lines[i].filter((e) => typeof e === 'string'));
+      if (blocked(A, B, skip)) return null;
+      for (let j = 0; j < i; j++) { const [C, D] = planned[j]; if (A !== C && A !== D && B !== C && B !== D && segCross(A, B, C, D)) return null; }
+      for (const q of pts) if (q !== A && q !== B && segDist(q, A, B) < 3.9 + 1.5) return null;
     }
-    const ids = pts.map((p, k) => { const id = `${prefix}${uid++}`; add({ id, ring: clampRing(p.x, p.y, lo, hi), role: roles[k], x: p.x, y: p.y }); return id; });
+    const ids = pts.map((p, k) => { const id = `${prefix}${uid++}`; add({ id, ring: ringAt(p), role: roles[k], x: p.x, y: p.y }); return id; });
     for (const [u, v] of lines) link(typeof u === 'number' ? ids[u] : u, typeof v === 'number' ? ids[v] : v);
-    return true;
+    return ids;
   };
-  // the closest web node a group can hang from
-  const anchors = (p, lo, hi) => [...nodes.values()].filter((n) => n.role !== 'socket' && n.ring >= Math.max(1, lo - 2) && n.ring <= hi)
-    .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 6);
-  const tryWheel = (c, size, lo, hi) => {
-    // a hub ringed by size-1 nodes, every other pair joined; it hangs from the web by its inner-most node
-    const m = size - 1, rad = RING * 0.95, base = Math.atan2(c.y, c.x);
-    const pts = [c, ...Array.from({ length: m }, (_, k) => ({ x: c.x + Math.cos(base + Math.PI + (k / m) * Math.PI * 2) * rad, y: c.y + Math.sin(base + Math.PI + (k / m) * Math.PI * 2) * rad }))];
-    const lines = Array.from({ length: m }, (_, k) => [0, k + 1]);
-    for (let k = 1; k < m; k += 2) lines.push([k, k + 1]);
-    for (const A of anchors(pts[1], lo, hi)) if (group(pts, ['tip', ...Array(m).fill('main')], [...lines, [A.id, 1]], lo, hi, 'w')) return true;
-    return false;
+  const travels = () => [...nodes.values()].filter((n) => n.role === 'travel');
+  // a cluster round centre c with k small nodes, its entry joined to travel node A by a bridge of b travel nodes
+  const placeCluster = (cl, k) => {
+    const R0 = cl.ring * RING, aim = -Math.PI / 2 + cl.g * Math.PI / 2;
+    const cands = [];
+    for (let dr = 0; dr <= 3; dr += 0.25) for (const sr of dr ? [1, -1] : [1]) for (let da = 0; da <= 0.78; da += 0.04) for (const sa of da ? [1, -1] : [1]) {
+      const r = R0 + sr * dr * RING, a = aim + sa * da;
+      if (r < 2.6 * RING) continue;
+      cands.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, sc: dr * 4 + da });
+    }
+    cands.sort((a, b) => a.sc - b.sc);
+    for (const c of cands) {
+      if ([...nodes.values()].some((n) => Math.hypot(n.x - c.x, n.y - c.y) < CR + 9) || lineGap(c) < CR + 6) continue;
+      const anchors = travels().map((n) => [n, Math.hypot(n.x - c.x, n.y - c.y)]).filter(([, d]) => d < CR + 3.2 * RING).sort((a, b) => a[1] - b[1]).slice(0, 5);
+      for (const [A] of anchors) {
+        const u = Math.atan2(A.y - c.y, A.x - c.x), E = { x: c.x + Math.cos(u) * CR, y: c.y + Math.sin(u) * CR }, D = Math.hypot(A.x - E.x, A.y - E.y);
+        const b = Math.max(0, Math.ceil(D / 19) - 1);
+        if (D / (b + 1) < 10.5) continue;
+        const smalls = Array.from({ length: k }, (_, j) => ({ x: c.x + Math.cos(u + (j * Math.PI * 2) / k) * CR, y: c.y + Math.sin(u + (j * Math.PI * 2) / k) * CR }));
+        const bridge = Array.from({ length: b }, (_, j) => ({ x: E.x + ((A.x - E.x) * (j + 1)) / (b + 1), y: E.y + ((A.y - E.y) * (j + 1)) / (b + 1) }));
+        const pts = [c, ...smalls, ...bridge], roles = ['notable', ...smalls.map(() => 'small'), ...bridge.map(() => 'travel')];
+        const far = k % 2 ? [(k - 1) / 2, (k + 1) / 2] : [k / 2];
+        const lines = [...far.map((j) => [0, j + 1]), ...smalls.map((_, j) => [j + 1, ((j + 1) % k) + 1])];
+        for (let j = 0; j <= b; j++) lines.push([j === 0 ? 1 : k + j, j === b ? A.id : k + j + 1]);
+        const ids = group(pts, roles, lines, 'c');
+        if (ids) return ids;
+      }
+    }
+    return null;
   };
-  const tryChain = (c, len, lo, hi, kind) => {
-    // a short chain from the nearest web node out through c, bending along the ring (arc) or outward (fork)
-    for (const A of anchors(c, lo, hi)) {
-      const a0 = Math.atan2(A.y, A.x), r0 = Math.hypot(A.x, A.y), ac = Math.atan2(c.y, c.x), rc = Math.hypot(c.x, c.y);
-      const pts = Array.from({ length: len }, (_, k) => {
-        const f = (k + 1) / len;
-        const a = kind === 'arc' ? a0 + (ac - a0) * f * 1.15 : ac + (ac - a0) * 0.25 * k;
-        const r = kind === 'arc' ? rc + 0.12 * RING * k : r0 + (rc - r0) * f + 0.55 * RING * k;
-        return { x: Math.cos(a) * r, y: Math.sin(a) * r };
-      });
-      const lines = [[A.id, 0], ...Array.from({ length: len - 1 }, (_, k) => [k, k + 1])];
-      if (group(pts, pts.map((_, k) => (k === len - 1 ? 'tip' : kind === 'arc' ? 'link' : 'branch')), lines, lo, hi, kind === 'arc' ? 'a' : 'k')) return true;
+  // clusters, nearest first, round the regions
+  const order = [...P.clusters].sort((a, b) => a.ring - b.ring || a.g - b.g);
+  order.forEach((cl, ci) => {
+    const k = cl.n || (cl.ring <= 5 ? 3 : cl.ring <= 13 ? 4 : 5);
+    let ids = null;
+    for (let kk = k; kk >= Math.min(k, 3) && !ids; kk--) ids = placeCluster(cl, kk);
+    if (!ids) { log(`${kind}: no room for ${cl.name}`); return; }
+    const [hub, ...rest] = ids, m = cl.fixed ? 1 : mulAt(cl.ring), hubN = nodes.get(hub);
+    Object.assign(hubN, { give: scaleGive(cl.give, m), notable: cl.name, big: true, cluster: ci });
+    rest.forEach((id, j) => { const n = nodes.get(id); if (n.role === 'small') Object.assign(n, { give: scaleGive(cl.smalls[j % cl.smalls.length], m), cluster: ci }); });
+  });
+  // fill up to the total with short travel branches out into the gaps
+  const tryBranch = (c, len) => {
+    const anchors = travels().map((n) => [n, Math.hypot(n.x - c.x, n.y - c.y)]).filter(([, d]) => d < 2.2 * RING).sort((a, b) => a[1] - b[1]).slice(0, 4);
+    for (const [A] of anchors) {
+      const u = Math.atan2(c.y - A.y, c.x - A.x);
+      const pts = Array.from({ length: len }, (_, j) => ({ x: A.x + Math.cos(u) * RING * (j + 1), y: A.y + Math.sin(u) * RING * (j + 1) }));
+      const lines = [[A.id, 0], ...pts.slice(1).map((_, j) => [j, j + 1])];
+      if (group(pts, pts.map(() => 'travel'), lines, 't')) return true;
     }
     return false;
   };
-  for (const [lo, hi, want] of BANDS) {
-    let need = want - inBand(lo, hi);
-    const span = (Math.PI * 2) / S.spokes, cands = [];
-    for (let r = (lo === 1 ? 2.6 : lo) ; r <= hi + 0.3; r += 0.55) for (const f of [0.5, 0.32, 0.68, 0.18, 0.82]) for (let g = 0; g < S.spokes; g++) {
-      if (r > Math.max(S.lens[g], S.lens[(g + 1) % S.spokes]) + 0.5) continue;
-      cands.push({ r, f, g, ...at(ang(g, r) + span * f, r * RING) });
-    }
-    // spread: alternate gaps and radii rather than filling one gap first
-    cands.sort((a, b) => (a.f === 0.5 ? 0 : 1) - (b.f === 0.5 ? 0 : 1) || a.g - b.g || a.r - b.r);
-    const order = []; const byG = Array.from({ length: S.spokes }, (_, g) => cands.filter((c) => c.g === g));
-    for (let k = 0; order.length < cands.length; k++) for (const list of byG) if (list[k]) order.push(list[k]);
-    for (const c of order) {
-      if (need <= 0) break;
-      let ok = false;
-      if (S.style !== 'arc' && need >= 4) for (const size of [6, 5, 4]) if (size <= need && tryWheel(c, size, lo, hi)) { need -= size; ok = true; break; }
-      if (ok) continue;
-      if (S.style === 'arc') for (const len of [4, 3, 2]) if (len <= need && tryChain(c, len, lo, hi, 'arc')) { need -= len; ok = true; break; }
-      if (ok) continue;
-      for (const len of [3, 2, 1]) if (len <= need && tryChain(c, len, lo, hi, 'fork')) { need -= len; break; }
-    }
+  for (let r = 3; r <= RINGS && nodes.size < TOTAL; r += 0.5) for (let a = 0; a < Math.PI * 2 && nodes.size < TOTAL; a += 0.09) {
+    const c = at(a, r * RING);
+    for (const len of [2, 1]) if (nodes.size + len <= TOTAL && tryBranch(c, len)) break;
   }
-  // extra flasks on two spokes
-  nodes.get(`s${1 % S.spokes}-5`).flask = true;
-  nodes.get(`s${(S.spokes - 1)}-9`).flask = true;
-  // positions: generated once by scripts/gen-trees.mjs and shipped in treelayout.js
-  const saved = LAYOUT[kind];
-  // (nodes are placed clear of each other and of every line as the tree is built; the saved copy only speeds up loading)
-  if (!opts.relax && saved && Object.keys(saved).length === nodes.size) for (const n of nodes.values()) if (saved[n.id]) [n.x, n.y] = saved[n.id];
-  // a moved node is priced by where it ended up (staying inside its band, so the band counts hold)
-  for (const n of nodes.values()) {
-    if (n.pin || n.role === 'socket' || n.role === 'evo' || n.socketRing) continue;
-    const [lo, hi] = BANDS.find(([a, b]) => n.ring >= a && n.ring <= b) || [1, RINGS];
-    n.ring = Math.min(hi, Math.max(lo, Math.round(Math.hypot(n.x, n.y) / RING)));
+  if (nodes.size !== TOTAL) log(`${kind}: ${nodes.size} nodes (want ${TOTAL})`);
+
+  // ---- roles ----
+  const all = [...nodes.values()];
+  for (const n of all) { n.give ??= {}; n.region = n.role === 'start' ? null : REGIONS[kind][regionOf(n)]; }
+  // keystones: the far end of a spoke in each region (or the farthest travel node there)
+  const deg = new Map(); for (const [a, b] of edges) { deg.set(a, (deg.get(a) || 0) + 1); deg.set(b, (deg.get(b) || 0) + 1); }
+  for (let g = 0; g < 4; g++) {
+    const inG = all.filter((n) => n.role === 'travel' && !n.socketRing && regionOf(n) === g);
+    const tip = inG.filter((n) => n.spoke !== undefined && n.ring === S.lens[n.spoke]).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0]
+      || inG.filter((n) => deg.get(n.id) === 1).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0];
+    if (!tip) { log(`${kind}: no keystone spot in region ${g}`); continue; }
+    const [name, give] = P.keystones[g];
+    Object.assign(tip, { role: 'keystone', give: { ...give }, notable: name, keystone: true, big: true });
   }
-  if (PLANS[kind]) { regionTree(kind, nodes, edges); critNodes(kind, nodes, edges); elemNodes(kind, nodes, edges); } // laid out in themed regions (below)
-  else { assign(kind, nodes); typedNodes(kind, nodes); }
+  // the evolutions still to come: exactly 6 links out like the first, at least 6 from every other evolution
+  const adj = new Map(); for (const [a, b] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); }
+  const hops = (from) => { const d = new Map([[from, 0]]), q = [from]; while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } } return d; };
+  const H0 = hops('start'), aimOff = (n, g) => { const d = Math.atan2(n.y, n.x) - (-Math.PI / 2 + g * Math.PI / 2); return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))); };
+  const cand = [1, 2, 3].map((g) => all.filter((n) => n.role === 'travel' && !n.socketRing && regionOf(n) === g && H0.get(n.id) === EVO_RING).sort((a, b) => (a.spoke !== undefined ? 0 : 1) - (b.spoke !== undefined ? 0 : 1) || aimOff(a, g) - aimOff(b, g)));
+  const evoH = hops(`s0-${EVO_RING}`), HH = new Map(cand.flat().map((n) => [n.id, hops(n.id)]));
+  let picks = null;
+  search: for (const a of cand[0]) { if (evoH.get(a.id) < 6) continue; for (const b of cand[1]) { if (evoH.get(b.id) < 6 || HH.get(a.id).get(b.id) < 6) continue; for (const c of cand[2]) if (evoH.get(c.id) >= 6 && HH.get(a.id).get(c.id) >= 6 && HH.get(b.id).get(c.id) >= 6) { picks = [a, b, c]; break search; } } }
+  if (!picks) log(`${kind}: evolutions still to come found no spots 6 apart`);
+  else picks.forEach((n, i) => Object.assign(n, { role: 'soon', soon: i + 1, big: true }));
+  // resistance travel nodes: 4 near the centre, 12 through the middle, 4 out at the edge, spread round
+  const resAt = [...Array(4).fill([3, 5]), ...Array(12).fill([6, 14]), ...Array(4).fill([15, 20])], chosen = [];
+  resAt.forEach(([lo, hi], i) => {
+    const pool = all.filter((n) => n.role === 'travel' && !n.res && n.ring >= lo && n.ring <= hi);
+    const want = (i * Math.PI * 2 * 0.382) % (Math.PI * 2); // (golden-angle turns, so they spread round)
+    let best = null, bs = -1e9;
+    for (const n of pool) {
+      const near = chosen.length ? Math.min(...chosen.map((q) => Math.hypot(q.x - n.x, q.y - n.y))) : 99;
+      const d = Math.atan2(n.y, n.x) - want, off = Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+      const sc = Math.min(near, 80) - off * 25;
+      if (sc > bs) { bs = sc; best = n; }
+    }
+    if (best) { best.res = true; chosen.push(best); }
+  });
   return { kind, nodes, edges };
 }
 
-// what each node gives, by ring and role (cycled so neighbours differ)
-function assign(kind, nodes) {
-  const sp = SPECIAL[kind];
-  let ci = 0, mi = 0, oi = 0, pm = 0, po = 0, si = 0;
-  const special = (big) => { const [k, a, b] = sp[si++ % sp.length]; return { [k]: big ? b : a }; };
-  for (const n of [...nodes.values()].sort((a, b) => a.ring - b.ring || a.id.localeCompare(b.id))) {
-    n.big = false;
-    if (n.role === 'start') n.give = {};
-    else if (n.role === 'evo') { n.give = {}; n.evo = EVOS[kind]; n.big = true; }
-    else if (n.role === 'socket') { n.give = {}; n.big = true; }
-    else if (n.flask) n.give = { flask: 1 };
-    else if (n.ring <= 3) n.give = INNER[ci++ % INNER.length];
-    else if (n.role === 'tip') { n.give = special(n.ring >= 8); n.big = n.ring >= 8; }
-    else if (n.role === 'branch') n.give = special(false);
-    else if (n.role === 'link') n.give = n.ring >= 8 ? PCT_OUTER[po++ % PCT_OUTER.length] : PCT_MID[pm++ % PCT_MID.length];
-    else if (n.ring <= 7) {
-      // middle rings: flat stat, the character's own, an early percentage
-      const r = mi++ % 3;
-      n.give = r === 0 ? MID[(mi / 3 | 0) % MID.length] : r === 1 ? special(false) : EARLY_PCT[(mi / 3 | 0) % EARLY_PCT.length];
-    } else {
-      // outer rings: mostly percentages, some big flat chunks and the character's own
-      const r = oi++ % 4;
-      n.give = r === 0 ? OUTER[(oi / 4 | 0) % OUTER.length] : r === 3 ? special(false) : PCT_OUTER[po++ % PCT_OUTER.length];
-    }
-  }
+// a tree loaded from treelayout.js (or generated if it's missing)
+function load(kind) {
+  const saved = LAYOUT[kind];
+  if (!saved?.nodes) return generate(kind);
+  const nodes = new Map(saved.nodes.map((n) => [n.id, { ...n, give: { ...(n.give || {}) } }]));
+  return { kind, nodes, edges: saved.edges.map((e) => [...e]) };
 }
+// the gen script's copy of a node (what treelayout.js keeps)
+export const saveNode = (n) => Object.fromEntries(Object.entries(n).filter(([k, v]) => v !== undefined && v !== null && v !== false && !(k === 'give' && !Object.keys(v).length)).map(([k, v]) => [k, typeof v === 'number' ? +v.toFixed(2) : v]));
 
-// ---------- the Knight: four regions, one down each arm of the cross ----------
-// up: BULWARK (block, armour, guard counter, Shield Charge, where the evolution sits); right: EXECUTIONER (physical
-// damage, stun, heavy blows, combo finishers); down: CRUSADER (fire, charge, speed); left: WARDEN (health, stamina,
-// potions, resistances). The middle three rings are a hub of health, stamina and a little of every resistance.
-// Small nodes cycle through their region's stats; six notables per region (bundles and mechanics) sit at the ends of
-// branches; a keystone (a big trade-off) caps each arm. Values are at the designed size (scale.js scales flat ones).
-export const REGIONS = { knight: ['Bulwark', 'Executioner', 'Crusader', 'Warden'], rogue: ['Shadow', 'Bloodletter', 'Venom', 'Duelist'], mage: ['Pyromancer', 'Frostblade', 'Arcanist', 'Spellward'] };
-export const KNIGHT_REGIONS = REGIONS.knight;
-const KNIGHT = {
-  // the centre (rings 1-4): basics, a little utility and a little of his damage (armour nodes are added after)
-  hub: [{ hp: 5 }, { st: 3 }, { hp: 5 }, { physDmg: 1 }, { st: 3 }, { potion: 3 }, { hp: 5 }, { aspd: 1 }],
-  // each quarter's own stats only (armour and resistances are placed after)
-  small: [
-    [{ blockDrain: 5 }, { chip: 1 }, { counter: 5 }, { chargeCd: 0.5 }, { blockDrain: 5 }, { hpPct: 2 }, { chip: 1 }, { st: 3 }],
-    [{ physDmg: 2 }, { physPct: 3 }, { stun: 3 }, { aspd: 2 }, { physDmg: 2 }, { ripDmg: 4 }, { physPct: 3 }, { stun: 3 }],
-    [{ fireDmg: 2 }, { firePct: 8 }, { chargeKb: 10 }, { move: 2 }, { fireDmg: 2 }, { firePct: 8 }, { aspd: 2 }, { chargeCd: 0.5 }],
-    [{ hp: 8 }, { hpPct: 3 }, { st: 4 }, { stPct: 3 }, { potion: 4 }, { hp: 8 }],
-  ],
-  defensive: 3, // the quarter most resistances go to (Warden)
-  notables: [
-    [['Iron Wall', { blockDrain: 15, chip: 3 }], ['Riposte Master', { counter: 15, counterSt: 15 }], ['Unbroken', { armor: 3, hp: 10 }],
-     ['Charging Bull', { chargeCd: 2, chargeKb: 25 }], ['Guarded Heart', { blockDrain: 10, hpPct: 5 }], ['Bastion', { armor: 3, chip: 2 }]],
-    [["Executioner's Mark", { execute: 25 }], ['Brutal Edge', { physDmg: 4, physPct: 8 }], ['Crushing Weight', { stun: 10, physPct: 5 }],
-     ['Crowning Blow', { finisherPct: 25 }], ['Relentless', { aspd: 6, physDmg: 2 }], ['Last Stand', { lowHpDmg: 25 }]],
-    [['Immolation Rite', { burnDmg: 20 }], ['Kindled Steel', { fireDmg: 4, firePct: 25 }], ['Sanctified Ram', { chargeCd: 2, fireDmg: 2 }],
-     ['Flame Warden', { fireRes: 10, firePct: 15 }], ['Zeal', { move: 5, aspd: 4 }], ['Smoulder', { firePct: 30 }]],
-    [['Second Wind', { killHeal: 3 }], ['Thick Hide', { hp: 15, hpPct: 6 }], ['Endurance', { st: 8, stPct: 8 }],
-     ['Wardstone', { fireRes: 8, bleedRes: 8, poisonRes: 8, frostRes: 8 }], ['Field Medic', { potion: 15, hp: 6 }], ['Deep Breath', { stPct: 10, potion: 6 }]],
-  ],
-  keystones: [['Immovable', { immovable: 1 }], ['Headsman', { headsman: 1 }], ['Ember Oath', { emberOath: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
-  // one evolution per region: Shield Charge (Bulwark) is in; the other three evolve abilities still to come, so they
-  // show with their notes and can't be taken yet
-  soon: [null,
-    { name: 'Guillotine', desc: 'Evolves a heavy execution strike still to come: a leaping downward blow that cleaves anything under 30% health clean through.' },
-    { name: 'Sun Brand', desc: 'Evolves a holy brand still to come: the brand bursts into a ring of fire on the ground that burns enemies and heals you while you stand in it.' },
-    { name: 'Rallying Cry', desc: 'Evolves a war cry still to come: a shout that restores stamina and grants armour to you and nearby allies, and staggers enemies close by.' }],
-};
-// ---------- the Rogue: up SHADOW (rolls, i-frames, parry cooldown; Red Riposte), right BLOODLETTER (bleed, crits),
-// down VENOM (poison), left DUELIST (attack speed, stamina, combos). The parry window only grows a little: two small
-// +2 ms nodes in Shadow, capped at +4 ms ----------
-const ROGUE = {
-  hub: [{ hp: 4 }, { st: 3 }, { hp: 4 }, { bleedDmg: 1 }, { st: 3 }, { rollCost: 3 }, { hp: 4 }, { atkCost: 2 }],
-  small: [
-    [{ rollCost: 4 }, { iframe: 0.01 }, { parryCd: 0.25 }, { move: 2 }, { st: 3 }, { atkCost: 3 }, { rollCost: 4 }, { move: 2 }],
-    [{ bleedDmg: 2 }, { bleedPct: 8 }, { ripDmg: 4 }, { physDmg: 1.5 }, { bleedDmg: 2 }, { aspd: 2 }, { bleedPct: 8 }, { ripDmg: 4 }],
-    [{ poisonDmg: 2 }, { poisonPct: 8 }, { poisonDmg: 2 }, { potion: 4 }, { poisonPct: 8 }, { hp: 5 }],
-    [{ aspd: 2 }, { atkCost: 3 }, { stPct: 3 }, { st: 3 }, { physPct: 3 }, { ripDmg: 3 }, { aspd: 2 }, { stPct: 3 }],
-  ],
-  defensive: 2, // Venom
-  notables: [
-    [['Ghost Step', { iframe: 0.02, rollCost: 10 }], ['Quick Hands', { parryCd: 1 }], ['Fade', { move: 6, rollCost: 6 }],
-     ['Slip Away', { stPct: 8, rollCost: 8 }], ['Riposte Artist', { ripDmg: 10, parryCd: 0.5 }], ['Untouchable', { iframe: 0.02, move: 4 }]],
-    [['Hemorrhage', { bleedPct: 25, bleedDmg: 3 }], ['Exsanguinate', { bleedTgt: 20 }], ['Cruel Edge', { ripDmg: 12 }],
-     ["Butcher's Rhythm", { aspd: 5, bleedPct: 10 }], ["Executioner's Kiss", { execute: 20 }], ['Red Harvest', { killHeal: 2, bleedDmg: 2 }]],
-    [['Virulence', { poisonPct: 30 }], ['Toxic Edge', { poisonDmg: 4, poisonPct: 10 }], ['Wither', { poisonedDmg: 20 }],
-     ['Antitoxin', { poisonRes: 15, bleedRes: 8 }], ['Lingering Death', { poisonPct: 20, potion: 8 }], ['Venom Blood', { poisonRes: 10, hp: 10 }]],
-    [['Flurry', { aspd: 8 }], ['Finishing Flourish', { finisherPct: 25 }], ['Light Feet', { atkCost: 10, st: 6 }],
-     ["Duelist's Focus", { ripDmg: 8, physPct: 6 }], ['Relentless Assault', { aspd: 5, physDmg: 2 }], ['Second Breath', { stPct: 10, atkCost: 5 }]],
-  ],
-  keystones: [['Fleeting', { fleeting: 1 }], ['Glass Fang', { glassFang: 1 }], ['Plaguelord', { plague: 1 }], ['Blade Dance', { bladeDance: 1 }]],
-  soon: [null,
-    { name: 'Crimson Fan', desc: 'Evolves a thrown-knife volley still to come: a fan of blades that opens deep bleeding wounds on everything it passes through.' },
-    { name: 'Plague Cloud', desc: 'Evolves a toxin canister still to come: it bursts into a lingering cloud that poisons and slows anything inside it.' },
-    { name: 'Blade Waltz', desc: 'Evolves a spinning dash still to come: a whirl of cuts through a crowd that leaves you briefly untouchable.' }],
-  extra: [{ parryWin: 2 }, { parryWin: 2 }], // the only parry window in the tree, in Shadow
-};
-
-// ---------- the Spellsword: up PYROMANCER (fire, fireball; Twin Inferno), right FROSTBLADE (frost, knife), down
-// ARCANIST (mana, spells), left SPELLWARD (health, resistances, potions) ----------
-const MAGE = {
-  hub: [{ hp: 4 }, { st: 3 }, { mana: 4 }, { hp: 4 }, { st: 3 }, { frostDmg: 1 }, { mana: 4 }, { spellDmg: 2 }],
-  small: [
-    [{ fireDmg: 2 }, { firePct: 8 }, { fireRadius: 5 }, { fireCost: 2 }, { spellDmg: 3 }, { fireDmg: 2 }, { firePct: 8 }, { fireRadius: 5 }],
-    [{ frostDmg: 2 }, { frostPct: 8 }, { knifeDmg: 3 }, { aspd: 2 }, { frostDmg: 2 }, { frostPct: 8 }, { knifeDmg: 3 }],
-    [{ mana: 5 }, { manaHit: 0.5 }, { boltCost: 0.5 }, { spellDmg: 3 }, { mana: 5 }, { spellDmg: 3 }, { stPct: 3 }],
-    [{ hp: 8 }, { hpPct: 3 }, { st: 4 }, { potion: 4 }, { hp: 8 }, { stPct: 3 }],
-  ],
-  defensive: 3, // Spellward
-  notables: [
-    [['Inferno', { firePct: 30 }], ['Wide Blast', { fireRadius: 15, fireCost: 4 }], ['Kindling', { fireCost: 6, fireDmg: 2 }],
-     ['Immolation Rite', { burnDmg: 20 }], ['Fire Soul', { firePct: 15, fireRes: 10 }], ['Searing', { spellDmg: 10, fireDmg: 3 }]],
-    [['Rime Edge', { frostPct: 30 }], ['Frozen Steel', { frostDmg: 4, knifeDmg: 8 }], ['Shatterpoint', { frozenDmg: 20 }],
-     ['Cold Steel', { knifeDmg: 10, aspd: 4 }], ["Winter's Grip", { frostPct: 15, frostRes: 10 }], ['Glacial', { frostDmg: 3, physDmg: 2 }]],
-    [['Deep Well', { mana: 20 }], ['Siphon', { manaHit: 2 }], ['Thrift', { boltCost: 2, fireCost: 4 }],
-     ['Arcane Power', { spellDmg: 15 }], ['Desperation', { lowHpDmg: 20 }], ['Focused Mind', { spellDmg: 8, mana: 10 }]],
-    [['Second Wind', { killHeal: 3 }], ['Thick Hide', { hp: 15, hpPct: 6 }], ['Wardstone', { fireRes: 8, bleedRes: 8, poisonRes: 8, frostRes: 8 }],
-     ['Field Medic', { potion: 15, hp: 6 }], ['Endurance', { st: 8, stPct: 8 }], ['Iron Will', { hpPct: 5, stPct: 5 }]],
-  ],
-  keystones: [['Pyromania', { pyromania: 1 }], ['Rime Heart', { rimeHeart: 1 }], ['Spellblade', { spellblade: 1 }], ['Stalwart Vow', { stalwart: 1 }]],
-  soon: [null,
-    { name: 'Glacier Prison', desc: 'Evolves a frost nova still to come: a ring of ice that freezes enemies in place and shatters for frost damage.' },
-    { name: 'Arcane Echo', desc: 'Evolves an arcane missile still to come: each missile repeats itself a moment later at half strength.' },
-    { name: 'Runic Aegis', desc: 'Evolves a rune ward still to come: a ward that soaks damage and bursts outward when it breaks.' }],
-};
-const PLANS = { knight: KNIGHT, rogue: ROGUE, mage: MAGE };
-
-// a node on one of the Knight's straight lines (kept to basic nodes)
-const onLine = (kind, n) => kind === 'knight' && n.spoke !== undefined && n.role === 'main';
-// a small node's value by how far out it sits
-const ringMul = (ring) => (ring <= 4 ? 1 : ring <= 8 ? 1.25 : ring <= 13 ? 1.75 : ring <= 18 ? 2.5 : 3);
-const scaleGive = (give, m) => Object.fromEntries(Object.entries(give).map(([k, v]) => [k, v * m >= 2 ? Math.round(v * m) : Math.round(v * m * 100) / 100]));
-function regionTree(kind, nodes, edges) {
-  const P = PLANS[kind], NAMES = REGIONS[kind];
-  const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
-  const all = [...nodes.values()].sort((a, b) => a.ring - b.ring || a.id.localeCompare(b.id));
-  const plain = (n) => n.role !== 'start' && n.role !== 'evo' && n.role !== 'socket' && !n.flask && !n.socketRing;
-  const line = (n) => onLine(kind, n); // (the Knight's straight lines: basic nodes only)
-  const armOff = (n, g) => Math.abs(Math.atan2(Math.sin(Math.atan2(n.y, n.x) + Math.PI / 2 - g * Math.PI / 2), Math.cos(Math.atan2(n.y, n.x) + Math.PI / 2 - g * Math.PI / 2))); // (how far round from its arm)
-  for (const n of all) { n.big = false; n.give = {}; n.notable = null; n.keystone = false; n.region = n.role === 'start' ? null : NAMES[region(n)]; }
-  for (const n of all) {
-    if (n.role === 'evo') { n.evo = EVOS[kind]; n.big = true; }
-    else if (n.role === 'socket') n.big = true;
-    else if (n.flask) n.give = { flask: 1 };
-  }
-  // keystones: the last node of each arm
-  for (let g = 0; g < 4; g++) {
-    const arm = all.filter((n) => plain(n) && !line(n) && region(n) === g && (kind !== 'knight' || armOff(n, g) < 0.6)).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y))[0];
-    const [name, give] = P.keystones[g];
-    Object.assign(arm, { give: { ...give }, notable: name, keystone: true, big: true });
-  }
-  // notables: branch ends spread along each arm (rings 4 and out)
-  for (let g = 0; g < 4; g++) {
-    let ends = all.filter((n) => plain(n) && !n.keystone && region(n) === g && n.ring >= 4 && (n.role === 'tip' || n.role === 'branch'));
-    const pick = [], want = P.notables[g].length;
-    // too few branch ends in this region: use other nodes along it too
-    if (ends.length < want) ends = [...ends, ...all.filter((n) => plain(n) && !line(n) && !n.keystone && region(n) === g && n.ring >= 4 && !ends.includes(n))].sort((a, c) => a.ring - c.ring || a.id.localeCompare(c.id));
-    for (let i = 0; i < want && ends.length; i++) {
-      let k = Math.min(ends.length - 1, Math.round((i + 0.5) * ends.length / want));
-      if (pick.includes(ends[k])) k = [...ends.keys()].slice(k).concat([...ends.keys()].slice(0, k)).find((j) => !pick.includes(ends[j])) ?? k; // (two landing on one: the next free)
-      pick.push(ends[k]);
-    }
-    [...new Set(pick)].forEach((n, i) => { const [name, give] = P.notables[g][i]; Object.assign(n, { give: { ...give }, notable: name, big: true }); });
-  }
-  // a tree's one-off small nodes (the Rogue's two parry window nodes), on its first region's arm
-  for (const extra of P.extra || []) {
-    const n = all.find((x) => plain(x) && !x.notable && !x.keystone && !x.soon && !Object.keys(x.give).length && region(x) === 0 && x.ring >= 5 && !x.extra);
-    if (n) Object.assign(n, { give: { ...extra }, extra: true });
-  }
-  // the hub, then each region's small nodes
-  // values grow with distance: ×1 in the centre (rings 1-4), ×1.25 (5-8), ×1.75 (9-13), ×2.5 (14-18), ×3 at the edge
-  let hi = 0; const si = [0, 0, 0, 0];
-  for (const n of all) {
-    if (!plain(n) || n.notable || n.soon || Object.keys(n.give).length) continue;
-    if (n.ring <= 4) n.give = { ...P.hub[hi++ % P.hub.length] };
-    else if (line(n)) n.give = scaleGive(P.hub[hi++ % 2], ringMul(n.ring)); // health and stamina along the lines
-    else { const g = region(n), pool = P.small[g]; n.give = scaleGive(pool[si[g]++ % pool.length], ringMul(n.ring)); }
-    n.typed = Object.keys(n.give).some((k) => /Dmg$|Pct$|Res$|armor/.test(k) && k !== 'hpPct' && k !== 'stPct');
-  }
-  // the evolutions still to come, one in each other region, placed last (so moving one never changes another node):
-  // exactly 6 links out from the start like the first evolution, at least 6 links from every other evolution, on a
-  // node whose loss cuts nothing off (they can't be taken yet). The region's main arm first, then anything else.
-  const adj = new Map(); for (const [a, c] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(c); (adj.get(c) || adj.set(c, []).get(c)).push(a); }
-  const hops = (from, skip = new Set()) => { const d = new Map([[from, 0]]), q = [from]; while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x) && !skip.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } } return d; };
-  const fromStart = hops('start');
-  const ang = (n) => Math.atan2(n.y, n.x), aim = (g) => -Math.PI / 2 + g * Math.PI / 2;
-  const off = (n, g) => Math.abs(Math.atan2(Math.sin(ang(n) - aim(g)), Math.cos(ang(n) - aim(g))));
-  // the regions in each order until all three land exactly 6 out (otherwise the order that gets nearest)
-  let best = null;
-  // (off the Knight's lines first; on them only if that's the only way to keep all three exactly 6 out)
-  for (const lineLast of [true, false]) for (const order of [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]) {
-    if (best?.score === 0) break;
-    const evoHops = all.filter((n) => n.role === 'evo').map((n) => hops(n.id)), blocked = new Set(), picks = [];
-    for (const g of order) {
-      const cutsOff = (n) => { const skip = new Set([...blocked, n.id]); return hops('start', skip).size < nodes.size - skip.size; };
-      const fits = (n, want) => plain(n) && !n.notable && !n.keystone && !n.extra && region(n) === g && fromStart.get(n.id) === want && evoHops.every((h) => h.get(n.id) >= 6) && !cutsOff(n);
-      let pick = null;
-      for (let want = 6; want <= 9 && !pick; want++) pick = all.filter((n) => fits(n, want)).sort((a, c) => (lineLast ? (line(a) ? 1 : 0) - (line(c) ? 1 : 0) : 0) || (a.role === 'main' ? 0 : 1) - (c.role === 'main' ? 0 : 1) || off(a, g) - off(c, g))[0];
-      if (pick) { picks.push([g, pick]); evoHops.push(hops(pick.id)); blocked.add(pick.id); }
-    }
-    const score = picks.reduce((a, [, n]) => a + fromStart.get(n.id) - 6, 0) + (3 - picks.length) * 100;
-    if (!best || score < best.score) best = { score, picks };
-    if (score === 0) break;
-  }
-  // the greedy pass can miss a set that works: try every combination of exactly-6 nodes (off the Knight's lines first)
-  if (best.score > 0) {
-    const ev0 = all.filter((n) => n.role === 'evo').map((n) => hops(n.id));
-    const ok6 = (n, g) => plain(n) && !n.notable && !n.keystone && !n.extra && region(n) === g && fromStart.get(n.id) === 6 && ev0.every((h) => h.get(n.id) >= 6);
-    const cand = [1, 2, 3].map((g) => all.filter((n) => ok6(n, g)).sort((a, c) => (line(a) ? 1 : 0) - (line(c) ? 1 : 0) || off(a, g) - off(c, g)));
-    const H = new Map(cand.flat().map((n) => [n.id, hops(n.id)]));
-    const cuts = (set) => { const skip = new Set(set.map((n) => n.id)); return hops('start', skip).size < nodes.size - skip.size; };
-    search: for (const a of cand[0]) for (const b of cand[1]) {
-      if (H.get(a.id).get(b.id) < 6) continue;
-      for (const c of cand[2]) if (H.get(a.id).get(c.id) >= 6 && H.get(b.id).get(c.id) >= 6 && !cuts([a, b, c])) { best = { score: 0, picks: [[1, a], [2, b], [3, c]] }; break search; }
-    }
-  }
-  for (const [g, pick] of best.picks) Object.assign(pick, { soon: P.soon[g], give: {}, big: true, typed: false });
-  // resistances: 7 nodes per element, 7/8/9/10/12/13/16% (75%) rising outward from ring 8, spread evenly round the
-  // outside: every quarter gets 7, a mix of all four elements, each as far as it can be from the same element's others
-  const open = all.filter((n) => plain(n) && !line(n) && !n.notable && !n.keystone && !n.soon && !n.extra && n.ring >= 5);
-  const take = (n, give) => { n.give = give; n.typed = true; open.splice(open.indexOf(n), 1); };
-  const pickNode = (want, g, near) => {
-    let bestN = null, bs = 1e9;
-    for (const n of open) {
-      if (g != null && region(n) !== g) continue;
-      const d = near.length ? Math.min(...near.map((q) => Math.hypot(q.x - n.x, q.y - n.y))) : 99;
-      const sc = Math.abs(n.ring - want) * 10 - Math.min(60, d) * 0.4;
-      if (sc < bs) { bs = sc; bestN = n; }
-    }
-    return bestN;
-  };
-  const RES_STEPS = [7, 8, 9, 10, 12, 13, 16];
-  ['fireRes', 'bleedRes', 'poisonRes', 'frostRes'].forEach((k, ei) => {
-    const mine = [];
-    RES_STEPS.forEach((v, j) => {
-      const want = 8 + Math.round(j * 2.2), g = (ei + j) % 4;
-      const n = pickNode(want, g, mine) || pickNode(want, null, mine);
-      if (n) { take(n, { [k]: v }); mine.push(n); }
-    });
-  });
-  // the Knight's armour (60% in all): 2% nodes round the centre (two in Bulwark, one in each other quarter), a 3%
-  // node in the middle of each other quarter, and Bulwark's own growing outward: 3, 3, 3, 4, 4, 4, 5, 5, 5, 5
-  if (kind === 'knight') {
-    const arm = [], centre = all.filter((n) => plain(n) && !n.notable && !n.keystone && !n.soon && n.ring >= 2 && n.ring <= 4);
-    const put = (n, v) => { if (!n) return; n.give = { armor: v }; n.typed = true; arm.push(n); if (open.includes(n)) open.splice(open.indexOf(n), 1); else centre.splice(centre.indexOf(n), 1); };
-    const far = (list) => list.sort((a, c) => (arm.length ? Math.min(...arm.map((q) => Math.hypot(q.x - c.x, q.y - c.y))) - Math.min(...arm.map((q) => Math.hypot(q.x - a.x, q.y - a.y))) : 0) || a.ring - c.ring || a.id.localeCompare(c.id))[0];
-    for (const g of [0, 0, 1, 2, 3]) put(far(centre.filter((n) => region(n) === g)), 2);
-    for (const g of [1, 2, 3]) put(pickNode(11, g, arm), 3);
-    for (const [want, v] of [[6, 3], [7, 3], [8, 3], [10, 4], [11, 4], [13, 4], [15, 5], [17, 5], [19, 5], [21, 5]]) put(pickNode(want, 0, arm), v);
-  }
-}
-
-// Critical hit nodes, added on top of the finished tree (so no other node moves or changes): 10 crit chance (3% near
-// the start up to 12% at the edge, 75% in all) and 10 crit damage (4% up to 16%, +100% in all). Each sits in the
-// middle of an existing long line, split in two so the spacing stays even, with full room from every node and line;
-// none on a path that would move an evolution off its 6 links. Spread out from ring 3 to the edge and round the
-// regions, so a first-section tree reaches only the inner few.
-export const CRIT_VALUES = { critChance: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12], critPower: [4, 6, 7, 8, 9, 11, 12, 13, 14, 16] };
-function critNodes(kind, nodes, edges) {
-  addNodes(kind, nodes, edges, 20, 'cc', (i) => 3 + i, (placed) => {
-    // values by distance out: alternate the two stats, smallest nearest the start
-    const next = { critChance: 0, critPower: 0 };
-    placed.forEach((n, i) => { const k = i % 2 ? 'critPower' : 'critChance'; n.crit = true; n.give = { [k]: CRIT_VALUES[k][next[k]++] }; });
-  });
-}
-// Every class can deal every element, its own the most: the elements its tree had none of get 4 nodes each, added the
-// same way after the crit nodes (flat +20 then +30 per hit, +50% then +80%, the bigger ones further out). Elements are
-// dealt round so each gets nodes near the start and at the edge.
-export const OFF_ELEMS = { knight: ['bleed', 'poison', 'frost'], rogue: ['fire', 'frost'], mage: ['bleed', 'poison'] };
-const OFF_STEPS = [['Dmg', 2], ['Pct', 50], ['Dmg', 3], ['Pct', 80]]; // (flat ×NUM: +20 then +30)
-function elemNodes(kind, nodes, edges) {
-  const E = OFF_ELEMS[kind], count = E.length * 4;
-  addNodes(kind, nodes, edges, count, 'ce', (i) => Math.round(4 + (i * 17) / (count - 1)), (placed) => {
-    const next = Object.fromEntries(E.map((k) => [k, 0]));
-    placed.forEach((n, i) => { const el = E[i % E.length], [suf, v] = OFF_STEPS[next[el]++]; n.give = { [el + suf]: v }; });
-  });
-}
-// new nodes on top of a finished tree: `count` of them, the i-th aimed at ring want(i); finish(placed, nearest first)
-// gives them their stats
-function addNodes(kind, nodes, edges, count, prefix, want, finish) {
-  const NAMES = REGIONS[kind];
-  const region = (n) => ((Math.round((Math.atan2(n.y, n.x) + Math.PI / 2) / (Math.PI / 2)) % 4) + 4) % 4;
-  const hopsFrom = (from) => {
-    const adj = new Map(); for (const [a, b] of edges) { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); }
-    const d = new Map([[from, 0]]), q = [from];
-    while (q.length) { const c = q.shift(); for (const x of adj.get(c) || []) if (!d.has(x)) { d.set(x, d.get(c) + 1); q.push(x); } }
-    return d;
-  };
-  const evos = [...nodes.values()].filter((n) => n.role === 'evo' || n.soon).map((n) => n.id);
-  const h0 = hopsFrom('start'), evoHops = evos.map((id) => h0.get(id));
-  const lineGap = (p, skip) => { let d = 1e9; for (let i = 0; i < edges.length; i++) if (i !== skip) d = Math.min(d, segDist(p, nodes.get(edges[i][0]), nodes.get(edges[i][1]))); return d; };
-  const room = (p, skip) => [...nodes.values()].every((n) => Math.hypot(n.x - p.x, n.y - p.y) >= SIZE(n) + 3.9 + 2) && lineGap(p, skip) >= 3.9 + 2; // (clear of every node and line)
-  const placed = [], rejected = new Set(), before = [...nodes.values()].filter((n) => n.added);
-  for (let i = 0; i < count; i++) {
-    const ring0 = want(i), g = (i + Math.floor(i / 4)) % 4;
-    let best = null, bs = 1e9;
-    for (let k = 0; k < edges.length; k++) {
-      const [a, b] = edges[k], A = nodes.get(a), B = nodes.get(b);
-      if (rejected.has(a + '|' + b) || (A.socketRing && B.socketRing) || (kind === 'knight' && A.spoke !== undefined && B.spoke !== undefined)) continue;
-      // the middle of the line, or a little off it where something sits close to the middle
-      const t = [0.5, 0.42, 0.58, 0.35, 0.65].find((f) => room({ x: A.x + (B.x - A.x) * f, y: A.y + (B.y - A.y) * f }, k));
-      if (t === undefined) continue;
-      const p = { x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t };
-      const ring = Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
-      const near = placed.length + before.length ? Math.min(...[...before, ...placed].map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
-      const sc = Math.abs(ring - ring0) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + Math.abs(t - 0.5) * 20 + (A.added || B.added ? 40 : 0); // (one per line)
-      if (sc < bs) { bs = sc; best = { k, p, ring }; }
-    }
-    // or a branch end carried on one step further, straight out along its line (nothing else moves)
-    const deg = new Map(); for (const [a, b] of edges) { deg.set(a, (deg.get(a) || 0) + 1); deg.set(b, (deg.get(b) || 0) + 1); }
-    for (const [a, b] of edges) for (const [end, from] of [[a, b], [b, a]]) {
-      const E = nodes.get(end), F = nodes.get(from);
-      if (deg.get(end) !== 1 || onLine(kind, E) || E.added || E.notable || E.keystone || E.soon || E.evo || E.role === 'socket') continue; // (notables and keystones stay at the ends)
-      const L = Math.hypot(E.x - F.x, E.y - F.y) || 1;
-      const p = { x: E.x + ((E.x - F.x) / L) * RING, y: E.y + ((E.y - F.y) / L) * RING };
-      if (!room(p, -1) || edges.some(([c, d]) => c !== end && d !== end && segCross(E, p, nodes.get(c), nodes.get(d)))) continue;
-      if ([...nodes.values()].some((n) => n !== E && segDist(n, E, p) < SIZE(n) + 1.5)) continue;
-      const ring = Math.min(RINGS, Math.max(1, Math.round(Math.hypot(p.x, p.y) / RING)));
-      const near = placed.length + before.length ? Math.min(...[...before, ...placed].map((n) => Math.hypot(n.x - p.x, n.y - p.y))) : 99;
-      const sc = Math.abs(ring - ring0) * 10 + (region(p) !== g ? 8 : 0) - Math.min(40, near) * 0.3 + (near < 3 * RING ? 25 : 0) + 6; // (a split line first; none bunched together)
-      if (sc < bs) { bs = sc; best = { end, p, ring }; }
-    }
-    if (!best) break;
-    const id = `${prefix}${i}`;
-    if (best.end) edges.push([best.end, id]);
-    else {
-      const [a, b] = edges[best.k];
-      edges[best.k] = [a, id]; edges.push([id, b]);
-      const h = hopsFrom('start');
-      if (evos.some((e, j) => h.get(e) !== evoHops[j])) { edges.pop(); edges[best.k] = [a, b]; rejected.add(a + '|' + b); i--; continue; }
-    }
-    const n = { id, ring: best.ring, role: 'link', x: best.p.x, y: best.p.y, added: true, typed: true, big: false, notable: null, keystone: false, give: {} };
-    n.region = NAMES[region(n)];
-    nodes.set(id, n); placed.push(n);
-  }
-  placed.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
-  finish(placed);
-}
-
-// Damage, resistance and armour nodes take over regular stat nodes, spread round the web. Each sits in a ring
-// range by tier: small values near the centre, the biggest at the edge. [stat, value, tier]
-const TIER_RINGS = { 1: [2, 5], 2: [6, 8], 3: [9, 12], 4: [13, 16], 5: [17, 22] };
-export const EMPHASIS = { knight: 'phys', rogue: 'bleed', mage: 'frost' };
-function typedSet(kind) {
-  const own = EMPHASIS[kind], out = [];
-  if (own === 'phys') {
-    // Knight: the most and biggest physical: flat 1,1,1,1,1,2 + 1,2,2,3 (15) and 5/8/10/12/15% (50%)
-    for (const [v, t] of [[1, 1], [1, 1], [1, 2], [1, 3], [1, 4], [2, 5], [1, 1], [2, 2], [2, 3], [3, 5]]) out.push(['physDmg', v, t]);
-    for (const [v, t] of [[5, 2], [8, 3], [10, 4], [12, 5], [15, 5]]) out.push(['physPct', v, t]);
-  } else {
-    // the character's element: flat 1,1,1,1,1,2 and +15/20/25/30/35% (125%)
-    for (const [v, t] of [[1, 1], [1, 1], [1, 2], [1, 3], [1, 4], [2, 5]]) out.push([own + 'Dmg', v, t]);
-    for (const [v, t] of [[15, 2], [20, 3], [25, 4], [30, 4], [35, 5]]) out.push([own + 'Pct', v, t]);
-    // some physical too: flat 1,1,1,1,2 (6) and 5/8% (13%)
-    for (const [v, t] of [[1, 1], [1, 2], [1, 2], [1, 3], [2, 4]]) out.push(['physDmg', v, t]);
-    out.push(['physPct', 5, 3], ['physPct', 8, 5]);
-  }
-  // every other element: +1 and +2 flat, +15/20/25% (60%)
-  for (const k of ['bleed', 'fire', 'frost', 'poison']) if (k !== own) out.push([k + 'Dmg', 1, 1], [k + 'Dmg', 2, 3], [k + 'Pct', 15, 3], [k + 'Pct', 20, 4], [k + 'Pct', 25, 5]);
-  // resistances: 6/8/10/12/14 = 50% for each element
-  for (const k of ['fire', 'bleed', 'poison', 'frost']) [6, 8, 10, 12, 14].forEach((v, i) => out.push([k + 'Res', v, i + 1]));
-  // Knight armour: up to 20%
-  if (kind === 'knight') [1, 1, 1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3].forEach((v, i) => out.push(['armor', v, 1 + (i >> 1)]));
-  return out;
-}
-function typedNodes(kind, nodes) {
-  const placed = [];
-  const free = (n) => !n.flask && !n.evo && n.role !== 'evo' && n.role !== 'socket' && n.role !== 'start' && !n.socketRing && !n.typed;
-  for (const [stat, v, t] of typedSet(kind)) {
-    const [lo, hi] = TIER_RINGS[t];
-    let cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo && n.ring <= hi);
-    if (!cands.length) cands = [...nodes.values()].filter((n) => free(n) && n.ring >= lo - 2 && n.ring <= hi + 2);
-    // farthest from the typed nodes already placed, so they spread round the web
-    let best = cands[0], bd = -1;
-    for (const n of cands) {
-      const d = placed.length ? Math.min(...placed.map((p) => Math.hypot(p.x - n.x, p.y - n.y))) : Math.hypot(n.x, n.y);
-      if (d > bd) { bd = d; best = n; }
-    }
-    best.give = { [stat]: v }; best.typed = true; best.big = t >= 4;
-    placed.push(best);
-  }
-}
-
-export const TREES = { knight: build('knight'), rogue: build('rogue'), mage: build('mage') };
+// the trees, with their evolutions filled in
+const finish = (t) => { for (const n of t.nodes.values()) { if (n.role === 'evo') { n.evo = EVOS[t.kind]; n.big = true; } if (n.role === 'soon') n.soon = PLANS[t.kind].soon[n.soon]; } return t; };
+export const TREES = { knight: finish(load('knight')), rogue: finish(load('rogue')), mage: finish(load('mage')) };
 // flat health and flat damage per hit are NUM times bigger (scale.js); the give objects are shared, so copy them
 const FLAT = ['hp', 'physDmg', 'fireDmg', 'bleedDmg', 'poisonDmg', 'frostDmg'];
 for (const t of Object.values(TREES)) for (const n of t.nodes.values()) if (n.give && FLAT.some((k) => n.give[k])) n.give = Object.fromEntries(Object.entries(n.give).map(([k, v]) => [k, FLAT.includes(k) ? v * NUM : v]));
 
-export function nodeCost(n) {
+export const isTravel = (n) => n?.role === 'travel';
+export const inCentre = (n) => n.role !== 'start' && n.ring <= CENTRE;
+// prices by ring: a little more each ring out, the most at the edge
+const COST = [0, 10, 10, 10, 10, 42, 56, 72, 90, 112, 128, 145, 165, 185, 205, 230, 285, 310, 340, 370, 410, 450, 500];
+// the centre (rings 1-4): each centre node you own makes the next one 22% dearer (the first few are cheap), so the
+// tree pushes you outward
+const centrePrice = (k) => Math.round(8 * Math.pow(1.22, k)) * NUM;
+const centreCount = (tree, have) => { let k = 0; for (const id of have || []) { const n = tree.nodes.get(id); if (n && inCentre(n)) k++; } return k; };
+// the price of a node; `have` (what's owned) prices centre nodes
+export function nodeCost(n, have = null, tree = null) {
   if (n.role === 'start') return 0;
   if (n.role === 'evo') return 150 * NUM;
+  if (inCentre(n)) {
+    const t = tree || Object.values(TREES).find((x) => x.nodes.get(n.id) === n), k = centreCount(t, have) - (have?.has(n.id) ? 1 : 0);
+    return centrePrice(Math.max(0, k));
+  }
   const c = COST[Math.min(n.ring, COST.length - 1)];
   // notables cost twice a small node of their ring, keystones three times
   return Math.round((n.role === 'socket' ? c * 1.5 : n.keystone ? c * 3 : n.notable ? c * 2 : c)) * NUM;
 }
+// what removing `gone` from `have` gives back: each node at its price, the centre ones at the dearest prices paid
+export function refundOf(tree, have, gone) {
+  let sum = 0, cg = 0;
+  for (const id of gone) { const n = tree.nodes.get(id); if (!n) continue; if (inCentre(n)) cg++; else sum += nodeCost(n); }
+  const k = centreCount(tree, have);
+  for (let i = 0; i < cg; i++) sum += centrePrice(k - 1 - i);
+  return sum;
+}
+
+// the most nodes a tree can hold: 70 in the first section, 120 once that character beats it (Varek),
+// 160 in the second section, 190 once that is beaten
+export function nodeCap(data, kind) {
+  const st = data?.stats || {};
+  if (st.section2WinsBy?.[kind]) return 190;
+  if (st.section2By?.[kind]) return 160;
+  if (st.winsBy?.[kind]) return 120;
+  return 70;
+}
+export const capHint = (cap) => (cap <= 70 ? 'Beat Varek with this character to raise the limit to 120' : cap <= 120 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
 
 export function neighbours(tree, id) {
   const out = [];
@@ -763,6 +447,8 @@ export function neighbours(tree, id) {
 }
 
 export const owned = (data, kind) => new Set(['start', ...(data?.tree?.[kind] || [])]);
+// the stat picked on each owned travel node: { nodeId: 'str' | 'dex' | 'int' | 'fire' | ... }
+export const picksOf = (data, kind) => data?.treePick?.[kind] || {};
 
 // buyable: not owned and touching an owned node
 export function canTake(tree, have, id) {
@@ -772,34 +458,43 @@ export function canTake(tree, have, id) {
   return !have.has(id) && neighbours(tree, id).some((x) => have.has(x) || (tree.nodes.get(x)?.soon && neighbours(tree, x).some((y) => have.has(y))));
 }
 
+// what a node gives (a travel node by its pick)
+export const giveOf = (n, picks = {}) => (isTravel(n) ? travelGive(n, picks[n.id]) : n.give || {});
 // summed stats for a character (caps applied); `evolved` if the evolution node is owned
-export function treeStats(kind, data) { return sumStats(kind, owned(data, kind)); }
+export function treeStats(kind, data) { return sumStats(kind, owned(data, kind), picksOf(data, kind)); }
 // the same for any set of owned node ids (the tree screen previews a node before you buy it)
-export function sumStats(kind, have) {
+export function sumStats(kind, have, picks = {}) {
   const tree = TREES[kind], s = {};
   for (const id of have) {
     const n = tree?.nodes.get(id);
     if (!n) continue;
-    for (const [k, v] of Object.entries(n.give || {})) s[k] = (s[k] || 0) + v;
+    for (const [k, v] of Object.entries(giveOf(n, picks))) s[k] = (s[k] || 0) + v;
     if (n.evo) s.evolved = true;
   }
   for (const [k, cap] of Object.entries(CAPS)) if (s[k] > cap) s[k] = cap;
   return s;
 }
 
-export function describe(n) {
+const RES_NAME = { fire: 'Fire', frost: 'Frost', bleed: 'Bleed', poison: 'Poison' };
+// a pick's button label on the tree screen
+export const pickLabel = (n, p) => (n.res ? `${RES_NAME[p]} +${RES_PICK}%` : `${TRAVEL_NAME[p]} · ${STATS[Object.keys(TRAVEL[p])[0]].fmt(Object.values(TRAVEL[p])[0])}`);
+export function describe(n, pick = null) {
   if (n.role === 'start') return { name: 'Start', lines: ['Your path begins here.'] };
   if (n.evo) return { name: `Evolution · ${n.evo.name}`, lines: [n.evo.desc] };
   if (n.role === 'socket') return { name: 'Rune Socket', lines: ['An empty socket. Runes found later in the game will fit here.'] };
+  if (n.soon) return { name: `Evolution · ${n.soon.name}`, lines: [n.soon.desc, 'Coming soon: its ability isn\'t in the game yet'] };
+  if (isTravel(n) && n.res) return { name: 'Resistance Node', lines: pick ? [`+${RES_PICK}% ${pick} resistance`, 'Click to change the element'] : [`Pick an element: +${RES_PICK}% Fire, Frost, Bleed or Poison resistance`] };
+  if (isTravel(n)) return { name: pick ? `Travel · ${TRAVEL_NAME[pick]}` : 'Travel Node', lines: pick ? [STATS[Object.keys(TRAVEL[pick])[0]].fmt(Object.values(TRAVEL[pick])[0]), 'Click to change the stat'] : ['Pick one: Strength (+50 health), Dexterity (+4 stamina) or Intelligence (+6 mana)'] };
   const lines = Object.entries(n.give).map(([k, v]) => STATS[k].fmt(+v.toFixed(2)));
   const k = Object.keys(n.give)[0];
-  if (n.soon) return { name: `Evolution · ${n.soon.name}`, lines: [n.soon.desc, 'Coming soon: its ability isn\'t in the game yet'] };
   if (n.keystone) return { name: `Keystone · ${n.notable}`, lines };
   if (n.notable) return { name: `${n.notable}`, lines: [...lines, n.region ? `${n.region} notable` : ''].filter(Boolean) };
-  return { name: STATS[k]?.name || 'Node', lines: n.region ? [...lines] : lines };
+  return { name: STATS[k]?.name || 'Node', lines };
 }
 
-export const iconKey = (n) => (n.role === 'start' ? 'start' : n.evo || n.soon ? 'evo' : n.role === 'socket' ? 'socket' : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
+const RES_ICON = { fire: 'resFire', frost: 'resFrost', bleed: 'resBleed', poison: 'resPoison' };
+export const iconKey = (n, pick = null) => (n.role === 'start' ? 'start' : n.evo || n.soon ? 'evo' : n.role === 'socket' ? 'socket'
+  : isTravel(n) ? (pick ? (n.res ? RES_ICON[pick] : STATS[Object.keys(TRAVEL[pick])[0]].icon) : null) : STATS[Object.keys(n.give)[0]]?.icon || 'dmg');
 
 // Earlier tree layouts were priced and placed differently: anything bought on them comes back as the
 // gold it cost, once, and the trees start fresh on the current layout (version 3: socket triangle).
@@ -828,19 +523,21 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 17;
+export const TREE_VERSION = 18;
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
-const COST_V7 = (id, kind = 'knight') => { const n = TREES[kind].nodes.get(id); if (!n) return 0; return n.role === 'evo' ? 150 : Math.round(COST[Math.min(n.ring, COST.length - 1)] * (n.role === 'socket' ? 1.5 : 1)); };
+// (versions 7-17 are refunded at the version-17 prices, treecost-v7.js: the closest record kept of them)
+const COST_V7 = (id, kind = 'knight') => COST_V7T[kind]?.[id] || 0;
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
   // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
-  if (data.treeV >= 10 && data.treeV <= 16) { // (16 -> 17: the Knight's lines thinned, resistances spread round the outside;
+  if (data.treeV >= 10 && data.treeV <= 17) { // (17 -> 18: travel nodes, clusters, 280 nodes; 16 -> 17: the Knight's lines thinned, resistances spread round the outside;
     // 14 -> 15: damage nodes for every element; 15 -> 16: stats regrouped: centre basics, outer quarters, armour 60%) // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)
     let refund = 0;
     for (const k of ['knight', 'rogue', 'mage']) { refund += (data.tree?.[k] || []).reduce((a, id) => a + COST_V7(id, k), 0); if (data.tree) data.tree[k] = []; }
     refund *= NUM;
     data.gold = (data.gold || 0) + refund;
+    delete data.treePick;
     data.treeV = TREE_VERSION;
     return refund;
   }
