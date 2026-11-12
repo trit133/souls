@@ -14,13 +14,15 @@ function mats() {
   if (M) return M;
   const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
   M = {
-    rag: L(0x4a3e30), ragDark: L(0x2e2620), ragRed: L(0x5a1a16), robe: L(0x24201e), robeDark: L(0x161414), skin: L(0x7a6a58),
+    // (The Last Crusade: drab fatigues, crusade red, black cult robes, grey flesh)
+    rag: L(0x3e3e32), ragDark: L(0x26261e), ragRed: L(0x5a1414), robe: L(0x1e1c1e), robeDark: L(0x121012), skin: L(0x6a625a),
     blood: L(0x3a0a0a), bloodDark: L(0x240606), iron: L(0x3a3a40), ironDark: L(0x26262a), rust: L(0x5a3a26),
-    wax: L(0xd8ccb0), marble: L(0x9a968e), moss: L(0x3a4a2a), crow: L(0x141216), rat: L(0x4a4440), straw: L(0x8a7a48),
+    wax: L(0xd8ccb0), marble: L(0x9a968e), moss: L(0x34443a), crow: L(0x2a2a2e), rat: L(0x3a3a40), straw: L(0x5e5a46),
     slag: L(0x2a1a14), lava: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), lavaCore: new THREE.MeshBasicMaterial({ color: 0xffc23d }),
     moon: new THREE.MeshBasicMaterial({ color: 0x9ab8ff, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
     poolGlow: new THREE.MeshBasicMaterial({ color: 0x3a5a8a, transparent: true, opacity: 0.55, depthWrite: false }),
-    gold: L(0x8a6a2a), petal: L(0xd8b8c8),
+    gold: L(0x7a5e2a), petal: L(0xd8b8c8),
+    optic: L(0x000000, { emissive: 0xff2a1a }), opticBlue: L(0x000000, { emissive: 0x7ad0ff }),
   };
   return M;
 }
@@ -116,7 +118,8 @@ const bones = lift(function bones(w, x, z, skull = true) {
 const corpse = lift(function corpse(w, x, z, ry) {
   const m = mats(), g = new THREE.Group(), cloth = w.rand() < 0.4 ? m.ragRed : m.rag;
   const b = (sx, sy, sz, mat, px, py, pz, rz = 0) => { const k = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat); k.position.set(px, py, pz); k.rotation.z = rz; g.add(k); };
-  b(0.5, 0.22, 0.32, cloth, 0, 0.12, 0); b(0.2, 0.2, 0.2, m.skin, 0.38, 0.12, 0.02);
+  b(0.5, 0.22, 0.32, cloth, 0, 0.12, 0); b(0.2, 0.2, 0.2, (Math.sin(x * 7.3 + z * 3.1) > 0 ? m.iron : m.skin), 0.38, 0.12, 0.02);
+  b(0.34, 0.06, 0.34, m.ironDark, -0.05, 0.25, 0); // (a breastplate)
   b(0.55, 0.14, 0.12, m.ragDark, -0.48, 0.08, 0.08); b(0.5, 0.14, 0.12, m.ragDark, -0.46, 0.08, -0.1, 0.2);
   b(0.4, 0.1, 0.1, cloth, 0.1, 0.08, 0.25, 0.4); b(0.6, 0.04, 0.06, w.mats.metal, 0.35, 0.05, -0.4, 0);
   g.position.set(x, 0, z); g.rotation.y = ry; w.add(g);
@@ -124,6 +127,8 @@ const corpse = lift(function corpse(w, x, z, ry) {
 const skullStake = lift(function skullStake(w, x, z) {
   w.cyl(0.04, 0.06, 1.8, w.mats.logDark, x, 0.9, z, 4);
   w.box(0.24, 0.22, 0.26, w.mats.bone, x, 1.88, z);
+  w.box(0.06, 0.05, 0.03, mats().optic, x + 0.05, 1.9, z + 0.13); // (a dead servo-skull's eye, still burning)
+  w.box(0.3, 0.04, 0.04, w.mats.metal, x, 1.76, z);
 });
 const gravestone = lift(function gravestone(w, x, z, ry) {
   const s = w.box(0.7, 0.9 + w.rand() * 0.4, 0.18, w.mats.stoneDark, x, null, z, ry);
@@ -153,8 +158,9 @@ const candles = lift(function candles(w, x, z, n = 4, cold = false) {
 const lanternPost = lift(function lanternPost(w, x, z) {
   w.cyl(0.06, 0.08, 2.4, w.mats.logDark, x, 1.2, z, 5);
   w.box(0.6, 0.06, 0.06, w.mats.logDark, x + 0.3, 2.35, z);
-  w.box(0.2, 0.28, 0.2, mats().iron, x + 0.55, 2.1, z);
-  const f = { x: x + 0.55, z, y: 2.1, scale: 0.18 };
+  w.box(0.24, 0.2, 0.22, mats().iron, x + 0.55, 2.2, z);
+  w.box(0.2, 0.06, 0.2, w.mats.glowAmber, x + 0.55, 2.08, z);
+  const f = { x: x + 0.55, z, y: 2.1, scale: 0.18, lamp: true };
   w.fires.push(f); w.lights.push({ x: x + 0.55, y: 2.1, z, color: 0xffa04a, power: 5, range: 7, src: f });
 });
 // a robed figure: kneeling pilgrim, standing spectator or praying statue. `sway` makes it breathe (not merged)
@@ -164,6 +170,7 @@ const robed = lift(function robed(w, x, z, ry, o = {}) {
   const body = new THREE.Mesh(new THREE.ConeGeometry(0.38 * s, (kneel ? 0.85 : 1.55) * s, 6), mat); body.position.y = (kneel ? 0.42 : 0.78) * s; g.add(body);
   const hood = new THREE.Mesh(new THREE.ConeGeometry(0.2 * s, 0.42 * s, 6), mat); hood.position.y = (kneel ? 0.98 : 1.68) * s; g.add(hood);
   const face = new THREE.Mesh(new THREE.BoxGeometry(0.16 * s, 0.14 * s, 0.05 * s), m.robeDark); face.position.set(0, (kneel ? 0.92 : 1.62) * s, 0.14 * s); g.add(face);
+  if (mat !== w.mats.stoneDark && mat !== m.marble) for (const ex of [-0.04, 0.04]) { const eye = new THREE.Mesh(new THREE.BoxGeometry(0.035 * s, 0.03 * s, 0.03 * s), m.optic); eye.position.set(ex * s, (kneel ? 0.93 : 1.63) * s, 0.17 * s); g.add(eye); } // (cult optics)
   if (o.pray) { const hands = new THREE.Mesh(new THREE.BoxGeometry(0.12 * s, 0.22 * s, 0.12 * s), mat); hands.position.set(0, (kneel ? 0.62 : 1.15) * s, 0.28 * s); g.add(hands); }
   if (o.chain) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.3, 0.04), m.ironDark); c.position.set(0, 0.9, -0.42); c.rotation.x = 0.5; g.add(c); w.cyl(0.08, 0.1, 2, w.mats.logDark, x - Math.sin(ry) * 0.75, 1, z - Math.cos(ry) * 0.75, 5); }
   g.position.set(x, 0, z); g.rotation.y = ry;
@@ -199,10 +206,12 @@ function crows(w, x, z, n = 3) {
   const m = mats(), birds = [];
   for (let i = 0; i < n; i++) {
     const g = new THREE.Group(); g.userData.noMerge = true;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.26), m.crow); body.position.y = 0.1; g.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.1), m.crow); head.position.set(0, 0.2, 0.13); g.add(head);
-    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.07), m.gold); beak.position.set(0, 0.19, 0.2); g.add(beak);
-    const wl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.14), m.crow), wr = wl.clone(); wl.position.set(-0.15, 0.13, 0); wr.position.set(0.15, 0.13, 0); g.add(wl, wr);
+    // a servo-skull: a bone skull in a brass rig, one red optic, a dangling cable and two grav-vanes
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 0.2), w.mats.bone); body.position.y = 0.16; g.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.22), m.gold); head.position.set(0, 0.25, 0); g.add(head);
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.03), m.optic); beak.position.set(0.04, 0.17, 0.11); g.add(beak);
+    const cable = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.18, 0.02), m.crow); cable.position.set(0, 0.0, -0.04); g.add(cable);
+    const wl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.02, 0.1), m.crow), wr = wl.clone(); wl.position.set(-0.17, 0.2, 0); wr.position.set(0.17, 0.2, 0); g.add(wl, wr);
     g.traverse((k) => { k.userData.noMerge = true; });
     const home = { x: x + (w.rand() - 0.5) * 1.4, z: z + (w.rand() - 0.5) * 1.4 };
     home.y = w.groundY(home.x, home.z);
@@ -233,8 +242,11 @@ function crows(w, x, z, n = 3) {
 // a rat that darts along the rim between two points, pauses, darts back
 function rat(w, a, b) {
   const m = mats(), g = new THREE.Group(); g.userData.noMerge = true;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.26), m.rat); body.position.y = 0.05; g.add(body);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.28), m.rat); tail.position.set(0, 0.04, -0.26); g.add(tail);
+  // a scuttle-drone: a little iron carapace on stub legs, two red optics, a trailing cable
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.24), m.rat); body.position.y = 0.07; g.add(body);
+  for (const sx of [-0.1, 0.1]) for (const sz of [-0.08, 0.08]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), m.ironDark); leg.position.set(sx, 0.03, sz); g.add(leg); }
+  for (const sx of [-0.03, 0.03]) { const eye = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.02, 0.02), m.optic); eye.position.set(sx, 0.09, 0.12); g.add(eye); }
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.28), m.ironDark); tail.position.set(0, 0.04, -0.26); g.add(tail);
   g.traverse((k) => { k.userData.noMerge = true; });
   const ry = w.groundY(a.x, a.z);
   g.position.set(a.x, ry, a.z); w.add(g);
@@ -252,7 +264,7 @@ function rat(w, a, b) {
 }
 // particles that drift round a point while you are near: moths, fireflies, ash, petals, dust
 function drift(w, x, z, kind, rate = 3, spread = 6) {
-  const C = { moth: [0.75, 0.7, 0.55], firefly: [0.75, 1, 0.35], ash: [0.45, 0.42, 0.4], ember: [1, 0.55, 0.15], petal: [0.9, 0.75, 0.82], dust: [0.7, 0.68, 0.6], spark: [1, 0.75, 0.3] }[kind];
+  const C = { moth: [0.75, 0.7, 0.55], firefly: [0.75, 1, 0.35], ash: [0.45, 0.42, 0.4], ember: [1, 0.55, 0.15], petal: [0.7, 0.88, 1.0], dust: [0.7, 0.68, 0.6], spark: [1, 0.75, 0.3] }[kind];
   let acc = 0;
   w.ambient.push({
     x, z, update: (dt, t, fx) => {

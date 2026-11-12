@@ -1797,7 +1797,7 @@ class Game {
     el.style.top = (map ? map.bottom + (this.input.isPhone ? 4 : 8) : 12) + 'px';
     if (this.foeShown === foe) return;
     this.foeShown = foe;
-    const NAMES = { grunt: 'Swordsman', spear: 'Spearman', archer: 'Archer', brute: 'Brute', effigy: 'Cursed Effigy' };
+    const NAMES = { grunt: 'Zealot', spear: 'Pike Zealot', archer: 'Needle Gunner', brute: 'War Servitor', effigy: 'Heretic Idol' };
     const name = foe.isBoss ? foe.name.split(',')[0] : `${foe.elite ? ELITE[foe.elite].name + ' ' : ''}${NAMES[foe.type] || foe.type}`;
     const d = foe.def || { armor: 0, res: {} }, deals = Object.keys(foe.elems || {});
     // damage per hit: its moves' hits averaged (an archer's arrow), with its scaling and the elements it adds
