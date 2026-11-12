@@ -6,6 +6,7 @@ import { box, cyl, cone, rbox, pivot } from './mesh.js';
 import { KITS, strip, plate, basic, add, easeOut, CLOTH, RIBBON } from './kits.js';
 import { colorMat, colorHex, colorById } from './outfits.js';
 import { CRUSADE } from './crusadekit.js';
+import { KNIGHT_ARMORY } from './armory.js';
 // the crusade layer for a piece (crusadekit.js): kind, slot, piece id (or the slot's first piece)
 const cx = (kind, slot, id, ...a) => { const t = CRUSADE[kind]?.[slot]; (t?.[id] || t?.[Object.keys(t || {})[0]])?.(...a); };
 
@@ -15,15 +16,18 @@ const darken = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(1 
 const glowMat = (r, id, fallback) => (id && id !== 'default' && colorById(id)?.fx ? colorMat(r, id, fallback) : basic(colorHex(id, fallback)));
 
 // the colours of one slot: materials for main and trim, plus their hex values
-function slotMats(r, fit, slot, mainHex, trimHex) {
+// (and detail and glow: the third and fourth channels; `dflt` gives a piece's own defaults for them)
+function slotMats(r, fit, slot, mainHex, trimHex, detailHex = 0x26262a, glowHex = 0x8ad8ff) {
   const f = fit?.[slot] || {};
-  return { piece: f.piece, main: colorMat(r, f.main, mainHex), trim: colorMat(r, f.trim, trimHex), mainHex: colorHex(f.main, mainHex), trimHex: colorHex(f.trim, trimHex), mainId: f.main, trimId: f.trim };
+  return { piece: f.piece, main: colorMat(r, f.main, mainHex), trim: colorMat(r, f.trim, trimHex), mainHex: colorHex(f.main, mainHex), trimHex: colorHex(f.trim, trimHex), mainId: f.main, trimId: f.trim,
+    detail: colorMat(r, f.detail, detailHex), detailHex: colorHex(f.detail, detailHex), detailId: f.detail,
+    glow: glowMat(r, f.glow, glowHex), glowHex: colorHex(f.glow, glowHex), glowId: f.glow };
 }
 
 // ---------- the base body's colours from the outfit ----------
 export function outfitModel(base, kind, fit) {
   const c = (slot, which, dflt) => colorHex(fit?.[slot]?.[which], dflt);
-  if (kind === 'knight') return { ...base, head: 'none', shield: false, armor: c('chest', 'main', 0x7a7e86), accent: c('chest', 'trim', 0x6a1412), cloth: c('legs', 'trim', 0x2a2a30), legs: { thigh: c('legs', 'trim', 0x2a2a30), shin: c('legs', 'main', 0x7a7e86) }, outfit: fit };
+  if (kind === 'knight') return { ...base, head: 'none', shield: false, armor: c('chest', 'main', 0x7a7e86), accent: c('chest', 'trim', 0x6a1412), cloth: c('legs', 'detail', 0x2a2a30), legs: { thigh: c('legs', 'detail', 0x2a2a30), shin: c('legs', 'main', 0x7a7e86) }, outfit: fit };
   if (kind === 'rogue') return { ...base, armor: c('shirt', 'main', 0x4a3a2c), outfit: fit };
   if (kind === 'mage') return { ...base, armor: c('shirt', 'main', 0x7a86b0) === 0x7a86b0 ? 0x7a86b0 : lighten(c('shirt', 'main', 0x22305c), 0.15), legs: { thigh: c('pants', 'main', 0x2c3a66), shin: c('pants', 'trim', 0x7a86b0) }, outfit: fit };
   return base;
@@ -287,34 +291,22 @@ const KNIGHT = {
     },
   },
 };
+// The Last Crusade's armoury (armory.js) replaces every piece
+for (const slot in KNIGHT_ARMORY) Object.assign(KNIGHT[slot], KNIGHT_ARMORY[slot]);
 KITS.knight = {
   weapon: true,
   build(r, o) {
     const fit = o.outfit || {}, T = r.j.torso, H = r.j.head, hips = r.j.hips;
-    const S = (slot, m, t) => slotMats(r, fit, slot, m, t);
-    const helm = S('helmet', 0x7a7e86, 0x8a1a14); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H); cx('knight', 'helmet', helm.piece, r, helm, H);
-    for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); cx('knight', 'pauldron', M.piece, r, M, T, s); }
-    const ch = S('chest', 0x7a7e86, 0x6a1412); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips); cx('knight', 'chest', ch.piece, r, ch, T, hips);
-    const lg = S('legs', 0x7a7e86, 0x2a2a30); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips); cx('knight', 'legs', lg.piece, r, lg, hips);
-    const shM = S('shield', 0x5a1412, 0x8a6a34); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); cx('knight', 'shield', shM.piece, r, shM, sh); T.add(sh); r.shield = sh;
-    const swM = S('sword', 0x8c929c, 0x8a6a34);
+    const S = (slot, m, t, d, gl) => slotMats(r, fit, slot, m, t, d, gl);
+    const helm = S('helmet', 0x7a7e86, 0x8a6a34, 0x2a2a30, 0xff5a2a); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H);
+    for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34, 0x2a2a30, 0x8ad8ff); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); }
+    const ch = S('chest', 0x7a7e86, 0x6a1412, 0x2a2a30, 0x8ad8ff); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips);
+    const lg = S('legs', 0x7a7e86, 0x5a5e66, 0x2a2a30, 0xff8a3a); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips);
+    const shM = S('shield', 0x5a1412, 0x8a6a34, 0x2a2a30, 0x8ad8ff); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
+    const swM = S('sword', 0x8c929c, 0x8a6a34, 0x2a2a30, 0x8ad8ff);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
-    const [len, baseZ] = (KNIGHT.sword[swM.piece] || KNIGHT.sword.longsword)(r, swM, g); cx('knight', 'sword', swM.piece, r, swM, g);
+    const [len, baseZ] = (KNIGHT.sword[swM.piece] || KNIGHT.sword.longsword)(r, swM, g);
     r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
-    // ---- The Last Crusade, on every outfit: a resonance core down the blade, a reactor pack on the back with
-    // exhaust stacks and cables to the shoulders, a glowing visor slit, a purity seal, an aegis emitter on the shield
-    const { bulk: b } = r.dims, core = basic(0x8ad8ff), pack = r.m(0x2e2e34), packHi = r.m(0x55565c), brass = r.m(0x8a6a34), hose = r.m(0x161618);
-    g.add(box(0.034, 0.02, (len - 0.3) * 0.85, core, 0, 0, 0.22 + (len - 0.3) * 0.425));
-    T.add(box(0.32 * b, 0.36, 0.16, pack, 0, 0.5, -0.22 * b)); T.add(box(0.34 * b, 0.05, 0.18, brass, 0, 0.7, -0.22 * b));
-    T.add(box(0.16, 0.05, 0.02, core, 0, 0.45, -0.305 * b));
-    for (const s of [1, -1]) {
-      const st = cyl(0.04, 0.05, 0.3, packHi, 6); st.position.set(s * 0.11, 0.82, -0.25 * b); T.add(st);
-      T.add(box(0.07, 0.025, 0.07, basic(0xff8a3a), s * 0.11, 0.98, -0.25 * b));
-      T.add(rbox(0.035, 0.035, 0.22, hose, s * 0.16, 0.66, -0.12 * b, 0.6, 0, 0));
-    }
-    H.add(box(0.17, 0.022, 0.015, core, 0, 0.2, 0.158));
-    T.add(box(0.08, 0.08, 0.03, r.m(0x8a1a12), -0.11, 0.56, 0.17 * b)); strip(r, T, -0.11, 0.52, 0.18 * b, 0.04, [0.14, 0.08], r.m(0xc8bca0), { lx: [-0.6, 0.2], th: 0.012 });
-    const em = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 0), core); em.position.set(0, 0.1, 0.1); sh.add(em);
   },
 };
 

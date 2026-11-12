@@ -10,7 +10,7 @@ import { locomotion } from './anims.js';
 import { PixelPass } from './pixel.js';
 import { CHARS } from './player.js';
 import { outfitModel } from './playerkits.js';
-import { SLOTS, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
+import { CHANNELS, SLOTS, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
@@ -66,7 +66,7 @@ export class SkinMenu {
     if (!owned) { this.try = { type, id }; this.render(); return; }
     this.try = null;
     if (type === 'piece') fit.pieces[this.slot] = id;
-    else { const c = fit.colors[this.slot] || ['default', 'default']; c[type === 'main' ? 0 : 1] = id; fit.colors[this.slot] = c; }
+    else { const c = fit.colors[this.slot] || ['default', 'default', 'default', 'default']; while (c.length < 4) c.push('default'); c[CHANNELS.indexOf(type)] = id; fit.colors[this.slot] = c; }
     this.save(); this.render();
   }
 
@@ -93,7 +93,7 @@ export class SkinMenu {
     const out = this.data ? wornOutfit(this.data, this.kind) : {};
     const t = this.try;
     if (t) {
-      const s = (out[this.slot] ||= { piece: pieceList(this.kind, this.slot)[0].id, main: 'default', trim: 'default' });
+      const s = (out[this.slot] ||= { piece: pieceList(this.kind, this.slot)[0].id, main: 'default', trim: 'default', detail: 'default', glow: 'default' });
       if (t.type === 'piece') s.piece = t.id; else s[t.type] = t.id;
     }
     return out;
@@ -131,7 +131,7 @@ export class SkinMenu {
       el.addEventListener('click', () => this.pick('piece', p.id));
       return el;
     }));
-    // colours: main and trim rows (Default + 15)
+    // colours: main, trim, detail and glow rows (Default + 15)
     const row = (type, label) => {
       const wrap = document.createElement('div'); wrap.className = 'cz-crow';
       const lab = document.createElement('span'); lab.className = 'cz-clabel'; lab.textContent = label; wrap.append(lab);
@@ -149,7 +149,7 @@ export class SkinMenu {
       }
       return wrap;
     };
-    $('cz-colors').replaceChildren(row('main', 'Main'), row('trim', 'Trim'));
+    $('cz-colors').replaceChildren(row('main', 'Main'), row('trim', 'Trim'), row('detail', 'Detail'), row('glow', 'Glow'));
     // the bar along the bottom: what you're trying on, Cancel and Buy (or the note when trying nothing)
     const t = this.try, price = this.priceOf(t), b = $('cz-buy');
     for (const id of ['cz-buy', 'cz-cancel']) $(id).classList.toggle('hidden', !t);
@@ -158,7 +158,7 @@ export class SkinMenu {
     if (t) {
       const name = t.type === 'piece' ? pieceList(kind, this.slot).find((p) => p.id === t.id)?.name : COLORS.find((c) => c.id === t.id)?.name;
       const slot = SLOTS[kind].find((s) => s.id === this.slot)?.name;
-      $('cz-trying').textContent = `Trying on: ${name} (${t.type === 'piece' ? slot : `${slot} ${t.type === 'main' ? 'main' : 'trim'} colour`})${d && d.emeralds < price ? ` · you have ${d.emeralds}` : ''}`;
+      $('cz-trying').textContent = `Trying on: ${name} (${t.type === 'piece' ? slot : `${slot} ${t.type} colour`})${d && d.emeralds < price ? ` · you have ${d.emeralds}` : ''}`;
       b.textContent = `Buy · ${price}`;
       b.disabled = !d || d.emeralds < price;
     }

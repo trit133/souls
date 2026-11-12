@@ -12,7 +12,7 @@ const page = await (await b.newContext({ viewport: { width: 640, height: 560 } }
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(url); await page.waitForTimeout(700);
 await page.evaluate(() => { document.getElementById('hud').style.display = 'none'; });
-for (const [kind, slots] of Object.entries(SLOTS)) for (let n = 0; n < 4; n++) for (const side of ['front', 'back']) {
+for (const [kind, slots] of Object.entries(SLOTS).filter(([k]) => !process.argv[3] || k === process.argv[3])) for (let n = 0; n < 4; n++) for (const side of ['front', 'back']) {
   const fit = Object.fromEntries(Object.entries(slots).map(([s, ids]) => [s, { piece: ids[n] }]));
   await page.evaluate(({ kind, fit, side }) => {
     const g = game; g.loop = () => {}; g.audio.play = () => {};
@@ -21,7 +21,7 @@ for (const [kind, slots] of Object.entries(SLOTS)) for (let n = 0; n < 4; n++) f
     const p = g.player; p.hp = p.maxHp = 1e9;
     for (let i = 0; i < 30; i++) g.step(1 / 60, 1 / 60);
     const c = g.camera, X = p.pos.x, Z = p.pos.z, a = (side === 'front' ? 0 : Math.PI) + p.yaw + 0.5;
-    c.position.set(X + Math.sin(a) * 2.6, 1.7, Z + Math.cos(a) * 2.6); c.lookAt(X, 0.95, Z);
+    c.position.set(X + Math.sin(a) * 3.0, 1.9, Z + Math.cos(a) * 3.0); c.lookAt(X, 1.1, Z);
     g.pixel.render(g.scene, c);
   }, { kind, fit, side });
   await page.screenshot({ path: `/tmp/look/outfit-${kind}-${n}-${side}.png` });
