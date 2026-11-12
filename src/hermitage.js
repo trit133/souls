@@ -197,14 +197,14 @@ const SCENES = {
     lights: [{ at: [-2.4, 1.2, -1.0], color: 0xffb060, power: 3, range: 5, lantern: true }, { at: [2.6, 0.9, 0.9], color: 0xffa050, power: 2.5, range: 4.5, candles: true }],
   },
   rogue: {
-    // the Shrike's hide: a gutted hab-room over the burning hive, all in red. Fire in a cut-down fuel drum, a blood-red
+    // the Shrike's hide: a gutted hab-room over the burning hive, red in its cloth and daubs, lit cold white. Fire in a cut-down fuel drum, a blood-red
     // cult banner and a sigil daubed on the wall, red emergency lamps, a weapons table with knives laid out, a red
     // tarp, hanging chains with red rags, the burning red skyline through a smashed wall, a trophy servo-skull
-    fire: { at: [1.3, 0, 0.9], colors: [0xffb07a, 0xff2a12], light: 0xff4a2a, y: 0.58 }, // (in the drum)
-    seatYaw: 0.8, sky: 0x120405, seatX: -0.45, hemi: 0x7a4048,
+    fire: { at: [1.3, 0, 0.9], colors: [0xffffff, 0xc8d8ff], light: 0xf0f4ff, y: 0.58 }, // (in the drum: a cold white flame)
+    seatYaw: 0.8, sky: 0x0a0a0c, seatX: -0.45, hemi: 0x9aa0b0,
     build(g, r) {
       const M = { under: L(0x140c0c), plate: L(0x2e2222), plate2: L(0x241a1a), ferro: L(0x3a2c2a), ferroDk: L(0x241a1a), iron: L(0x2a2224), rust: L(0x5a2a1a), drab: L(0x3a2626), red: L(0x7a1612), redDk: L(0x4a0c0c), bone: L(0xbab09a), brass: L(0x7a5a34), casing: L(0x9a7a3a), steel: L(0x9aa0a8), cable: L(0x120a0a),
-        sky: new THREE.MeshBasicMaterial({ color: 0x7a160c }), skyHot: new THREE.MeshBasicMaterial({ color: 0xe0401a }), daub: new THREE.MeshBasicMaterial({ color: 0x9a140e }), eye: new THREE.MeshBasicMaterial({ color: 0xff2a1a }), lamp: new THREE.MeshBasicMaterial({ color: 0xff3a24 }) };
+        sky: new THREE.MeshBasicMaterial({ color: 0x7a160c }), skyHot: new THREE.MeshBasicMaterial({ color: 0xe0401a }), daub: new THREE.MeshBasicMaterial({ color: 0x9a140e }), eye: new THREE.MeshBasicMaterial({ color: 0xff2a1a }), lamp: new THREE.MeshBasicMaterial({ color: 0xf0f4ff }) }; // (white lamps)
       deck(g, M, 5, 4, r, 0.97);
       for (let i = 0; i < 6; i++) { const a = r() * 6.28; box(g, 0.5 + r() * 0.6, 0.12 + r() * 0.1, 0.3 + r() * 0.3, M.ferro, Math.cos(a) * 4.2, 0.08, Math.sin(a) * 3.4 - 0.8, r() * 3); } // rubble
       for (let i = 0; i < 30; i++) box(g, 0.025, 0.025, 0.07, M.casing, (r() - 0.5) * 5, 0.02, (r() - 0.5) * 4 + 0.5, r() * 3); // spent casings
@@ -213,7 +213,7 @@ const SCENES = {
       const fx = 1.3, fz = 0.9;
       cyl(g, 0.36, 0.34, 0.6, M.rust, fx, 0.3, fz, 8);
       for (const y of [0.12, 0.5]) cyl(g, 0.37, 0.37, 0.05, M.iron, fx, y, fz, 8);
-      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; box(g, 0.08, 0.06, 0.02, new THREE.MeshBasicMaterial({ color: 0xff4a1a }), fx + Math.cos(a) * 0.36, 0.3, fz + Math.sin(a) * 0.36, -a + Math.PI / 2); }
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; box(g, 0.08, 0.06, 0.02, new THREE.MeshBasicMaterial({ color: 0xe8eeff }), fx + Math.cos(a) * 0.36, 0.3, fz + Math.sin(a) * 0.36, -a + Math.PI / 2); }
       for (const s of [-1, 1]) cyl(g, 0.02, 0.02, 0.8, M.iron, fx + s * 0.1, 0.62, fz, 4, Math.PI / 2, 0);
       // his seat: an upturned ammo crate with a red stencil
       box(g, 0.5, 0.34, 0.4, M.drab, -0.45, 0.17, 0, 0.2); box(g, 0.52, 0.05, 0.42, M.iron, -0.45, 0.33, 0, 0.2); box(g, 0.2, 0.12, 0.01, M.red, -0.43, 0.18, 0.21, 0.2);
@@ -264,7 +264,7 @@ const SCENES = {
       box(w, 0.06, 0.5, 0.06, M.leather, -0.32, 1.45, 0.12); for (let i = 0; i < 3; i++) box(w, 0.03, 0.2, 0.05, M.steel, -0.32, 1.35 - i * 0.12, 0.17);
       return w;
     },
-    lights: [{ at: [-2.5, 1.5, -1.1], color: 0xff3a24, power: 3.4, range: 5, lantern: true }, { at: [2.5, 0.6, 0.9], color: 0xff5a30, power: 2.2, range: 4, candles: true }],
+    lights: [{ at: [-2.5, 1.5, -1.1], color: 0xf0f4ff, power: 3.4, range: 5, lantern: true }, { at: [2.5, 0.6, 0.9], color: 0xe8ecff, power: 2.2, range: 4, candles: true }],
   },
   mage: {
     // the Adept's psy-sanctum: a black reactor-hearth with a plasma flame behind a coil grille, a warding circle of
