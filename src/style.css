@@ -938,3 +938,23 @@ html.phone #wm-panel { width: 46vw; font-size: 11px; padding: 8px 10px; }
 #hm-tip.hidden { display: none; }
 #hm-tip b { font-size: 13px; } #hm-tip i { color: #a89878; } #hm-tip em { color: #e8c25a; font-style: normal; }
 #hm-worth { margin-top: 6px; font: 11px monospace; color: #e8c25a; }
+
+/* How to Play (hermitage.js setGuide, pages in guide.js): a tab at the top left, a framed panel in the middle */
+.hm-left { display: flex; gap: 6px; align-items: center; }
+#hm-guide { position: absolute; left: 50%; top: 58px; bottom: 88px; transform: translateX(-50%); width: min(760px, 92vw); display: flex; flex-direction: column; padding: 10px 12px; background: rgba(12,8,6,.95); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); z-index: 3; animation: hmslide .25s ease-out; }
+#hm-guide.hidden { display: none; }
+.g-wrap { display: flex; gap: 10px; min-height: 0; flex: 1; margin-top: 8px; }
+#g-tabs { display: flex; flex-direction: column; gap: 4px; width: 150px; flex: none; overflow-y: auto; }
+#g-tabs button { text-align: left; padding: 6px 8px; font: bold 12px monospace; letter-spacing: 1px; color: #b8a888; background: #1c120c; border: 2px solid #3a2414; cursor: pointer; }
+#g-tabs button.on { color: #ffd36a; border-color: #8a5a24; background: #2a1a0e; }
+#g-tabs button:hover:not(.on) { color: #e8d8b8; }
+#g-page { flex: 1; overflow-y: auto; padding: 2px 10px 8px; border: 2px solid #3a2414; background: #140c08; color: #d0c0a0; font: 13px/1.55 Georgia, serif; }
+#g-page h3 { margin: 6px 0 8px; color: #ffd36a; font: bold 18px Georgia, serif; letter-spacing: 2px; text-transform: uppercase; }
+#g-page h4 { margin: 12px 0 4px; color: #e8a050; font: bold 13px monospace; letter-spacing: 1px; text-transform: uppercase; }
+#g-page p { margin: 6px 0; } #g-page ul, #g-page ol { margin: 4px 0; padding-left: 20px; } #g-page li { margin: 3px 0; }
+#g-page b { color: #f0e0c0; }
+.g-c { color: #b8b0a0; } .g-u { color: #6ac85a; } .g-r { color: #4a9aff; } .g-e { color: #b05aff; } .g-l { color: #ffa82a; }
+.g-keys { border-collapse: collapse; font: 12px monospace; width: 100%; }
+.g-keys th { text-align: left; color: #e8a050; padding: 4px 6px; border-bottom: 1px solid #3a2414; }
+.g-keys td { padding: 4px 6px; border-bottom: 1px solid #24160c; } .g-keys td:first-child { color: #f0e0c0; }
+@media (max-width: 700px), (max-height: 450px) { #hm-guide { top: 50px; bottom: 66px; } #g-tabs { width: 110px; } #g-tabs button { font-size: 10px; padding: 4px 5px; } #g-page { font-size: 11px; } }

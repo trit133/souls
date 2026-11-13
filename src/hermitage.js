@@ -26,6 +26,7 @@ import { SONG_NAMES } from './music.js';
 import { ITEMS, RARITY, TIERS, itemValue, iconEl } from './items.js';
 import { REGIONS } from './regions.js';
 import { BOSSES } from './boss.js';
+import { GUIDE } from './guide.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
@@ -362,11 +363,13 @@ export class Hermitage {
     el.id = 'hermitage'; el.className = 'hidden';
     el.innerHTML = `
       <div class="hm-top">
-        <button class="mini-btn" id="hm-back">Title</button>
+        <div class="hm-left"><button class="mini-btn" id="hm-back">Title</button><button class="mini-btn" id="hm-guide-btn">How to Play</button></div>
         <div class="hm-pick"><span id="hm-name">Templar</span><button class="mini-btn hm-icon" id="hm-chars" title="Characters" aria-label="Characters"><span id="hm-chars-ic"></span></button><div id="hm-list" class="hidden"></div></div>
         <div id="hm-gold"></div>
       </div>
       <div id="hm-label" class="hidden"></div>
+      <div id="hm-guide" class="hidden"><div class="hm-sh"><span>How to Play</span><button class="mini-btn" id="hm-guide-close">Close</button></div>
+        <div class="g-wrap"><div id="g-tabs"></div><div id="g-page"></div></div></div>
       <div id="hm-stash" class="hidden"><div class="hm-sh"><span>Stash</span><button class="mini-btn" id="hm-stash-close">Close</button></div>
         <div class="hm-tabs"><button data-tab="gems">Gems</button><button data-tab="runes">Runes</button><button data-tab="items" class="on">Items</button></div>
         <div class="hm-note" id="hm-stash-note">Shared by all your characters.</div><div id="hm-slots"></div><div id="hm-tip" class="hidden"></div><div id="hm-worth"></div></div>
@@ -386,11 +389,15 @@ export class Hermitage {
     el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
     $('hm-back').addEventListener('click', () => this.close());
+    $('hm-guide-btn').addEventListener('click', (e) => { e.stopPropagation(); this.setGuide(!this.guideOpen); });
+    $('hm-guide-close').addEventListener('click', () => this.setGuide(false));
+    $('hm-guide').addEventListener('click', (e) => e.stopPropagation());
+    this.guidePage = GUIDE[0].id;
     $('hm-chars').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
     $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
@@ -464,10 +471,12 @@ export class Hermitage {
     this.setKind(kind, true);
     g.refreshNight();
     g.audio.titleMusic(g.titleSong()); // the record in the jukebox
+    // the first time an account comes in, the guide opens by itself
+    if (d && !d.seenGuide) { d.seenGuide = true; g.accounts.save(); this.setGuide(true); }
   }
 
   close(toMenu = true) {
-    this.active = false; this.setStash(false); this.setJuke(false); this.setHover(null);
+    this.active = false; this.setStash(false); this.setJuke(false); this.setGuide(false); this.setHover(null);
     this.el.classList.add('hidden');
     if (toMenu) this.game.ui.show('menu');
   }
@@ -606,17 +615,37 @@ export class Hermitage {
     else if (it.id === 'workbench') this.setWork(!this.workOpen);
   }
 
+  // ---------- How to Play: a page per topic, its tabs down the side ----------
+  setGuide(v) {
+    this.guideOpen = v;
+    if (v) { this.setStash(false); this.setJuke(false); this.setWork(false); this.renderGuide(); this.game.audio.play('uiTick', 1); }
+    $('hm-guide')?.classList.toggle('hidden', !v);
+    $('hm-hint')?.style.setProperty('visibility', v ? 'hidden' : ''); // (the scene's hint would show through its header)
+  }
+  renderGuide() {
+    const tabs = $('g-tabs');
+    tabs.replaceChildren(...GUIDE.map((P) => {
+      const b = document.createElement('button');
+      b.textContent = P.title; b.classList.toggle('on', P.id === this.guidePage);
+      b.addEventListener('click', () => { this.guidePage = P.id; this.renderGuide(); this.game.audio.play('uiTick', 0.6); });
+      return b;
+    }));
+    const P = GUIDE.find((x) => x.id === this.guidePage) || GUIDE[0];
+    $('g-page').innerHTML = `<h3>${P.title}</h3>${P.body(this.game)}`;
+    $('g-page').scrollTop = 0;
+  }
+
   // ---------- the workbench (its panel only, for now) ----------
   setWork(v) {
     this.workOpen = v;
-    if (v) { this.setStash(false); this.setJuke(false); this.game.audio.play('uiTick', 1); }
+    if (v) { this.setStash(false); this.setJuke(false); this.setGuide?.(false); this.game.audio.play('uiTick', 1); }
     $('hm-work')?.classList.toggle('hidden', !v);
   }
 
   // ---------- the jukebox ----------
   setJuke(v) {
     this.jukeOpen = v;
-    if (v) { this.setStash(false); this.setWork(false); this.renderRecords(); this.game.audio.play('uiTick', 1); }
+    if (v) { this.setStash(false); this.setWork(false); this.setGuide(false); this.renderRecords(); this.game.audio.play('uiTick', 1); }
     $('hm-juke')?.classList.toggle('hidden', !v);
   }
 
@@ -659,7 +688,7 @@ export class Hermitage {
 
   setStash(v) {
     this.stashOpen = v;
-    if (v) { this.setJuke(false); this.setWork(false); } // one panel at a time
+    if (v) { this.setJuke(false); this.setWork(false); this.setGuide(false); } // one panel at a time
     $('hm-stash')?.classList.toggle('hidden', !v);
     if (v) this.renderStash();
     if (v) this.game.audio.play('uiTick', 1);
