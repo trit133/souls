@@ -390,7 +390,9 @@ export class World {
   mergeStatic(group) {
     group.updateMatrixWorld(true);
     const buckets = new Map(), kill = [];
-    group.traverse((o) => {
+    // (a group flagged noMerge keeps everything in it: a drum that breaks, a chest whose lid swings)
+    const each = (o, fn) => { if (o !== group && o.userData.noMerge && !o.isMesh) return; fn(o); for (const c of o.children) each(c, fn); };
+    each(group, (o) => {
       if (!o.isMesh || o.userData.noMerge || !(o.material instanceof THREE.MeshLambertMaterial)) return;
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
       for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);

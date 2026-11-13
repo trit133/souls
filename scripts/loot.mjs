@@ -27,6 +27,10 @@ const out = await page.evaluate(async () => {
   res.drum = { broken: dr.broken, loot: { ...g.raidLoot }, obstacleGone: g.world.obstacles.length === obs0 - 1, pieces: g.chests.debris.length,
     feed: [...document.querySelectorAll('#loot-feed .lf-line')].map((l) => [l.textContent, getComputedStyle(l).color, parseInt(getComputedStyle(l).fontSize)]) };
   run(120); res.drum.piecesSettled = g.chests.debris.every((d) => d.rest);
+  // the drum's own model went with it (it isn't baked into the scenery); a chest keeps its lid to swing
+  res.drum.modelGone = dr.def.group.children.length >= 3 && !dr.def.group.visible;
+  res.drum.othersStanding = g.chests.drums.filter((x) => !x.broken).every((x) => x.def.group.children.length >= 3 && x.def.group.visible);
+  res.drum.chestLid = g.chests.list.every((c) => c.def.lid.children.length >= 2);
   res.drum.plain = g.chests.drums.filter((d) => d.def.plain).length;
   g.togglePouch(true);
   res.pouch = { rows: document.querySelectorAll('#pc-list .pc-row').length, safe: document.getElementById('pc-safe').textContent, btn: document.getElementById('pouch-btn').textContent };
@@ -94,7 +98,7 @@ await page.click('.hm-tabs [data-tab=runes]'); await page.waitForTimeout(100);
 out.stash.runes = await page.evaluate(() => document.getElementById('hm-stash-note').textContent);
 await b.close();
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(12), JSON.stringify(v));
-const ok = out.chests.every((c) => c.rarity) && out.drums >= 8 && out.drum.broken && Object.keys(out.drum.loot).length && out.drum.obstacleGone && out.drum.pieces >= 10 && out.drum.piecesSettled && out.drum.feed.length && out.drum.feed[0][2] >= 20 && out.drum.plain > 0 && out.pouch.rows > 0
+const ok = out.chests.every((c) => c.rarity) && out.drums >= 8 && out.drum.broken && Object.keys(out.drum.loot).length && out.drum.obstacleGone && out.drum.modelGone && out.drum.othersStanding && out.drum.chestLid && out.drum.pieces >= 10 && out.drum.piecesSettled && out.drum.feed.length && out.drum.feed[0][2] >= 20 && out.drum.plain > 0 && out.pouch.rows > 0
   && out.chest.got >= 2 && out.chest.topTierFound && out.death.kept === out.death.expected && out.extract.victory && out.extract.stash === 4
   && out.exits.count === 2 && out.exits.gateReach && out.exits.hatchReach && out.boss.gem && out.boss.pitExit && out.boss.againGold >= 250
   && out.partyShare > 0.35 && out.partyShare < 0.65 && out.stash.items > 0 && out.stash.gems.shown === 3 && out.stash.gems.owned === 1;
