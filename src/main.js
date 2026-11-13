@@ -29,6 +29,7 @@ import { BOONS, rollBoons } from './boons.js';
 import { STATUS } from './status.js';
 import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
+import { PartyTab } from './partytab.js';
 import { rng } from './world.js';
 import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare } from './progress.js';
 const FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
@@ -414,6 +415,7 @@ class Game {
     $('btn-settings').addEventListener('click', () => this.openSettings());
     this.hermitage = new Hermitage(this);
     this.worldMap = new WorldMap(this);
+    this.partyTab = new PartyTab(this);
     $('btn-herm').addEventListener('click', () => { this.audio.unlock(); this.hermitage.open(); });
     $('lobby-night').addEventListener('click', () => { this.nightRaid = !this.nightRaid; this.refreshNight(); });
     $('set-signout').addEventListener('click', () => { this.accounts.signOut(); this.closeSettings(); this.refreshTitle(); });
@@ -459,6 +461,12 @@ class Game {
     $('lobby-joinbtn').addEventListener('click', () => tryNet(() => this.mp.join($('lobby-input').value.trim(), this.lobbyKind)));
     $('lobby-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('lobby-joinbtn').click(); });
     $('lobby-start').addEventListener('click', () => this.mp.startRun());
+    // stay in the room but walk the Sanctum; the party tab (partytab.js) has a Lobby button back
+    $('lobby-home').addEventListener('click', () => {
+      this.ui.show('lobby', false);
+      if (this.mode === 'lobby') this.mode = 'title'; // (back from a party run)
+      if (!this.hermitage.active) this.hermitage.open(this.lobbyKind);
+    });
     $('lobby-shop').addEventListener('click', () => { this.treeUI.open(); });
     this.skinMenu = new SkinMenu(this);
     this.treeUI = new TreeUI(this);
@@ -654,7 +662,7 @@ class Game {
     if (!this.layoutEditor?.layout) applyLayout(s.touchLayout);
     if (this.camera) this.resize();
     const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
-    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('pause')} pause`;
+    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('chat')} party chat · ${k('pause')} pause`;
   }
 
   saveSettings() {
@@ -1103,6 +1111,7 @@ class Game {
     this.refreshNight();
     $('lobby-start').disabled = m.members.length < 2;
     $('lobby-back').textContent = inRoom ? 'Leave Room' : 'Back';
+    $('lobby-home').classList.toggle('hidden', !inRoom || !this.accounts.user);
     $('lobby-wait').textContent = !inRoom ? '' : m.isHost ? (m.members.length < 2 ? 'Share the code. Needs 2 or 3 players.' : 'Everyone ready? Start when you are.') : 'Waiting for the host to start';
     const mageOpen = !!this.accounts.data?.upgrades.mage;
     document.querySelectorAll('[data-pick]').forEach((b) => {
@@ -1126,6 +1135,7 @@ class Game {
       return d;
     }));
     if (atEnd) log.scrollTop = log.scrollHeight;
+    this.partyTab?.render();
   }
 
   onPartyClosed(reason, wasRunning = true) {
@@ -1909,6 +1919,7 @@ class Game {
 
   loop(now) {
     requestAnimationFrame((t) => this.loop(t));
+    this.partyTab?.sync();
     let rdt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     if (this.hermitage?.active && this.mode === 'title') {

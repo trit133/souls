@@ -403,7 +403,11 @@ export class Hermitage {
     $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
     $('hm-work-close').addEventListener('click', () => this.setWork(false));
     // Solo Raid opens the world map (worldmap.js): pick an area there (Night Raid is toggled there too) to begin
-    $('hm-solo').addEventListener('click', (e) => { e.stopPropagation(); this.game.openWorldMap(); });
+    $('hm-solo').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.game.mp.code) { this.game.mp.addChat({ sys: true, text: 'Leave the party (in the Lobby) to raid solo' }); this.game.partyTab.open(); return; }
+      this.game.openWorldMap();
+    });
     $('hm-begin').addEventListener('click', () => this.begin());
     $('hm-party').addEventListener('click', () => { this.game.audio.unlock(); this.game.lobbyKind = this.kind; this.game.openLobby(); });
     $('hm-night').addEventListener('click', (e) => { e.stopPropagation(); this.game.nightRaid = !this.game.nightRaid; this.game.refreshNight(); });
@@ -487,6 +491,7 @@ export class Hermitage {
     const d = this.game.accounts.data;
     if (d && d.lastKind !== kind) { d.lastKind = kind; this.game.accounts.save(); }
     this.game.lobbyKind = kind;
+    if (this.game.mp.code && !this.game.mp.active) this.game.mp.setKind(kind); // (in a room: the party sees the change)
     $('hm-name').textContent = NAMES[kind];
     this.refresh();
     this.buildScene(kind);

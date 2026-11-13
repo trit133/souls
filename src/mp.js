@@ -181,7 +181,9 @@ export class Multiplayer {
   nameOf(id) { return this.members.find((x) => x.id === id)?.name || 'Someone'; }
 
   addChat(line) {
+    line.at = Date.now();
     this.chatLog.push(line);
+    this.game.partyTab?.onLine(line);
     if (this.chatLog.length > 80) this.chatLog.shift();
     this.game.renderChat();
   }
