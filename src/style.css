@@ -770,8 +770,8 @@ button.pxbtn { justify-content: center; }
 #hm-label.hidden { display: none; }
 #hm-label b { display: block; font: bold 15px Georgia, serif; letter-spacing: 1px; color: #ffd36a; }
 #hm-label span { display: block; font: 11px monospace; color: #d8c8a8; margin-top: 2px; }
-#hm-stash, #hm-juke { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
-#hm-stash.hidden, #hm-juke.hidden { display: none; }
+#hm-stash, #hm-juke, #hm-work { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
+#hm-stash.hidden, #hm-juke.hidden, #hm-work.hidden { display: none; }
 @keyframes hmslide { from { transform: translateX(40px); opacity: 0; } }
 .hm-sh { display: flex; justify-content: space-between; align-items: center; color: #ffd36a; font: bold 18px Georgia, serif; letter-spacing: 2px; }
 .hm-note { margin: 6px 0 8px; font: 11px monospace; color: #b8a888; }
@@ -783,7 +783,7 @@ button.pxbtn { justify-content: center; }
 #hm-hint { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); font: 12px monospace; color: #c8b890; letter-spacing: 1px; opacity: .8; transition: opacity 1s; pointer-events: none; text-shadow: 0 1px 2px #000; }
 #hm-hint.gone { opacity: 0; }
 .tile-herm { min-height: 150px; }
-@media (max-width: 700px), (max-height: 450px) { #hm-stash { width: 52vw; top: 54px; bottom: 70px; } .hm-bottom { gap: 8px; } }
+@media (max-width: 700px), (max-height: 450px) { #hm-stash, #hm-work { width: 52vw; top: 54px; bottom: 70px; } .hm-bottom { gap: 8px; } }
 button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the characters button */
 
 /* the title: Hermitage as wide as Fullscreen, Settings in the bottom right corner */

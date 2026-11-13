@@ -6,6 +6,7 @@
 //   the character  -> their skill tree
 //   the wardrobe   -> their skin customizer (left)
 //   the stash      -> the lid opens and the stash panel slides in (right); shared by every character
+//   the workbench  -> its panel (crafting and upgrades with what you find: coming later)
 //   the jukebox    -> the records you have (records.js); pick one and it drops into the jukebox's window and spins,
 //                     and the menus play its song (kept on the account)
 // At the top: back to the title, the character selector (the Spellsword shows locked until bought, with a yes/no to
@@ -105,6 +106,29 @@ function jukebox(wood) {
   box(g, 0.05, 0.05, 0.6, M.dark, 0.3, 0.03, -0.55);
   return { group: g, disc, vinyl, label, glowMat: M.glow, strips };
 }
+// a workbench: an iron bench with a vice, a hammer and a wrench, a pegboard of tools and a cogitator screen glowing
+// in the hideout's colour
+function workbench(glow) {
+  const g = new THREE.Group(), M = { iron: L(0x2c2c30), dark: L(0x141416), top: L(0x4a4038), steel: L(0x74767c), trim: L(0x6a5634), glow: new THREE.MeshBasicMaterial({ color: glow }) };
+  box(g, 1.5, 0.1, 0.7, M.top, 0, 0.82, 0); // the top
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(g, 0.08, 0.8, 0.08, M.iron, sx * 0.68, 0.4, sz * 0.29);
+  box(g, 1.4, 0.06, 0.6, M.dark, 0, 0.22, 0); // a shelf low down, with a crate on it
+  box(g, 0.4, 0.26, 0.34, M.trim, -0.4, 0.38, 0);
+  // the vice on the front corner
+  box(g, 0.2, 0.14, 0.2, M.steel, 0.55, 0.94, 0.2); box(g, 0.06, 0.16, 0.24, M.steel, 0.47, 1.06, 0.2); box(g, 0.06, 0.16, 0.24, M.steel, 0.63, 1.06, 0.2);
+  box(g, 0.02, 0.02, 0.3, M.dark, 0.55, 0.96, 0.4, 0, 0, Math.PI / 2);
+  // a hammer and a wrench lying on it
+  box(g, 0.34, 0.035, 0.035, M.trim, -0.15, 0.885, 0.12, 0.3); box(g, 0.06, 0.07, 0.14, M.steel, -0.31, 0.89, 0.07, 0.3);
+  box(g, 0.3, 0.02, 0.04, M.steel, 0.15, 0.88, -0.05, -0.5);
+  // the pegboard behind, with tools on it, and the screen
+  box(g, 1.4, 0.8, 0.05, M.dark, 0, 1.3, -0.33);
+  for (let i = 0; i < 4; i++) box(g, 0.04, 0.28 + (i % 2) * 0.1, 0.03, M.steel, -0.6 + i * 0.13, 1.35, -0.3);
+  box(g, 0.5, 0.36, 0.08, M.iron, 0.32, 1.32, -0.28);
+  box(g, 0.42, 0.28, 0.02, M.glow, 0.32, 1.32, -0.235);
+  box(g, 0.12, 0.05, 0.05, M.glow, -0.05, 1.62, -0.3); // a lamp tube over it
+  return { group: g, glow: M.glow };
+}
+const WORKBENCH = { knight: { at: [-1.3, 1.75], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.4, 1.75], ry: 0.3, glow: 0xff3a2a }, mage: { at: [-1.35, 1.75], ry: 0.3, glow: 0x7aa8ff } };
 const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x5a1414 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
 // deck plating: square plates with darker seams (and the odd darker plate)
@@ -344,6 +368,8 @@ export class Hermitage {
         <div class="hm-note">Shared by all your characters. Items you find will be kept here.</div><div id="hm-slots"></div></div>
       <div id="hm-juke" class="hidden"><div class="hm-sh"><span>Jukebox</span><button class="mini-btn" id="hm-juke-close">Close</button></div>
         <div class="hm-note">Pick a record for the menus. More are out there to be found.</div><div id="hm-recs"></div></div>
+      <div id="hm-work" class="hidden"><div class="hm-sh"><span>Workbench</span><button class="mini-btn" id="hm-work-close">Close</button></div>
+        <div class="hm-note">Materials you find in raids will be worked here: upgrading your notables and crafting runes for the sockets in your tree. Coming soon.</div></div>
       <div class="hm-bottom">
         <div class="hm-solo-wrap"><button class="menu-btn primary" id="hm-solo">Solo Raid</button>
           <div id="hm-go" class="hidden"><button class="mini-btn" id="hm-night">Night Raid: Off</button><button class="mini-btn" id="hm-begin">Begin</button></div></div>
@@ -355,7 +381,7 @@ export class Hermitage {
     $('hm-slots').innerHTML = Array.from({ length: STASH_SLOTS }, () => '<div class="hm-slot"></div>').join('');
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
@@ -363,6 +389,7 @@ export class Hermitage {
     $('hm-chars').addEventListener('click', (e) => { e.stopPropagation(); this.toggleList(); });
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
     $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
+    $('hm-work-close').addEventListener('click', () => this.setWork(false));
     // Solo Raid opens the world map (worldmap.js): pick an area there (Night Raid is toggled there too) to begin
     $('hm-solo').addEventListener('click', (e) => { e.stopPropagation(); this.game.openWorldMap(); });
     $('hm-begin').addEventListener('click', () => this.begin());
@@ -493,11 +520,14 @@ export class Hermitage {
     const wardrobe = S.wardrobe(g); wardrobe.position.set(-2.95, 0, -0.7); wardrobe.rotation.y = 0.5; g.add(wardrobe);
     this.stashLid = stash.lid; this.lidAngle = 0;
     const J = JUKEBOX[kind], juke = jukebox(J.wood); juke.group.position.set(J.at[0], 0, J.at[1]); juke.group.rotation.y = J.ry; g.add(juke.group);
+    const W = WORKBENCH[kind], bench = workbench(W.glow); bench.group.position.set(W.at[0], 0, W.at[1]); bench.group.rotation.y = W.ry; bench.group.scale.setScalar(0.56); g.add(bench.group);
+    const benchLight = new THREE.PointLight(W.glow, 1.2, 2.6, 1.5); benchLight.position.set(W.at[0] + 0.3, 1.4, W.at[1] + 0.5); scene.add(benchLight);
     this.juke = juke; this.jukeLight = new THREE.PointLight(0xffb060, 1.6, 3, 1.5); this.jukeLight.position.set(J.at[0], 1.0, J.at[1] + 0.7); scene.add(this.jukeLight);
     this.items = [
       { id: 'stash', group: stash.group, label: 'Reliquary', sub: 'Shared by all your characters' },
       { id: 'wardrobe', group: wardrobe, label: 'Armoury', sub: 'Change your look' },
       { id: 'jukebox', group: juke.group, label: 'Vox-Caster', sub: 'Choose the music' },
+      { id: 'workbench', group: bench.group, label: 'Workbench', sub: 'Upgrades and crafting (coming soon)' },
     ];
     this.showRecord(false);
     this.scene = scene;
@@ -568,12 +598,20 @@ export class Hermitage {
     else if (it.id === 'wardrobe') g.skinMenu.open(this.kind);
     else if (it.id === 'stash') this.setStash(!this.stashOpen);
     else if (it.id === 'jukebox') this.setJuke(!this.jukeOpen);
+    else if (it.id === 'workbench') this.setWork(!this.workOpen);
+  }
+
+  // ---------- the workbench (its panel only, for now) ----------
+  setWork(v) {
+    this.workOpen = v;
+    if (v) { this.setStash(false); this.setJuke(false); this.game.audio.play('uiTick', 1); }
+    $('hm-work')?.classList.toggle('hidden', !v);
   }
 
   // ---------- the jukebox ----------
   setJuke(v) {
     this.jukeOpen = v;
-    if (v) { this.setStash(false); this.renderRecords(); this.game.audio.play('uiTick', 1); }
+    if (v) { this.setStash(false); this.setWork(false); this.renderRecords(); this.game.audio.play('uiTick', 1); }
     $('hm-juke')?.classList.toggle('hidden', !v);
   }
 
@@ -616,7 +654,7 @@ export class Hermitage {
 
   setStash(v) {
     this.stashOpen = v;
-    if (v) this.setJuke(false); // one panel at a time
+    if (v) { this.setJuke(false); this.setWork(false); } // one panel at a time
     $('hm-stash')?.classList.toggle('hidden', !v);
     if (v) this.game.audio.play('uiTick', 1);
   }
