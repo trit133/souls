@@ -1,4 +1,4 @@
-// Supply chests (chests.js) in a raid: 2-4 a map, each in a building with guards round it; sealed until the guards
+// Supply chests (chests.js) in a raid: 2-4 a map on the surface (the hoard vault's: basements.mjs), each in a building with guards round it; sealed until the guards
 // are dead; solo it pays 2-3x the guards' gold, 1-10 emeralds and an injector (none past the maximum); in a party
 // both players get the gold (each a party share) and 1-5 emeralds, only the first chest gives injectors and the rest
 // heal 30% of max health; a guest opening one gets the host to decide. Screenshot /tmp/look/chest.png.
@@ -27,9 +27,9 @@ const solo = await A.evaluate(() => {
   const g = game, res = { counts: [] };
   g.loop = () => {}; g.audio.play = () => {};
   const run = (n) => { for (let i = 0; i < n; i++) g.step(1 / 60, 1 / 60); };
-  for (let k = 0; k < 6; k++) { g.start('knight'); res.counts.push(g.chests.list.length); }
-  res.guards = g.chests.list.map((c) => c.def.guards.length);
-  res.inBuildings = g.chests.list.every((c) => !!g.world.dungeon.buildingAt(c.def.x, c.def.z));
+  for (let k = 0; k < 20; k++) { g.start('knight'); res.counts.push(g.chests.list.filter((x) => !x.def.hoard).length); }
+  res.guards = g.chests.list.filter((x) => !x.def.hoard).map((c) => c.def.guards.length);
+  res.inBuildings = g.chests.list.filter((x) => !x.def.hoard).every((c) => !!g.world.dungeon.buildingAt(c.def.x, c.def.z));
   const p = g.player; p.hp = p.maxHp = 1e7; p.iframe = () => true;
   const c = g.chests.list[0], d = c.def;
   p.pos.set(d.x, 0, d.z + 1.3); p.setState('move'); g.lastGood = null;

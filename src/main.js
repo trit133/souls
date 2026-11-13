@@ -16,6 +16,7 @@ import { WorldMap } from './worldmap.js';
 import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
 import { Chests } from './chests.js';
+import { Basements } from './basements.js';
 import { Minimap } from './minimap.js';
 import { Player } from './player.js';
 import { Enemy, NIGHT } from './enemies.js';
@@ -121,6 +122,7 @@ class Game {
     this.reserves = [];
     this.seals = new Seals(this);
     this.chests = new Chests(this);
+    this.basements = new Basements(this);
     this.minimap = new Minimap(this);
     this.buildRun();
 
@@ -295,6 +297,7 @@ class Game {
     this.resetEncounters();
     this.seals.setup(this.world);
     this.chests.setup(this.world);
+    this.basements.setup(this.world);
     this.minimap.setup(this.world);
   }
 
@@ -351,6 +354,7 @@ class Game {
     this.camPos.set(p.pos.x, 14, p.pos.z + 12); this.camLook.set(p.pos.x, 0.8, p.pos.z);
     this.audio.play('roll', 0.6);
     this.ui.toastSmall(s.name.toUpperCase());
+    if (s.u) this.basements.found(s.u.k); // (marked over the building on the surface for everyone)
   }
 
   // in a raid's dark places (under a roof, underground) the daylight goes, as at night: you see by your cone and
@@ -1840,6 +1844,7 @@ class Game {
         this.updateHearts(dt);
         this.seals.update(dt);
         this.chests.update(dt);
+        this.basements.update();
         this.mp.tick(dt);
         this.stepRevive(dt);
       } else {

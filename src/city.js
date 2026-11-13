@@ -68,6 +68,11 @@ export class City {
     this.shrineSites = shuffle([over[0], under[0], rest[0]], r);
     this.shrineKinds = shuffle(['elite', 'circle', 'altar'], r);
     this.shrineTrait = pick(r, ELITES);
+    // only the basements something waits in: the boss's, the shrines' down here, and one treasure vault (the hoard)
+    const unders = [...VAULT_SITES, ...BOSS_SITES.filter((k) => k !== this.bossSite)];
+    this.cacheSite = pick(r, unders.filter((k) => !this.shrineSites.includes(k)));
+    const keep = new Set([this.bossSite, this.cacheSite, ...this.shrineSites]);
+    for (const b of this.buildings) if (b.basement && !keep.has(b.block.key)) delete b.basement;
   }
 
   // ---------- the plan (data only, the map's own stream) ----------
@@ -224,7 +229,7 @@ export class City {
     let k = 0;
     for (const b of this.buildings) {
       if (!b.basement) continue;
-      const kind = b.basement === 'site' ? (b.block.key === this.bossSite ? 'boss' : 'vault') : b.basement;
+      const kind = b.block.key === this.bossSite ? 'boss' : b.block.key === this.cacheSite ? 'cache' : 'vault';
       this.buildUnder(w, b, kind, k++);
     }
 
@@ -528,7 +533,7 @@ export class City {
   buildUnder(w, b, kind, k) {
     const ox = 400 + (k % 4) * 100, oz = -150 + Math.floor(k / 4) * 120;
     const group = new THREE.Group(); w.root.add(group);
-    const names = { cellar: 'Cellars', vault: 'The Vaults', boss: 'The Deep Vault' };
+    const names = { cellar: 'Cellars', vault: 'The Vaults', boss: 'The Deep Vault', cache: 'The Reliquary Hoard' };
     const mod = { i: w.mods.length, key: 'under', name: names[kind], cx: ox, cz: oz - 15, z0: oz + 10, z1: oz - 45, len: 55, half: 30, r: 24, group, ground: 'under', dungeon: true, zone: true, under: true };
     mod.roamSet = new Set([mod.i]);
     w.mods.push(mod); w.cur = mod;
@@ -540,7 +545,7 @@ export class City {
     R(ox - 6, ox + 6, oz - 6, oz + 5);
     this.stairUp(w, ox, oz + 3.4);
     u.arrive = { x: ox, z: oz + 0.8 };
-    this.stairs.push({ x: b.stair.x, z: b.stair.z, to: u.arrive, label: 'Go down', down: true, name: names[kind] });
+    this.stairs.push({ x: b.stair.x, z: b.stair.z, to: u.arrive, label: 'Go down', down: true, name: names[kind], u });
     this.stairs.push({ x: ox, z: oz + 2.6, to: { x: b.stair.x, z: b.stair.z + 2.2 }, label: 'Climb up', down: false, name: this.def.name });
     const lamp = (x, z, cold = false) => w.torch(x, z, cold ? 0x9ad0ff : 0xffb04a, cold);
     lamp(ox - 5, oz - 5);
@@ -549,7 +554,7 @@ export class City {
       R(ox + 4, ox + 15, oz - 1.6, oz + 1.6); R(ox + 13, ox + 25, oz - 6, oz + 4); rooms.push([ox + 19, oz - 1, 5]);
       if (r() < 0.6) { R(ox + 17.4, ox + 20.6, oz - 17, oz - 4); R(ox + 13, ox + 25, oz - 26, oz - 15); rooms.push([ox + 19, oz - 20.5, 5]); }
       R(ox - 1.6, ox + 1.6, oz - 15, oz - 4); R(ox - 6, ox + 6, oz - 24, oz - 13); rooms.push([ox, oz - 18.5, 5]);
-    } else if (kind === 'vault') {
+    } else if (kind === 'vault' || kind === 'cache') {
       R(ox - 1.8, ox + 1.8, oz - 17, oz - 4); R(ox - 13, ox + 13, oz - 42, oz - 15);
       R(ox + 11, ox + 20, oz - 31, oz - 25); R(ox + 17, ox + 26, oz - 36, oz - 20); rooms.push([ox + 21.5, oz - 28, 4]);
       u.hall = { x: ox, z: oz - 28.5 };
@@ -763,14 +768,19 @@ export class City {
     }
 
     // supply chests (chests.js): 2-4 buildings each hide one, with a couple more enemies than usual round it
-    const chestAt = new Set(shuffle(this.buildings.filter((b) => !b.yard), r).slice(0, 2 + Math.floor(r() * 3)));
+    // (down the shuffled list until enough have room for one)
+    const chestAt = new Map(), want = 2 + Math.floor(r() * 3);
+    for (const b of shuffle(this.buildings.filter((b) => !b.yard), r)) {
+      if (chestAt.size >= want) break;
+      const c = spotIn(b.x0 + 1.3, b.x1 - 1.3, b.z0 + 1.3, b.z1 - 1.3, { gap: 3 });
+      if (c) { chestAt.set(b, c); placed.push(c); }
+    }
     // in the buildings and yards: most houses hold someone in the dark
     for (const b of this.buildings) {
       let n = b.basement === 'site' ? 2 + (r() < 0.5 ? 1 : 0) : b.yard ? (r() < 0.5 ? 1 : 0) : b.ruin ? 1 : r() < 0.5 ? 1 + (r() < 0.35 ? 1 : 0) : 0;
-      const c = chestAt.has(b) && spotIn(b.x0 + 1.3, b.x1 - 1.3, b.z0 + 1.3, b.z1 - 1.3, { gap: 3 });
+      const c = chestAt.get(b);
       if (c) {
         this.at(w, c.x, c.z);
-        placed.push(c);
         const chest = buildChest(w, c.x, c.z, pick(r, [0, Math.PI / 2, Math.PI, -Math.PI / 2]));
         chest.guards = pack(n + 2, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
         w.chests.push(chest);
@@ -786,6 +796,20 @@ export class City {
       if (this.sites.some((S) => S.under && S.rec.mod === u.mod.i)) { pack(2, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 4); continue; }
       const L = this.layers.find((l) => l.u === u);
       if (u.kind === 'boss') pack(2, u.ox - 6, u.ox + 6, u.oz - 6, u.oz + 5); // (the corridor past the room is the arena's)
+      else if (u.kind === 'cache') {
+        // the hoard: a large chest in the hall with a small one either side, guarded by a War Servitor and two big
+        // elites; all three chests stay sealed until the three are dead
+        const h = u.hall, guards = [];
+        this.at(w, h.x, h.z);
+        const chests = [buildChest(w, h.x, h.z, 0, true), buildChest(w, h.x - 3.4, h.z + 0.6, 0.25), buildChest(w, h.x + 3.4, h.z + 0.6, -0.25)];
+        placed.push(...chests.map((c) => ({ x: c.x, z: c.z })));
+        const ring = { ring: { x: h.x, z: h.z + 4, r: 6 }, avoid: h, avoidR: 3, gap: 2.6 };
+        const spot = () => spotIn(h.x - 7, h.x + 7, h.z, h.z + 9, ring) || { x: h.x + (r() - 0.5) * 6, z: h.z + 5 };
+        guards.push(add('brute', spot()));
+        const trait = pick(r, ELITES);
+        for (let k = 0; k < 2; k++) guards.push(add(pick(r, ['grunt', 'spear']), spot(), { elite: trait, big: true }));
+        for (const c of chests) { c.guards = guards; c.hoard = true; w.chests.push(c); }
+      }
       else pack(u.kind === 'vault' ? 2 + (r() < 0.5 ? 1 : 0) : 2, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H);
     }
   }

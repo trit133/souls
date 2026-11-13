@@ -152,6 +152,7 @@ export class Minimap {
       const col = '#' + d.color.toString(16).padStart(6, '0');
       ctx.globalAlpha = 0.35 * pulse; dot(d.x, d.z, 7, col); ctx.globalAlpha = 1; dot(d.x, d.z, 3, col);
     }
+    g.basements?.drawMap(ctx, P, sc, here); // basements someone has been down
     if (g.portal && here(g.portal.x, g.portal.z)) dot(g.portal.x, g.portal.z, 4, '#7ae0ff');
     // teammates, then you
     for (const r of g.mp.active ? g.mp.peers.values() : []) if (here(r.pos.x, r.pos.z)) dot(r.pos.x, r.pos.z, 3, r.alive ? '#7ad870' : '#555');

@@ -4,6 +4,8 @@
 //   emeralds - 1-10 (1-5 in a party)
 //   an injector for the rest of the raid (not past your maximum). In a party only the first chest opened gives one;
 //            the others heal everyone 30% of their max health instead
+// The large chest in a raid's hoard vault (with two small ones beside it, all three behind the same guards) pays
+// 4-6x the guards' gold, 10-20 emeralds (5-10 in a party) and always an injector, the party's first-chest one aside.
 // The host (or a solo player) decides what's inside and tells the party ('chest'); a guest asks with 'chestReq'.
 import * as THREE from 'three';
 import { KILL_GOLD, killGold, partyShare } from './progress.js';
@@ -12,8 +14,9 @@ const REACH = 1.9, HEAL_PCT = 0.3;
 const LOCKED = 0xc02a1e, OPEN = 0xffc040;
 
 // a squat iron-bound munitions chest with a lid that swings up and a lit lock: what the map builds at (x, z)
-export function buildChest(w, x, z, yaw) {
+export function buildChest(w, x, z, yaw, big = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = yaw; g.userData.noMerge = true;
+  if (big) g.scale.setScalar(1.55);
   const part = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); parent.add(m); return m; };
   const W = 1.1, D = 0.66, H = 0.5, brass = new THREE.MeshBasicMaterial({ color: 0x8a6428 }); // (unlit: it reads in a dark house)
   part(new THREE.BoxGeometry(W, H, D), w.mats.wood, 0, H / 2, 0);
@@ -29,8 +32,8 @@ export function buildChest(w, x, z, yaw) {
   const halo = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), new THREE.MeshBasicMaterial({ color: LOCKED, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending }));
   halo.rotation.x = -Math.PI / 2; halo.position.y = 0.04; g.add(halo);
   w.add(g);
-  w.ob(x, z, 0.7);
-  return { x, z, group: g, lid, lock, halo, glow };
+  w.ob(x, z, big ? 1.05 : 0.7);
+  return { x, z, big, group: g, lid, lock, halo, glow };
 }
 
 export class Chests {
@@ -53,13 +56,13 @@ export class Chests {
     }
   }
 
-  near(p) { return p.alive && p.state === 'move' ? this.list.find((c) => !c.opened && Math.hypot(p.pos.x - c.def.x, p.pos.z - c.def.z) < REACH) : null; }
+  near(p) { return p.alive && p.state === 'move' ? this.list.find((c) => !c.opened && Math.hypot(p.pos.x - c.def.x, p.pos.z - c.def.z) < REACH + (c.def.big ? 0.5 : 0)) : null; }
 
   promptFor(p, key) {
     const c = this.near(p);
     if (!c) return null;
     if (this.locked(c)) return { c, line: `Chest sealed · kill its guards (${c.def.guards.filter((sp) => sp.enemy?.alive).length} left)` };
-    return { c, line: `${key}: Open chest${this.game.mp.active ? ' (for the whole party)' : ''}` };
+    return { c, line: `${key}: Open ${c.def.big ? 'the hoard' : 'chest'}${this.game.mp.active ? ' (for the whole party)' : ''}` };
   }
 
   // F at a chest: the host / solo opens it; a guest asks the host
@@ -76,11 +79,12 @@ export class Chests {
     if (c.opened || this.locked(c)) return;
     const party = g.mp.active, players = party ? (g.runPlayers || g.mp.members.length || 2) : 1;
     const worth = c.def.guards.reduce((s, sp) => s + (sp.enemy ? killGold(sp.enemy) : 0), 0) || 2 * KILL_GOLD[0]; // (no guards placed: as if two)
-    const gold = Math.round(worth * (2 + Math.random()) * (party ? partyShare(players) : 1));
-    const em = 1 + Math.floor(Math.random() * (party ? 5 : 10));
-    const pot = !party || !this.potGiven;
-    if (party) this.potGiven = true;
-    const msg = { t: 'chest', i: c.i, gold, em, pot: pot ? 1 : 0 };
+    const big = c.def.big;
+    const gold = Math.round(worth * (big ? 4 + Math.random() * 2 : 2 + Math.random()) * (party ? partyShare(players) : 1));
+    const em = big ? (party ? 5 + Math.floor(Math.random() * 6) : 10 + Math.floor(Math.random() * 11)) : 1 + Math.floor(Math.random() * (party ? 5 : 10));
+    const pot = big || !party || !this.potGiven;
+    if (party && !big) this.potGiven = true;
+    const msg = { t: 'chest', i: c.i, gold, em, pot: pot ? 1 : 0, big: big ? 1 : 0 };
     if (party) g.mp.sendAll(msg);
     this.onOpen(msg);
   }
@@ -90,7 +94,7 @@ export class Chests {
     const g = this.game, c = this.list[d.i];
     if (!c || c.opened) return;
     c.opened = true;
-    if (d.pot) this.potGiven = true;
+    if (d.pot && !d.big) this.potGiven = true;
     const p = g.player, lines = [];
     if (d.gold && g.bankNow(d.gold, `chest${g.act}:${d.i}`)) { lines.push(`◆ +${d.gold}`); g.statusPopup(p, `+${d.gold}`, '#e8c25a'); }
     if (d.em) { g.addEmeralds(d.em); lines.push(`+${d.em} emerald${d.em > 1 ? 's' : ''}`); }
@@ -104,8 +108,8 @@ export class Chests {
         lines.push('healed 30%');
       }
     }
-    g.ui.toast(`SUPPLY CACHE · ${lines.join(' · ')}`, 3);
+    g.ui.toast(`${c.def.big ? 'RELIQUARY HOARD' : 'SUPPLY CACHE'} · ${lines.join(' · ')}`, 3);
     g.audio.play('heal', 0.7);
-    g.fx.burst({ x: c.def.x, y: 0.8, z: c.def.z }, 18, [1, 0.78, 0.3], 3, 0.7, 0.2);
+    g.fx.burst({ x: c.def.x, y: 0.8, z: c.def.z }, c.def.big ? 40 : 18, [1, 0.78, 0.3], 3, 0.7, 0.2);
   }
 }

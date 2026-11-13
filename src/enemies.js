@@ -195,11 +195,11 @@ for (const T of Object.values(TYPES)) T.hp *= NUM; // (see scale.js)
 
 export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {
-    const T = TYPES[type], E = ELITE[opts.elite];
+    const T = TYPES[type], E = ELITE[opts.elite], G = opts.big ? TYPES.brute : null; // big: a regular enemy at a War Servitor's size and toughness
     // tier = mini bosses passed before this module
     const tier = opts.tier || 0, ts = tierStats(tier, opts.players || 1), party = partyScale(opts.players || 1, type === 'brute');
-    const rig = buildHumanoid({ ...T.model, ...(opts.look?.[type] || {}), scale: T.scale * (E ? 1.2 : 1), eyes: E ? E.color : TIER_EYES[tier] ?? T.model.eyes, eyeGlow: E ? 0xffffff : tier >= 3 ? 0xff1a10 : null });
-    super(game, rig, { x, z, yaw, hp: Math.round(T.hp * ts.hp * party.hp * (E ? 2.6 : 1)), radius: T.radius * (E ? 1.15 : 1), poise: T.poise * (E ? 2 : 1) });
+    const rig = buildHumanoid({ ...T.model, ...(opts.look?.[type] || {}), scale: (G ? G.scale : T.scale) * (E ? 1.2 : 1), eyes: E ? E.color : TIER_EYES[tier] ?? T.model.eyes, eyeGlow: E ? 0xffffff : tier >= 3 ? 0xff1a10 : null });
+    super(game, rig, { x, z, yaw, hp: Math.round((G || T).hp * ts.hp * party.hp * (E ? 2.6 : 1)), radius: (G || T).radius * (E ? 1.15 : 1), poise: (G || T).poise * (E ? 2 : 1) });
     this.tier = tier; this.dmgScale = ts.dmg * party.dmg; this.spdScale = ts.spd * party.spd;
     this.atkScale = ts.atk * party.atk; this.gapScale = party.gap; this.moves = T.moves;
     if (E) {
@@ -210,6 +210,7 @@ export class Enemy extends Actor {
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.86, 24), new THREE.MeshBasicMaterial({ color: E.color, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
       ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; rig.root.add(ring); this.auraRing = ring;
     }
+    if (G) { this.big = true; this.dmgScale *= 1.3; }
     this.event = !!opts.event; this.reserve = !!opts.reserve; this.effigy = !!T.still;
     if (this.reserve) rig.root.visible = false; // waits off stage until its seal's event calls it in
     // Night Raid: tougher, harder hitting, faster, quicker to notice you and to attack; watchers step in every 5 s
@@ -521,7 +522,7 @@ export class Enemy extends Actor {
     if (info.combo && comboHold(this)) return 'held'; // a combo caught it while weak
     this.poise -= info.poise || 0;
     this.poiseT = 2.0;
-    const armored = this.armorT > 0 || (this.state === 'attack' && (this.atk.def.armor || this.T.superArmor));
+    const armored = this.armorT > 0 || (this.state === 'attack' && (this.atk.def.armor || this.T.superArmor || this.big));
     const now = this.game.time;
     this.flinches = this.flinches.filter((t) => now - t < 3);
     if (this.poise <= 0 && (this.armorT > 0 || this.flinches.length >= 2)) {

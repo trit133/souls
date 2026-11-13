@@ -304,6 +304,7 @@ export class Multiplayer {
       case 'heartTaken': g.takeHeart(d.id, true); break;
       case 'chestReq': if (this.isHost) { const c = g.chests.list[d.i]; if (c) g.chests.open(c); } break;
       case 'chest': g.chests.onOpen(d); break;
+      case 'bfound': g.basements.found(d.k, true); break;
       case 'kgold': g.earnKill(d.n, g.netMap?.[d.id]); break; // a teammate's kill: your share
       case 'descend': if (this.isHost) g.descend(); break;
       case 'act': g.enterAct(d.n); break;
