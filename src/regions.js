@@ -18,6 +18,8 @@ export const AREAS = {
     id: 'r1a1', region: 'r1', name: 'Ashfall Ward', kind: 'city', boss: 'hask', open: true,
     blurb: 'A hab-ward burned hollow in the first war. Scavenger gangs hold the tenements; the cellars run deeper than the maps say.',
     mix: { grunt: 4, spear: 2, archer: 2, brute: 0.4 }, look: ASHFALL_LOOK,
+    // what its drums and chests hold (items.js): the first area of a region tops out low; the harder ones reach higher
+    loot: { drum: { common: 80, uncommon: 18, rare: 2 }, chest: { common: 30, uncommon: 38, rare: 22, epic: 8, legendary: 2 }, hoard: { rare: 45, epic: 40, legendary: 15 } },
   },
   r1a2: { id: 'r1a2', region: 'r1', name: 'The Sump Lines', kind: 'locked', blurb: 'Flooded transit tunnels under the ward.' },
   r1a3: { id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: 'locked', blurb: 'A cathedral-fortress on the ward\'s edge.' },

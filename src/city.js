@@ -17,7 +17,8 @@ import * as THREE from 'three';
 import { rng } from './world.js';
 import { mix, ELITES } from './dungeon.js';
 import { arenaFurnish, stoneRing } from './modules.js';
-import { buildChest } from './chests.js';
+import { buildChest, buildDrum } from './chests.js';
+import { rollRarity, TIERS } from './items.js';
 import { decorateArena, candles, bones, corpse, sacks, cart, crows, bloodStain, cage, skullStake } from './decor.js';
 
 const MAP_SEED = 0x5a11f; // the map's own stream: the same lanes and buildings every raid
@@ -68,6 +69,10 @@ export class City {
     this.shrineSites = shuffle([over[0], under[0], rest[0]], r);
     this.shrineKinds = shuffle(['elite', 'circle', 'altar'], r);
     this.shrineTrait = pick(r, ELITES);
+    // the hidden way out: a hatch at the end of a lane on the ward's north, west or east edge
+    const edge = [];
+    for (let k = 0; k < N; k++) edge.push({ x: X(k), z: X(0), dx: 0, dz: -1 }, { x: X(0), z: X(k), dx: -1, dz: 0 }, { x: X(N - 1), z: X(k), dx: 1, dz: 0 });
+    this.hatch = pick(r, edge);
     // only the basements something waits in: the boss's, the shrines' down here, and one treasure vault (the hoard)
     const unders = [...VAULT_SITES, ...BOSS_SITES.filter((k) => k !== this.bossSite)];
     this.cacheSite = pick(r, unders.filter((k) => !this.shrineSites.includes(k)));
@@ -199,7 +204,7 @@ export class City {
     this.brick = lam(0x5a3e30);
     this.shroudMat = new THREE.MeshBasicMaterial({ color: 0x17130f });
     this.glass = new Map(); // a faded copy of each material a building uses
-    this.stairs = []; this.unders = []; this.layers = []; this.occluders = [];
+    this.stairs = []; this.unders = []; this.layers = []; this.occluders = []; this.exits = [];
     this.bAt = new Map();
     for (const b of this.buildings) for (let i = Math.floor(b.x0 / 10); i <= Math.floor(b.x1 / 10); i++) for (let j = Math.floor(b.z0 / 10); j <= Math.floor(b.z1 / 10); j++) {
       const k = i * 1000 + j; if (!this.bAt.has(k)) this.bAt.set(k, []); this.bAt.get(k).push(b);
@@ -224,6 +229,7 @@ export class City {
     for (const b of this.buildings) this.buildBuilding(w, b);
     this.camp(w);
     this.rim(w);
+    { const H = this.hatch; this.at(w, H.x, H.z); this.exitDoor(w, H.x + H.dx * 2.7, H.z + H.dz * 2.7, H.dx, H.dz, 'Slip out through the hatch'); }
 
     // 3. basements (and the boss's vault and arena)
     let k = 0;
@@ -513,6 +519,25 @@ export class City {
     const fire = w.bonfire(cx, z0 + 2.3); fire.lit = true;
     candles(w, cx - 1.4, z0 + 1.9, 4);
     this.startAt = { x: cx, z: z0 + 9 };
+    // the way you came in, at the camp's south end: a way out too
+    this.exitDoor(w, cx, EDGE + 13.4, 0, 1, 'Leave by the camp gate');
+  }
+
+  // a way out of the raid (main.js: extract): a blast door in a frame with a green lamp, set into the edge, facing in
+  exitDoor(w, x, z, dx, dz, label) {
+    const M = w.mats, g = new THREE.Group(), across = dz !== 0;
+    g.position.set(x, 0, z); g.rotation.y = across ? 0 : Math.PI / 2;
+    const part = (W, H, D, mat, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), mat); m.position.set(px, py, pz); g.add(m); };
+    for (const s of [-1, 1]) part(0.7, 4.0, 1.0, M.stoneDark, s * 1.75, 2.0, 0);
+    part(4.2, 0.8, 1.0, M.stoneDark, 0, 4.2, 0);
+    part(2.8, 3.6, 0.3, M.metal, 0, 1.8, 0);
+    for (let k = 0; k < 4; k++) part(2.8, 0.18, 0.34, k % 2 ? M.logDark : M.hazard, 0, 0.5 + k * 0.9, 0);
+    const lamp = new THREE.MeshBasicMaterial({ color: 0x5aff7a });
+    part(0.4, 0.22, 0.4, lamp, 0, 4.7, 0);
+    w.add(g); g.userData.noMerge = false;
+    const ix = x - dx * 1.4, iz = z - dz * 1.4;
+    w.lights.push({ x: ix, y: 3.6, z: iz, color: 0x5aff7a, power: 5, range: 7, src: {} });
+    this.exits.push({ x: ix, z: iz, label, door: { x, z } });
   }
 
   // round the ward: ruined facades on three sides, rubble along the south (low, so it never hides you)
@@ -781,8 +806,10 @@ export class City {
       const c = chestAt.get(b);
       if (c) {
         this.at(w, c.x, c.z);
-        const chest = buildChest(w, c.x, c.z, pick(r, [0, Math.PI / 2, Math.PI, -Math.PI / 2]));
-        chest.guards = pack(n + 2, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
+        // its rarity (the area's chest table) sets how many guard it and how hard they are
+        const rarity = rollRarity(r, this.area.loot.chest);
+        const chest = buildChest(w, c.x, c.z, pick(r, [0, Math.PI / 2, Math.PI, -Math.PI / 2]), false, rarity);
+        chest.guards = this.toughen(pack(n + 1 + TIERS.indexOf(rarity), b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1), rarity, r);
         w.chests.push(chest);
       } else pack(n, b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1);
     }
@@ -801,7 +828,8 @@ export class City {
         // elites; all three chests stay sealed until the three are dead
         const h = u.hall, guards = [];
         this.at(w, h.x, h.z);
-        const chests = [buildChest(w, h.x, h.z, 0, true), buildChest(w, h.x - 3.4, h.z + 0.6, 0.25), buildChest(w, h.x + 3.4, h.z + 0.6, -0.25)];
+        const side = () => { const q = rollRarity(r, this.area.loot.chest); return q === 'common' ? 'uncommon' : q; };
+        const chests = [buildChest(w, h.x, h.z, 0, true, rollRarity(r, this.area.loot.hoard)), buildChest(w, h.x - 3.4, h.z + 0.6, 0.25, false, side()), buildChest(w, h.x + 3.4, h.z + 0.6, -0.25, false, side())];
         placed.push(...chests.map((c) => ({ x: c.x, z: c.z })));
         const ring = { ring: { x: h.x, z: h.z + 4, r: 6 }, avoid: h, avoidR: 3, gap: 2.6 };
         const spot = () => spotIn(h.x - 7, h.x + 7, h.z, h.z + 9, ring) || { x: h.x + (r() - 0.5) * 6, z: h.z + 5 };
@@ -812,6 +840,21 @@ export class City {
       }
       else pack(u.kind === 'vault' ? 2 + (r() < 0.5 ? 1 : 0) : 2, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H);
     }
+    // supply drums to smash (chests.js): in houses and yards and down the lanes, somewhere new each raid
+    const drums = [];
+    for (const b of shuffle(this.buildings.slice(), r)) { if (drums.length >= 9) break; const p = spotIn(b.x0 + 1, b.x1 - 1, b.z0 + 1, b.z1 - 1, { gap: 1.6 }); if (p) drums.push(p); }
+    for (const L of lanes.slice(6, 12)) { const p = spotIn(L.x0, L.x1, L.z0, L.z1, { gap: 1.6 }); if (p) drums.push(p); }
+    for (const p of drums) { placed.push(p); this.at(w, p.x, p.z); w.drums.push(buildDrum(w, p.x, p.z)); }
+  }
+
+  // a chest's guards by its rarity: rare and up bring elites, a legendary one a War Servitor too
+  toughen(guards, rarity, r) {
+    const t = TIERS.indexOf(rarity), trait = pick(r, ELITES);
+    guards.forEach((sp, k) => {
+      if (t >= 4 && k === 0) sp.type = 'brute';
+      else if ((t >= 2 && k === 0) || (t >= 3 && k <= 2)) sp.o.elite = trait;
+    });
+    return guards;
   }
 
   // ---------- per frame ----------

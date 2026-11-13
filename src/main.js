@@ -13,6 +13,8 @@ import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
 import { AREAS } from './regions.js';
 import { WorldMap } from './worldmap.js';
+import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
+import * as ItemsLib from './items.js';
 import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
 import { Chests } from './chests.js';
@@ -122,6 +124,7 @@ class Game {
     this.reserves = [];
     this.seals = new Seals(this);
     this.chests = new Chests(this);
+    this.itemsLib = ItemsLib; // (the item tables, for the stash and the test scripts)
     this.basements = new Basements(this);
     this.minimap = new Minimap(this);
     this.buildRun();
@@ -542,6 +545,7 @@ class Game {
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.user ? treeStats(kind, this.accounts.data) : {});
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
+    this.raidLoot = {}; this.lootDone = false; this.bossFelled = false; // (a raid's materials, kept when you leave: commitLoot)
     this.ui.setRunGold(0);
     $('run-gold').title = 'Gold banked to your account this run';
     if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
@@ -570,6 +574,7 @@ class Game {
   }
 
   toTitle() {
+    if (this.run?.raid && this.player && ['play', 'wait', 'reward'].includes(this.mode)) this.commitLoot(this.securedShare); // (quitting a raid counts as falling)
     this.mode = 'title';
     $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
     if (this.mp.active || this.mp.code) this.mp.leave();
@@ -989,9 +994,10 @@ class Game {
       this.mode = 'over';
       $('gameover-title').textContent = 'The run has ended';
       if (this.accounts.data) { this.accounts.data.stats.bestArea = Math.max(this.accounts.data.stats.bestArea, this.seenMod + 1); this.accounts.save(); }
+      const share = this.run?.raid ? this.securedShare : 0, res = this.commitLoot(share);
       $('gameover-stats').innerHTML = [
         `Banked this run: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
-        this.run?.raid ? `Fell in ${this.areaName} · shrines broken ${Math.min(3, this.seals.broken)}/3` : this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
+        this.run?.raid ? `Fell in ${this.areaName} · shrines broken ${Math.min(3, this.seals.broken)}/3 · ${Math.round(share * 100)}% of your materials kept<br>Kept: ${res && countItems(res.kept) ? itemsText(res.kept) : 'nothing'}${res && countItems(res.lost) ? ` · lost: ${itemsText(res.lost)}` : ''}` : this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
         `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
         `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
         `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
@@ -1237,25 +1243,74 @@ class Game {
     }, 2600);
   }
 
-  // the raid's boss is dead: the area is won (gold banked as it came), then back to the map
+  // the raid's boss is dead: its gem (or, once you have it, extra gold), and a way out opens in the pit. The raid goes
+  // on until you leave through a door (extract)
   raidComplete(enc) {
     this.world.setGate(enc.gateIn, true, false);
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     if (this.mp.active && !this.player.alive && this.mode === 'play') { this.player.revive(0.5); this.mp.sendAll({ t: 'up' }); }
-    const d = this.accounts.data;
-    if (d) { d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1; this.accounts.save(); }
+    this.bossFelled = true;
+    const d = this.accounts.data, gem = gemFor(enc.bossId);
+    let line = '';
+    if (d) {
+      d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1;
+      d.gems = d.gems || {};
+      if (gem && !d.gems[gem]) { d.gems[gem] = 1; line = `${ITEMS[gem].name.toUpperCase()} TAKEN`; }
+      else { const n = 250; if (this.bankNow(n, 'gemgold' + enc.id)) line = `◆ +${n} (you already carry its gem)`; }
+      this.accounts.save();
+    } else if (gem) line = `${ITEMS[gem].name.toUpperCase()} (guest: not saved)`;
+    // a way out opens in the middle of the pit
+    const A = enc.arena, group = this.world.mods[enc.mod].group, g = new THREE.Group(); g.position.set(A.x, 0, A.z);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.8, 32), new THREE.MeshBasicMaterial({ color: 0x5aff7a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; g.add(ring);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.5, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0x5aff7a, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.y = 3.5; g.add(beam);
+    group.add(g);
+    this.world.dungeon.exits.push({ x: A.x, z: A.z, label: 'Climb out of the pit' });
     setTimeout(() => {
       if (this.mode !== 'play') return;
-      this.audio.play('victory');
-      this.audio.ambience(null);
-      const s = Math.round(this.time - this.startTime);
-      document.querySelector('#victory .banner').textContent = `${this.areaName.toUpperCase()} IS PURGED`;
-      $('victory-stats').innerHTML = `${enc.boss.name.split(',')[0]} has fallen  ·  ${CHAR_NAMES[this.kind]}<br>Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  ${this.clearPct()}% of the ward cleared<br>Banked this raid: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`;
-      this.showRetry();
-      this.ui.show('victory');
+      this.audio.play('victory'); this.audio.calm();
       this.ui.show('boss', false);
-      this.mode = 'over';
-    }, 2600);
+      this.ui.toast(`THE HERETIC IS PURGED${line ? ' · ' + line : ''} · A WAY OUT OPENS`, 4);
+    }, 2000);
+  }
+
+  // what a raid lets you keep: a share k of the materials you picked up (1 = all), into the stash. Once a raid
+  commitLoot(k) {
+    if (!this.run?.raid || this.lootDone) return null;
+    this.lootDone = true;
+    // that share of everything you carry, the rarest kept first
+    const all = Object.entries(this.raidLoot || {}).flatMap(([id, n]) => Array(n).fill(id))
+      .sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a].rarity));
+    const keep = Math.round(all.length * k), kept = {}, lost = {};
+    all.forEach((id, i) => { const to = i < keep ? kept : lost; to[id] = (to[id] || 0) + 1; });
+    const d = this.accounts.data;
+    if (d) { d.items = addItems(d.items || {}, kept); this.accounts.save(); }
+    return { kept, lost };
+  }
+  // dying keeps a third of what you carry for each shrine broken (all three: everything)
+  get securedShare() { return Math.min(3, this.seals.broken) / 3; }
+
+  // picked up in a raid (a chest, a drum): into the pouch until you leave
+  addLoot(items) { addItems(this.raidLoot ||= {}, items); }
+
+  // out through a door (the camp gate, the hidden hatch, the pit once the boss is dead): keep everything
+  extract() {
+    if (!this.run?.raid || (this.mode !== 'play' && this.mode !== 'wait')) return;
+    const res = this.commitLoot(1) || { kept: {} };
+    this.mode = 'over';
+    this.audio.play(this.bossFelled ? 'victory' : 'fog'); this.audio.stopMusic(1); this.audio.ambience(null);
+    const s = Math.round(this.time - this.startTime), n = countItems(res.kept);
+    document.querySelector('#victory .banner').textContent = this.bossFelled ? `${this.areaName.toUpperCase()} IS PURGED` : `OUT OF ${this.areaName.toUpperCase()}`;
+    $('victory-stats').innerHTML = [
+      `${CHAR_NAMES[this.kind]}  ·  Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  shrines ${Math.min(3, this.seals.broken)}/3${this.bossFelled ? '  ·  boss slain' : ''}`,
+      `Materials kept: ${n ? itemsText(res.kept) : 'none'}${n && !this.accounts.user ? ' (guest: not saved)' : ''}`,
+      `Banked this raid: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
+    ].join('<br>');
+    for (const k of ['hud', 'touch', 'boss', 'reward']) this.ui.show(k, false);
+    this.ui.prompt(null);
+    this.showRetry();
+    this.ui.show('victory');
   }
 
   announceBossDeath(enc, pay) {
@@ -1844,6 +1899,7 @@ class Game {
         this.updateHearts(dt);
         this.seals.update(dt);
         this.chests.update(dt);
+        this.chests.updateDrums();
         this.basements.update();
         this.mp.tick(dt);
         this.stepRevive(dt);
@@ -1858,6 +1914,7 @@ class Game {
       const sealLine = this.seals.promptFor(p);
       const stair = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.stairAt?.(p.pos.x, p.pos.z) : null;
       const chest = this.chests.promptFor(p, this.input.lastDevice === 'touch' ? 'Tap' : 'F');
+      const exit = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.exits?.find((e) => Math.hypot(p.pos.x - e.x, p.pos.z - e.z) < 1.8) : null;
       if (down) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Revive ${down.name} (all lose 10% max health)`);
         if (presses.has('interact')) this.startRevive(down);
@@ -1867,6 +1924,9 @@ class Game {
       } else if (stair) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: ${stair.label}`);
         if (presses.has('interact')) this.takeStair(stair);
+      } else if (exit) {
+        this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: ${exit.label} · keep all you carry${this.mp.active ? ' (takes the whole party)' : ''}`);
+        if (presses.has('interact')) { if (this.mp.active) this.mp.sendAll({ t: 'extract' }); this.extract(); }
       } else if (chest) {
         this.ui.prompt(chest.line);
         if (presses.has('interact')) this.chests.tryOpen(chest.c);

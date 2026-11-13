@@ -102,7 +102,7 @@ export class Minimap {
       for (const p of g.allPlayers()) this.reveal(p.pos.x, p.pos.z, g.night ? 7 : 13); // you see less at night
       for (const L of this.layers) if (L.dirty) { L.octx.putImageData(L.img, 0, 0); L.dirty = false; }
       const s = g.seals;
-      this.info.textContent = `${g.night ? 'NIGHT RAID · ' : ''}${this.world.dungeon.def.name.toUpperCase()} · ${this.raid ? 'SHRINES' : 'SEALS'} ${Math.min(3, s.broken)}/3 · ${g.clearPct()}% CLEARED`;
+      this.info.textContent = `${g.night ? 'NIGHT RAID · ' : ''}${this.world.dungeon.def.name.toUpperCase()} · ${this.raid ? 'SHRINES' : 'SEALS'} ${Math.min(3, s.broken)}/3 · ${g.clearPct()}% CLEARED${this.raid ? ` · CARRYING ${Object.values(g.raidLoot || {}).reduce((x, y) => x + y, 0)} (${Math.round(g.securedShare * 100)}% SAFE)` : ''}`;
       const p = g.player;
       this.layer = this.layerAt(p.pos.x, p.pos.z);
       this.draw(this.cv, p.pos.x, p.pos.z, this.cv.width / VIEW);
@@ -133,6 +133,13 @@ export class Minimap {
       if (!here(s.x, s.z) || !this.seenAt(s.x, s.z)) continue;
       const [a, b] = P(s.x, s.z), k = 3 / sc;
       ctx.fillStyle = s.down ? '#d0d0d0' : '#9ad0ff'; ctx.fillRect(a - k, b - k, k * 2, k * 2);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1 / sc; ctx.strokeRect(a - k, b - k, k * 2, k * 2);
+    }
+    // a raid's ways out, once seen: green doors
+    for (const e of this.world.dungeon.exits || []) {
+      if (!here(e.x, e.z) || !this.seenAt(e.x, e.z)) continue;
+      const [a, b] = P(e.x, e.z), k = 3.5 / sc;
+      ctx.fillStyle = '#5aff7a'; ctx.fillRect(a - k, b - k, k * 2, k * 2);
       ctx.strokeStyle = '#000'; ctx.lineWidth = 1 / sc; ctx.strokeRect(a - k, b - k, k * 2, k * 2);
     }
     // the boss door and arena, once seen

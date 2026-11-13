@@ -23,6 +23,9 @@ import { pixelIcon } from './pixelui.js';
 import { MAGE_UNLOCK } from './treeui.js';
 import { ownedRecords, currentRecord, recordById } from './records.js';
 import { SONG_NAMES } from './music.js';
+import { ITEMS, RARITY, TIERS, itemValue, iconEl } from './items.js';
+import { REGIONS } from './regions.js';
+import { BOSSES } from './boss.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
@@ -365,7 +368,8 @@ export class Hermitage {
       </div>
       <div id="hm-label" class="hidden"></div>
       <div id="hm-stash" class="hidden"><div class="hm-sh"><span>Stash</span><button class="mini-btn" id="hm-stash-close">Close</button></div>
-        <div class="hm-note">Shared by all your characters. Items you find will be kept here.</div><div id="hm-slots"></div></div>
+        <div class="hm-tabs"><button data-tab="gems">Gems</button><button data-tab="runes">Runes</button><button data-tab="items" class="on">Items</button></div>
+        <div class="hm-note" id="hm-stash-note">Shared by all your characters.</div><div id="hm-slots"></div><div id="hm-tip" class="hidden"></div><div id="hm-worth"></div></div>
       <div id="hm-juke" class="hidden"><div class="hm-sh"><span>Jukebox</span><button class="mini-btn" id="hm-juke-close">Close</button></div>
         <div class="hm-note">Pick a record for the menus. More are out there to be found.</div><div id="hm-recs"></div></div>
       <div id="hm-work" class="hidden"><div class="hm-sh"><span>Workbench</span><button class="mini-btn" id="hm-work-close">Close</button></div>
@@ -378,7 +382,8 @@ export class Hermitage {
       <div id="hm-hint">Hover the things around the fire</div>`;
     document.body.append(el);
     this.el = el;
-    $('hm-slots').innerHTML = Array.from({ length: STASH_SLOTS }, () => '<div class="hm-slot"></div>').join('');
+    this.stashTab = 'items';
+    el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
     for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
@@ -656,7 +661,47 @@ export class Hermitage {
     this.stashOpen = v;
     if (v) { this.setJuke(false); this.setWork(false); } // one panel at a time
     $('hm-stash')?.classList.toggle('hidden', !v);
+    if (v) this.renderStash();
     if (v) this.game.audio.play('uiTick', 1);
+  }
+
+  // the stash: three tabs. Items (materials, rarest first, each stack with its count), Gems (every boss's, dark until
+  // you have it), Runes (later). Hover or tap a slot for what it is and what it's worth
+  renderStash() {
+    const d = this.game.accounts.data || {}, tab = this.stashTab, slots = $('hm-slots'), tip = $('hm-tip');
+    document.querySelectorAll('#hm-stash .hm-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+    slots.innerHTML = ''; tip.classList.add('hidden'); $('hm-worth').textContent = '';
+    const region = (id) => REGIONS.find((r) => r.id === ITEMS[id].region)?.name || '';
+    const show = (id, n, owned) => {
+      const it = ITEMS[id], R = RARITY[it.rarity], v = itemValue(id);
+      tip.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${it.kind === 'gem' ? 'Gem' : R.name + ' material'} · ${region(id)}</span><i>${it.desc}</i>`
+        + (it.kind === 'gem' ? (owned ? '<em>Not used up: you only need to carry it.</em>' : `<em>Dropped by ${BOSSES[it.boss]?.name.split(',')[0] || 'its boss'}.</em>`)
+          : `<em>Worth ◆ ${v} each${n > 1 ? ` · ◆ ${v * n} for ${n}` : ''}</em>`);
+      tip.classList.remove('hidden');
+    };
+    const slot = (id, n, owned = true) => {
+      const el = document.createElement('div'); el.className = 'hm-slot' + (owned ? '' : ' empty');
+      el.style.borderColor = owned ? RARITY[ITEMS[id].rarity].color : '';
+      el.append(iconEl(id, 2));
+      if (n > 1) { const c = document.createElement('span'); c.className = 'hm-count'; c.textContent = n; el.append(c); }
+      el.addEventListener('pointerenter', () => show(id, n, owned));
+      el.addEventListener('click', (e) => { e.stopPropagation(); show(id, n, owned); });
+      slots.append(el);
+    };
+    if (tab === 'items') {
+      $('hm-stash-note').textContent = 'Materials from your raids, shared by all your characters. A bazaar will buy them one day.';
+      const have = Object.entries(d.items || {}).filter(([id, n]) => n > 0 && ITEMS[id]?.kind === 'mat')
+        .sort((a, b) => TIERS.indexOf(ITEMS[b[0]].rarity) - TIERS.indexOf(ITEMS[a[0]].rarity) || ITEMS[a[0]].region.localeCompare(ITEMS[b[0]].region));
+      for (const [id, n] of have) slot(id, n);
+      for (let k = have.length; k < STASH_SLOTS; k++) { const el = document.createElement('div'); el.className = 'hm-slot'; slots.append(el); }
+      const worth = have.reduce((s2, [id, n]) => s2 + itemValue(id) * n, 0);
+      $('hm-worth').textContent = have.length ? `Worth ◆ ${worth} in all` : 'Nothing yet: smash supply drums and open chests in a raid.';
+    } else if (tab === 'gems') {
+      $('hm-stash-note').textContent = 'Each mini boss drops a gem in the shape of its head. Carry all of a region\'s to pass its gatekeeper.';
+      for (const id of Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem')) slot(id, 1, !!d.gems?.[id]);
+    } else {
+      $('hm-stash-note').textContent = 'Runes are coming later.';
+    }
   }
 
   // ---------- per frame (Game.loop draws it in place of the world) ----------

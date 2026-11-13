@@ -140,7 +140,7 @@ export class World {
     this.fires = [];
     this.ambient = [];
     this.tiles = [];
-    this.dungeon = null; this.cutaway = false; this.seals = []; this.chests = [];
+    this.dungeon = null; this.cutaway = false; this.seals = []; this.chests = []; this.drums = [];
     this.hash = null; this.hashN = -1; this.shash = null; this.shashN = -1;
     this.start = { x: 0, z: -3 };
   }

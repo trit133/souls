@@ -105,6 +105,10 @@ const out = await page.evaluate(() => {
   enc.boss.hp = 1; enc.boss.die ? enc.boss.die() : (enc.boss.hp = 0); run(5);
   if (!enc.defeated) g.onBossDeath(enc.boss);
   res.defeated = enc.defeated;
+  // the boss's death opens a way out in the pit; leaving through it ends the raid
+  const pit = g.world.dungeon.exits.find((e) => e.label.includes('pit'));
+  res.pitExit = !!pit;
+  if (pit) { p3.pos.set(pit.x, 0, pit.z); g.lastGood = null; run(2); g.input.pressed.add('interact'); run(2); }
   return res;
 });
 // the raid's end screen comes after a pause
@@ -120,6 +124,6 @@ console.log(JSON.stringify(out, null, 1));
 const ok = out.size.w < 130 && out.size.walls >= 20 && out.size.enemies <= 70 && out.dark.inside && out.dark.hemi < 0.6 && out.dark.cone > 10 && out.dark.roofOff
   && Object.values(out.glass).every(Boolean) && out.wallShot.hpLost === 0 && out.staysDead
   && out.sameMap && out.enemiesMoved && Object.values(out.allReach).every(Boolean) && out.down.under && out.down.lightAfter < 1 && !out.backUp.under && out.backUp.nearStair
-  && out.pathing.closest < 3 && out.doorShut.sealed && !out.doorShut.open && !out.doorAfter.sealed && out.doorAfter.open && out.fight.active && out.defeated && out.victory.shown && out.map.deploy;
+  && out.pathing.closest < 3 && out.doorShut.sealed && !out.doorShut.open && !out.doorAfter.sealed && out.doorAfter.open && out.fight.active && out.defeated && out.pitExit && out.victory.shown && out.map.deploy;
 console.log(ok ? 'raid works' : 'RAID PROBLEM');
 console.log(errs.length ? 'ERRORS\n' + errs.join('\n') : 'OK no errors');

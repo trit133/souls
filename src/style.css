@@ -925,3 +925,16 @@ html.phone .fp-res { font-size: 8px; } html.phone .fp-none { font-size: 8px; }
 #wm-boss:empty { display: none; }
 .wm-btns { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; }
 html.phone #wm-panel { width: 46vw; font-size: 11px; padding: 8px 10px; }
+
+/* the stash's tabs, slots and the details box (hermitage.js renderStash) */
+.hm-tabs { display: flex; gap: 4px; margin-top: 6px; }
+.hm-tabs button { flex: 1; padding: 4px 0; font: bold 12px monospace; letter-spacing: 1px; text-transform: uppercase; color: #b8a888; background: #1c120c; border: 2px solid #3a2414; cursor: pointer; }
+.hm-tabs button.on { color: #ffd36a; border-color: #8a5a24; background: #2a1a0e; }
+.hm-slot { position: relative; display: flex; align-items: center; justify-content: center; cursor: default; }
+.hm-slot .item-ic { image-rendering: pixelated; width: 70% !important; height: 70% !important; }
+.hm-slot.empty .item-ic { filter: brightness(0.15) grayscale(1); }
+.hm-count { position: absolute; right: 2px; bottom: 0; font: bold 11px monospace; color: #fff; text-shadow: 0 1px 0 #000, 0 0 3px #000; }
+#hm-tip { margin-top: 8px; padding: 6px 8px; border: 2px solid #3a2414; background: #140c08; font: 11px/1.4 monospace; color: #c8b898; display: flex; flex-direction: column; gap: 2px; }
+#hm-tip.hidden { display: none; }
+#hm-tip b { font-size: 13px; } #hm-tip i { color: #a89878; } #hm-tip em { color: #e8c25a; font-style: normal; }
+#hm-worth { margin-top: 6px; font: 11px monospace; color: #e8c25a; }
