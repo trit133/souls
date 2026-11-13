@@ -10,11 +10,12 @@
 // its glow: the rarer it is, the more guards round it and the tougher they are (city.js), and it holds materials
 // (items.js) of that rarity and below. A party each get about half as much, all the same.
 // The host (or a solo player) decides what's inside and tells the party ('chest'); a guest asks with 'chestReq'.
-// Supply drums: smash one (any attack) for a material or two off the area's drum table; shared in a party the same way
-// ('drum' / 'drumReq').
+// Supply drums: smash one (any swing that reaches it, or a spell) and it bursts apart into staves and hoops; out comes a
+// material or two off the area's drum table (the plain drums standing in houses and cellars are often empty). Shared
+// in a party the same way ('drum' / 'drumReq').
 import * as THREE from 'three';
 import { KILL_GOLD, killGold, partyShare } from './progress.js';
-import { RARITY, rollChest, rollDrum, itemsText } from './items.js';
+import { RARITY, rollChest, rollDrum } from './items.js';
 import { AREAS } from './regions.js';
 
 const REACH = 1.9, HEAL_PCT = 0.3;
@@ -45,16 +46,16 @@ export function buildChest(w, x, z, yaw, big = false, rarity = 'common') {
 const rarityHex = (r) => parseInt(RARITY[r].color.slice(1), 16);
 
 // a supply drum: a rusted promethium drum with hazard bands and an amber seal light; smash it for what's inside
-export function buildDrum(w, x, z) {
+export function buildDrum(w, x, z, plain = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.userData.noMerge = true;
   const part = (geo, mat, py) => { const m = new THREE.Mesh(geo, mat); m.position.y = py; g.add(m); return m; };
-  part(new THREE.CylinderGeometry(0.34, 0.36, 0.95, 8), w.mats.rust, 0.48);
-  for (const y of [0.22, 0.74]) part(new THREE.CylinderGeometry(0.37, 0.37, 0.1, 8), w.mats.hazard, y);
+  part(new THREE.CylinderGeometry(0.34, 0.36, 0.95, 8), plain ? w.mats.logDark : w.mats.rust, 0.48);
+  for (const y of [0.22, 0.74]) part(new THREE.CylinderGeometry(0.37, 0.37, 0.1, 8), plain ? w.mats.metal : w.mats.hazard, y);
   part(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 8), w.mats.metal, 0.97);
-  part(new THREE.BoxGeometry(0.1, 0.08, 0.1), new THREE.MeshBasicMaterial({ color: 0xffb040 }), 1.02);
+  if (!plain) part(new THREE.BoxGeometry(0.1, 0.08, 0.1), new THREE.MeshBasicMaterial({ color: 0xffb040 }), 1.02); // (the amber seal: a supply drum)
   w.add(g);
   w.ob(x, z, 0.42);
-  return { x, z, group: g, ob: w.obstacles[w.obstacles.length - 1] };
+  return { x, z, plain, group: g, ob: w.obstacles[w.obstacles.length - 1] };
 }
 
 export class Chests {
@@ -63,6 +64,8 @@ export class Chests {
   setup(world) {
     this.list = (world.chests || []).map((def, i) => ({ i, def, opened: false, lidT: 0 }));
     this.drums = (world.drums || []).map((def, i) => ({ i, def, broken: false, asked: false }));
+    for (const d of this.debris || []) this.game.scene.remove(d.m);
+    this.debris = [];
     this.region = world.dungeon?.area?.region || 'r1';
     this.loot = world.dungeon?.area?.loot || null;
     this.potGiven = false; // (a party: the first chest's injector)
@@ -72,6 +75,7 @@ export class Chests {
 
   update(dt) {
     const t = this.game.time;
+    this.updateDebris(dt);
     for (const c of this.list) {
       const d = c.def, rc = rarityHex(d.rarity || 'common'), col = c.opened ? 0x3a2a10 : this.locked(c) ? LOCKED : rc;
       d.glow.color.setHex(col); d.halo.material.color.setHex(c.opened ? 0x3a2a10 : rc); // (the glow: its rarity)
@@ -124,7 +128,7 @@ export class Chests {
     const p = g.player, lines = [];
     if (d.gold && g.bankNow(d.gold, `chest${g.act}:${d.i}`)) { lines.push(`◆ +${d.gold}`); g.statusPopup(p, `+${d.gold}`, '#e8c25a'); }
     if (d.em) { g.addEmeralds(d.em); lines.push(`+${d.em} emerald${d.em > 1 ? 's' : ''}`); }
-    if (d.items && Object.keys(d.items).length) { g.addLoot(d.items, false); lines.unshift(itemsText(d.items)); }
+    if (d.items && Object.keys(d.items).length) { g.addLoot(d.items); g.lootFeed(d.items); }
     if (p?.alive) {
       if (d.pot) {
         if (p.flasks < p.maxFlasks) { p.flasks++; lines.push('+1 injector'); } else lines.push('injectors full');
@@ -141,33 +145,86 @@ export class Chests {
   }
 
   // ---------- supply drums ----------
-  // any swing of yours that reaches a drum smashes it (checked each frame while your blade is out)
+  // a swing of yours in its striking moment that reaches a drum (in front of you) smashes it; so does a spell
   updateDrums() {
-    const g = this.game, p = g.player;
-    if (!p?.alive || p.state !== 'attack' || !p.trailOn) return;
-    const f = p.fwd();
+    const g = this.game, p = g.player, a = p?.atk;
+    if (!p?.alive || !a || !['attack', 'riposte', 'charge'].includes(p.state)) return;
+    const hits = a.def.hits || [], live = !hits.length ? p.trailOn : hits.some((h) => a.t >= h.t0 - 0.05 && a.t <= h.t1 + 0.08);
+    if (!live) return;
+    const reach = Math.max(2.4, ...hits.map((h) => (h.range || 2) + 0.6)), f = p.fwd();
     for (const d of this.drums) {
-      if (d.broken || d.asked) continue;
       const dx = d.def.x - p.pos.x, dz = d.def.z - p.pos.z, dist = Math.hypot(dx, dz);
-      if (dist > 2.2 || (dist > 0.6 && (dx * f.x + dz * f.z) / dist < 0.2)) continue;
-      if (g.isGuest) { d.asked = true; g.mp.send({ t: 'drumReq', i: d.i }); } else this.smash(d);
+      if (dist > reach || (dist > 0.7 && (dx * f.x + dz * f.z) / dist < -0.1)) continue;
+      if (g.world.lineClear && !g.world.lineClear(p.pos.x, p.pos.z, d.def.x, d.def.z)) continue;
+      this.hitDrum(d);
     }
   }
-  // what's inside, decided once (host / solo), then given to everyone
+  // a spell or blast at (x, z), r across
+  drumsAt(x, z, r) { for (const d of this.drums) if (Math.hypot(d.def.x - x, d.def.z - z) < r + 0.45) this.hitDrum(d); }
+  hitDrum(d) {
+    const g = this.game;
+    if (d.broken || d.asked) return;
+    if (g.isGuest) { d.asked = true; g.mp.send({ t: 'drumReq', i: d.i }); this.breakApart(d); return; } // (it falls apart here at once; the host says what was in it)
+    this.smash(d);
+  }
+  // what's inside, decided once (host / solo), then given to everyone. A plain drum is empty half the time
   smash(d) {
     const g = this.game;
     if (d.broken || !this.loot) return;
-    const msg = { t: 'drum', i: d.i, items: rollDrum(Math.random, this.region, this.loot.drum, g.mp.active) };
+    const empty = d.def.plain && Math.random() < 0.5;
+    const msg = { t: 'drum', i: d.i, items: empty ? {} : rollDrum(Math.random, this.region, this.loot.drum, g.mp.active) };
     if (g.mp.active) g.mp.sendAll(msg);
     this.onDrum(msg);
   }
   onDrum(m) {
     const g = this.game, d = this.drums[m.i];
     if (!d || d.broken) return;
-    d.broken = true; d.def.group.visible = false;
-    const obs = g.world.obstacles, k = obs.indexOf(d.def.ob); if (k >= 0) obs.splice(k, 1); // (nothing left to walk round)
-    g.fx.burst({ x: d.def.x, y: 0.6, z: d.def.z }, 16, [0.7, 0.45, 0.2], 3, 0.5, 0.2);
-    g.audio.play('clang', 0.5);
-    if (Object.keys(m.items || {}).length) { g.addLoot(m.items, true); g.statusPopup(g.player, itemsText(m.items), '#e8d8a8'); }
+    d.broken = true;
+    this.breakApart(d);
+    if (Object.keys(m.items || {}).length) { g.addLoot(m.items); g.lootFeed(m.items); }
+  }
+  // it bursts: eight staves, two hoops and the lid fly out, bounce and settle, then sink away
+  breakApart(d) {
+    if (d.apart) return;
+    d.apart = true;
+    const g = this.game, M = g.world.mats, D = d.def, plain = D.plain;
+    D.group.visible = false;
+    const obs = g.world.obstacles, k = obs.indexOf(D.ob); if (k >= 0) obs.splice(k, 1); // (nothing left to walk round)
+    const add = (geo, mat, x, y, z, ry, v, spin) => {
+      const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; g.scene.add(m);
+      this.debris.push({ m, v, spin, t: 0, rest: false });
+    };
+    const stave = new THREE.BoxGeometry(0.22, 0.92, 0.06);
+    for (let n = 0; n < 8; n++) {
+      const a = (n / 8) * Math.PI * 2 + Math.random() * 0.3, sp = 1.8 + Math.random() * 2.2;
+      add(stave, plain ? M.logDark : M.rust, D.x + Math.cos(a) * 0.32, 0.48, D.z + Math.sin(a) * 0.32, -a + Math.PI / 2,
+        new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 2.5, Math.sin(a) * sp), new THREE.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 9));
+    }
+    const hoop = new THREE.TorusGeometry(0.36, 0.035, 4, 10);
+    for (const y of [0.22, 0.74]) {
+      const a = Math.random() * 6.28;
+      add(hoop, plain ? M.metal : M.hazard, D.x, y, D.z, 0, new THREE.Vector3(Math.cos(a) * 1.2, 1.5 + Math.random() * 2, Math.sin(a) * 1.2), new THREE.Vector3(3 + Math.random() * 4, 0, Math.random() * 3));
+    }
+    add(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8), M.metal, D.x, 0.97, D.z, 0, new THREE.Vector3((Math.random() - 0.5) * 2, 4 + Math.random() * 2, (Math.random() - 0.5) * 2), new THREE.Vector3(6, 0, 4));
+    g.fx.burst({ x: D.x, y: 0.6, z: D.z }, 14, plain ? [0.4, 0.35, 0.3] : [0.7, 0.45, 0.2], 3, 0.5, 0.18);
+    g.fx.dust?.({ x: D.x, y: 0, z: D.z }, 4, 0.5);
+    g.audio.play('clang', 0.55);
+  }
+  updateDebris(dt) {
+    for (const d of this.debris) {
+      d.t += dt;
+      const m = d.m;
+      if (!d.rest) {
+        d.v.y -= 14 * dt;
+        m.position.addScaledVector(d.v, dt);
+        m.rotation.x += d.spin.x * dt; m.rotation.y += d.spin.y * dt; m.rotation.z += d.spin.z * dt;
+        if (m.position.y < 0.04) {
+          m.position.y = 0.04;
+          if (Math.abs(d.v.y) < 2.2) { d.rest = true; m.rotation.x = Math.PI / 2; m.rotation.z = 0; } // (lies flat where it lands)
+          else { d.v.y *= -0.35; d.v.x *= 0.5; d.v.z *= 0.5; d.spin.multiplyScalar(0.5); }
+        }
+      } else if (d.t > 7) m.position.y -= dt * 0.15; // (after a while it sinks into the dirt)
+    }
+    this.debris = this.debris.filter((d) => { if (d.t < 9) return true; this.game.scene.remove(d.m); return false; });
   }
 }

@@ -21,10 +21,16 @@ const out = await page.evaluate(async () => {
   res.chests = g.chests.list.map((c) => ({ rarity: c.def.rarity, big: !!c.def.big, guards: c.def.guards.length, elites: c.def.guards.filter((sp) => sp.enemy?.elite).length }));
   res.drums = g.chests.drums.length;
   // 2. smash a drum with a swing
-  const dr = g.chests.drums[0], obs0 = g.world.obstacles.length;
+  const dr = g.chests.drums.find((x) => !x.def.plain), obs0 = g.world.obstacles.length;
   p.pos.set(dr.def.x, 0, dr.def.z + 1.3); p.yaw = Math.PI; g.lastGood = null; p.st = p.maxSt;
   g.input.pressed.add('attack'); run(40);
-  res.drum = { broken: dr.broken, loot: { ...g.raidLoot }, obstacleGone: g.world.obstacles.length === obs0 - 1 };
+  res.drum = { broken: dr.broken, loot: { ...g.raidLoot }, obstacleGone: g.world.obstacles.length === obs0 - 1, pieces: g.chests.debris.length,
+    feed: [...document.querySelectorAll('#loot-feed .lf-line')].map((l) => [l.textContent, getComputedStyle(l).color, parseInt(getComputedStyle(l).fontSize)]) };
+  run(120); res.drum.piecesSettled = g.chests.debris.every((d) => d.rest);
+  res.drum.plain = g.chests.drums.filter((d) => d.def.plain).length;
+  g.togglePouch(true);
+  res.pouch = { rows: document.querySelectorAll('#pc-list .pc-row').length, safe: document.getElementById('pc-safe').textContent, btn: document.getElementById('pouch-btn').textContent };
+  g.togglePouch(false);
   // 3. a chest: sealed while its guards live, then its materials (top one at its rarity)
   const c = g.chests.list.find((x) => !x.def.big);
   for (const sp of c.def.guards) sp.enemy?.die(true);
@@ -88,7 +94,7 @@ await page.click('.hm-tabs [data-tab=runes]'); await page.waitForTimeout(100);
 out.stash.runes = await page.evaluate(() => document.getElementById('hm-stash-note').textContent);
 await b.close();
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(12), JSON.stringify(v));
-const ok = out.chests.every((c) => c.rarity) && out.drums >= 8 && out.drum.broken && Object.keys(out.drum.loot).length && out.drum.obstacleGone
+const ok = out.chests.every((c) => c.rarity) && out.drums >= 8 && out.drum.broken && Object.keys(out.drum.loot).length && out.drum.obstacleGone && out.drum.pieces >= 10 && out.drum.piecesSettled && out.drum.feed.length && out.drum.feed[0][2] >= 20 && out.drum.plain > 0 && out.pouch.rows > 0
   && out.chest.got >= 2 && out.chest.topTierFound && out.death.kept === out.death.expected && out.extract.victory && out.extract.stash === 4
   && out.exits.count === 2 && out.exits.gateReach && out.exits.hatchReach && out.boss.gem && out.boss.pitExit && out.boss.againGold >= 250
   && out.partyShare > 0.35 && out.partyShare < 0.65 && out.stash.items > 0 && out.stash.gems.shown === 3 && out.stash.gems.owned === 1;

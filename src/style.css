@@ -958,3 +958,26 @@ html.phone #wm-panel { width: 46vw; font-size: 11px; padding: 8px 10px; }
 .g-keys th { text-align: left; color: #e8a050; padding: 4px 6px; border-bottom: 1px solid #3a2414; }
 .g-keys td { padding: 4px 6px; border-bottom: 1px solid #24160c; } .g-keys td:first-child { color: #f0e0c0; }
 @media (max-width: 700px), (max-height: 450px) { #hm-guide { top: 50px; bottom: 66px; } #g-tabs { width: 110px; } #g-tabs button { font-size: 10px; padding: 4px 5px; } #g-page { font-size: 11px; } }
+
+/* loot as it comes in (Game.lootFeed): big lines with the item's icon, in its rarity's colour */
+#loot-feed { position: absolute; left: 50%; top: 9%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 6; }
+.lf-line { display: flex; align-items: center; gap: 8px; font: bold 22px Georgia, serif; letter-spacing: 1px; text-shadow: 0 2px 0 #000, 0 0 6px #000, 0 0 2px #000; animation: lf-in .25s ease-out; transition: opacity .6s, transform .6s; }
+.lf-line .item-ic { image-rendering: pixelated; width: 32px !important; height: 32px !important; filter: drop-shadow(0 2px 0 #000); }
+.lf-line.r-epic, .lf-line.r-legendary { font-size: 26px; text-shadow: 0 2px 0 #000, 0 0 10px currentColor, 0 0 3px #000; }
+.lf-line.out { opacity: 0; transform: translateY(-12px); }
+@keyframes lf-in { from { opacity: 0; transform: scale(1.4); } to { opacity: 1; transform: none; } }
+html.phone .lf-line { font-size: 16px; } html.phone .lf-line .item-ic { width: 24px !important; height: 24px !important; }
+/* the pouch (Game.togglePouch): what you carry in a raid */
+#pouch-btn { position: absolute; left: calc(16px + env(safe-area-inset-left)); top: 128px; pointer-events: auto; cursor: pointer; padding: 5px 10px; font: bold 12px monospace; letter-spacing: 1px; color: #ffd36a; background: rgba(20,12,8,.85); border: 2px solid #6a3a1a; box-shadow: 0 0 0 2px #000; }
+#pouch-btn.hidden { display: none; }
+#pouch { position: absolute; left: calc(16px + env(safe-area-inset-left)); top: 162px; width: min(300px, 46vw); max-height: 55vh; display: flex; flex-direction: column; padding: 8px 10px; pointer-events: auto; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 8px 24px rgba(0,0,0,.7); color: #d0c0a0; font: 12px monospace; z-index: 5; }
+#pouch.hidden { display: none; }
+.pc-h { display: flex; justify-content: space-between; align-items: center; color: #ffd36a; font: bold 16px Georgia, serif; letter-spacing: 2px; }
+.pc-h button { background: none; border: 0; color: #c8b090; font-size: 16px; cursor: pointer; }
+#pc-safe { margin: 4px 0 6px; color: #b8a888; } #pc-safe b { color: #ffd36a; }
+#pc-list { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.pc-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-left: 3px solid; background: #1a100a; }
+.pc-row .item-ic { image-rendering: pixelated; flex: none; }
+.pc-n { flex: 1; font-weight: bold; } .pc-k { color: #f0e0c0; } .pc-v { color: #e8c25a; min-width: 48px; text-align: right; }
+.pc-empty { color: #8a7a64; padding: 6px 0; }
+#pc-worth { margin-top: 6px; color: #e8c25a; text-align: right; }

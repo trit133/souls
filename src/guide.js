@@ -86,7 +86,7 @@ export const GUIDE = [
         <tr><td>Move</td><td>${[k('up'), k('left'), k('down'), k('right')].map((x) => x.split(' / ')[0]).join(' ')}</td><td>left-side stick</td></tr>
         ${row('Light attack', 'attack', 'R1')}${row('Heavy attack', 'heavy', 'R2')}${row('Roll / backstep', 'roll', 'ROLL')}${row('Sprint', 'sprint', 'hold ROLL')}
         ${row('Block / parry / fire', 'special', 'the special button')}${row('Heal', 'heal', 'HEAL')}${row('Lock on', 'lock', 'LOCK')}
-        ${row('Interact (doors, stairs, chests)', 'interact', 'tap the prompt')}${row('Map', 'map', 'tap the corner map')}${row('Pause', 'pause', '')}
+        ${row('Interact (doors, stairs, chests)', 'interact', 'tap the prompt')}${row('Map', 'map', 'tap the corner map')}${row('Pouch (what you carry in a raid)', 'inventory', 'the POUCH button')}${row('Pause', 'pause', '')}
       </table>
       <p>Change any of them in <b>Settings</b>.</p>`;
     },

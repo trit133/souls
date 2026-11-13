@@ -546,6 +546,7 @@ class Game {
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
     this.raidLoot = {}; this.lootDone = false; this.bossFelled = false; // (a raid's materials, kept when you leave: commitLoot)
+    this.pouchOpen = false; this.renderPouch();
     this.ui.setRunGold(0);
     $('run-gold').title = 'Gold banked to your account this run';
     if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
@@ -1292,7 +1293,63 @@ class Game {
   get securedShare() { return Math.min(3, this.seals.broken) / 3; }
 
   // picked up in a raid (a chest, a drum): into the pouch until you leave
-  addLoot(items) { addItems(this.raidLoot ||= {}, items); }
+  addLoot(items) { addItems(this.raidLoot ||= {}, items); this.renderPouch(); }
+
+  // what you just got: big lines with each item's icon, in its rarity's colour, that fade after a few seconds
+  lootFeed(items) {
+    const feed = (this.feedEl ||= Object.assign(document.createElement('div'), { id: 'loot-feed' }));
+    if (!feed.isConnected) $('hud').append(feed);
+    const list = Object.entries(items).sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b[0]].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a[0]].rarity));
+    for (const [id, n] of list) {
+      const it = ITEMS[id], col = ItemsLib.RARITY[it.rarity].color, line = document.createElement('div');
+      line.className = 'lf-line r-' + it.rarity; line.style.color = col;
+      line.append(ItemsLib.iconEl(id, 2), Object.assign(document.createElement('span'), { textContent: `+${n} ${it.name}` }));
+      feed.append(line);
+      setTimeout(() => line.classList.add('out'), 3800);
+      setTimeout(() => line.remove(), 4500);
+    }
+    while (feed.children.length > 7) feed.firstChild.remove();
+    this.audio.play('uiTick', 0.8);
+  }
+
+  // ---------- the pouch: what you carry in a raid (I, or the POUCH button) ----------
+  togglePouch(v) {
+    const el = this.pouchEl();
+    this.pouchOpen = v ?? !this.pouchOpen;
+    el.classList.toggle('hidden', !this.pouchOpen);
+    this.renderPouch();
+  }
+  pouchEl() {
+    if (this._pouch) return this._pouch;
+    const el = document.createElement('div'); el.id = 'pouch'; el.className = 'hidden';
+    el.innerHTML = '<div class="pc-h"><span>Pouch</span><button id="pc-close">✕</button></div><div id="pc-safe"></div><div id="pc-list"></div><div id="pc-worth"></div>';
+    $('hud').append(el);
+    el.querySelector('#pc-close').addEventListener('click', (e) => { e.stopPropagation(); this.togglePouch(false); });
+    el.addEventListener('pointerdown', (e) => e.stopPropagation());
+    const btn = document.createElement('button'); btn.id = 'pouch-btn'; btn.textContent = 'POUCH';
+    btn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); this.togglePouch(); });
+    $('hud').append(btn);
+    return (this._pouch = el);
+  }
+  renderPouch() {
+    const el = this.pouchEl(), raid = !!this.run?.raid;
+    $('pouch-btn').classList.toggle('hidden', !raid);
+    if (!raid) { el.classList.add('hidden'); this.pouchOpen = false; }
+    const n = countItems(this.raidLoot);
+    $('pouch-btn').textContent = n ? `POUCH ${n}` : 'POUCH';
+    if (!this.pouchOpen) return;
+    const share = this.securedShare, list = Object.entries(this.raidLoot || {}).filter(([, k]) => k > 0)
+      .sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b[0]].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a[0]].rarity));
+    $('pc-safe').innerHTML = `If you fall: <b>${Math.round(share * 100)}%</b> kept (${Math.min(3, this.seals.broken)}/3 shrines). Leave by a way out to keep it all.`;
+    $('pc-list').replaceChildren(...(list.length ? list.map(([id, k]) => {
+      const it = ITEMS[id], R = ItemsLib.RARITY[it.rarity], row = document.createElement('div');
+      row.className = 'pc-row'; row.style.borderColor = R.color;
+      row.append(ItemsLib.iconEl(id, 2), Object.assign(document.createElement('span'), { className: 'pc-n', textContent: it.name }), Object.assign(document.createElement('span'), { className: 'pc-k', textContent: `×${k}` }), Object.assign(document.createElement('span'), { className: 'pc-v', textContent: `◆ ${ItemsLib.itemValue(id) * k}` }));
+      row.querySelector('.pc-n').style.color = R.color;
+      return row;
+    }) : [Object.assign(document.createElement('div'), { className: 'pc-empty', textContent: 'Empty. Smash drums and open chests.' })]));
+    $('pc-worth').textContent = list.length ? `Worth ◆ ${list.reduce((s, [id, k]) => s + ItemsLib.itemValue(id) * k, 0)}` : '';
+  }
 
   // out through a door (the camp gate, the hidden hatch, the pit once the boss is dead): keep everything
   extract() {
@@ -1728,6 +1785,7 @@ class Game {
       this.fx.add.spawn({ x: q.pos.x + (Math.random() - 0.5) * q.r, y: q.pos.y + (Math.random() - 0.5) * q.r, z: q.pos.z + (Math.random() - 0.5) * q.r, life: 0.3, size: q.r * 0.8, size1: 0.03, r: b[0], g: b[1], b: b[2] });
     }
     const wall = this.hitsWall(q, dt);
+    this.chests.drumsAt(q.pos.x, q.pos.z, q.r * 0.6); // (a bolt or a fireball smashes a drum it passes)
     if (wall) q.pos.addScaledVector(q.vel, -dt); // (bursts on the wall's face, not inside it)
     let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || wall;
     let hit = null;
@@ -1740,6 +1798,7 @@ class Game {
     else this.vfx('boltHit', q.pos.clone());
     if (q.aoe) {
       this.fx.shockwave(q.pos.x, q.pos.z, q.aoe, 0xff8a30, 0.4);
+      this.chests.drumsAt(q.pos.x, q.pos.z, q.aoe);
       this.fx.burst(q.pos, 40, [1, 0.5, 0.1], 7, 0.7, 0.4);
       this.fx.addShake(0.35);
       for (const e of this.enemiesAll()) if (e.alive && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.aoe + e.radius && this.world.lineClear(q.pos.x, q.pos.z, e.pos.x, e.pos.z)) this.spellDamage(q, e);
@@ -1875,6 +1934,7 @@ class Game {
       if (presses.has('pause')) { this.setPaused(true); return; }
       if (presses.has('lock') && p.alive) this.toggleLock();
       if (presses.has('map')) this.minimap.toggle();
+      if (presses.has('inventory') && this.run?.raid) this.togglePouch();
 
       if (dt > 0) {
         if (!this.isGuest) { this.assignEngagement(); this.stepRooms(); }
@@ -1905,7 +1965,7 @@ class Game {
         this.stepRevive(dt);
       } else {
         // keep buffered inputs during hitstop
-        for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact') p.push(a);
+        for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && a !== 'inventory' && a !== 'map') p.push(a);
       }
 
       // standing over a downed teammate

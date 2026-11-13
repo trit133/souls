@@ -410,7 +410,7 @@ export class Player extends Actor {
     const dir = this.worldDir(mv);
     const mag = Math.min(1, dir.length());
     this.comboTick();
-    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && !this.comboPress(a, dir, mag)) this.push(a);
+    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && a !== 'inventory' && a !== 'map' && !this.comboPress(a, dir, mag)) this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
     if (this.lock && (!this.lock.alive || this.distTo(this.lock) > 22)) this.lock = null;
 

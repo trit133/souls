@@ -394,7 +394,7 @@ export class City {
         w.box(0.3, 0.2, 0.05, M.glowAmber, p.x, hh * 0.7, p.z + dd / 2 + 0.03);
         w.solids.push({ x0: p.x - ww / 2, x1: p.x + ww / 2, z0: p.z - dd / 2, z1: p.z + dd / 2 });
       }
-      for (let k = 0; k < 3; k++) { const p = spot(1); if (p) { w.barrel(p.x, p.z); } }
+      for (let k = 0; k < 3; k++) { const p = spot(1); if (p) w.drums.push(buildDrum(w, p.x, p.z, true)); } // (plain drums: smash them, often empty)
       return;
     }
     if (b.yard) {
@@ -588,7 +588,7 @@ export class City {
     w.cur = mod;
     for (const [x, z, s] of rooms) {
       lamp(x - s + 1, z - s + 1);
-      for (let n = 0; n < 3; n++) { const px = x + (r() - 0.5) * s * 1.4, pz = z + (r() - 0.5) * s * 1.4; const q = r(); if (q < 0.4) w.crate(px, pz); else if (q < 0.7) w.barrel(px, pz); else bones(w, px, pz); }
+      for (let n = 0; n < 3; n++) { const px = x + (r() - 0.5) * s * 1.4, pz = z + (r() - 0.5) * s * 1.4; const q = r(); if (q < 0.4) w.crate(px, pz); else if (q < 0.7) w.drums.push(buildDrum(w, px, pz, true)); else bones(w, px, pz); }
       if (r() < 0.5) w.pool(x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 1.6 + r());
     }
     // pipes along the walls of the first room
