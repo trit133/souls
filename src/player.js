@@ -7,6 +7,7 @@ import { weaponElems, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
+import { EMOTES } from './pings.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 
 // ---------- move sets ----------
@@ -373,6 +374,13 @@ export class Player extends Actor {
 
   push(a) { this.buf = { a, t: 0.4 }; }
 
+  // an emote from the ping wheel: only standing about, alive
+  emote(k) {
+    if (!EMOTES[k] || !this.alive || this.state !== 'move') return false;
+    this.emoteKey = k; this.setState('emote');
+    return true;
+  }
+
   // nearest enemy in a cone around `yaw` (used for attack aim assist + riposte)
   findTarget(range, cone, yaw = this.yaw, filter = null) {
     let best = null, bs = Infinity;
@@ -410,7 +418,7 @@ export class Player extends Actor {
     const dir = this.worldDir(mv);
     const mag = Math.min(1, dir.length());
     this.comboTick();
-    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && a !== 'inventory' && a !== 'map' && !this.comboPress(a, dir, mag)) this.push(a);
+    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && a !== 'inventory' && a !== 'map' && a !== 'chat' && a !== 'ping' && !this.comboPress(a, dir, mag)) this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
     if (this.lock && (!this.lock.alive || this.distTo(this.lock) > 22)) this.lock = null;
 
@@ -623,6 +631,13 @@ export class Player extends Actor {
           this.game.riposteHit(this, tg, C.dmg * NUM * (tg.isBoss ? C.bossMul || 1 : 1), C.flatHits || 1);
         }
         if (rt >= C.dur) this.endCrit();
+        break;
+      }
+      case 'emote': { // (pings.js): stand and play it; moving or any action ends it
+        const E = EMOTES[this.emoteKey];
+        this.vel.set(0, 0, 0); this.speed = 0;
+        pose = sample(E.keys, this.t, locomotion(style, 0, 0, false, this.game.time)); rate = 14;
+        if (this.t >= E.dur || (this.t > 0.15 && (mag > 0.3 || this.buf))) this.setState('move');
         break;
       }
       case 'rest': {

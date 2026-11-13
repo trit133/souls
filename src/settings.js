@@ -4,13 +4,13 @@
 export const ACTIONS = [
   ['up', 'Move up'], ['down', 'Move down'], ['left', 'Move left'], ['right', 'Move right'],
   ['sprint', 'Sprint'], ['attack', 'Light attack (R1)'], ['heavy', 'Heavy / Bolt (R2)'], ['roll', 'Roll / backstep'],
-  ['special', 'Block / Parry / Plasma (L1)'], ['heal', 'Inject (heal)'], ['lock', 'Lock on'], ['interact', 'Interact / revive'], ['map', 'Map'], ['inventory', 'Pouch (raid inventory)'], ['chat', 'Party chat'], ['pause', 'Pause'],
+  ['special', 'Block / Parry / Plasma (L1)'], ['heal', 'Inject (heal)'], ['lock', 'Lock on'], ['interact', 'Interact / revive'], ['map', 'Map'], ['inventory', 'Pouch (raid inventory)'], ['ping', 'Ping (hold: emote / alert wheel)'], ['chat', 'Party chat'], ['pause', 'Pause'],
 ];
 
 export const DEFAULT_BINDS = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   sprint: ['ShiftLeft', 'ShiftRight'], attack: ['KeyJ', 'Mouse0'], heavy: ['KeyL', 'Mouse2'], roll: ['Space', 'KeyK'],
-  special: ['KeyQ', 'ControlLeft'], heal: ['KeyE', ''], lock: ['Tab', 'Mouse1'], interact: ['KeyF', ''], map: ['KeyM', ''], inventory: ['KeyI', ''], chat: ['Enter', ''], pause: ['Escape', 'KeyP'],
+  special: ['KeyQ', 'ControlLeft'], heal: ['KeyE', ''], lock: ['Tab', 'Mouse1'], interact: ['KeyF', ''], map: ['KeyM', ''], inventory: ['KeyI', ''], ping: ['KeyG', ''], chat: ['Enter', ''], pause: ['Escape', 'KeyP'],
 };
 
 // quality: pixel size of the game picture (see PIXEL_H in pixel.js)

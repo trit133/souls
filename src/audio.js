@@ -93,6 +93,8 @@ export class Audio {
         this._noise(0.1, { freq: 5000, q: 3, gain: 0.35 * v }); break;
       case 'roll': this._noise(0.25, { freq: 250, f1: 120, q: 0.7, gain: 0.25 * v, attack: 0.03 }); break;
       case 'comboHit': this._tone(1175, 0.09, { gain: 0.09 * v, type: 'triangle' }); this._tone(1568, 0.14, { gain: 0.07 * v, type: 'triangle', delay: 0.05 }); break; // a combo window hit
+      case 'ping': this._tone(1320, 0.12, { gain: 0.09 * v, type: 'triangle' }); this._tone(1760, 0.22, { gain: 0.07 * v, type: 'triangle', delay: 0.07 }); break;
+      case 'pingFoe': this._tone(660, 0.1, { gain: 0.1 * v, type: 'square' }); this._tone(660, 0.12, { gain: 0.08 * v, type: 'square', delay: 0.12 }); break;
       case 'uiTick': this._tone(880, 0.05, { f1: 660, gain: 0.05 * v, type: 'triangle' }); break;
       case 'step': this._noise(0.06, { freq: 200, q: 1, gain: 0.08 * v }); break;
       case 'heal': this._tone(523, 0.6, { gain: 0.12 * v }); this._tone(784, 0.7, { gain: 0.1 * v, delay: 0.1 }); break;

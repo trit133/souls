@@ -64,7 +64,7 @@ class RemotePlayer extends Actor {
       if (fx && !P0.sfx && P0.t >= fx[0]) { P0.sfx = true; this.game.audio.remote(fx[1]); }
       // extra swing sounds inside a move (the guard counter's backhand)
       if (P0.def.onTime) for (const ev of P0.def.onTime) if (ev.sfx && !P0['s' + ev.t] && P0.t >= ev.t) { P0['s' + ev.t] = true; this.game.audio.remote(ev.sfx); }
-      if (P0.t >= P0.def.dur || st === 'hurt' || st === 'knockdown' || st === 'dead' || st === 'roll') this.play = null;
+      if (P0.t >= P0.def.dur || st === 'hurt' || st === 'knockdown' || st === 'dead' || st === 'roll' || (P0.def.emote && P0.t > 0.4 && st !== 'emote')) this.play = null;
       else { pose = sample(P0.def.keys, P0.t, base); trail = !!P0.def.trail && P0.t >= P0.def.trail[0] && P0.t <= P0.def.trail[1]; }
     }
     // the move's own body language: jump height, vanishing in the shroud, a reverse-grip dagger
@@ -222,6 +222,7 @@ export class Multiplayer {
     const g = this.game, p = this.peers.get(from);
     if (d.k === 'swing') { const def = p?.c.attacks[d.a]; if (def) p.startPlay(def, d.r); } else if (d.k === 'riposte') p?.startPlay(CRITS[d.c] || RIPOSTE, d.r);
     else if (d.k === 'sfx') g.audio.remote(d.s, d.v ?? 1);
+    else if (d.k === 'ping' || d.k === 'emote' || d.k === 'alert') g.pings.onNet(from, d);
     else if (d.k === 'fx') g.playVfx(d.n, d.a || []);
     else if (d.k === 'hit' || d.k === 'rip') {
       // a teammate striking an enemy

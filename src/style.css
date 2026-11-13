@@ -1020,3 +1020,33 @@ body.pt-on #hm-stash, body.pt-on #hm-juke, body.pt-on #hm-work { top: var(--pt-b
 #ptab.raid.touch:not(.typing) #pt-talk { display: inline-flex; align-self: flex-start; margin-top: 4px; pointer-events: auto; opacity: .85; }
 #ptab.raid.touch { bottom: auto; top: calc(38% + env(safe-area-inset-top)); }
 @media (max-width: 700px), (max-height: 450px) { #ptab { top: calc(52px + env(safe-area-inset-top)); } #pt-log { height: min(120px, 22vh); } }
+
+/* ---------- pings, the emote / alert wheel, bubbles (pings.js) ---------- */
+#pings-ui { position: fixed; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+.ping-arrow { position: absolute; left: 0; top: 0; width: 0; height: 0; display: none; }
+.ping-arrow.on { display: block; }
+.ping-arrow::before { content: ''; position: absolute; left: -16px; top: -9px; border-left: 18px solid currentColor; border-top: 9px solid transparent; border-bottom: 9px solid transparent; filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 1px 2px #000); }
+.ping-bubble { position: absolute; left: 0; top: 0; padding: 3px 8px 4px; white-space: nowrap; font: bold 13px Georgia, serif; color: #fff3d0; background: rgba(12,8,6,.88); border: 2px solid #c8823a; box-shadow: 0 0 0 2px #1a0c06, 0 3px 8px rgba(0,0,0,.6); animation: bubIn .18s ease-out; }
+.ping-bubble.emote { font: bold 15px monospace; color: #ffd36a; }
+.ping-bubble.alert { border-color: #e04a30; color: #ffc0a0; }
+.ping-bubble::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -5px; border: 5px solid transparent; border-top-color: #c8823a; }
+.ping-bubble.alert::after { border-top-color: #e04a30; }
+@keyframes bubIn { from { opacity: 0; margin-top: 8px; } }
+
+#pwheel { position: fixed; z-index: 8; width: 0; height: 0; pointer-events: none; }
+#pwheel.hidden { display: none; }
+.pw-ring { position: absolute; left: -150px; top: -150px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(12,8,6,.35) 0 34px, rgba(12,8,6,.82) 35px 148px, transparent 150px); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 40px rgba(0,0,0,.7); animation: pwIn .14s ease-out; }
+.pw-ring::after { content: ''; position: absolute; left: 50%; top: 6px; bottom: 6px; border-left: 2px dashed rgba(200,130,58,.45); }
+@keyframes pwIn { from { transform: scale(.7); opacity: 0; } }
+.pw-hub { position: absolute; transform: translate(-50%, -50%); font: 10px monospace; letter-spacing: 1px; color: #8a7a60; text-transform: uppercase; }
+#pwheel.picking .pw-hub { opacity: 0; }
+.pw-pointer { position: absolute; left: -2px; top: -52px; width: 4px; height: 18px; background: #ffd36a; box-shadow: 0 0 8px #ffb040; transform-origin: 2px 52px; opacity: 0; }
+#pwheel.picking .pw-pointer { opacity: 1; }
+.pw-opt { position: absolute; transform: translate(-50%, -50%); padding: 5px 9px 6px; white-space: nowrap; font: bold 13px Georgia, serif; color: #e8dcc0; background: #160806; border: 2px solid #5a2614; transition: transform .08s, background .08s; }
+.pw-opt.emote { color: #ffd36a; }
+.pw-opt.alert { color: #ffb08a; }
+.pw-opt.on { transform: translate(-50%, -50%) scale(1.15); background: #5a2614; border-color: #ffc23d; color: #fff3d0; box-shadow: 0 0 12px rgba(255,180,60,.55); }
+.pw-side { position: absolute; top: 160px; transform: translateX(-50%); font: 10px monospace; letter-spacing: 2px; text-transform: uppercase; color: #c8a878; text-shadow: 0 1px 2px #000; }
+.pw-side.l { left: -80px; } .pw-side.r { left: 80px; }
+
+#b-ping { right: 178px; bottom: 182px; font-size: 10px; letter-spacing: .5px; }

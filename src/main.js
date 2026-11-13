@@ -30,6 +30,7 @@ import { STATUS } from './status.js';
 import { OnlineAccounts } from './account.js';
 import { Multiplayer } from './mp.js';
 import { PartyTab } from './partytab.js';
+import { Pings } from './pings.js';
 import { rng } from './world.js';
 import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare } from './progress.js';
 const FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
@@ -416,6 +417,7 @@ class Game {
     this.hermitage = new Hermitage(this);
     this.worldMap = new WorldMap(this);
     this.partyTab = new PartyTab(this);
+    this.pings = new Pings(this);
     $('btn-herm').addEventListener('click', () => { this.audio.unlock(); this.hermitage.open(); });
     $('lobby-night').addEventListener('click', () => { this.nightRaid = !this.nightRaid; this.refreshNight(); });
     $('set-signout').addEventListener('click', () => { this.accounts.signOut(); this.closeSettings(); this.refreshTitle(); });
@@ -543,6 +545,7 @@ class Game {
   startParty(kind, layout, seed, players) { this.ui.show('lobby', false); this.start(kind, { layout, seed, players }); }
 
   start(kind, party = null) {
+    this.pings?.clear();
     if (this.hermitage?.active) this.hermitage.close(false);
     if (this.player) this.player.remove();
     this.overShown = false;
@@ -585,6 +588,7 @@ class Game {
   toTitle() {
     if (this.run?.raid && this.player && ['play', 'wait', 'reward'].includes(this.mode)) this.commitLoot(this.securedShare); // (quitting a raid counts as falling)
     this.mode = 'title';
+    this.pings.clear();
     $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
     if (this.mp.active || this.mp.code) this.mp.leave();
     this.audio.titleMusic(this.titleSong());
@@ -662,7 +666,7 @@ class Game {
     if (!this.layoutEditor?.layout) applyLayout(s.touchLayout);
     if (this.camera) this.resize();
     const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
-    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('chat')} party chat · ${k('pause')} pause`;
+    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('ping')} ping (hold: wheel) · ${k('chat')} party chat · ${k('pause')} pause`;
   }
 
   saveSettings() {
@@ -1922,6 +1926,7 @@ class Game {
     this.partyTab?.sync();
     let rdt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
+    this.pings?.update(rdt);
     if (this.hermitage?.active && this.mode === 'title') {
       this.hermitage.update(rdt);
       this.pixel.render(this.hermitage.scene, this.hermitage.camera);
