@@ -16,7 +16,7 @@ export const BUY_RATE = [0.2, 0.35, 0.5, 0.65, 0.8]; // what he pays you, a shar
 // stash when you pick it up, even if you fall, and is handed over when you claim)
 export const TRADERS = [
   {
-    id: 'grist', name: 'Mother Grist', title: 'Rag-and-bone crone', booth: 4,
+    id: 'grist', name: 'Mother Grist', title: 'Rag-and-bone crone',
     blurb: 'Buys anything that can be scraped, sewn or melted down. Sells it back to you dearer.',
     unlocked: (d) => !!d?.gems?.gem_hask, lockText: 'Beat Executor Hask',
     rarities: ['common', 'uncommon'], markup: 3, runes: true,
@@ -36,7 +36,7 @@ export const TRADERS = [
     ],
   },
   {
-    id: 'vesk', name: 'Brother Vesk', title: 'Reliquary dealer', booth: 5,
+    id: 'vesk', name: 'Brother Vesk', title: 'Reliquary dealer',
     blurb: 'Deals only in the rare and the holy, behind iron bars, at prices to match.',
     unlocked: (d) => (d?.raids?.r1f || 0) > 0, lockText: 'Beat Archon Varek',
     rarities: ['rare', 'epic', 'legendary'], markup: 2.5,
@@ -56,7 +56,20 @@ export const TRADERS = [
     ],
   },
 ];
-export const BOOTHS = 10; // the Bazaar's stalls: the traders above, the rest shuttered until they come
+// the eight still to come, two a region (its first mini boss, then its master): their looks and stalls are in the
+// Bazaar already (bazaar.js), greyed out; what they trade, their quests and their buffs come with their regions
+const FUTURE = [
+  ['kettle', 'Old Kettle', 'Half-servitor tinker', 'Beat the first warden of The Glass Wastes'],
+  ['sorrow', 'Mama Sorrow', 'Fortune-teller', 'Beat the master of The Glass Wastes'],
+  ['krell', 'Sergeant Krell', 'Veteran gun-runner', 'Beat the first warden of The Forge Reaches'],
+  ['tobias', 'Fat Tobias', 'Street cook', 'Beat the master of The Forge Reaches'],
+  ['pip', 'Pip the Rat-King', 'Scavenger child', 'Beat the first warden of The Drowned Choir'],
+  ['kessa', 'Kessa', 'Smuggler', 'Beat the master of The Drowned Choir'],
+  ['ostrava', 'Lady Ostrava', 'Fallen noble', 'Beat the first warden of The Seat of Augury'],
+  ['pilgrim', 'The Pilgrim', 'Silent wanderer', 'Beat the master of The Seat of Augury'],
+];
+for (const [id, name, title, lockText] of FUTURE) TRADERS.push({ id, name, title, lockText, future: true, unlocked: () => false, blurb: '', rarities: [], markup: 1, stock: {}, perk: { name: '', desc: '' }, quests: [] });
+export const BOOTHS = TRADERS.length; // the Bazaar's stalls, one a trader
 
 export const traderById = (id) => TRADERS.find((t) => t.id === id);
 export const bazaarOpen = (d) => TRADERS[0].unlocked(d);

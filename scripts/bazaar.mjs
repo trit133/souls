@@ -1,4 +1,5 @@
-// The Bazaar (bazaar.js, traders.js): hidden from the Sanctum until Executor Hask is dead; Mother Grist open then,
+// The Bazaar (bazaar.js, bazaarsets.js, traders.js): hidden from the Sanctum until Executor Hask is dead; all ten traders
+// stand at their places, those still locked grey; Mother Grist open then,
 // Brother Vesk after Varek; buying (at 3x / 2.5x worth, from a limited stock), selling (at a share of worth that grows
 // with level), the three quest kinds (a hunt by your own kills, a supply from the stash, a relic found in a raid and
 // kept), the "!" over a trader and on the Sanctum's button when a quest can be handed in, rewards (gold, emeralds,
@@ -20,10 +21,10 @@ out.lockedButton = await vis('hm-bazaar');
 await page.evaluate(() => { const d = game.accounts.data; d.gems = { gem_hask: 1 }; d.gold = 5000; game.hermitage.refresh(); });
 out.openButton = await vis('hm-bazaar');
 await page.click('#hm-bazaar'); await page.waitForTimeout(1200);
-out.scene = await page.evaluate(() => { const z = game.bazaar; return { active: z.active, people: z.people.map((p) => p.T.id), stalls: z.items.filter((i) => i.locked).length, sanctumHidden: !game.hermitage.active }; });
+out.scene = await page.evaluate(() => { const z = game.bazaar; return { active: z.active, people: z.people.filter((p) => p.open).map((p) => p.T.id), all: z.people.length, stalls: z.items.filter((i) => i.locked).length, greyed: z.people.filter((p) => !p.open).every((p) => { let grey = true; p.rig.root.traverse((o) => { if (o.isMesh && !o.userData.outline && o.material.color && o.material.color.getHex() !== 0x5e5c5a && o.material.color.getHex() !== 0x4a4846) grey = false; }); return grey; }), lockedSub: z.items.find((i) => i.id === 'vesk').sub, sanctumHidden: !game.hermitage.active }; });
 await page.screenshot({ path: '/tmp/bazaar-scene.png' });
 // hover Grist, then click her
-const at = await page.evaluate(() => { const z = game.bazaar, p = z.people[0], v = p.rig.root.position.clone(); v.y = 1.0; v.project(z.camera); return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }; });
+const at = await page.evaluate(() => { const z = game.bazaar, p = z.people[0], v = p.rig.j.head.getWorldPosition(p.rig.root.position.clone()); v.y -= 0.25; v.project(z.camera); return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }; });
 await page.mouse.move(at.x, at.y); await page.waitForTimeout(300);
 out.hover = await page.evaluate(() => document.getElementById('bz-label').textContent);
 await page.mouse.click(at.x, at.y); await page.waitForTimeout(400);
@@ -91,7 +92,7 @@ out.vesk = await page.evaluate(() => {
   const d = game.accounts.data, z = game.bazaar; d.raids = { ...(d.raids || {}), r1f: 1 }; z.buildScene();
   const V = z.people.find((p) => p.T.id === 'vesk'); z.setPanel(V.T); z.tab = 'buy'; z.renderPanel();
   const row = [...document.querySelectorAll('#bz-body .bz-row')].find((r) => r.textContent.includes('Servo Motor'));
-  return { people: z.people.map((p) => p.T.id), servoPrice: row?.querySelector('.bz-rt b').textContent, legendaryStockL1: d.bazaar.vesk.stock.oracle_core };
+  return { people: z.people.filter((p) => p.open).map((p) => p.T.id), servoPrice: row?.querySelector('.bz-rt b').textContent, legendaryStockL1: d.bazaar.vesk.stock.oracle_core };
 });
 await page.screenshot({ path: '/tmp/bazaar-vesk.png' });
 await page.evaluate(() => game.bazaar.setPanel(null)); await page.waitForTimeout(200);
@@ -100,7 +101,7 @@ await page.screenshot({ path: '/tmp/bazaar-scene-both.png' });
 out.partyKill = await page.evaluate(() => { const d = game.accounts.data, s = d.bazaar.grist, p0 = s.prog, k0 = d.kills?.knight || 0; game.kind = 'knight'; game.mp.handle(1, { t: 'kill', boss: false, type: 'archer' }); return { prog: s.prog - p0, kills: (d.kills?.knight || 0) - k0 }; });
 await b.close();
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(12), JSON.stringify(v));
-const ok = !out.lockedButton && out.openButton && out.scene.active && out.scene.people.join() === 'grist' && out.scene.stalls === 9 && out.hover.includes('Mother Grist') && out.panel
+const ok = !out.lockedButton && out.openButton && out.scene.active && out.scene.people.join() === 'grist' && out.scene.all === 10 && out.scene.stalls === 9 && out.scene.greyed && out.scene.lockedSub === 'Beat Archon Varek' && out.hover.includes('Mother Grist') && out.panel
   && out.buy.paid === 15 && out.buy.stock[1] === out.buy.stock[0] - 1 && out.buy.got === 1 && !out.buy.rareOffered
   && out.sell.got === 3 && out.sell.left === 3 && !out.sell.legendaryListed
   && !out.hunt.before.bang && out.hunt.after.bang && out.hunt.after.sanctumBang && out.hunt.gold === 120 && out.hunt.em === 2 && out.hunt.xp === 50 && out.hunt.q === 1 && out.hunt.bangGone

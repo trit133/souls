@@ -1,19 +1,16 @@
-// The Bazaar: a night market under a broken hive overpass, reached from the Sanctum once Executor Hask is dead
-// (traders.js has the rules). Ten stalls stand in an arc on a raised deck facing the camera; a trader stands at each
-// stall that's open, the rest are shuttered under tarps with a lock-plate. Like the Sanctum, the scene is the menu:
-// hover a trader for a label, click for his window (Buy / Sell / Quests). A trader with a quest ready to hand in has a
-// "!" over his head; a trader at level 5 has his buff's sigil there for good.
-//   Mother Grist  (booth 4): a hunched rag-and-bone crone under a patched tarp, a cane, a scuttle-drone on her
-//                  shoulder; common and uncommon materials (and runes, later)
-//   Brother Vesk  (booth 5): a tall gaunt reliquary dealer in a cracked iron mask behind iron bars, a censer swinging
-//                  on a chain; rare, epic and legendary materials (after Varek)
+// The Bazaar: a night market under the hive's skyline, reached from the Sanctum once Executor Hask is dead (traders.js
+// has the rules). Ten traders, each in their own set piece (bazaarsets.js: a carpet, a desk, a tent, a cart, a junk
+// pile, a container ...): four on the market floor in front, six up on a raised terrace behind, lights strung
+// between, clutter everywhere underfoot, the night sky, a moon and the city's lit towers beyond. Like the Sanctum the
+// scene is the menu: hover a trader for a label, click for their window (Buy / Sell / Quests). A trader still locked
+// stands there grey and still; hover them for what opens them. A trader with a quest ready to hand in has a "!" over
+// their head; a trader at level 5 has their buff's sigil there for good.
 import * as THREE from 'three';
-import { buildHumanoid } from './models.js';
-import { P } from './anims.js';
+import { SETS, greyOut, clutter, backdrop } from './bazaarsets.js';
 import { pxButton, pxText } from './pixelmenus.js';
 import { ITEMS, RARITY, iconEl, itemValue } from './items.js';
 import { cosmetics } from './outfits.js';
-import { TRADERS, BOOTHS, MAX_LEVEL, LEVEL_XP, BUY_RATE, traderState, levelOf, sellPrice, buyPrice, dealsIn, buy, sell,
+import { TRADERS, MAX_LEVEL, LEVEL_XP, BUY_RATE, traderState, levelOf, sellPrice, buyPrice, dealsIn, buy, sell,
   currentQuest, questProgress, claimable, claim, bazaarOpen, RARITY_ORDER } from './traders.js';
 import { FOE_NAMES } from './foes.js';
 
@@ -45,100 +42,6 @@ const SIGILS = {
   vesk: ['......oooo......', '......oyyo......', '.....oooooo.....', '......ogGo......', '.....ogGGGo.....', '....ogGGGGGo....', '...ogGGWGGGGo...', '...ogGGWGGGGo...', '...ogGGGGGGGo...', '...oggGGGGGgo...', '....ogggggggo...'.slice(0, 16), '.....ooooooo....', '................', '................', '................', '................'],
 };
 const SPAL = { o: '#1a0c06', y: '#d8a040', Y: '#ffe890', r: '#a0141a', R: '#ff4a3a', g: '#2a8a4a', G: '#6aff9a', W: '#e8fff0' };
-
-// ---------- the people ----------
-// Mother Grist: small, bent double over a cane, hooded in patched rags, a string of charms, a scuttle-drone riding her
-// shoulder (its red eye blinking); she rocks on her heels and now and then cackles
-function makeGrist() {
-  const rig = buildHumanoid({ scale: 0.84, skin: 0x9a8070, cloth: 0x4a3c2c, armor: 0x3e342a, accent: 0x6a4a2a, head: 'hood', eyes: 0xffd27a, bulk: 1.08 });
-  const T = rig.j.torso, H = rig.j.head;
-  const rag = L(0x5a4630), rag2 = L(0x3a2e22), brass = L(0xa8843a), iron = L(0x3a3a40);
-  box(T, 0.5, 0.18, 0.36, rag, 0, 0.62, 0, 0, 0.1); box(T, 0.42, 0.3, 0.04, rag2, 0, 0.32, 0.16, 0, 0.05); // the shawl and an apron
-  for (let i = 0; i < 6; i++) box(T, 0.04, 0.05, 0.04, i % 2 ? brass : L(0xd8ccb0), -0.14 + i * 0.056, 0.42 - Math.abs(i - 2.5) * 0.02, 0.17); // charms
-  box(H, 0.3, 0.12, 0.08, rag2, 0, 0.32, 0.1); // the hood's lip
-  box(H, 0.04, 0.04, 0.06, L(0xc8b090), 0.02, 0.12, 0.15); // her nose
-  // the cane in her right hand, the drone on her left shoulder
-  const cane = cyl(rig.j.handR, 0.025, 0.025, 1.0, L(0x4a3020), 0, -0.45, 0.04); cane.rotation.x = 0.05;
-  box(rig.j.handR, 0.08, 0.05, 0.08, brass, 0, 0.04, 0.04);
-  const drone = new THREE.Group(); drone.position.set(0.24, 0.72, -0.02); T.add(drone);
-  box(drone, 0.16, 0.08, 0.2, iron, 0, 0, 0); box(drone, 0.1, 0.05, 0.08, L(0x5a5a62), 0, 0.06, 0.04);
-  const eye = box(drone, 0.04, 0.03, 0.02, B(0xff3a1a), 0, 0.01, 0.11);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(drone, 0.02, 0.1, 0.02, iron, sx * 0.09, -0.05, sz * 0.07, 0, sz * 0.4, sx * 0.4);
-  return { rig, eye, drone, pose: (t) => {
-    const rock = Math.sin(t * 1.3) * 0.06, cackle = Math.max(0, Math.sin(t * 0.45) - 0.92) * 12; // (every so often)
-    return { ...P.rest, legL: [-0.25, 0, 0.06], legR: [0.15, 0, -0.06], shinL: [0.4, 0, 0], shinR: [0.35, 0, 0], by: -0.12,
-      torso: [0.55 + rock * 0.5 + Math.sin(t * 22) * 0.04 * cackle, 0.1, rock], head: [-0.45 - Math.sin(t * 22) * 0.06 * cackle, Math.sin(t * 0.7) * 0.25, 0],
-      armR: [-0.55, 0, -0.15], foreR: [-0.35, 0, 0], handR: [0.3, 0, 0], armL: [-0.4 + Math.sin(t * 0.9) * 0.1, 0, 0.25], foreL: [-1.1, 0, 0], handL: [0.4, 0, 0] };
-  }, tick: (t) => { eye.visible = Math.sin(t * 2.1) > -0.85; drone.rotation.y = Math.sin(t * 0.8) * 0.5; } };
-}
-// Brother Vesk: tall and gaunt, robed to the floor, a cracked iron mask with a burning slit, a high collar; a brass
-// censer swings on a chain from his left hand, smoking; his head follows you
-function makeVesk(scene) {
-  const rig = buildHumanoid({ scale: 1.18, skin: 0x8a7a70, cloth: 0x1c181a, armor: 0x2e2a2c, accent: 0x6a1412, head: 'helm', eyes: 0xff5a2a, bulk: 0.86 });
-  const T = rig.j.torso, H = rig.j.head, hips = rig.j.hips;
-  const robe = L(0x1c181a), red = L(0x6a1412), iron = L(0x5a5a62), brass = L(0xb89a4a);
-  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.42, 0.95, 8, 1, true), robe); skirt.material.side = THREE.DoubleSide; skirt.position.y = -0.48; hips.add(skirt);
-  box(T, 0.5, 0.22, 0.34, robe, 0, 0.74, -0.02); box(T, 0.06, 0.66, 0.02, red, 0, 0.3, 0.14); // the collar, a red stole
-  box(H, 0.25, 0.22, 0.03, iron, 0, 0.2, 0.155); box(H, 0.2, 0.025, 0.02, B(0xff5a2a), 0, 0.22, 0.17); // the mask and its slit
-  box(H, 0.02, 0.12, 0.02, L(0x1a1a1e), 0.06, 0.24, 0.172, 0, 0, 0.4); // a crack
-  const chain = new THREE.Group(); chain.position.set(0, -0.06, 0); rig.j.handL.add(chain);
-  for (let i = 0; i < 5; i++) box(chain, 0.025, 0.06, 0.025, brass, 0, -0.05 - i * 0.065, 0);
-  const censer = new THREE.Group(); censer.position.set(0, -0.4, 0); chain.add(censer);
-  cyl(censer, 0.07, 0.09, 0.12, brass, 0, -0.04, 0, 8); cyl(censer, 0.02, 0.07, 0.07, brass, 0, 0.05, 0, 8);
-  const ember = box(censer, 0.06, 0.03, 0.06, B(0xff7a2a), 0, 0.02, 0);
-  const smoke = [];
-  for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), new THREE.MeshBasicMaterial({ color: 0x8a8090, transparent: true, opacity: 0.3, depthWrite: false })); scene.add(m); smoke.push({ m, t: i / 6 }); }
-  return { rig, look: 0, pose: (t, look) => ({ ...P.rest, legL: [0, 0, 0.03], legR: [0, 0, -0.03], shinL: [0.05, 0, 0], shinR: [0.05, 0, 0], by: 0,
-    torso: [0.05 + Math.sin(t * 0.6) * 0.02, look * 0.25, 0], head: [-0.05, look * 0.55, 0],
-    armR: [-0.45, 0, 0.35], foreR: [-1.5, 0, 0], handR: [0.4, 0, 0], armL: [-0.15, 0, 0.18], foreL: [-0.35, 0, 0], handL: [0, 0, 0] }),
-  tick: (t, dt) => {
-    chain.rotation.x = Math.sin(t * 1.6) * 0.35; chain.rotation.z = Math.cos(t * 1.6) * 0.12; // the censer swings
-    ember.material.color.setHSL(0.06, 1, 0.5 + Math.sin(t * 9) * 0.1);
-    const at = ember.getWorldPosition(new THREE.Vector3());
-    for (const s of smoke) { s.t = (s.t + dt * 0.35) % 1; s.m.position.set(at.x + Math.sin(s.t * 9 + s.m.id) * 0.08, at.y + s.t * 1.0, at.z); s.m.scale.setScalar(0.6 + s.t * 2.2); s.m.material.opacity = 0.32 * (1 - s.t); }
-  } };
-}
-
-// ---------- the stalls ----------
-// a stall: four posts, a counter, a slanting tarp roof in `tarp` and a lamp; `open` false: the front hangs shut,
-// padlocked, with a sign
-function stall(tarp, open, r) {
-  const g = new THREE.Group(), wood = L(0x3a2a1e), iron = L(0x2a2a2e), cloth = L(tarp);
-  for (const [x, z] of [[-0.75, 0.35], [0.75, 0.35], [-0.75, -0.45], [0.75, -0.45]]) box(g, 0.08, 2.1, 0.08, iron, x, 1.05, z);
-  box(g, 1.7, 0.08, 1.05, cloth, 0, 2.18, -0.05, 0, -0.22); // the roof, sloping to the front
-  for (let i = 0; i < 6; i++) box(g, 0.26, 0.16 + r() * 0.12, 0.02, cloth, -0.64 + i * 0.26, 1.98 - (i % 2) * 0.04, 0.48); // a ragged valance
-  box(g, 1.55, 0.9, 0.5, wood, 0, 0.45, 0.05); box(g, 1.62, 0.06, 0.56, L(0x5a4430), 0, 0.92, 0.05); // the counter
-  box(g, 1.5, 1.5, 0.05, L(0x241a14), 0, 1.1, -0.45); // the back
-  if (!open) {
-    box(g, 1.6, 1.25, 0.04, cloth, 0, 1.2, 0.36); // the front let down
-    const fold = L(new THREE.Color(tarp).multiplyScalar(0.65).getHex());
-    for (let i = 0; i < 4; i++) box(g, 0.02, 1.2, 0.05, fold, -0.6 + i * 0.4, 1.2, 0.38); // its folds
-    box(g, 0.2, 0.24, 0.05, L(0x8a7a3a), 0, 0.85, 0.4); box(g, 0.1, 0.1, 0.06, L(0x2a2a2e), 0, 0.72, 0.42); // the lock-plate and padlock
-  }
-  return g;
-}
-// what's on Grist's counter: heaps of scrap and rags, a set of scales, bundles, a skull on a stick
-function gristWares(g, r) {
-  const scrap = [L(0x6a5e52), L(0x4a4038), L(0x7a6a50), L(0x5a4a3a), L(0x8a5a3a)];
-  for (let i = 0; i < 14; i++) box(g, 0.1 + r() * 0.14, 0.05 + r() * 0.1, 0.08 + r() * 0.12, scrap[i % 5], -0.65 + r() * 0.75, 1.0 + r() * 0.06, -0.12 + r() * 0.3, r() * 3, r() * 0.4, r() * 0.4);
-  const sc = new THREE.Group(); sc.position.set(0.45, 0.95, 0.05); g.add(sc);
-  const brass = L(0xa8843a); box(sc, 0.04, 0.4, 0.04, brass, 0, 0.2, 0); box(sc, 0.5, 0.03, 0.03, brass, 0, 0.4, 0);
-  for (const sx of [-1, 1]) { box(sc, 0.01, 0.16, 0.01, brass, sx * 0.24, 0.32, 0); cyl(sc, 0.08, 0.06, 0.03, brass, sx * 0.24, 0.23, 0, 8); }
-  for (let i = 0; i < 4; i++) box(g, 0.08, 0.5 + r() * 0.3, 0.02, L([0x5a3a2a, 0x4a4a3a, 0x6a2a1a, 0x3a3a4a][i]), -0.55 + i * 0.3, 1.55, -0.4, 0, 0, (r() - 0.5) * 0.2); // rags hung on the back
-  cyl(g, 0.02, 0.02, 0.8, L(0x4a3020), 0.75, 1.3, 0.3, 5); box(g, 0.14, 0.14, 0.14, L(0xd8ccb0), 0.75, 1.75, 0.3); box(g, 0.1, 0.03, 0.02, B(0xff3a1a), 0.75, 1.76, 0.38); // a servo-skull on a pole
-  return sc;
-}
-// Vesk's: iron bars across the front, glass cases lit from inside with his best, red cloth, candles
-function veskWares(g, r) {
-  const iron = L(0x2a2a30), cloth = L(0x5a1014);
-  box(g, 1.55, 0.04, 0.5, cloth, 0, 0.95, 0.05);
-  for (const [x, c] of [[-0.45, 0x4a9aff], [0, 0xb05aff], [0.45, 0xffa82a]]) {
-    box(g, 0.34, 0.34, 0.32, new THREE.MeshBasicMaterial({ color: 0x9ab0c8, transparent: true, opacity: 0.18, depthWrite: false }), x, 1.15, 0.0);
-    box(g, 0.1, 0.1, 0.1, B(c), x, 1.08, 0.0, 0.6, 0.3); box(g, 0.36, 0.03, 0.34, L(0xb89a4a), x, 1.33, 0.0);
-  }
-  for (let i = 0; i < 9; i++) box(g, 0.03, 1.0, 0.03, iron, -0.72 + i * 0.18, 1.48, 0.33); box(g, 1.6, 0.05, 0.05, iron, 0, 1.98, 0.33); // the bars
-  for (let i = 0; i < 3; i++) { const h = 0.12 + r() * 0.1; cyl(g, 0.025, 0.03, h, L(0xd8ccb0), 0.62 - i * 0.07, 0.97 + h / 2, 0.22, 5); box(g, 0.02, 0.04, 0.02, B(0xffd080), 0.62 - i * 0.07, 0.99 + h, 0.22); }
-}
 
 export class Bazaar {
   constructor(game) {
@@ -198,6 +101,7 @@ export class Bazaar {
     const d = this.data;
     $('bz-gold').textContent = d ? `◆ ${d.gold}  ·  ✦ ${cosmetics(d).emeralds || 0}` : '';
     for (const p of this.people || []) {
+      if (!p.open) continue;
       const T = p.T, s = traderState(d, T.id);
       p.bang.visible = claimable(d, T);
       p.sigil.visible = levelOf(s.xp) >= MAX_LEVEL;
@@ -207,58 +111,75 @@ export class Bazaar {
   // ---------- the scene ----------
   buildScene() {
     if (this.scene) this.scene.traverse((o) => { o.geometry?.dispose(); });
-    const d = this.data, r = seeded(4421), sky = 0x120a08;
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(sky); scene.fog = new THREE.Fog(sky, 11, 24);
-    scene.add(new THREE.HemisphereLight(0xa08a7a, 0x1a100a, 1.1));
-    const fill = new THREE.PointLight(0xffc890, 6, 14, 1.2); fill.position.set(0, 4.5, 4.5); scene.add(fill); // (a warm wash from the camera's side)
+    const d = this.data, r = seeded(4421), sky = 0x0a0c16;
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(sky); scene.fog = new THREE.Fog(sky, 13, 34);
+    scene.add(new THREE.HemisphereLight(0x8a90b8, 0x1a100a, 0.9)); // (moonlight from above, the ground's warmth below)
+    const fill = new THREE.PointLight(0xffc890, 5, 16, 1.2); fill.position.set(0, 4.5, 5.5); scene.add(fill);
+    const moonLight = new THREE.DirectionalLight(0x9aa8d8, 0.5); moonLight.position.set(-6, 10, -4); scene.add(moonLight);
+    this.sky = backdrop(scene, r);
     const g = new THREE.Group(); scene.add(g);
-    // the deck they stand on: a raised round of plating with seams and a brass rim, the market's middle open
-    const deck = new THREE.Mesh(new THREE.CylinderGeometry(7.6, 7.8, 0.2, 48), L(0x4a423a)); deck.position.set(0, -0.1, 1.5); g.add(deck);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(7.7, 0.06, 4, 56), L(0x8a6a34)); rim.rotation.x = Math.PI / 2; rim.position.set(0, 0.01, 1.5); g.add(rim);
-    for (let i = -7; i <= 7; i++) { box(g, 0.03, 0.01, 15, L(0x2a2420), i, 0.005, 1.5); box(g, 15, 0.01, 0.03, L(0x2a2420), 0, 0.005, 1.5 + i); }
-    // the broken overpass above and behind, and girders on the skyline
-    box(g, 22, 0.8, 2.2, L(0x1a1614), 0, 6.2, -6.5, 0, 0, 0.04); box(g, 1.2, 7, 1.2, L(0x1e1a18), -7.5, 3.2, -7); box(g, 1.2, 7, 1.2, L(0x1e1a18), 7.2, 3.2, -6.6);
-    for (let i = 0; i < 7; i++) box(g, 0.2, 1.4 + r() * 1.5, 0.2, L(0x1a1614), -6 + i * 2, 5.4, -6.5, 0, 0, (r() - 0.5) * 0.5); // hanging wreckage
-    // the stalls in an arc facing the camera, each with its lamp
-    this.people = []; this.items = []; this.lamps = [];
-    const TARPS = [0x5a2a1a, 0x3a3a2a, 0x2a3a4a, 0x4a2a3a, 0x6a4a1a, 0x5a1014, 0x2a4a3a, 0x4a3a2a, 0x3a2a4a, 0x5a3a1a];
-    for (let i = 0; i < BOOTHS; i++) {
-      const a = (-1 + (2 * i) / (BOOTHS - 1)) * 0.78, R = 7.0, x = Math.sin(a) * R, z = 4.5 - Math.cos(a) * R;
-      const T = TRADERS.find((t) => t.booth === i), open = !!T && T.unlocked(d);
-      const S = stall(T?.id === 'vesk' ? 0x3a1014 : TARPS[i], open, r); S.position.set(x, 0, z); S.rotation.y = -a; S.scale.setScalar(0.82); g.add(S);
-      const lampCol = open ? (T.id === 'vesk' ? 0xff8a5a : 0xffb060) : 0x8a6a4a;
-      const lamp = box(S, 0.14, 0.18, 0.14, B(lampCol), 0.62, 1.9, 0.55); box(S, 0.02, 0.2, 0.02, L(0x1e1e22), 0.62, 2.06, 0.55);
-      const pl = new THREE.PointLight(lampCol, open ? 7 : 2, open ? 5.5 : 3.5, 1.4); pl.position.set(x + Math.sin(a) * -1.3, 2.1, z + Math.cos(a) * 1.3); scene.add(pl);
-      this.lamps.push({ pl, base: open ? 7 : 2, ph: r() * 6, lamp });
-      if (open) {
-        const P0 = T.id === 'grist' ? makeGrist() : makeVesk(scene), wares = T.id === 'grist' ? gristWares(S, r) : veskWares(S, r);
-        const rig = P0.rig; rig.root.position.set(x - Math.sin(a) * 0.8, 0, z + Math.cos(a) * 0.8); rig.root.rotation.y = -a; rig.idle = true; scene.add(rig.root);
-        rig.apply(P0.pose(0, 0), 1, 60);
-        const bang = pixelSprite(BANG, SPAL), sigil = pixelSprite(SIGILS[T.id], SPAL);
-        for (const s of [bang, sigil]) { s.scale.set(0.7, 0.7, 1); scene.add(s); }
-        const head = rig.root.scale.y * 2.05;
-        const person = { T, ...P0, wares, bang, sigil, at: rig.root.position.clone(), head };
-        this.people.push(person);
-        this.items.push({ id: T.id, T, group: rig.root, label: T.name, sub: T.title });
-        this.items.push({ id: T.id, T, group: S, label: T.name, sub: T.title, stallOf: rig.root });
-      } else {
-        const sub = T ? T.lockText : 'Shuttered. Opens later';
-        this.items.push({ id: 'shut' + i, T: T || null, group: S, label: T ? T.name : 'Shuttered stall', sub, locked: true });
-        if (T) { const plate = box(S, 0.9, 0.22, 0.04, L(0x6a5a3a), 0, 2.32, 0.5); plate.rotation.x = -0.2; }
-      }
+    // the market floor: worn plating with seams, a brass edge; the terrace behind, raised, with steps up the middle
+    box(g, 17, 0.2, 9, L(0x4a423a), 0, -0.1, -0.4); box(g, 17.2, 0.06, 0.08, L(0x8a6a34), 0, 0.02, 4.05);
+    for (let i = -8; i <= 8; i++) box(g, 0.03, 0.01, 9, L(0x2a2420), i, 0.005, -0.4);
+    for (let i = -4; i <= 4; i++) box(g, 17, 0.01, 0.03, L(0x2a2420), 0, 0.005, -0.4 + i);
+    const TY = 1.1, TZ = -5.0;
+    box(g, 16, TY, 4.6, L(0x3a3430), 0, TY / 2, TZ); box(g, 16, 0.08, 4.6, L(0x4e463e), 0, TY + 0.02, TZ);
+    for (let i = 0; i < 16; i++) box(g, 0.08, TY, 0.06, L(0x2a2420), -7.5 + i, TY / 2, TZ + 2.31); // its front: iron ribs
+    for (let k = 0; k < 4; k++) box(g, 1.6, 0.28, 0.32, L(0x4e463e), 0, 0.14 + k * 0.275, TZ + 2.75 - k * 0.3); // the steps
+    for (const sx of [-1, 1]) { box(g, 6.6, 0.05, 0.05, L(0x6a5a3a), sx * 4.6, TY + 0.85, TZ + 2.25); for (let i = 0; i < 8; i++) box(g, 0.05, 0.85, 0.05, L(0x3a3430), sx * (1.6 + i * 0.86), TY + 0.43, TZ + 2.25); } // the railing
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) box(g, 0.5, 0.75, 0.02, L([0x5a1414, 0x3a2a4a, 0x2a3a2a][i]), sx * (2.4 + i * 1.9), 0.62, TZ + 2.34); // banners on its face
+    // where each trader stands: four on the floor, six on the terrace, all turned to the camera
+    const cam = new THREE.Vector3(0, 0, 8);
+    const SPOTS = {
+      krell: [-4.9, 0, -0.3], grist: [-1.85, 0, -0.85], vesk: [1.85, 0, -0.85], tobias: [4.9, 0, -0.3],
+      kessa: [-6.3, TY, TZ - 0.3], kettle: [-3.8, TY, TZ - 0.6], sorrow: [-1.3, TY, TZ - 0.8], ostrava: [1.3, TY, TZ - 0.8], pip: [3.8, TY, TZ - 0.6], pilgrim: [6.3, TY, TZ - 0.3],
+    };
+    this.people = []; this.items = []; this.lamps = []; this.ticks = [];
+    const keep = [{ x: 0, z: 1.8, r: 1.6 }, { x: 0, z: TZ + 2.6, r: 1.0 }]; // (the walk up the middle and the steps stay clear)
+    for (const T of TRADERS) {
+      const [x, y, z] = SPOTS[T.id], open = T.unlocked(d), S = new THREE.Group();
+      S.position.set(x, y, z); S.rotation.y = Math.atan2(cam.x - x, cam.z - z); g.add(S);
+      keep.push({ x, z, r: 1.45, y });
+      const P0 = SETS[T.id](S, r, { scene, alive: open });
+      const rig = P0.rig; rig.root.position.set(...P0.at); rig.root.rotation.y = P0.ry || 0; S.add(rig.root);
+      rig.apply(P0.pose(0, 0), 1, 60);
+      if (!open) greyOut(rig.root);
+      // the lamp over them: bright where they're open, a dim glow where they're still to come
+      const la = new THREE.Vector3(...P0.lightAt).applyAxisAngle(new THREE.Vector3(0, 1, 0), S.rotation.y).add(S.position);
+      const pl = new THREE.PointLight(open ? P0.light : 0x6a6a7a, open ? 6 : 1.6, open ? 5 : 3.5, 1.4); pl.position.copy(la); scene.add(pl);
+      this.lamps.push({ pl, base: open ? 6 : 1.6, ph: r() * 6 });
+      const bang = pixelSprite(BANG, SPAL), sigil = pixelSprite(SIGILS[T.id] || SIGILS.grist, SPAL);
+      for (const sp of [bang, sigil]) { sp.scale.set(0.7, 0.7, 1); sp.visible = false; scene.add(sp); }
+      const person = { T, open, ...P0, bang, sigil };
+      this.people.push(person);
+      this.items.push({ id: T.id, T, group: S, label: T.name, sub: open ? T.title : T.lockText, locked: !open, head: rig.j.head });
     }
-    // braziers either side, and strings of little lights between the stalls
+    // clutter on the floor and on the terrace, lanterns among it
+    const glows = [];
+    clutter(g, r, { x0: -8, x1: 8, z0: -2.6, z1: 3.6, y: 0, n: 34 }, keep, glows);
+    clutter(g, r, { x0: -7.6, x1: 7.6, z0: TZ - 2.1, z1: TZ + 1.9, y: TY, n: 18 }, keep.filter((k) => k.y !== 0 || k.r < 1.5), glows);
+    for (const at of glows) { const pl = new THREE.PointLight(0xffb060, 1.4, 2.6, 1.6); pl.position.set(...at); scene.add(pl); this.lamps.push({ pl, base: 1.4, ph: r() * 6 }); }
+    // strings of little lights over the floor and along the back of the terrace; lamp posts up there
+    const string = (x0, x1, y, z, sag, n) => { for (let k = 0; k <= n; k++) { const u = k / n, x = x0 + (x1 - x0) * u; box(g, 0.07, 0.07, 0.07, B([0xffc060, 0xff6a3a, 0xffe0a0, 0x8ab0ff][k % 4]), x, y - Math.sin(u * Math.PI) * sag, z); } };
+    for (const [x0, x1] of [[-8, -3.2], [-3.2, 3.2], [3.2, 8]]) string(x0, x1, 3.0, -1.6, 0.5, 18);
+    for (const [x0, x1] of [[-8, -2.7], [-2.7, 2.7], [2.7, 8]]) string(x0, x1, TY + 3.0, TZ - 2.2, 0.4, 18);
+    for (const x of [-8, -3.2, 3.2, 8]) cyl(g, 0.05, 0.06, 3.1, L(0x2a2a2e), x, 1.55, -1.6, 5);
+    for (const x of [-7.7, -5.1, -2.6, 0, 2.6, 5.1, 7.7]) {
+      cyl(g, 0.05, 0.06, 3.2, L(0x2a2a2e), x, TY + 1.6, TZ - 2.2, 5); box(g, 0.24, 0.3, 0.24, B(0xffd090), x, TY + 3.25, TZ - 2.2); box(g, 0.32, 0.06, 0.32, L(0x2a2a2e), x, TY + 3.43, TZ - 2.2);
+      const pl = new THREE.PointLight(0xffc080, 3, 6, 1.5); pl.position.set(x, TY + 3.0, TZ - 1.9); scene.add(pl); this.lamps.push({ pl, base: 3, ph: r() * 6 });
+    }
+    // braziers at the front corners
     for (const sx of [-1, 1]) {
-      const bx = sx * 3.4, bz = 2.2;
-      cyl(g, 0.28, 0.2, 0.6, L(0x2a2420), bx, 0.3, bz, 8); cyl(g, 0.3, 0.3, 0.06, L(0x6a4a24), bx, 0.62, bz, 8);
-      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); fl.position.set(bx, 0.9, bz); g.add(fl);
-      const pl = new THREE.PointLight(0xff8a3a, 5, 6, 1.4); pl.position.set(bx, 1.2, bz); scene.add(pl);
+      const bx = sx * 6.6, bz = 2.4;
+      cyl(g, 0.3, 0.22, 0.65, L(0x2a2420), bx, 0.32, bz, 8); cyl(g, 0.33, 0.33, 0.06, L(0x6a4a24), bx, 0.66, bz, 8);
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 6), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); fl.position.set(bx, 0.95, bz); g.add(fl);
+      const pl = new THREE.PointLight(0xff8a3a, 5, 6, 1.4); pl.position.set(bx, 1.3, bz); scene.add(pl);
       this.lamps.push({ pl, base: 5, ph: r() * 6, flame: fl });
     }
-    for (let k = 0; k < 48; k++) { const a = (-1 + (2 * k) / 47) * 0.9, R = 6.4; box(g, 0.06, 0.06, 0.06, B([0xffc060, 0xff6a3a, 0xffe0a0][k % 3]), Math.sin(a) * R, 2.45 - Math.abs(Math.sin(k * 0.66)) * 0.25, 4.5 - Math.cos(a) * R); }
     this.scene = scene;
     for (const it of this.items) this.addOutline(it);
-    this.camera.position.set(0, 2.55, 5.3); this.camera.lookAt(0, 1.2, -1.4);
+    this.camera.position.set(0, 3.3, 7.6); this.camera.lookAt(0, 1.75, -2.0);
+    this.camBase = this.camera.position.clone();
     this.refresh();
   }
 
@@ -279,12 +200,10 @@ export class Bazaar {
     return best;
   }
   setHover(it) {
-    // (a trader and his stall light up together)
-    const same = (a, b) => a && b && a.id === b.id;
-    if (same(this.hover, it)) return;
-    for (const x of this.items || []) if (this.hover && same(x, this.hover)) for (const o of x.outlines) o.visible = false;
+    if (this.hover === it) return;
+    if (this.hover) for (const o of this.hover.outlines) o.visible = false;
     this.hover = it;
-    if (it) { for (const x of this.items) if (same(x, it)) for (const o of x.outlines) { o.visible = true; o.material = it.locked ? FAINT : OUTLINE; } this.game.audio.play('uiTick', 0.5); }
+    if (it) { for (const o of it.outlines) { o.visible = true; o.material = it.locked ? FAINT : OUTLINE; } this.game.audio.play('uiTick', 0.5); }
     this.el.style.cursor = it && !it.locked ? 'pointer' : '';
     const lab = $('bz-label'); lab.classList.toggle('hidden', !it);
     if (it) lab.innerHTML = `<b>${it.label}</b><span>${it.locked ? '🔒 ' : ''}${it.sub}</span>`;
@@ -370,16 +289,23 @@ export class Bazaar {
   update(dt) {
     if (!this.scene) return;
     this.time += dt; const t = this.time;
-    for (const l of this.lamps) { l.pl.intensity = l.base * (0.88 + Math.sin(t * 7 + l.ph) * 0.08 + Math.sin(t * 17 + l.ph) * 0.04); if (l.flame) { l.flame.scale.y = 1 + Math.sin(t * 11 + l.ph) * 0.15; } }
+    this.sky?.(t);
+    for (const l of this.lamps) { l.pl.intensity = l.base * (0.88 + Math.sin(t * 7 + l.ph) * 0.08 + Math.sin(t * 17 + l.ph) * 0.04); if (l.flame) l.flame.scale.y = 1 + Math.sin(t * 11 + l.ph) * 0.15; }
+    // the camera drifts a little with the mouse
+    if (this.camBase) { this.camera.position.x += (this.camBase.x + this.mouseX * 0.6 - this.camera.position.x) * Math.min(1, dt * 3); this.camera.lookAt(this.camera.position.x * 0.4, 1.75, -2.0); }
+    const V = new THREE.Vector3();
     for (const p of this.people) {
-      const look = Math.max(-0.6, Math.min(0.6, this.mouseX * 0.8 - p.rig.root.rotation.y * 0.3)); // (Vesk's masked head follows you)
-      p.rig.apply(p.pose(t, look), dt, 6);
-      p.tick?.(t, dt);
-      const y = p.head + 0.55 + Math.sin(t * 3) * 0.06;
-      p.bang.position.set(p.at.x, y, p.at.z); p.sigil.position.set(p.at.x, y + (p.bang.visible ? 0.75 : 0), p.at.z);
+      if (p.open) {
+        const look = p.look ? Math.max(-0.6, Math.min(0.6, this.mouseX * 0.8)) : 0; // (Vesk's masked head follows you)
+        p.rig.apply(p.pose(t, look), dt, 6);
+        p.tick?.(t, dt);
+      }
+      p.rig.j.head.getWorldPosition(V);
+      const y = V.y + 0.75 + Math.sin(t * 3) * 0.06;
+      p.bang.position.set(V.x, y, V.z); p.sigil.position.set(V.x, y + (p.bang.visible ? 0.75 : 0), V.z);
     }
     if (this.hover) {
-      const b = new THREE.Box3().setFromObject(this.hover.stallOf || this.hover.group), top = new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 0.2, (b.min.z + b.max.z) / 2).project(this.camera);
+      const top = this.hover.head.getWorldPosition(new THREE.Vector3()); top.y += 0.6; top.project(this.camera);
       const lab = $('bz-label'), r = this.el.getBoundingClientRect();
       lab.style.left = `${(top.x * 0.5 + 0.5) * r.width}px`; lab.style.top = `${(-top.y * 0.5 + 0.5) * r.height}px`;
     }
