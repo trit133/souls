@@ -597,7 +597,23 @@ const SONGS = {
     ],
   },
 };
-export const SONG_NAMES = Object.keys(SONGS);
+// ---------- recorded tracks (public/audio/music) ----------
+// Each plays in place of the written song of the same name, which stays as the fallback if the file won't
+// load. start / end: the loop in seconds (the end crossfades back into the start); gain evens out loudness
+// (boss tracks match the written boss themes, the Sanctum's records the title theme).
+const FILES = {
+  hask: { url: 'boss music/Hask.mp3', end: 202.5, gain: 0.76 },
+  vael: { url: 'boss music/Vael.mp3', start: 0.5, end: 200.5, gain: 0.88 },
+  gorrath: { url: 'boss music/Gorrath.mp3', end: 219.5, gain: 1 },
+  varek1: { url: 'boss music/Varek Phase 1.mp3', end: 297, gain: 1 },
+  varek2: { url: 'boss music/Varek Phase 2.mp3', start: 0.5, end: 297, gain: 0.94 },
+  stonehall: { url: 'santum music/Stone Hall Idle.mp3', end: 208.5, gain: 0.65 },
+  machine: { url: 'santum music/Stone and Machine.mp3', start: 2, end: 238.5, gain: 0.9 },
+};
+const XF = 3; // seconds of crossfade where a recording loops
+// a tenth of a second of silence, to start the players inside a tap (iOS lets an audio element play later only once it has)
+const SILENCE = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
+export const SONG_NAMES = [...new Set([...Object.keys(SONGS), ...Object.keys(FILES)])];
 const COMPILED = {};
 const getSong = (name) => (COMPILED[name] ||= compile(SONGS[name]));
 
@@ -606,7 +622,10 @@ export class Music {
   // dest: where the music goes (the game's music bus, or an offline context's destination)
   constructor(ctx, dest) {
     this.ctx = ctx;
-    this.cur = null;     // the song playing: { name, steps, pos, t, dt, out, wet, pending }
+    this.dest = dest;
+    this.cur = null;     // the song playing: { name, steps, pos, t, dt, out, wet, pending }, or { name, file, deck }
+    this.decks = null;   // the two players for recorded tracks (unlockFiles)
+    this.failed = new Set(); // recordings that wouldn't load: their written songs play instead
     this.solo = null;    // a Set of instrument names to hear alone (for testing)
     this.timer = null;
 
@@ -644,11 +663,15 @@ export class Music {
     this.waves = { p12: pulse(0.125), p25: pulse(0.25), p50: pulse(0.5) };
   }
 
-  // Start a song. If one is already playing it switches on the next bar line.
+  // Start a song. A written song already playing switches on the next bar line; recordings crossfade.
   play(name, fade = 1.5) {
-    if (!SONGS[name]) return;
+    const file = FILES[name] && this.decks && !this.failed.has(name);
+    if (!file && !SONGS[name]) return;
     const cur = this.cur;
-    if (cur) { if (cur.name !== name) cur.pending = name; else cur.pending = null; return; }
+    if (cur?.name === name) { cur.pending = null; return; }
+    if (cur && !file && !cur.file) { cur.pending = name; return; }
+    if (cur) this.stop(fade);
+    if (file) { this._playFile(name, fade); return; }
     const ctx = this.ctx, t = ctx.currentTime + 0.05;
     const out = ctx.createGain(), wet = ctx.createGain();
     out.connect(this.bus); wet.connect(this.rev);
@@ -665,6 +688,7 @@ export class Music {
     clearInterval(this.timer); this.timer = null;
     const cur = this.cur; this.cur = null;
     if (!cur) return;
+    if (cur.file) { this._release(cur.deck, fade); return; }
     const t = this.ctx.currentTime;
     for (const g of [cur.out, cur.wet]) {
       g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + fade);
@@ -679,8 +703,61 @@ export class Music {
     return { name, s, pos: 0, t, dt: 60 / s.bpm / 4, out, wet, pending: null };
   }
 
+  // ---------- recorded tracks: two audio elements taking turns ----------
+  // Call inside a tap or key press, so iOS lets the players start later on their own.
+  unlockFiles() {
+    if (this.offline || typeof window === 'undefined' || !this.ctx.createMediaElementSource) return;
+    if (!this.decks) {
+      this.decks = [0, 1].map(() => {
+        const el = new window.Audio(); el.preload = 'auto';
+        const g = this.ctx.createGain(); g.gain.value = 0;
+        this.ctx.createMediaElementSource(el).connect(g); g.connect(this.dest);
+        return { el, g, off: null, ready: false };
+      });
+    }
+    for (const d of this.decks) {
+      if (d.ready || d === this.cur?.deck) continue;
+      d.el.src = SILENCE;
+      d.el.play().then(() => { d.ready = true; d.el.pause(); }).catch(() => {});
+    }
+  }
+  _playFile(name, fade) {
+    const c = this.cur = { name, file: FILES[name], deck: null };
+    this._start(c, this.decks.find((d) => d !== this.lastDeck), c.file.start || 0, fade);
+    if (typeof window !== 'undefined' && !this.timer) this.timer = setInterval(() => this.tick(), 50);
+  }
+  _start(c, deck, at, fade) {
+    const { el, g } = deck, t = this.ctx.currentTime;
+    clearTimeout(deck.off);
+    const url = new URL('audio/music/' + c.file.url, document.baseURI).href;
+    if (el.src !== url) el.src = url;
+    el.currentTime = at;
+    g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(c.file.gain, t + fade);
+    c.deck = this.lastDeck = deck;
+    el.play().catch((err) => {
+      if (err.name === 'AbortError' || this.cur !== c) return; // replaced before it began
+      this.failed.add(c.name); // can't load it: the written song instead
+      g.gain.cancelScheduledValues(this.ctx.currentTime); g.gain.value = 0;
+      this.cur = null; this.play(c.name, fade);
+    });
+  }
+  _release(deck, fade) {
+    const t = this.ctx.currentTime, g = deck.g.gain;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + fade);
+    clearTimeout(deck.off); deck.off = setTimeout(() => deck.el.pause(), fade * 1000 + 100);
+  }
+
   // schedule every step that starts before `until` (seconds on the audio clock)
   tick(until) {
+    // a recording: near its loop's end, the other player picks it up from the start
+    if (this.cur?.file) {
+      const c = this.cur, el = c.deck.el;
+      if (el.ended || (!el.paused && el.currentTime >= c.file.end - XF)) {
+        this._release(c.deck, XF);
+        this._start(c, this.decks.find((d) => d !== c.deck), c.file.start || 0, XF);
+      }
+      return;
+    }
     const now = this.ctx.currentTime;
     if (until == null) until = now + (typeof document !== 'undefined' && document.hidden ? 1.5 : 0.3);
     let c = this.cur;

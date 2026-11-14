@@ -38,6 +38,7 @@ export class Audio {
       this.band = new Music(this.ctx, this.musicBus);
       this.amb = new Ambience(this.ctx, this.sfx); // the world's sounds sit under the Effects volume
     }
+    this.band.unlockFiles(); // the players for recorded music start inside this tap too
     if (this.ctx.state === 'suspended') this.ctx.resume();
     // iOS: play a silent buffer inside the gesture
     const s = this.ctx.createBufferSource(); s.buffer = this.ctx.createBuffer(1, 1, 22050); s.connect(this.master); s.start();
