@@ -8,6 +8,7 @@ import { iconPath } from './icons.js';
 import { TreeBackground } from './treebg.js';
 import { COMBOS } from './combos.js';
 import { keyLabel } from './settings.js';
+import { RUNES, RUNE_TYPES, RUNE_ORDER, ownsRune, socketed, socketCheck, setSocket, runeCanvas, kindLabel } from './runes.js';
 
 // what a node can be found by: its name, what it gives (and those stats' names) and kind (its region by full name)
 const searchText = (n) => (n._search ??= (() => {
@@ -157,6 +158,8 @@ export class TreeUI {
     const n = this.tree.nodes.get(id);
     // an owned travel node: open its pick to change the stat
     if (have.has(id) && isTravel(n) && this.game.accounts.user) { this.sel = id; this.picking = id; this.render(); return; }
+    // an owned rune socket: pick a rune for it (runes.js)
+    if (have.has(id) && n.role === 'socket' && this.game.accounts.user) { this.sel = id; this.picking = id; this.render(); return; }
     if (this.game.input.isPhone) { this.sel = id; this.render(); return; }
     if (!have.has(id) && canTake(this.tree, have, id) && this.game.accounts.user && !this.locked && (this.data?.gold ?? 0) >= nodeCost(n, have, this.tree)) { this.buy(id); if (this.picking) return; }
     this.sel = touch ? id : null;
@@ -165,6 +168,13 @@ export class TreeUI {
   // set what a travel node gives
   pick(id, p) {
     const d = this.data; if (!d) return;
+    if (this.tree.nodes.get(id)?.role === 'socket') {
+      const r = p === 'none' ? null : p, ok = setSocket(d, this.kind, id, r);
+      if (!ok) { this.game.ui.toastSmall?.(socketCheck(d, this.kind, id, r).why || 'That rune can\'t go there'); return; }
+      this.game.accounts.save(); this.game.audio.play(r ? 'clang' : 'uiTick', 0.7);
+      this.picking = null; this.sel = this.game.input.isPhone ? id : null;
+      this.render(); return;
+    }
     ((d.treePick ??= {})[this.kind] ??= {})[id] = p;
     this.game.accounts.save();
     this.picking = null; this.sel = this.game.input.isPhone ? id : null;
@@ -239,6 +249,7 @@ export class TreeUI {
       const cls = ((gone.has(a) || gone.has(b)) && ha && hb ? 'gone' : ha && hb ? 'own' : ha || hb ? 'reach' : '') + (A.socketRing && B.socketRing ? ' sr' : '');
       s += `<line class="te ${cls}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>`;
     }
+    const sock = socketed(this.data, this.kind);
     for (const n of T.nodes.values()) {
       const got = have.has(n.id), can = !got && canTake(T, have, n.id) && !this.locked;
       const r = n.role === 'start' ? 4.6 : n.keystone ? 6 : n.role === 'socket' || n.evo || n.soon ? 5 : n.notable ? 4.6 : isTravel(n) ? 2.5 : 3.1;
@@ -248,7 +259,8 @@ export class TreeUI {
         : `<circle r="${r}"/>`;
       const ir = r * 1.25, ik = iconKey(n, got ? picks[n.id] : null);
       s += `<g class="${cls}" data-node="${n.id}" transform="translate(${n.x} ${n.y})" style="--c:${col}">${shape}`
-        + (ik ? `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(ik)}</svg>` : '') + '</g>';
+        + (n.role === 'socket' && got && RUNES[sock[n.id]] ? `<image href="${runeCanvas(sock[n.id]).toDataURL()}" x="${-r * 0.8}" y="${-r * 0.8}" width="${r * 1.6}" height="${r * 1.6}" style="image-rendering:pixelated"/>`
+          : ik ? `<svg x="${-ir / 2}" y="${-ir / 2}" width="${ir}" height="${ir}" viewBox="0 0 24 24" class="ti">${iconPath(ik)}</svg>` : '') + '</g>';
     }
     $('tree-svg').innerHTML = s;
     this.applySearch();
@@ -337,6 +349,7 @@ export class TreeUI {
       : this.locked ? 'Unlock the Adept first' : !signed ? 'Sign in to buy' : !can ? 'Connect to it from a node you own'
         : gold >= cost ? (phone ? 'Ready to unlock' : 'Click to unlock') : `Need ◆ ${cost - gold} more`;
     const picking = this.picking === id && got, opts = n.res ? RES_PICKS : Object.keys(TRAVEL), cur = this.picks[id];
+    if (n.role === 'socket') return this.showSocketTip(id, n, got, tip, picking, status, phone);
     tip.innerHTML = `<div class="tt-name"></div>${lines.map(() => '<div class="tt-line"></div>').join('')}<div class="tt-ring">Ring ${n.ring}${cost ? ` · ◆ ${cost}` : ''}</div><div class="tt-status"></div>`
       + (picking ? `<div class="tt-picks">${opts.map((p) => `<button class="menu-btn tt-pick${p === cur ? ' on' : ''}" data-pick="${p}">${pickLabel(n, p)}</button>`).join('')}</div>` : '')
       + (phone && !got && !this.resetting ? `<button class="menu-btn tt-buy"${buyable ? '' : ' disabled'}>Upgrade${cost ? ` · ◆ ${cost}` : ''}</button>` : '');
@@ -347,6 +360,32 @@ export class TreeUI {
     // phone: the card sits at the bottom of the screen (style.css), out from under the finger
     if (phone) { tip.style.left = tip.style.top = ''; tip.classList.remove('hidden'); return; }
     // place it beside the node
+    const wrap = $('tree-wrap').getBoundingClientRect(), svg = $('tree-svg'), vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect();
+    const px = r.left + ((n.x - vb.x) / vb.width) * r.width - wrap.left, py = r.top + ((n.y - vb.y) / vb.height) * r.height - wrap.top;
+    tip.classList.remove('hidden');
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(wrap.width - tw - 6, Math.max(6, px + 14)) + 'px';
+    tip.style.top = Math.min(wrap.height - th - 6, Math.max(6, py - th / 2)) + 'px';
+  }
+
+  // a rune socket's card: the rune in it (or empty), and when picking, every rune you own to put there
+  showSocketTip(id, n, got, tip, picking, status, phone) {
+    const d = this.data || {}, cur = socketed(d, this.kind)[id], R = RUNES[cur];
+    const own = RUNE_ORDER.filter((r) => ownsRune(d, r));
+    let h = `<div class="tt-name">${R ? R.name : 'Rune Socket'}</div>`;
+    h += R ? `<div class="tt-line" style="color:${RUNE_TYPES[R.type].color}">${kindLabel(R)}</div><div class="tt-line">${R.desc}</div>`
+      : `<div class="tt-line">${got ? 'Empty. Put a rune in it: one of each type per tree, supports as many as you like.' : 'A socket for a rune. Runes are forged at the workbench; Varek gives his own.'}</div>`;
+    h += `<div class="tt-status">${!got ? status : picking ? (own.length ? 'Pick a rune' : 'No runes yet: forge them at the workbench') : phone ? 'Tap to change' : 'Click to change the rune'}</div>`;
+    if (picking) {
+      h += '<div class="tt-picks tt-runes">' + own.map((r) => {
+        const c = socketCheck(d, this.kind, id, r), Rr = RUNES[r];
+        return `<button class="menu-btn tt-pick${r === cur ? ' on' : ''}" data-pick="${r}"${c.ok ? '' : ` disabled title="${c.why}"`}><img src="${runeCanvas(r).toDataURL()}"><span><b style="color:${RUNE_TYPES[Rr.type].color}">${Rr.name}</b><i>${c.ok ? kindLabel(Rr) : c.why}</i></span></button>`;
+      }).join('') + (cur ? '<button class="menu-btn tt-pick" data-pick="none"><span><b>Empty the socket</b></span></button>' : '') + '</div>';
+    }
+    if (phone && !got && !this.resetting) { const cost = nodeCost(n, owned(d, this.kind), this.tree), can = canTake(this.tree, owned(d, this.kind), id) && !this.locked && (d.gold || 0) >= cost; h += `<button class="menu-btn tt-buy"${can ? '' : ' disabled'}>Upgrade · ◆ ${cost}</button>`; }
+    tip.innerHTML = h;
+    tip.classList.toggle('picking', picking);
+    if (phone) { tip.style.left = tip.style.top = ''; tip.classList.remove('hidden'); return; }
     const wrap = $('tree-wrap').getBoundingClientRect(), svg = $('tree-svg'), vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect();
     const px = r.left + ((n.x - vb.x) / vb.width) * r.width - wrap.left, py = r.top + ((n.y - vb.y) / vb.height) * r.height - wrap.top;
     tip.classList.remove('hidden');

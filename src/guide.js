@@ -105,6 +105,19 @@ export const GUIDE = [
       </ul>`,
   },
   {
+    id: 'runes', title: 'Runes',
+    body: (g) => {
+      const k = (a) => (g.settings?.binds?.[a] || []).filter(Boolean).map(keyLabel).join(' / ') || '-';
+      return `
+      <p>Runes go in the <b>three rune sockets</b> of a character's skill tree: buy a socket, click it, pick a rune. Forge them at the <b>workbench</b> (its Runes tab) from your materials; they sit in the stash's Runes tab, shared by every character and never used up.</p>
+      <ul>
+        <li><b>Roll</b> runes change your roll (never a cooldown). <b>Aura</b> runes work round you all the time. <b>Summon</b> runes call help with <b>${k('summon')}</b> (or the SUMMON button), on a cooldown. <b>Buff</b> runes are used with <b>${k('runebuff')}</b> (or RUNE), a set number of times a raid. <b>Utility</b> runes give health, stamina or a Second Wind.</li>
+        <li>One rune of each type in a tree at a time. <b>Support</b> runes strengthen their type and can fill as many sockets as you like.</li>
+        <li>Beat <b>Archon Varek</b> and his five unique runes are yours, one of each type, Sandevistan among them.</li>
+      </ul>`;
+    },
+  },
+  {
     id: 'bazaar', title: 'The Bazaar',
     body: () => `
       <p>Once Executor Hask is dead, a <b>Bazaar</b> button appears at the top of the Sanctum: a night market of traders under a broken overpass. Ten stalls; most are still shuttered.</p>

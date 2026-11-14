@@ -11,6 +11,7 @@ import { EMOTES } from './pings.js';
 import { WEAPON_SETS, GREAT_GUARD, GREAT_GUARD_HIT, DASH, VEIL, SIGIL } from './weaponmoves.js';
 import { COMBOS } from './combos.js';
 import { bazaarPerks } from './traders.js';
+import { runeLoadout } from './runes.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 
 // ---------- move sets ----------
@@ -363,9 +364,10 @@ export class Player extends Actor {
     this.isPlayer = true;
     this.status = new StatusState(this, 100);
     const BZ = bazaarPerks(game.accounts.user ? game.accounts.data : null); // (the Bazaar traders' level-5 buffs: traders.js)
-    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0) + BZ.hp) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1) * (T.glassFang ? 0.75 : 1)); // Stalwart Vow +30%, Glass Fang −25%
+    const RL = (this.runeL = runeLoadout(game.accounts.user ? game.accounts.data : null, kind)); // (the runes in this tree's sockets: runes.js)
+    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0) + BZ.hp + RL.util.hp) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1) * (T.glassFang ? 0.75 : 1)); // Stalwart Vow +30%, Glass Fang −25%
     if (T.stalwart) this.dmgMul *= 0.85; // ... and 15% less damage
-    this.maxSt = this.st = Math.round((c.st + (T.st || 0)) * (1 + pct('stPct')));
+    this.maxSt = this.st = Math.round((c.st + (T.st || 0) + RL.util.st) * (1 + pct('stPct')));
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0) + BZ.flasks;
     this.potionMul = 1 + pct('potion');
     this.maxMana = this.mana = c.caster ? 100 + (T.mana || 0) : 0;
@@ -463,7 +465,8 @@ export class Player extends Actor {
     const dir = this.worldDir(mv);
     const mag = Math.min(1, dir.length());
     this.comboTick();
-    for (const a of presses) if (a !== 'lock' && a !== 'pause' && a !== 'interact' && a !== 'inventory' && a !== 'map' && a !== 'chat' && a !== 'ping' && !this.comboPress(a, dir, mag)) this.push(a);
+    for (const a of presses) if (a === 'summon' || a === 'runebuff') this.game.runes?.use(a); // (rune keys: runes.js)
+    for (const a of presses) if (a !== 'summon' && a !== 'runebuff' && a !== 'lock' && a !== 'pause' && a !== 'interact' && a !== 'inventory' && a !== 'map' && a !== 'chat' && a !== 'ping' && !this.comboPress(a, dir, mag)) this.push(a);
     if (this.buf) { this.buf.t -= dt; if (this.buf.t <= 0) this.buf = null; }
     if (this.lock && (!this.lock.alive || this.distTo(this.lock) > 22)) this.lock = null;
 
@@ -554,7 +557,8 @@ export class Player extends Actor {
         // animation/movement run on scaled time (slow when exhausted); i-frames stay real-time
         const rt = this.t * this.rollRate, rdt = dt * this.rollRate;
         const u = rt / R.dur;
-        const dist = R.dist * this.rollDist * this.rollMul;
+        const dist = R.dist * this.rollDist * this.rollMul * (this.runeL?.roll.dist || 1); // (a roll rune: runes.js)
+        this.game.runes?.onRoll(this, dt);
         const e = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 2.2);
         const prev = e((rt - rdt) / (R.dur * 0.88)), now = e(rt / (R.dur * 0.88));
         this.move(this.rollDir.x * dist * (now - prev), this.rollDir.z * dist * (now - prev));
@@ -1113,6 +1117,7 @@ export class Player extends Actor {
   receive(info) {
     if (!this.alive) return 'none';
     if (this.iframe()) return 'dodge';
+    if (this.game.runes?.p === this) info = { ...info, dmg: info.dmg * this.game.runes.hitMul(), parts: info.parts && Object.fromEntries(Object.entries(info.parts).map(([k, v]) => [k, v * this.game.runes.hitMul()])) }; // (Iron Litany)
     // armour and resistances: what gets through, and the status build-up the elements add
     const mit = mitigate(info.parts || enemyParts(info.dmg, info.elems), this.tree, info.buildMul ?? 1);
     // keystones that cost you: Ember Oath and Fleeting take 15% more, Pyromania 15% more from fire
@@ -1164,6 +1169,7 @@ export class Player extends Actor {
   }
 
   die() {
+    if (this.game.runes?.p === this && this.game.runes.saveFromDeath(this)) return; // (Second Wind, Last Stand: runes.js)
     this.hp = 0;
     this.alive = false;
     this.setState('dead');

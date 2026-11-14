@@ -49,6 +49,7 @@ import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
 import { Bazaar } from './bazaar.js';
 import { noteKill, restockAll, relicsWanted } from './traders.js';
+import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
@@ -432,6 +433,7 @@ class Game {
     $('btn-settings').addEventListener('click', () => this.openSettings());
     this.hermitage = new Hermitage(this);
     this.bazaar = new Bazaar(this);
+    this.runes = new RuneRuntime(this);
     this.worldMap = new WorldMap(this);
     this.partyTab = new PartyTab(this);
     this.pings = new Pings(this);
@@ -574,6 +576,7 @@ class Game {
     this.waitingOnParty = false; this.reviving = null;
     this.respawnAt = this.run ? { ...this.world.start } : { x: 0, z: -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.user ? treeStats(kind, this.accounts.data) : {});
+    this.runes.attach(this.player, this.player.runeL); // (its socketed runes in play: runes.js)
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
     this.raidLoot = {}; this.lootDone = false; this.bossFelled = false; // (a raid's materials: in the stash the moment you pick them up)
@@ -686,7 +689,7 @@ class Game {
     if (!this.layoutEditor?.layout) applyLayout(s.touchLayout);
     if (this.camera) this.resize();
     const b = s.binds, k = (a) => b[a].filter(Boolean).map(keyLabel).join('/') || '—';
-    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('ping')} ping (hold: wheel) · ${k('chat')} party chat · ${k('pause')} pause`;
+    $('kb-help').innerHTML = `<b>Keyboard:</b> ${k('up')} ${k('left')} ${k('down')} ${k('right')} move · ${k('sprint')} sprint · ${k('roll')} roll · ${k('attack')} attack · ${k('heavy')} heavy · ${k('special')} block/parry · ${k('heal')} inject · ${k('lock')} lock-on · ${k('interact')} interact · ${k('ping')} ping (hold: wheel) · ${k('summon')} summon (rune) · ${k('runebuff')} rune buff · ${k('chat')} party chat · ${k('pause')} pause`;
   }
 
   saveSettings() {
@@ -1312,6 +1315,11 @@ class Game {
     if (this.accounts.data) {
       const st = this.accounts.data.stats;
       if (this.run?.raid) { const d = this.accounts.data; d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1; } // (the region's master: its pin gets its tick)
+      // Varek's five unique runes, one of each type (runes.js), the first time he falls
+      if (this.accounts.user && enc.boss?.cfg?.id === 'varek' && VAREK_RUNES.some((id) => !ownsRune(this.accounts.data, id))) {
+        for (const id of VAREK_RUNES) grantRune(this.accounts.data, id);
+        setTimeout(() => this.ui.toast('VAREK\'S FIVE RUNES ARE YOURS · socket them in your tree', 4), 5200);
+      }
       st.wins++;
       st.winsBy = st.winsBy || {}; st.winsBy[this.kind] = (st.winsBy[this.kind] || 0) + 1;
       this.accounts.save();
@@ -2179,14 +2187,14 @@ class Game {
           // distance culling: far enemies neither think nor draw
           const near = close(e, 42);
           e.rig.root.visible = near && !(e.state === 'dead' && e.t > (e.effigy ? 3 : 4.5));
-          if (near) e.update(dt);
+          if (near) e.update(dt * this.runes.foeTime); // (a Sandevistan roll nearly stops them: runes.js)
         }
         this.blazeAura(dt);
         for (const b of this.bosses) {
           const near = close(b, 50);
           if (!near) b.rig.root.visible = false;
           else if (b.state !== 'dead') b.rig.root.visible = true;
-          if (near) b.update(dt);
+          if (near) b.update(dt * this.runes.foeTime);
         }
         this.separate();
         this.updateProjectiles(dt);
@@ -2195,6 +2203,7 @@ class Game {
         this.updateVeils(dt);
         this.updateHearts(dt);
         this.updateRelics(dt);
+        this.runes.update(dt);
         this.seals.update(dt);
         this.chests.update(dt);
         this.chests.updateDrums();

@@ -372,7 +372,7 @@ export class Multiplayer {
     this.clock += dt; this.netT = (this.netT || 0) + dt; // (netT: the host's world clock, stamped on its snapshots)
     if (this.clock < 1 / 30) return;
     this.clock = 0;
-    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '' });
+    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '', ...g.runes?.snapshot() });
     if (this.isHost) {
       const ps = g.allPlayers().map((x) => x.pos);
       const near = (o) => ps.some((v) => Math.abs(v.z - o.z) < 46 && Math.abs(v.x - o.x) < 46);

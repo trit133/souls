@@ -479,7 +479,7 @@ export const pickLabel = (n, p) => (n.res ? `${RES_NAME[p]} +${RES_PICK}%` : `${
 export function describe(n, pick = null) {
   if (n.role === 'start') return { name: 'Start', lines: ['Your path begins here.'] };
   if (n.evo) return { name: `Evolution · ${n.evo.name}`, lines: [n.evo.desc] };
-  if (n.role === 'socket') return { name: 'Rune Socket', lines: ['An empty socket. Runes found later in the game will fit here.'] };
+  if (n.role === 'socket') return { name: 'Rune Socket', lines: ['A socket for a rune: one of each type per tree, supports as many as you like. Runes are forged at the workbench.'] };
   if (n.soon) return { name: `Evolution · ${n.soon.name}`, lines: [n.soon.desc, 'Coming soon: its ability isn\'t in the game yet'] };
   if (isTravel(n) && n.res) return { name: 'Resistance Node', lines: pick ? [`+${RES_PICK}% ${pick} resistance`, 'Click to change the element'] : [`Pick an element: +${RES_PICK}% Fire, Frost, Bleed or Poison resistance`] };
   if (isTravel(n)) return { name: pick ? `Travel · ${TRAVEL_NAME[pick]}` : 'Travel Node', lines: pick ? [STATS[Object.keys(TRAVEL[pick])[0]].fmt(Object.values(TRAVEL[pick])[0]), 'Click to change the stat'] : ['Pick one: Strength (+30 health), Dexterity (+4 stamina) or Intelligence (+6 mana)'] };

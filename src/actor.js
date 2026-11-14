@@ -111,7 +111,7 @@ export class Actor {
   move(dx, dz) {
     if (!dx && !dz) return;
     const w = this.game.world;
-    const slow = w.slowAt(this.pos.x, this.pos.z) * (this.team !== 'player' ? (this.game.sigilSlowAt?.(this.pos.x, this.pos.z) ?? 1) * this.chillMul() : 1); // (a Psy-Staff's sigil slows enemies; a chilled boss crawls) // bog water
+    const slow = w.slowAt(this.pos.x, this.pos.z) * (this.team !== 'player' ? (this.game.sigilSlowAt?.(this.pos.x, this.pos.z) ?? 1) * this.chillMul() * (this.game.runes?.slowAt(this.pos.x, this.pos.z) ?? 1) : 1); // (a Psy-Staff's sigil slows enemies; a chilled boss crawls) // bog water
     const to = _to.set(this.pos.x + dx * slow, 0, this.pos.z + dz * slow);
     // enemies and bosses are confined to the module they spawned in (in a dungeon, that chamber and its neighbours)
     w.resolve(this.pos, to, this.radius, this.roam ?? this.mod ?? null);

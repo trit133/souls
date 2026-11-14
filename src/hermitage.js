@@ -31,6 +31,7 @@ import { COMBOS } from './combos.js';
 import { WEAPON_SETS } from './weaponmoves.js';
 import { AREAS } from './regions.js';
 import { bazaarOpen, anyClaimable } from './traders.js';
+import { RUNES, RUNE_TYPES, RUNE_ORDER, ownsRune, grantRune, runeIconEl, kindLabel } from './runes.js';
 import { WEAPONS, WEAPON_REGIONS, BASE_WEAPON, weaponFor, armoury, ownsWeapon, hasEvo, equippedWeapon, recipeState, spend, weaponIcon, weaponsOf } from './weapons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -470,8 +471,8 @@ export class Hermitage {
       <div id="hm-juke" class="hidden"><div class="hm-sh"><span>Jukebox</span><button class="mini-btn" id="hm-juke-close">Close</button></div>
         <div class="hm-note">Pick a record for the menus. More are out there to be found.</div><div id="hm-recs"></div></div>
       <div id="hm-work" class="hidden wk"><div class="hm-sh"><span>Workbench</span><button class="mini-btn" id="hm-work-close">Close</button></div>
-        <div class="hm-note">Forge new weapons and evolutions from the materials in your stash. Hover anything for the details.</div>
-        <div class="wk-main"><div class="wk-tabs"><button data-wt="weapons">Weapons</button><button data-wt="evos">Evolutions</button></div>
+        <div class="hm-note">Forge new weapons, evolutions and runes from the materials in your stash. Hover anything for the details.</div>
+        <div class="wk-main"><div class="wk-tabs"><button data-wt="weapons">Weapons</button><button data-wt="evos">Evolutions</button><button data-wt="runes">Runes</button></div>
           <div id="wk-grid" class="wk-grid"></div><div id="wk-detail" class="wk-detail"></div></div>
         <div id="wk-tip" class="wk-tip hidden"></div></div>
       <div id="hm-equip" class="hidden"><div class="hm-sh"><span>Equipment</span><button class="mini-btn" id="hm-equip-close">Close</button></div>
@@ -800,6 +801,7 @@ export class Hermitage {
   workEntries() {
     const kind = this.kind;
     if (this.wkTab === 'evos') return weaponsOf(kind).map((id) => ({ key: 'e:' + id, type: 'evo', id }));
+    if (this.wkTab === 'runes') return RUNE_ORDER.map((id) => ({ key: 'r:' + id, type: 'rune', id }));
     return [{ key: 'w:' + BASE_WEAPON[kind], type: 'weapon', id: BASE_WEAPON[kind] },
       ...WEAPON_REGIONS.map((R) => { const id = weaponFor(kind, R.id); return id ? { key: 'w:' + id, type: 'weapon', id } : { key: 'u:' + R.id, type: 'unknown', region: R }; })];
   }
@@ -813,6 +815,11 @@ export class Hermitage {
       const t = document.createElement('button'); t.className = 'wk-tile' + (x.key === this.wkSel ? ' sel' : '');
       let icon, name, badge = '';
       if (x.type === 'unknown') { icon = Object.assign(document.createElement('div'), { className: 'wk-q', textContent: '?' }); name = 'Unknown'; t.classList.add('dim'); }
+      else if (x.type === 'rune') {
+        const R = RUNES[x.id], have = ownsRune(d, x.id);
+        icon = runeIconEl(x.id, 4); if (!have) icon.classList.add('wk-dark'); name = R.name;
+        if (have) badge = '<span class="wk-ok">✓</span>'; else if (R.recipe && recipeState(d, R.recipe).ok) badge = '<span class="wk-can">!</span>';
+      }
       else {
         const W = WEAPONS[x.id], have = x.type === 'weapon' ? ownsWeapon(d, x.id) : hasEvo(d, W.evo.id);
         icon = weaponIcon(x.id, 4, have ? null : 'dark'); name = x.type === 'weapon' ? W.name : W.evo.name;
@@ -834,6 +841,7 @@ export class Hermitage {
     box.replaceChildren(); box.scrollTop = 0; $('wk-tip').classList.add('hidden');
     if (!x) return;
     const add = (html, cls = '') => { const e = document.createElement('div'); if (cls) e.className = cls; e.innerHTML = html; box.append(e); return e; };
+    if (x.type === 'rune') return this.renderRuneDetail(x.id, add, box);
     if (x.type === 'unknown') {
       const head = add('', 'wk-head'); head.append(Object.assign(document.createElement('div'), { className: 'wk-q big', textContent: '?' }));
       head.insertAdjacentHTML('beforeend', `<div><h3>Unknown weapon</h3><span>${x.region.name}</span></div>`);
@@ -878,6 +886,39 @@ export class Hermitage {
       if (evo) { A.evos[E.id] = 1; A.evoOn[x.id] = 1; } else A.owned[x.id] = 1;
       g.accounts.save(); g.audio.play('clang', 0.8);
       g.ui.toast(evo ? `${E.name.toUpperCase()} BUILT` : `${W.name.toUpperCase()} FORGED · equip it at the equipment stand`, 3);
+      this.renderWork();
+    });
+    box.append(b);
+  }
+
+  // a rune: what it does, its type's rules, its recipe (Varek's: his reward), and the button to forge it
+  renderRuneDetail(id, add, box) {
+    const g = this.game, d = g.accounts.data, R = RUNES[id], T = RUNE_TYPES[R.type], have = ownsRune(d, id);
+    const head = add('', 'wk-head'), ic = runeIconEl(id, 5); if (!have) ic.classList.add('wk-dark'); head.append(ic);
+    head.insertAdjacentHTML('beforeend', `<div><h3>${R.name}</h3><span><b style="color:${T.color}">${kindLabel(R)}</b> · ${have ? '<b class="wk-yes">Owned</b>' : '<b class="wk-no">Not yet made</b>'}</span></div>`);
+    add(R.desc, 'wk-p');
+    add(`<h4>${T.name} runes</h4>${T.desc} ${R.kind === 'support' ? 'A support rune: socket it as often as you like alongside one ' + T.name.toLowerCase() + ' rune.' : 'One ' + T.name.toLowerCase() + ' rune in a tree at a time.'}`, 'wk-sec');
+    add('Socket runes in your skill tree\'s rune sockets (click an owned socket). Runes are shared by every character and never used up.', 'wk-p dim');
+    if (have) return;
+    if (!R.recipe) { add('<b>Archon Varek\'s.</b> Beat him and all five of his runes are yours.', 'wk-p'); return; }
+    const R2 = recipeState(d, R.recipe), rec = add('<h4>Recipe</h4>', 'wk-sec wk-rec');
+    for (const r of R2.rows) {
+      const it = ITEMS[r.id], ok = r.have >= r.need, row = document.createElement('div'); row.className = 'wk-mat' + (ok ? ' ok' : '');
+      row.append(iconEl(r.id, 2));
+      row.insertAdjacentHTML('beforeend', `<span class="wk-mn" style="color:${RARITY[it.rarity].color}">${it.name}</span><span class="wk-mc">${r.have} / ${r.need}</span><span class="wk-mk">${ok ? '✓' : '✗'}</span>`);
+      row.addEventListener('pointermove', (e) => this.showTip(r.id, e));
+      row.addEventListener('pointerleave', () => $('wk-tip').classList.add('hidden'));
+      row.addEventListener('click', (e) => { e.stopPropagation(); this.showTip(r.id, e); });
+      rec.append(row);
+    }
+    const missing = R2.rows.reduce((s2, r) => s2 + Math.max(0, r.need - r.have), 0);
+    const b = document.createElement('button'); b.className = 'menu-btn primary wk-go';
+    b.textContent = missing ? `Missing ${missing} material${missing > 1 ? 's' : ''}` : 'Forge'; b.disabled = !!missing;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation(); if (b.disabled) return;
+      spend(d, R.recipe); grantRune(d, id);
+      g.accounts.save(); g.audio.play('clang', 0.8);
+      g.ui.toast(`${R.name.toUpperCase()} FORGED · socket it in your skill tree`, 3);
       this.renderWork();
     });
     box.append(b);
@@ -1001,7 +1042,17 @@ export class Hermitage {
       $('hm-stash-note').textContent = 'Each mini boss drops a gem in the shape of its head. Carry all of a region\'s to pass its gatekeeper.';
       for (const id of Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem')) slot(id, 1, !!d.gems?.[id]);
     } else {
-      $('hm-stash-note').textContent = 'Runes are coming later.';
+      $('hm-stash-note').textContent = 'Runes, shared by all your characters. Forge them at the workbench; socket them in a skill tree.';
+      const have = RUNE_ORDER.filter((id) => ownsRune(d, id));
+      for (const id of have) {
+        const R = RUNES[id], T = RUNE_TYPES[R.type], el = document.createElement('div'); el.className = 'hm-slot'; el.style.borderColor = R.kind === 'unique' ? '#ffd36a' : T.color;
+        el.append(runeIconEl(id, 2));
+        const showR = () => { tip.innerHTML = `<b style="color:${T.color}">${R.name}</b><span>${kindLabel(R)}</span><i>${R.desc}</i>`; tip.classList.remove('hidden'); };
+        el.addEventListener('pointerenter', showR); el.addEventListener('click', (e) => { e.stopPropagation(); showR(); });
+        slots.append(el);
+      }
+      for (let k = have.length; k < STASH_SLOTS; k++) { const el = document.createElement('div'); el.className = 'hm-slot'; slots.append(el); }
+      $('hm-worth').textContent = have.length ? `${have.length} of ${RUNE_ORDER.length} runes` : 'No runes yet: forge them at the workbench.';
     }
   }
 

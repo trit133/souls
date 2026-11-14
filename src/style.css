@@ -68,6 +68,9 @@ html, body {
 #b-special { right: 96px; bottom: 100px; }
 #b-heal { right: 180px; bottom: 6px; }
 #b-lock { right: 178px; bottom: 96px; }
+#b-summon { right: 262px; bottom: 6px; font-size: 9px; }
+#b-runebuff { right: 258px; bottom: 96px; font-size: 10px; }
+#rune-hud { margin-left: 12px; font-size: 12px; opacity: .8; letter-spacing: 1px; color: #b8e8c0; }
 #b-pause {
   position: absolute; pointer-events: auto; right: calc(14px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
   width: 40px; height: 40px; border-radius: 8px; border: 1px solid rgba(232,220,192,.4); background: rgba(0,0,0,.4); color: #e8dcc0; font-weight: bold;
@@ -343,6 +346,13 @@ svg .solid { fill: currentColor; } /* filled icons (crit chance star) */
 #tree-tip .tt-picks { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 #tree-tip .tt-pick { margin: 0; padding: 4px 8px; font-size: 12px; text-align: left; }
 #tree-tip .tt-pick.on { border-color: #f0c860; color: #fff2c8; }
+#tree-tip .tt-runes { max-height: 46vh; overflow-y: auto; }
+#tree-tip .tt-runes .tt-pick { display: flex; align-items: center; gap: 8px; }
+#tree-tip .tt-runes img { width: 32px; height: 32px; image-rendering: pixelated; flex: none; }
+#tree-tip .tt-runes span { display: flex; flex-direction: column; }
+#tree-tip .tt-runes i { font: 10px monospace; color: #a89878; font-style: normal; }
+#tree-tip .tt-pick:disabled { opacity: .45; }
+html.phone #tree-tip .tt-runes img { width: 20px; height: 20px; }
 #tree-svg .tn.travel circle { fill: #1a1820; stroke: #5a5664; stroke-width: .5; }
 #tree-svg .tn.travel.can circle { stroke: #b8b4c4; stroke-width: .8; }
 #tree-svg .tn.travel.own circle { fill: #3a2e14; stroke: #f0c860; }
@@ -1215,3 +1225,4 @@ html.phone #hm-slots { grid-template-columns: repeat(8, 1fr); gap: 2px; }
 html.phone .tiles { gap: 6px; }
 html.phone .tile-big, html.phone .tile-small { height: 52px; padding: 4px 8px; }
 html.phone .tile-big { width: 165px; } html.phone .tile-small, html.phone #btn-settings { width: 145px; } html.phone .tile-fs { width: 125px; }
+#hm-work .wk-dark, #wk-detail .wk-dark { filter: brightness(.25) grayscale(.6); }
