@@ -26,26 +26,38 @@ export const AREAS = {
     loot: { drum: { common: 80, uncommon: 18, rare: 2 }, chest: { common: 32, uncommon: 42, rare: 26 }, hoard: { rare: 100 } },
   },
   // (designed in docs/region1-areas.md; their maps: sump.js, spire.js)
+  // each deeper area needs the gem of the boss before it (needs: carried, never used up); the last needs all three
   r1a2: {
-    id: 'r1a2', region: 'r1', name: 'The Sump Lines', kind: 'city', map: 'sump', boss: 'vael', open: true,
+    id: 'r1a2', region: 'r1', name: 'The Sump Lines', kind: 'city', map: 'sump', boss: 'vael', open: true, needs: ['gem_hask'],
     blurb: 'Flooded transit tunnels under the ward. The ones who stayed below changed; the gangs who work the pumps burn them out.',
     mix: { wretch: 4, hook: 2, torcher: 2, hulk: 0.5 }, look: {}, heavy: 'hulk', melee: ['wretch', 'hook'],
     // epic first shows here (Augury Shards: the region's weapons can be forged from here on)
     loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 40, rare: 32, epic: 10 }, hoard: { rare: 60, epic: 40 } },
   },
   r1a3: {
-    id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: 'city', map: 'spire', boss: 'gorrath', open: true,
+    id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: 'city', map: 'spire', boss: 'gorrath', open: true, needs: ['gem_vael'],
     blurb: 'The high augur\'s cathedral-fortress on the ward\'s edge. His order still sings in the bell-towers, still reads what is coming, and still turns back all who climb.',
     mix: { flagellant: 3, castellan: 2, augur: 1.5, bellwarden: 0.5 }, look: {}, heavy: 'bellwarden', melee: ['flagellant', 'castellan'],
     loot: { drum: { common: 58, uncommon: 30, rare: 9, epic: 3 }, chest: { common: 8, uncommon: 32, rare: 38, epic: 18, legendary: 4 }, hoard: { epic: 70, legendary: 30 } },
   },
+  // the region's master: a short approach (a few of the region's hardest, the gem door) and Varek's throne
+  // (modules.js FINAL_MODULES.bastion, then the old BOSS_ARENA). Its three gems open it
+  r1f: {
+    id: 'r1f', region: 'r1', name: 'The Sentinel\'s Bastion', kind: 'final', boss: 'varek', open: true, needs: ['gem_hask', 'gem_vael', 'gem_gorrath'],
+    blurb: 'At the end of the March the Last Sentinel still keeps the regime\'s gate, as he was ordered to before the world burned. Three gems set in his door; three heads he will know.',
+  },
 };
+
+// can this account deploy to the area: it's open and they carry every gem it needs (data: the account's, or none
+// for a guest, who can only take the first area)
+export const missingGems = (A, data) => (A.needs || []).filter((g) => !data?.gems?.[g]);
+export const areaOpen = (A, data) => !!A?.open && !missingGems(A, data).length;
 
 // map positions are 0..1 across the world map (regions) and across a region's own map (areas)
 export const REGIONS = [
   { id: 'r1', name: 'The Shattered March', open: true, x: 0.3, y: 0.62, color: '#c8642a',
     blurb: 'The border hab-wards, where the first of the future-forged armies broke.',
-    areas: [{ id: 'r1a1', x: 0.3, y: 0.66 }, { id: 'r1a2', x: 0.56, y: 0.44 }, { id: 'r1a3', x: 0.78, y: 0.24 }] },
+    areas: [{ id: 'r1a1', x: 0.3, y: 0.66 }, { id: 'r1a2', x: 0.56, y: 0.44 }, { id: 'r1a3', x: 0.78, y: 0.24 }, { id: 'r1f', x: 0.88, y: 0.62 }] },
   { id: 'r2', name: 'The Glass Wastes', open: false, x: 0.62, y: 0.7, color: '#7ab0c0', blurb: 'Sealed.' },
   { id: 'r3', name: 'The Forge Reaches', open: false, x: 0.74, y: 0.36, color: '#d8402a', blurb: 'Sealed.' },
   { id: 'r4', name: 'The Drowned Choir', open: false, x: 0.38, y: 0.28, color: '#5a8a6a', blurb: 'Sealed.' },

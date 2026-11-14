@@ -15,7 +15,7 @@ export const GUIDE = [
         <li>Grab <b>materials</b> from drums and chests on the way. They're yours the moment you pick them up.</li>
         <li>Come back here and spend your <b>gold</b> on your skill tree and your <b>emeralds</b> on your look.</li>
       </ol>
-      <p>Each region has three raid areas. Its bosses each drop a <b>gem</b>; carry all of a region's gems to face its master.</p>`,
+      <p>Each region has three raid areas, one after another. Each area's boss drops a <b>gem</b>, and that gem opens the next area. Carry all three of a region's gems to open its last area, a short climb to its master (in the Shattered March, Archon Varek).</p>`,
   },
   {
     id: 'raid', title: 'A Raid',

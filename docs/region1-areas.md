@@ -217,4 +217,10 @@ Next:
 2. Re-dress the boss arenas (the Cold Pumps for Vael, the Bell Foundry for Gorrath). They use the old themes with
    new names.
 3. Guest-side visuals for the flame and bile cones and the Augur's blink.
-4. Whether area 2 should wait until area 1 is cleared (right now all three are open).
+4. ~~Gating~~ done: each area needs the previous boss's gem (Hask's opens the Sump Lines, Vael's the Spire), and all
+   three open **the Sentinel's Bastion** (`r1f`, `modules.js FINAL_MODULES.bastion`). The Bastion is a short approach:
+   a landing with the beacon, a broken causeway, and the Court of Penance holding eight of the March's hardest (Hook
+   Warden, Torcher, two Flagellants, an armoured elite Castellan, an Augur, a Sump Wretch and a Bilge Hulk at the
+   door). Then the Gem Door, its arch set with the three gems, which stays fogged until the court is clear. Beyond it
+   is Varek's throne. Everything is at the old run's last act (+30%). Varek's death is the victory. The world map says
+   which gems a sealed area wants and whose they are (`scripts/final-area.mjs`).

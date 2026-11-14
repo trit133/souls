@@ -1,7 +1,7 @@
 import { decorate, updateAmbient } from './decor.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MODULES, MINI_ARENAS, BOSS_ARENA } from './modules.js';
+import { MODULES, MINI_ARENAS, BOSS_ARENA, FINAL_MODULES } from './modules.js';
 
 // The level is either a chain of modules laid out along -Z (the approach to Varek, and the old layouts the tests
 // use) or a dungeon (dungeon.js: chambers on a grid, built in world coordinates). Each module / chamber adds
@@ -105,7 +105,7 @@ export class World {
     if (layout.dungeon) { layout.dungeon.build(this); return; } // a dungeon builds itself (dungeon.js)
     let z0 = 0;
     layout.forEach((key, i) => {
-      const def = key.startsWith('mini:') ? MINI_ARENAS[key.slice(5)] : key === 'boss' ? BOSS_ARENA : MODULES[key];
+      const def = key.startsWith('mini:') ? MINI_ARENAS[key.slice(5)] : key === 'boss' ? BOSS_ARENA : MODULES[key] || FINAL_MODULES[key];
       const group = new THREE.Group();
       this.root.add(group);
       const mod = { i, key, name: def.name, z0, z1: z0 - def.len, len: def.len, cx: 0, cz: z0 - def.len / 2, group, ground: def.ground };

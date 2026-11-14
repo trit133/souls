@@ -12,7 +12,7 @@ import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
 import './sump.js'; import './spire.js'; // (the deeper areas' own maps, registered on City.MAPS)
-import { AREAS } from './regions.js';
+import { AREAS, areaOpen } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
 import * as ItemsLib from './items.js';
@@ -169,7 +169,7 @@ class Game {
     const q = new URLSearchParams(location.search), night = !!(this.nightRaid && this.nightUnlocked);
     if (q.has('chain')) return pickLayout();
     if (q.has('dungeon')) return night ? 'night' : 'dungeon';
-    return { raid: AREAS[this.raidArea]?.open ? this.raidArea : 'r1a1', night };
+    return { raid: areaOpen(AREAS[this.raidArea], this.accounts.data) ? this.raidArea : 'r1a1', night }; // (an area you don't have the gems for: the first)
   }
 
   // Night Raid unlocks (for the whole account) once you beat the second mini boss of a run
@@ -250,6 +250,8 @@ class Game {
       const area = AREAS[layout.raid];
       this.run = { raid: area.id, night: !!layout.night, minis: [area.boss] };
       this.act = 0;
+      // the region's last area: the approach and Varek's throne, everything as hard as the last act of the old run
+      if (area.kind === 'final') { this.act = 3; return this.buildLevel(['bastion', 'boss'], seed, players); }
       return this.buildLevel({ dungeon: new City(seed, area, players) }, seed, players);
     }
     if (layout === 'dungeon' || layout === 'night') {
@@ -1265,6 +1267,7 @@ class Game {
     this.announceBossDeath(enc, pay);
     if (this.accounts.data) {
       const st = this.accounts.data.stats;
+      if (this.run?.raid) { const d = this.accounts.data; d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1; } // (the region's master: its pin gets its tick)
       st.wins++;
       st.winsBy = st.winsBy || {}; st.winsBy[this.kind] = (st.winsBy[this.kind] || 0) + 1;
       this.accounts.save();

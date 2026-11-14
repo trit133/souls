@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { decorateArena } from './decor.js';
 
 // Level modules. build(w, Z, mod) receives the World, Z(d) (module distance -> world z)
@@ -235,6 +236,69 @@ export const MINI_ARENAS = {
   vael: miniArena('vael', 'The Moonlit Cloister', 'crypt', 'cloister'),
   gorrath: miniArena('gorrath', 'The Slag Forge', 'ash', 'forge'),
 };
+
+// the region's last area (regions.js r1f): the Sentinel's Bastion, the approach to Varek's throne. A landing with
+// the beacon; a broken causeway; the Court of Penance where the last of the March's hardest wait (a few from each
+// deeper area, one an elite); the Gem Door, its arch set with the three bosses' gems, burning (you carry
+// them, or you couldn't be here). The door on to the throne fogs until the court is clear. BOSS_ARENA follows
+export const FINAL_MODULES = {
+  bastion: {
+    name: "The Sentinel's Bastion", len: 64, ground: 'stone',
+    build(w, Z, mod) {
+      const M = w.mats, gold = new THREE.MeshLambertMaterial({ color: 0x8a6a2a, flatShading: true });
+      ends(w, mod, 64);
+      w.rect(-5, 5, 0, 11); // the landing
+      w.rect(-3.2, 3.2, 9, 27); // the causeway
+      w.rect(-12, 12, 25, 49); // the Court of Penance
+      w.rect(-4, 4, 47, 64); // the Gem Door's hall
+      // the landing: the beacon, sandbags, a banner each side
+      const fire = w.bonfire(0, Z(5)); fire.lit = true;
+      for (const s of [-1, 1]) { w.box(0.8, 0.8, 6, M.cloth, s * 4.4, 0.4, Z(5)); w.banner(s * 3.6, Z(9.5)); }
+      // the causeway: broken parapets over a drop, black stone with gold caps, lamps on chains
+      for (let d = 10; d < 26; d += 2.2) for (const s of [-1, 1]) {
+        const h = vhash(d, s) < 0.3 ? 0.4 : 1.1;
+        w.box(0.5, h, 1.8, M.stoneDark, s * 3.6, h / 2, Z(d + 1)); if (h > 1) w.box(0.6, 0.12, 1.9, gold, s * 3.6, h + 0.06, Z(d + 1));
+      }
+      for (const d of [14, 22]) for (const s of [-1, 1]) w.torch(s * 4.6, Z(d), 0xffb050);
+      // the Court of Penance: a ring of hanged cages, broken statues of the regime's saints, braziers, a dais at the
+      // back where an Augur reads you coming
+      for (const [x, d, h] of [[-10, 28, 6], [10, 28, 6], [-10.5, 46, 7], [10.5, 46, 7], [-11, 37, 4], [11, 37, 4.5]]) w.pillar(x, Z(d), h, h < 5);
+      for (const s of [-1, 1]) {
+        w.brazier(s * 7.5, Z(31)); w.brazier(s * 7.5, Z(44));
+        const st = new THREE.Group(); st.position.set(s * 9.5, 0, Z(40));
+        for (const [geo, y] of [[new THREE.BoxGeometry(1.6, 1, 1.6), 0.5], [new THREE.ConeGeometry(0.6, 2.4, 6), 2.2], [new THREE.BoxGeometry(0.5, 0.5, 0.5), 3.6]]) { const m = new THREE.Mesh(geo, M.stone); m.position.y = y; st.add(m); }
+        w.add(st); w.ob(s * 9.5, Z(40), 1.0);
+      }
+      w.box(9, 0.4, 3.6, M.stoneDark, 0, 0.2, Z(46.5)); w.box(9.2, 0.08, 3.8, gold, 0, 0.42, Z(46.5));
+      w.fallenColumn(-5, Z(33), 4, 0.5); w.rock(6, Z(35), 0.8, true, true);
+      // the Gem Door: a gatehouse at the hall's end with the three bosses' gems burning in sockets over the arch (you
+      // carry them, or you couldn't be here), a candle-lit kneeling step each side
+      for (const s of [-1, 1]) {
+        w.box(1.4, 7, 1.4, M.stone, s * 3.5, 3.5, Z(62)); w.box(1.5, 0.2, 1.5, gold, s * 3.5, 7.1, Z(62));
+        w.box(1.6, 0.3, 2.4, M.stoneDark, s * 3.0, 0.15, Z(55)); w.banner(s * 3.7, Z(51));
+      }
+      w.box(8.4, 1.6, 1.4, M.stone, 0, 7.6, Z(62)); w.box(8.6, 0.12, 1.5, gold, 0, 6.8, Z(62));
+      [0xff3a1a, 0xa8e0ff, 0xffb040].forEach((col, k) => {
+        const x = (k - 1) * 2.2, z = Z(62) + 0.75;
+        w.box(0.9, 0.9, 0.2, gold, x, 7.6, z - 0.05);
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: col })); gem.position.set(x, 7.6, z + 0.1); gem.userData.noMerge = true; w.add(gem);
+        w.ambient.push({ x, z, update: (dt, t) => { gem.rotation.y = t * 1.5 + k; } });
+        w.lights.push({ x, y: 6.8, z: z + 1.2, color: col, power: 5, range: 8, src: {} });
+      });
+      // the last of the March's hardest: a few from each deeper area (the court's elite an armoured Castellan)
+      w.spawn('hook', -1.4, 17, 0);
+      w.spawn('torcher', 1.8, 24, 0);
+      w.spawn('flagellant', -6, 33, 0);
+      w.spawn('flagellant', 6, 34, 0);
+      w.spawn('castellan', 0, 39, 0, { elite: 'armoured' });
+      w.spawn('augur', -2, 46.5, 0);
+      w.spawn('wretch', 7, 44, 0);
+      w.spawn('hulk', 0, 52, 0);
+    },
+  },
+};
+// (a visual-only random 0..1 from a position)
+const vhash = (a, b) => { const v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return v - Math.floor(v); };
 
 export const BOSS_ARENA = {
   name: 'The Throne of the Last Sentinel', len: 58, ground: 'arena',

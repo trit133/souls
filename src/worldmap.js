@@ -1,7 +1,8 @@
 // The world map (regions.js): every region on one ashen continent; click an open one to see its own map with its
 // three raid areas; pick an area to read about it and deploy. Drawn small on a canvas and scaled up with hard pixels;
 // the regions and areas are buttons laid over it.
-import { REGIONS, AREAS } from './regions.js';
+import { REGIONS, AREAS, areaOpen, missingGems } from './regions.js';
+import { ITEMS } from './items.js';
 import { BOSSES } from './boss.js';
 import { pxButton, pxText } from './pixelmenus.js';
 import { rng } from './world.js';
@@ -76,21 +77,26 @@ export class WorldMap {
     $('wm-panel').classList.add('hidden');
     $('wm-pins').innerHTML = '';
     this.drawRegion(R);
+    const data = this.game.accounts.data;
     for (const a of R.areas) {
       const A = AREAS[a.id];
-      const done = this.game.accounts.data?.raids?.[a.id];
-      this.pin(A.name + (done ? ' ✓' : ''), a.x, a.y, A.open ? 'open' : 'locked', () => this.pickArea(A));
+      const done = data?.raids?.[a.id];
+      this.pin(A.name + (done ? ' ✓' : ''), a.x, a.y, areaOpen(A, data) ? 'open' : 'locked', () => this.pickArea(A));
     }
-    // the first open area is picked to start with
-    const first = R.areas.map((a) => AREAS[a.id]).find((A) => A.open);
+    // the furthest open area is picked to start with
+    const first = R.areas.map((a) => AREAS[a.id]).filter((A) => areaOpen(A, data)).at(-1);
     if (first) this.pickArea(first);
   }
 
   pickArea(A) {
-    this.area = A.open ? A.id : null;
+    const data = this.game.accounts.data, can = areaOpen(A, data), need = missingGems(A, data);
+    this.area = can ? A.id : null;
     document.querySelectorAll('.wm-pin').forEach((p) => p.classList.toggle('sel', p.querySelector('.wm-lab').textContent.startsWith(A.name)));
-    const boss = A.open ? `Somewhere in it: ${BOSSES[A.boss].name}` : '';
-    this.info(A.name, A.open ? A.blurb + ' Break three shrines to open the way to its master. The only ways out are victory or death.' : A.blurb + ' Sealed for now.', boss, A.open);
+    const boss = A.open ? `${A.kind === 'final' ? 'At its end' : 'Somewhere in it'}: ${BOSSES[A.boss].name}` : '';
+    // sealed: which gems are still wanted, and who carries them
+    const sealed = !A.open ? ' Sealed for now.' : ` Sealed: you need ${need.map((g) => `the ${ITEMS[g].name} (${BOSSES[ITEMS[g].boss]?.name.split(',')[0]})`).join(', ')}.`;
+    const how = A.kind === 'final' ? ' Fight your way up to his throne. The only ways out are victory or death.' : ' Break three shrines to open the way to its master. The only ways out are victory or death.';
+    this.info(A.name, A.blurb + (can ? how : sealed), boss, can);
   }
 
   info(name, blurb, boss, canGo) {
@@ -159,9 +165,17 @@ export class WorldMap {
     c.fillStyle = '#3a3a40'; c.fillRect(a3[0] - 10 | 0, a3[1] - 2 | 0, 20, 8);
     c.fillStyle = '#5a5a62'; c.fillRect(a3[0] - 2 | 0, a3[1] - 22 | 0, 4, 22); c.fillRect(a3[0] - 7 | 0, a3[1] - 12 | 0, 3, 12); c.fillRect(a3[0] + 4 | 0, a3[1] - 14 | 0, 3, 14);
     c.fillStyle = '#ff3a24'; c.fillRect(a3[0] | 0, a3[1] - 24 | 0, 1, 2);
+    // the Sentinel's Bastion: a black keep with a gate and three lit sockets over it
+    const a4 = R.areas[3] && [R.areas[3].x * AW, R.areas[3].y * AH];
+    if (a4) {
+      c.fillStyle = '#26222a'; c.fillRect(a4[0] - 12 | 0, a4[1] - 10 | 0, 24, 14);
+      c.fillStyle = '#3a3640'; c.fillRect(a4[0] - 14 | 0, a4[1] - 16 | 0, 6, 20); c.fillRect(a4[0] + 8 | 0, a4[1] - 16 | 0, 6, 20);
+      c.fillStyle = '#0a0808'; c.fillRect(a4[0] - 3 | 0, a4[1] - 4 | 0, 6, 8);
+      for (const [k, col] of [[-6, '#ff3a1a'], [0, '#a8e0ff'], [6, '#ffb040']]) { c.fillStyle = col; c.fillRect(a4[0] + k - 1 | 0, a4[1] - 9 | 0, 2, 2); }
+    }
     // the road between them
     c.fillStyle = '#7a6a4a';
-    for (const [[x0, y0], [x1, y1]] of [[a1, a2], [a2, a3]]) for (let t = 0; t < 1; t += 0.02) if ((t * 50 | 0) % 2 === 0) c.fillRect(x0 + (x1 - x0) * t | 0, y0 + (y1 - y0) * t | 0, 1, 1);
+    for (const [[x0, y0], [x1, y1]] of [[a1, a2], [a2, a3], ...(a4 ? [[a3, a4]] : [])]) for (let t = 0; t < 1; t += 0.02) if ((t * 50 | 0) % 2 === 0) c.fillRect(x0 + (x1 - x0) * t | 0, y0 + (y1 - y0) * t | 0, 1, 1);
     // ash drifting over it all
     for (let k = 0; k < 120; k++) { c.fillStyle = 'rgba(200,190,170,0.18)'; c.fillRect(r() * AW | 0, r() * AH | 0, 1, 1); }
   }
