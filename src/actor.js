@@ -7,6 +7,23 @@ export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const _v = new THREE.Vector3();
 
 // Common base for player, camp enemies and the boss.
+// A puppet (a host's enemy on a guest's screen) is drawn PUPPET_DELAY ms behind the host's clock, between the two
+// snapshots either side of that moment, so late or bunched-up snapshots still play back evenly. If they run dry it
+// carries on along its last heading for up to EXTRAP ms, then waits.
+export const PUPPET_DELAY = 110;
+const EXTRAP = 250;
+export function puppetAt(B, t) {
+  const n = B.length, L = B[n - 1];
+  if (n === 1 || t <= B[0].t) return n === 1 || t > L.t ? L : B[0];
+  if (t >= L.t) {
+    const P = B[n - 2], span = Math.max(L.t - P.t, 20), u = Math.min(t - L.t, EXTRAP) / span;
+    return { x: L.x + (L.x - P.x) * u, z: L.z + (L.z - P.z) * u, yaw: L.yaw };
+  }
+  let k = n - 1; while (B[k - 1].t > t) k--;
+  const A = B[k - 1], C = B[k], u = (t - A.t) / Math.max(C.t - A.t, 1);
+  return { x: A.x + (C.x - A.x) * u, z: A.z + (C.z - A.z) * u, yaw: A.yaw + angDiff(A.yaw, C.yaw) * u };
+}
+
 export class Actor {
   constructor(game, rig, o) {
     this.game = game;
@@ -53,8 +70,14 @@ export class Actor {
 
   // ----- attacks -----
   // ---------- party play: on guests, enemies are puppets driven by host snapshots ----------
-  applySnapshot(s) {
-    this.net = { x: s[1], z: s[2], yaw: s[3] };
+  // ht: when the host sent it, on this device's clock (mp.js); the puppet plays its path back a little behind that
+  applySnapshot(s, ht = performance.now()) {
+    const B = (this.nb ||= []), last = B[B.length - 1];
+    // a jump (called in, teleported): no sliding across the map from where it was
+    if (!last || Math.hypot(s[1] - last.x, s[2] - last.z) > 4 || ht < last.t) { B.length = 0; this.pos.x = s[1]; this.pos.z = s[2]; this.yaw = s[3]; }
+    B.push({ t: ht, x: s[1], z: s[2], yaw: s[3] });
+    if (B.length > 12) B.shift();
+    this.net = B[B.length - 1];
     if (s[4] !== this.state) { this.state = s[4]; this.t = 0; }
     // a snapshot sent before the host saw our hit must not undo it on screen
     const justHit = performance.now() - (this.hitAt || 0) < 900;
@@ -75,9 +98,10 @@ export class Actor {
   puppetUpdate(dt, style) {
     this.t += dt;
     if (this.net) {
-      const k = 1 - Math.exp(-14 * dt), ox = this.pos.x, oz = this.pos.z;
-      this.pos.x += (this.net.x - ox) * k; this.pos.z += (this.net.z - oz) * k;
-      this.yaw += angDiff(this.yaw, this.net.yaw) * k;
+      const tg = puppetAt(this.nb, performance.now() - PUPPET_DELAY), ox = this.pos.x, oz = this.pos.z;
+      const k = 1 - Math.exp(-30 * dt); // (only takes the edge off; the path itself is already smooth)
+      this.pos.x += (tg.x - ox) * k; this.pos.z += (tg.z - oz) * k;
+      this.yaw += angDiff(this.yaw, tg.yaw) * k;
       this.puppetSpeed = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
     }
     if (this.atk) {

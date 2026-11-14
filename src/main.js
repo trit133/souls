@@ -70,6 +70,9 @@ const SPELLS = {
 // damage parts for the wire: whole numbers, zeros dropped
 const packParts = (p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v >= 0.5).map(([k, v]) => [k, Math.round(v)]));
 
+// how far past an enemy's reach (m) a party hit still counts, for the link's lag
+const NET_SLACK = 0.6;
+
 class Game {
   constructor() {
     this.canvas = $('game');
@@ -145,6 +148,7 @@ class Game {
     window.visualViewport?.addEventListener('resize', () => this.resize());
     this.last = performance.now();
     requestAnimationFrame((t) => this.loop(t));
+    this.hiddenTicker();
   }
 
   // the encounter currently being fought (mini boss or final boss), if any
@@ -1401,6 +1405,19 @@ class Game {
   }
 
   // ---------- combat resolution ----------
+  // a host's enemy says it hit us: only if, from where the host had it, we really are in its reach here (the host
+  // judged it against where it last saw us, a moment old, so a roll out of reach would still have been hit)
+  netHitFair(e, h, d) {
+    const p = this.player;
+    if (d.x == null || !p) return true;
+    const real = { x: e.pos.x, z: e.pos.z, yaw: e.yaw };
+    e.pos.x = d.x; e.pos.z = d.z; e.yaw = d.y;
+    const slack = { ...h, range: (h.range || 0) + NET_SLACK, radius: (h.radius || 0) + NET_SLACK, arc: (h.arc || 0) + 0.35 };
+    const ok = e.hitTest(slack, p) && this.world.lineClear(d.x, d.z, p.pos.x, p.pos.z);
+    e.pos.x = real.x; e.pos.z = real.z; e.yaw = real.yaw;
+    return ok;
+  }
+
   resolveHit(att, tg, h, def) {
     const info = { // (moves are written at the old size: scale.js)
       dmg: h.dmg * NUM, poise: h.poise, knock: h.knock, srcPos: att.pos, attacker: att, hit: h,
@@ -1416,7 +1433,7 @@ class Game {
     // an enemy's critical hit (its rolled chance and bonus: defenses.js)
     else if (att !== this.player) { const cm = critRoll(att.def?.crit, att.def?.critDmg); if (cm > 1) { info.dmg *= cm; info.crit = true; } }
     if (att === this.player && def.comboMove) info.combo = true; // a combo hit: can hold a weak enemy (hold.js)
-    if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h) }, tg.pid); return; }
+    if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h), x: Math.round(att.pos.x * 100) / 100, z: Math.round(att.pos.z * 100) / 100, y: Math.round(att.yaw * 100) / 100 }, tg.pid); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
     if (tg === this.player) {
@@ -1997,13 +2014,40 @@ class Game {
       this.pixel.render(this.hermitage.scene, this.hermitage.camera);
       return;
     }
-    if (this.mode === 'play' || this.mode === 'title') {
+    if (this.mode === 'play' || this.mode === 'title') this.advance(now);
+    this.pixel.render(this.scene, this.camera);
+  }
+
+  // moves the game on to now. Alone, a frame counts at most 50 ms (a hitch slows the game rather than skipping
+  // it) and hit-stop pauses it. A party's host runs every enemy for everyone, so there the world keeps real time:
+  // a slow frame is made up in 50 ms steps (up to a second) and hit-stop doesn't stop it
+  advance(now) {
+    const host = this.mp.active && this.mp.isHost;
+    if (now < (this.simAt ?? 0)) return; // (a frame's time can be a hair behind the worker's last tick)
+    let rdt = (now - (this.simAt ?? now)) / 1000;
+    this.simAt = now;
+    if (rdt > 1.5) rdt = 0.05; // (back from the menus, not a hitch)
+    if (!host) {
+      rdt = Math.min(0.05, rdt);
       let dt = rdt;
       if (this.freeze > 0) { this.freeze -= rdt; dt = 0; }
       else if (this.slow > 0) { this.slow -= rdt; dt *= 0.35; }
-      this.step(dt, rdt);
+      return this.step(dt, rdt);
     }
-    this.pixel.render(this.scene, this.camera);
+    this.freeze = 0; this.slow = 0;
+    rdt = Math.min(1, rdt);
+    do { const dt = Math.min(0.05, rdt); this.step(dt, dt); rdt -= dt; } while (rdt > 1e-4);
+  }
+
+  // a party's host with its tab hidden: the browser stops drawing it, so a worker's timer keeps the world going for
+  // everyone else (nothing is drawn meanwhile)
+  hiddenTicker() {
+    const src = 'setInterval(() => postMessage(0), 33)';
+    const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    w.onmessage = () => {
+      if (!document.hidden || !this.mp.active || !this.mp.isHost || this.mode !== 'play') return;
+      this.advance(performance.now());
+    };
   }
 
   step(dt, rdt) {

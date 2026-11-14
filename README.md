@@ -131,7 +131,7 @@ The other menus (sign in, skins, settings, lobby) share the title's look (`src/p
 - `scripts/skins.mjs` tests it; `scripts/outfits-look.mjs` takes preview shots.
 
 ## Multiplayer (2-3 players)
-Create a room, share the 4-letter code, and the host starts the run. The host's browser runs the enemies; each player runs their own character, so dodges are judged on that player's device. Code is in `src/mp.js`.
+Create a room, share the 4-letter code, and the host starts the run. The host's browser runs the enemies; each player runs their own character, so dodges are judged on that player's device. The host's world keeps real time (a slow frame is made up in 50 ms steps, hit-stop doesn't pause it, and a worker keeps it running with the host's tab hidden) and sends the enemies 30 times a second, stamped with its world clock; a guest draws each enemy 110 ms behind that clock, between the snapshots either side, so late or bunched-up snapshots still play back evenly (up to 250 ms of guessing ahead if they run dry). An enemy's hit on a guest carries where the host had the enemy, and the guest takes it only if they really are in its reach (0.6 m of slack) with no wall between. Code is in `src/mp.js`; `scripts/netsync.mjs` tests it.
 
 | | 2 players | 3 players |
 |---|---|---|

@@ -281,6 +281,7 @@ export class Multiplayer {
   }
 
   begin(layout, seed) {
+    this.clockOff = null; // (a new run: the host's clock is matched afresh)
     for (const p of this.peers.values()) p.remove();
     this.peers.clear(); this.ready.clear(); this.picked.clear();
     this.active = true;
@@ -299,7 +300,15 @@ export class Multiplayer {
       case 'e': this.onEvent(from, d); break;
       case 'ready': this.ready.add(from); this.afterReady(); break;
       case 'p': this.peers.get(from)?.apply(d); break;
-      case 'snap': for (const s of d.e) this.entity(s[0])?.applySnapshot(s); break;
+      case 'snap': {
+        // the host's clock onto ours: the smallest gap seen (the least-delayed snapshot), let creep up slowly so a
+        // slower link is followed. Snapshots then keep their true spacing however bunched up they arrive.
+        const now = performance.now(), gap = now - (d.ht ?? now);
+        this.clockOff = this.clockOff == null ? gap : Math.min(gap, this.clockOff + 0.5);
+        const ht = d.ht == null ? now : d.ht + this.clockOff;
+        for (const s of d.e) this.entity(s[0])?.applySnapshot(s, ht);
+        break;
+      }
       case 'gold': g.runGold = d.n; if (d.s) g.secGold = d.s; break;
       case 'room': g.openRoom(d.i, d.n, d.k); break;
       // dungeons: seal events, enemies they call in, the clear count, the way down
@@ -319,7 +328,7 @@ export class Multiplayer {
       case 'descend': if (this.isHost) g.descend(); break;
       case 'act': g.enterAct(d.n); break;
       // ----- hits on this player, decided here -----
-      case 'dmg': { const e = this.entity(d.id), def = e?.moves[d.k]; if (def) g.resolveHit(e, g.player, def.hits[d.i], def); break; }
+      case 'dmg': { const e = this.entity(d.id), def = e?.moves[d.k], h = def?.hits[d.i]; if (h && g.netHitFair(e, h, d)) g.resolveHit(e, g.player, h, def); break; }
       case 'pdmg': g.projectileHit(g.player, { dmg: d.dmg, knock: d.knock, src: d.src }); break;
       // ----- what the host needs to apply -----
       case 'hit': { const e = this.entity(d.id), p = this.peers.get(from); if (e?.alive && p) { e.receive({ dmg: d.dmg, poise: d.poise, srcPos: p.pos, attacker: p, noKnock: !!d.kb, combo: !!d.c }); if (d.kb) e.kb.set(d.kb[0], 0, d.kb[1]); } break; }
@@ -359,8 +368,8 @@ export class Multiplayer {
     if (!this.active) return;
     const g = this.game, p = g.player;
     for (const r of this.peers.values()) r.update(dt);
-    this.clock += dt;
-    if (this.clock < 1 / 20) return;
+    this.clock += dt; this.netT = (this.netT || 0) + dt; // (netT: the host's world clock, stamped on its snapshots)
+    if (this.clock < 1 / 30) return;
     this.clock = 0;
     this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '' });
     if (this.isHost) {
@@ -371,7 +380,7 @@ export class Multiplayer {
         if (x.reserve || !near(x.pos) || (x.state === 'dead' && x.t > 1.5)) continue;
         e.push([x.netId, r2(x.pos.x), r2(x.pos.z), r2(x.yaw), x.state, Math.round(x.hp), x.state === 'attack' ? x.atkKey || 0 : 0, r2(x.atk?.t || 0), r2(x.y || 0)]);
       }
-      this.sendAll({ t: 'snap', e });
+      this.sendAll({ t: 'snap', ht: Math.round(this.netT * 1000), e });
     }
   }
 }
