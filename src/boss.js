@@ -209,6 +209,7 @@ export class Boss extends Actor {
   update(dt) {
     if (this.puppet) return this.puppetUpdate(dt, 'greatsword');
     this.t += dt;
+    this.iceFx();
     const p = this.game.targetOf(this);
     const dist = this.distTo(p) - this.radius - p.radius;
     const toP = this.yawTo(p.pos);
@@ -315,6 +316,11 @@ export class Boss extends Actor {
         }
         break;
       }
+      case 'frozen': {
+        pose = this.heldPose(); rate = 30;
+        if (this.game.time >= this.frozenUntil) { this.setState('neutral'); this.gap = 0.3; }
+        break;
+      }
       case 'held': {
         // held by a combo: reeling in place, can't act
         pose = { ...loco(0), ...P.stagger, torso: [0.25 + Math.sin(this.t * 8) * 0.05, Math.sin(this.t * 4) * 0.08, 0] };
@@ -380,7 +386,7 @@ export class Boss extends Actor {
       if (this.state !== 'riposted') this.die();
       return 'kill';
     }
-    if (this.state === 'broken' || this.state === 'parried' || this.state === 'riposted') return 'hit';
+    if (this.state === 'broken' || this.state === 'parried' || this.state === 'riposted' || this.state === 'frozen') return 'hit';
     if (info.combo && comboHold(this)) return 'held'; // a combo caught him while weak
     // being hit makes him retaliate sooner and a bit faster
     if (this.state === 'neutral') { this.gap = Math.min(this.gap, 0.3); this.counter = true; }

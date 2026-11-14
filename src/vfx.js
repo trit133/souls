@@ -39,7 +39,23 @@ export const VFX = {
   redPoof(g, pos) { g.pfx.play('redPoof', pos); },
   // ---------- the region weapons (weapons.js) ----------
   // the Psy-Staff's warding sigil (main.js placeSigil: on every screen; a Storm Sigil zaps from its owner's)
-  sigil(g, pos, storm, ref, own) { g.placeSigil(v3(pos), storm, g.playerRef(ref)); g.audio[own ? 'play' : 'remote']('fire', 0.6); },
+  sigil(g, pos, storm, ref, own) {
+    g.placeSigil(v3(pos), storm, g.playerRef(ref)); g.audio[own ? 'play' : 'remote']('fire', 0.6);
+    g.pfx.play('frostNova', v3(pos)); g.audio[own ? 'play' : 'remote']('clang', 0.35); // (the cold that freezes what's inside)
+  },
+  // the Psy-Staff's lash: a violet laser out of the focus (main.js fireBeam), a flare where it ends
+  psyLaser(g, from, dir, len, own) {
+    const a = v3(from), d = v3(dir).setY(0).normalize(), end = a.clone().addScaledVector(d, len);
+    g.fireBeam(a, d, len, 0xb070ff);
+    g.pfx.play('psyHit', end); g.fx.sparks(end, d, 14, [0.85, 0.6, 1]);
+    g.fx.addShake(own ? 0.25 : 0.1); g.audio[own ? 'play' : 'remote']('fire', 0.5);
+  },
+  psyCharge(g, who, life) {
+    const p = g.playerRef(who); if (!p) return;
+    const at = { pos: new THREE.Vector3() };
+    const follow = { get pos() { p.rig.tip.getWorldPosition(at.pos); return at.pos; } };
+    g.pfx.play('psyCharge', follow.pos.clone(), { follow, life });
+  },
   // the Wrist Blade's Ghost Veil: a puff of smoke, then the body a thin shade (or back)
   veil(g, ref, on) {
     const p = g.playerRef(ref); if (!p) return;
@@ -54,9 +70,10 @@ export const VFX = {
   cast(g, who, big, life) {
     const p = g.playerRef(who);
     if (!p) return;
-    const hand = { pos: new THREE.Vector3() };
-    const follow = { get pos() { p.rig.j.handR.getWorldPosition(hand.pos); return hand.pos; } };
-    const e = g.pfx.play(big ? 'charge' : 'chargeIce', follow.pos.clone(), { follow, life });
+    // (in the casting hand; with the Psy-Staff, in its focus, and violet)
+    const staff = p.c?.weapon === 'psystaff', hand = { pos: new THREE.Vector3() }, from = staff ? p.rig.tip : p.rig.j.handR;
+    const follow = { get pos() { from.getWorldPosition(hand.pos); return hand.pos; } };
+    const e = g.pfx.play(staff ? 'psyCharge' : big ? 'plasmaCharge' : 'chargeIce', follow.pos.clone(), { follow, life });
     if (p === g.player && p.castDef) p.castDef.charge = e;
     if (big) g.pfx.play('circle', p.pos.clone().setY(0.02));
   },
@@ -88,9 +105,9 @@ export const VFX = {
     if (blood) { g.fx.blood(at, null, 34); g.pfx.play('redCrit', at); }
   },
   rimeBurst(g, at) { g.pfx.play('iceBurst', at); g.fx.burst(at, 30, [0.7, 0.9, 1], 5, 0.6, 0.22); },
-  frostNova(g, at) { g.pfx.play('iceCircle', at); g.fx.burst({ x: at.x, y: 0.6, z: at.z }, 60, [0.75, 0.92, 1], 7, 0.7, 0.24); },
+  frostNova(g, at) { g.pfx.play('frostNova', at); g.fx.burst({ x: at.x, y: 0.6, z: at.z }, 60, [0.75, 0.92, 1], 7, 0.7, 0.24); g.fx.shockwave(at.x, at.z, 3.2, 0x9fdcff, 0.5); },
   lanceFan(g, at) { g.pfx.play('chargeIce', at); },
-  shatter(g, at) { g.pfx.play('iceBlast', at); g.fx.burst({ x: at.x, y: 0.8, z: at.z }, 40, [0.8, 0.95, 1], 6, 0.7, 0.26); },
+  shatter(g, at) { g.pfx.play('iceShatter', at); g.pfx.play('iceBlast', at, { size: 0.7 }); g.fx.burst({ x: at.x, y: 0.8, z: at.z }, 40, [0.8, 0.95, 1], 6, 0.7, 0.26); },
   // a boss or brute breaking out of a combo lock
   holdBurst(g, at, r, own) {
     g.fx.shockwave(at.x, at.z, r, 0xffe0a0, 0.5);

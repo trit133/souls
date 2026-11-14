@@ -26,7 +26,7 @@ const bursts = (e) => e.isBoss || e.heavy;
 // can a combo hold it right now?
 export function isWeak(e) {
   const s = e.state;
-  if (!e.alive || ['dead', 'dormant', 'rise', 'broken', 'parried', 'riposted', 'sit'].includes(s)) return false;
+  if (!e.alive || ['dead', 'dormant', 'rise', 'broken', 'parried', 'riposted', 'sit', 'frozen'].includes(s)) return false;
   if (s !== 'attack') return true;
   const d = e.atk?.def;
   if (!d || d.noHold || d.evade || e.atkKey === 'roar') return false;

@@ -59,6 +59,51 @@ export class Actor {
 
   setState(s) { this.state = s; this.t = 0; }
 
+  // frozen solid (the Psy-Staff's sigil): held in the pose it was caught in, can't move or act, for dur seconds.
+  // Hits still hurt it but don't stagger it out. Run where the enemies are run; the state reaches teammates.
+  freezeFor(dur) {
+    if (!this.alive || this.puppet || this.T?.still || ['dead', 'dormant', 'riposted', 'rise'].includes(this.state)) return false;
+    if (this.state === 'attack') this.releaseToken?.();
+    if (this.tele) { this.tele.dead = true; this.tele = null; }
+    this.atk = null; this.y = 0; this.leapTo = null; this.trailOn = false; this.kb?.set(0, 0, 0);
+    this.frozenUntil = this.game.time + dur;
+    this.setState('frozen');
+    return true;
+  }
+  // the pose it's held in while frozen: wherever the rig was
+  heldPose() {
+    if (!this.icePose) { this.icePose = { by: this.rig.scalars.by }; for (const k in this.rig.cur) this.icePose[k] = this.rig.cur[k].slice(); }
+    return this.icePose;
+  }
+  // the ice round a frozen body (every screen, from its state): a block of clear ice that bursts when it thaws
+  iceFx() {
+    const on = this.state === 'frozen' && this.alive;
+    if (on === !!this.iceOn) return;
+    this.iceOn = on;
+    const g = this.game, s = this.rig.root.scale.y || 1, chest = this.pos.clone().setY(1.1 * s);
+    if (on) {
+      if (!this.ice) {
+        const m = new THREE.MeshBasicMaterial({ color: 0x9fdcff, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
+        const e = new THREE.MeshBasicMaterial({ color: 0xdcf6ff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
+        const b = (this.rig.dims?.bulk || 1), grp = new THREE.Group();
+        for (const [w, h, d, x, y, z, ry] of [[0.95, 2.05, 0.8, 0, 1.0, 0, 0.12], [0.7, 1.5, 0.95, 0.12, 0.85, -0.05, -0.3], [0.55, 0.7, 0.6, -0.25, 1.95, 0.05, 0.5]]) {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(w * b, h, d * b), m); box.position.set(x, y, z); box.rotation.y = ry; grp.add(box);
+          const edge = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), e); edge.position.copy(box.position); edge.rotation.copy(box.rotation); grp.add(edge);
+        }
+        this.ice = grp; this.rig.root.add(grp);
+      }
+      this.ice.visible = true;
+      this.heldPose();
+      g.pfx?.play('freezeHit', chest);
+    } else {
+      if (this.ice) this.ice.visible = false;
+      this.icePose = null;
+      g.pfx?.play('iceShatter', chest);
+      g.fx?.burst({ x: chest.x, y: chest.y, z: chest.z }, 26, [0.75, 0.92, 1], 5, 0.7, 0.22);
+      g.audio?.play('clang', 0.4);
+    }
+  }
+
   move(dx, dz) {
     if (!dx && !dz) return;
     const w = this.game.world;
@@ -98,6 +143,7 @@ export class Actor {
 
   puppetUpdate(dt, style) {
     this.t += dt;
+    this.iceFx();
     if (this.net) {
       const tg = puppetAt(this.nb, performance.now() - PUPPET_DELAY), ox = this.pos.x, oz = this.pos.z;
       const k = 1 - Math.exp(-30 * dt); // (only takes the edge off; the path itself is already smooth)
@@ -116,6 +162,7 @@ export class Actor {
     else if (this.state === 'dead') pose = P.dead;
     else if (this.state === 'sit' || this.state === 'dormant' || this.state === 'broken') pose = P.rest;
     else if (this.state === 'hurt' || this.state === 'parried' || this.state === 'riposted' || this.state === 'held') pose = { ...base, ...P.stagger };
+    else if (this.state === 'frozen') pose = this.heldPose();
     if (this.state === 'dead') { this.rig.apply(pose, dt, 8); if (this.t > 4) this.rig.root.visible = false; } else this.syncRig(dt, pose, 18);
     this.trail?.update(dt, !!(this.atk && this.inWindow(this.atk.def.trail)), this.rig.base, this.rig.tip);
   }

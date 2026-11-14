@@ -314,6 +314,7 @@ export class Enemy extends Actor {
     }
     if (this.puppet) return this.puppetUpdate(dt, this.T.style);
     this.t += dt;
+    this.iceFx();
     this.status.update(dt, this.game);
     tickHold(this, dt);
     const p = this.game.targetOf(this);
@@ -433,6 +434,11 @@ export class Enemy extends Actor {
         if (this.t >= this.recoverT) this.setState('chase');
         break;
       }
+      case 'frozen': {
+        pose = this.heldPose(); rate = 30;
+        if (this.game.time >= this.frozenUntil) { this.setState('chase'); this.counter(0.3); }
+        break;
+      }
       case 'held': {
         // held by a combo: reeling in place, can't act
         pose = { ...locomotion(T.style, 0, 0, false, 0), ...P.stagger, torso: [0.25 + Math.sin(this.t * 9) * 0.06, Math.sin(this.t * 5) * 0.1, 0] };
@@ -525,6 +531,7 @@ export class Enemy extends Actor {
     this.rig.flash(1, 0.9, 0.8);
     if (this.state === 'idle' || this.state === 'sit' || this.state === 'return') { this.alert(); }
     if (this.hp <= 0) { this.die(); return 'kill'; }
+    if (this.state === 'frozen') return 'hit'; // (frozen solid: it hurts, but nothing moves it)
     if (info.combo && comboHold(this)) return 'held'; // a combo caught it while weak
     this.poise -= info.poise || 0;
     this.poiseT = 2.0;

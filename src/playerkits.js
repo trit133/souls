@@ -528,11 +528,19 @@ KITS.rogue = {
     const sh = S('shirt', 0x4a3a2c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T);
     for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); }
     if (o.arm === 'wristblade') {
-      // the Wrist Blade on the right forearm, nothing in the left hand (weapons.js)
-      const wb = S('wristblade', 0xc4cad3, 0x4a3626, 0x2a1c14, 0xff4a3a);
-      const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
-      const [tip, base] = (ROGUE.wristblade[wb.piece] || ROGUE.wristblade.hidden)(r, wb, g);
-      r.base.position.set(0, -0.06, base); g.add(r.base); r.tip.position.set(0, -0.06, tip); g.add(r.tip);
+      // the Wrist Blades: one on each forearm, lying along it under the arm and running out past the fist, so a
+      // punch drives the point home (weapons.js). They hang off the forearms, not the hands, and never flip.
+      const wb = S('wristblade', 0xc4cad3, 0x4a3626, 0x2a1c14, 0xff4a3a), make = ROGUE.wristblade[wb.piece] || ROGUE.wristblade.hidden;
+      const mount = (fore, side) => {
+        const w = new THREE.Group(); w.position.set(side * 0.01, -r.dims.fore + 0.04, 0); fore.add(w);
+        const g = new THREE.Group(); g.rotation.x = Math.PI / 2; w.add(g); // (the blade's +z down the forearm, out past the fist)
+        const [tip, base] = make(r, wb, g);
+        const b0 = new THREE.Object3D(), t0 = new THREE.Object3D(); b0.position.set(0, -0.06, base); t0.position.set(0, -0.06, tip); g.add(b0, t0);
+        return [w, b0, t0];
+      };
+      const [wR, bR, tR] = mount(r.j.foreR, -1), [wL, bL, tL] = mount(r.j.foreL, 1);
+      r.wpnR = wR; r.base = bR; r.tip = tR; r.wpnL = wL; r.baseL = bL; r.tipL = tL;
+      r.noReverse = true;
     } else {
     const kn = S('knives', 0xc4cad3, 0x2a1c14, 0x1e1e22, 0xff4a3a);
     const dagger = (ROGUE.knives[kn.piece] || ROGUE.knives.curved)(r, kn);
@@ -547,6 +555,7 @@ KITS.rogue = {
     r.poseMod = (p) => ({ ...p, by: (p.by ?? 0) - 0.05, torso: add(p.torso, [0.08, 0, 0]), head: add(p.head, [-0.07, 0, 0]) });
     let idleT = 0, flip = -1;
     r.fx = (dt) => {
+      if (r.noReverse) return; // (the Wrist Blades are strapped to the arms: nothing to flip)
       if (r.idle) idleT += dt; else { idleT = 0; flip = -1; r.wpnR.rotation.x = r.reverse ? Math.PI : 0; }
       if (flip < 0 && idleT > 3.2) { flip = 0; idleT = 0; }
       if (flip >= 0) {

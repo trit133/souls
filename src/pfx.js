@@ -18,6 +18,10 @@ import * as explosion from './pixelfx/fx/explosions/small-explosion.js';
 import * as swordSlash from './pixelfx/fx/melee/sword-slash.js';
 import * as groundSlam from './pixelfx/fx/impacts/ground-slam.js';
 import * as shieldBlock from './pixelfx/fx/impacts/shield-block.js';
+import * as iceLance from './pixelfx/fx/ice/ice-lance.js';
+import * as iceShatter from './pixelfx/fx/ice/ice-shatter.js';
+import * as frostNova from './pixelfx/fx/ice/frost-nova.js';
+import * as fireballFx from './pixelfx/fx/fire/fireball.js';
 
 const ICE = ['#10203a', '#1c3a6a', '#2c5ca8', '#4a8ae0', '#6ab4ff', '#9fd8ff', '#d4f0ff', '#ffffff'];
 const BLOOD = ['#2a0808', '#5a1010', '#8a1a14', '#c42a1e', '#ff5a3a', '#ffb08a', '#ffffff'];
@@ -30,6 +34,10 @@ const GOLD = ['#1a1206', '#3a2810', '#6a4a18', '#a87a28', '#e0b040', '#ffd870', 
 const PLASMA = ['#1a0408', '#4a0a14', '#8a1420', '#d02a20', '#ff6a2a', '#ffb05a', '#ffe8c0', '#ffffff'];
 const ELECTRIC = ['#0a0a2a', '#16205a', '#2a3aa0', '#3a6ae0', '#5aa0ff', '#9ad0ff', '#dcf0ff', '#ffffff'];
 const BIO = ['#06140a', '#0e2e16', '#16502a', '#22803e', '#44b85a', '#86e07a', '#d0ffc0', '#ffffff'];
+// the Adept's psychic violet (the Psy-Staff: its lash, its sigil)
+const PSY = ['#140a26', '#2b1252', '#481c88', '#6b2cc0', '#9a48ec', '#c684ff', '#ecc8ff', '#ffffff'];
+// her plasma charge: crimson flame with a white-hot heart
+const PLASMA_FB = ['#2a0608', '#5a0c12', '#a01818', '#d8301e', '#ff6a2a', '#ffa04a', '#ffd88a', '#fff4d8', '#ffffff'];
 const ASH = ['#1a1612', '#2e2822', '#4a423a', '#6e655a', '#948a7c', '#b8ae9e', '#d8d0c0', '#f0ead8'];
 
 // name -> effect, options, size on screen (game px per effect px), how long a loop lasts before it fades
@@ -49,10 +57,12 @@ export const PRESETS = {
   heal: { mod: heal, scale: 0.8, opts: { palette: BIO } },
   aegis: { mod: shieldBlock, scale: 0.55, aim: true, opts: { palette: ELECTRIC } }, // the Templar's Aegis Ram barrier
   poof: { mod: poof, scale: 0.5, opts: { palette: ASH } },
-  bolt: { mod: plasma, scale: 0.5, aim: true, opts: { palette: ICE } },
-  boltHit: { mod: manaBurst, scale: 0.28, opts: { palette: ICE } },
-  fireball: { mod: plasma, scale: 0.6, aim: true, opts: { palette: PLASMA } }, // a plasma charge (the Fire element)
-  bigFireball: { mod: plasma, scale: 0.85, aim: true, opts: { palette: PLASMA } },
+  // the Adept's frost bolt: a faceted ice lance with cold rings shearing off its tip
+  bolt: { mod: iceLance, scale: 0.55, aim: true },
+  boltHit: { mod: manaBurst, scale: 0.36, opts: { palette: ICE } },
+  // her plasma charge (the Fire element): a churning white-hot head in a torn crimson tail
+  fireball: { mod: fireballFx, scale: 0.6, aim: true, opts: { palette: PLASMA_FB } },
+  bigFireball: { mod: fireballFx, scale: 0.85, aim: true, opts: { palette: PLASMA_FB, radius: 7 } },
   explosion: { mod: explosion, scale: 0.48, cut: 2.2, opts: { palette: PLASMA } },
   charge: { mod: spellCharge, scale: 0.42, opts: { palette: ELECTRIC } },
   chargeIce: { mod: spellCharge, scale: 0.3, opts: { palette: ICE } },
@@ -63,6 +73,13 @@ export const PRESETS = {
   iceBlast: { mod: explosion, scale: 0.42, cut: 2, opts: { palette: ICE } },
   iceCircle: { mod: magicCircle, scale: 0.42, cut: 1.4, opts: { palette: ICE } },
   iceBurst: { mod: manaBurst, scale: 0.45, opts: { palette: ICE } },
+  frostNova: { mod: frostNova, scale: 0.45, cut: 2.2 },
+  iceShatter: { mod: iceShatter, scale: 0.45, cut: 1.6 },
+  freezeHit: { mod: manaBurst, scale: 0.3, opts: { palette: ICE } },
+  // the Psy-Staff: violet gathering in the focus, its lash's impact, its sigil turning on the floor
+  psyCharge: { mod: spellCharge, scale: 0.32, opts: { palette: PSY } },
+  psyHit: { mod: manaBurst, scale: 0.34, opts: { palette: PSY } },
+  plasmaCharge: { mod: spellCharge, scale: 0.42, opts: { palette: PLASMA_FB } },
 };
 
 const MAX = 48;

@@ -162,9 +162,22 @@ const SWAP = { armL: 'armR', armR: 'armL', foreL: 'foreR', foreR: 'foreL', handL
 const mirrorPose = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]) => [SWAP[k] || k, Array.isArray(v) ? [v[0], -v[1], -v[2]] : v]));
 const mirror = (def) => ({ ...def, keys: def.keys.map(([t, pose]) => [t, mirrorPose(pose)]) });
 
+// The Adept's knife is in her left hand; the right is her casting hand, held up and open while she cuts.
+// s1: a backhand cut, out from high left and across; s2: down low and a spinning thrust, the right arm flung back
+const ADEPT_CAST = { armR: [-1.1, 0, -0.55], foreR: [-0.9, 0, 0], handR: [0.4, 0, 0] };
 const MAGE_ATTACKS = {
-  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 11, poise: 7 }] },
-  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 14, poise: 8 }] },
+  s1: { ...ROGUE_ATTACKS.r2, cost: 14, next: 's2', hand: 'L', hits: [{ t0: 0.08, t1: 0.17, range: 1.95, arc: 2.3, dmg: 11, poise: 7 }],
+    keys: [
+      [0.08, { torso: [0.1, 0.55, 0], head: [0, -0.3, 0], armL: [-1.25, 0, 1.2], foreL: [-0.9, 0, 0], handL: [1.2, 0, 0], ...ADEPT_CAST, legL: [0.15, 0, 0], legR: [-0.15, 0, 0] }],
+      [0.16, { torso: [0.25, -0.55, 0], armL: [-1.4, 0, -0.55], foreL: [-0.1, 0, 0], handL: [1.45, 0, 0], ...ADEPT_CAST, legL: [0.4, 0, 0], legR: [-0.5, 0, 0], shinL: [0.4, 0, 0], by: -0.1 }],
+      [0.3, { torso: [0.2, -0.45, 0], armL: [-1.25, 0, -0.5], foreL: [-0.3, 0, 0], handL: [1.3, 0, 0], ...ADEPT_CAST, legL: [0.3, 0, 0], legR: [-0.4, 0, 0], by: -0.08 }],
+    ] },
+  s2: { ...mirror(ROGUE_ATTACKS.r3), cost: 15, next: 's1', hand: 'L', hits: [{ t0: 0.11, t1: 0.2, range: 2.25, arc: 1.1, dmg: 14, poise: 8 }],
+    keys: [
+      [0.1, { torso: [0.35, 0.55, 0], armL: [0.2, 0, 0.3], foreL: [-1.6, 0, 0], handL: [1.5, 0, 0], ...ADEPT_CAST, ...lunge(0.5), by: -0.16 }],
+      [0.18, { torso: [0.35, -0.4, 0], armL: [-1.55, 0, -0.05], foreL: [0, 0, 0], handL: [1.5, 0, 0], armR: [0.55, 0, -0.45], foreR: [-0.4, 0, 0], handR: [0.4, 0, 0], ...lunge(1.3) }],
+      [0.34, { torso: [0.3, -0.3, 0], armL: [-1.4, 0, -0.05], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], armR: [0.4, 0, -0.4], foreR: [-0.5, 0, 0], ...lunge(1.1) }],
+    ] },
 };
 
 const MANA_BOLT = 8, MANA_FIRE = 75;
@@ -706,7 +719,7 @@ export class Player extends Actor {
     const hand = this.atk?.def?.hand || (this.state === 'parry' ? 'L' : 'R');
     this.trail.update(dt, this.trailOn && hand !== 'L', this.rig.base, this.rig.tip);
     this.trailL?.update(dt, this.trailOn && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
-    if (this.rig.wpnR && !this.rig.fx) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
+    if (this.rig.wpnR && !this.rig.fx && !this.rig.noReverse) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
   }
 
   basePose() { return locomotion(this.c.style, this.phase, 0, false, this.game.time); }
@@ -1034,6 +1047,8 @@ export class Player extends Actor {
   }
 
   doAttack(name, dir, mag) {
+    // out of the Ghost Veil the Wrist Blades' first blow is the backstab: the arm shoved in and ripped out
+    if (this.veilT > 0 && this.c.attacks.wRip && !this.c.attacks[name]?.comboMove) name = 'wRip';
     const def = this.c.attacks[name];
     this.atkKey = name;
     // repeated attacks cost more and push stamina regen further out (combo moves cost a fixed, larger amount)

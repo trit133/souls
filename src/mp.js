@@ -72,7 +72,7 @@ class RemotePlayer extends Actor {
     this.y = D?.jump && t > D.jump[0] && t < D.jump[1] ? D.jump[2] * Math.sin(Math.PI * (t - D.jump[0]) / (D.jump[1] - D.jump[0])) : 0;
     this.rig.root.visible = !(D?.vanish && t >= D.vanish[0] && t < D.vanish[1]);
     this.rig.reverse = !!(D?.reverse && t >= D.reverse[0] && t < D.reverse[1]);
-    if (this.rig.wpnR && !this.rig.fx) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
+    if (this.rig.wpnR && !this.rig.fx && !this.rig.noReverse) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
     if (this.kind === 'knight') {
       if (!this.spectral) {
         const m = new THREE.Mesh(new THREE.BoxGeometry(0.46 * this.c.model.bulk * 1.2, 1.7, 0.06),

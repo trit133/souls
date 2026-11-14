@@ -272,6 +272,8 @@ class Game {
     for (const e of [...this.enemies, ...this.reserves]) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
+    for (const S of this.sigils || []) this.scene.remove(S.g); this.sigils = []; // (a sigil or a laser left from the last run)
+    for (const B of this.beams || []) B.t = B.dur; this.updateBeams(0);
     this.clearHearts();
     this.layout = layout;
     this.portal = null;
@@ -1424,8 +1426,9 @@ class Game {
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
     if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
-    // Ghost Veil: the first strike out of hiding, into the back of one facing away, does triple damage
-    if (att === this.player && att.veilStrike && tg.yaw != null && Math.abs(angDiff(tg.yaw, tg.yawTo(att.pos))) > 1.9) {
+    // Ghost Veil: the first strike out of hiding is always a backstab, a critical hit for triple damage (with the
+    // Wrist Blades it's the arm shoved in and ripped out: weaponmoves.js wRip)
+    if (att === this.player && att.veilStrike) {
       info.dmg *= VEIL.backstab; info.backstab = true;
       this.statusPopup(tg, 'BACKSTAB', '#ff4a3a'); this.vfx('redCrit', tg.pos.clone().setY(1.2));
     }
@@ -1890,21 +1893,65 @@ class Game {
   // enemies inside one move at half speed (enemies.js), their shots break on its edge, and a Storm Sigil (its owner's
   // screen) calls lightning onto one of them every 0.6 s
   placeSigil(pos, storm, owner) {
-    const g = new THREE.Group(); g.position.set(pos.x, 0.06, pos.z);
-    const mat = new THREE.MeshBasicMaterial({ color: storm ? 0x9ad0ff : 0xc890ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(SIGIL.r - 0.25, SIGIL.r, 48), mat); ring.rotation.x = -Math.PI / 2; g.add(ring);
-    const inner = new THREE.Mesh(new THREE.RingGeometry(SIGIL.r * 0.45, SIGIL.r * 0.5, 6), mat); inner.rotation.x = -Math.PI / 2; g.add(inner);
-    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2, b = new THREE.Mesh(new THREE.PlaneGeometry(0.12, SIGIL.r * 0.5), mat); b.rotation.x = -Math.PI / 2; b.rotation.z = a; b.position.set(Math.cos(a + Math.PI / 2) * SIGIL.r * 0.72, 0, -Math.sin(a + Math.PI / 2) * SIGIL.r * 0.72); g.add(b); }
+    // a circle of light on the floor: a double outer ring, a band of runes turning the other way, a hexagram, a
+    // glowing heart; motes rise off it while it lasts (updateSigils), and a wave of cold rolls out to its edge
+    const R = SIGIL.r, col = storm ? 0x9ad0ff : 0xc890ff, g = new THREE.Group(); g.position.set(pos.x, 0.06, pos.z);
+    const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const flat = (geo, y = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; g.add(m); return m; };
+    flat(new THREE.RingGeometry(R - 0.22, R, 64)); flat(new THREE.RingGeometry(R - 0.5, R - 0.42, 64));
+    for (const a0 of [0, Math.PI]) flat(new THREE.RingGeometry(R * 0.52, R * 0.56, 3, 1, a0, Math.PI * 2)).rotation.z = a0 + Math.PI / 2; // the hexagram
+    flat(new THREE.RingGeometry(R * 0.18, R * 0.24, 24)); flat(new THREE.CircleGeometry(R * 0.1, 16), 0.01);
+    const runes = new THREE.Group(); g.add(runes);
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2, r = new THREE.Mesh(new THREE.PlaneGeometry(i % 2 ? 0.18 : 0.12, i % 3 ? 0.32 : 0.22), mat);
+      r.rotation.x = -Math.PI / 2; r.rotation.z = -a; r.position.set(Math.sin(a) * (R - 0.85), 0.01, Math.cos(a) * (R - 0.85)); runes.add(r);
+    }
     this.scene.add(g);
-    (this.sigils ||= []).push({ x: pos.x, z: pos.z, t: SIGIL.dur, storm, mine: owner === this.player, g, mat, zapT: SIGIL.zapEvery });
-    this.fx.burst({ x: pos.x, y: 0.5, z: pos.z }, 24, storm ? [0.6, 0.85, 1] : [0.78, 0.56, 1], 3, 0.6, 0.2);
+    (this.sigils ||= []).push({ x: pos.x, z: pos.z, t: SIGIL.dur, storm, mine: owner === this.player, g, mat, runes, col: new THREE.Color(col), zapT: SIGIL.zapEvery });
+    this.fx.burst({ x: pos.x, y: 0.5, z: pos.z }, 40, storm ? [0.6, 0.85, 1] : [0.78, 0.56, 1], 5, 0.7, 0.22);
+    this.fx.shockwave(pos.x, pos.z, R, 0x9fdcff, 0.5);
+    // everything inside when it's laid freezes solid (decided where the enemies are run: alone, or the party's host)
+    if (!this.isGuest) for (const e of this.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) < SIGIL.r + e.radius) e.freezeFor?.(e.isBoss ? SIGIL.bossFreeze : SIGIL.freeze);
+  }
+  // a laser: a white-hot core in violet glow from `from` along dir for len m, flickering, fading in ~0.35 s, with a
+  // flare where it leaves the focus (visual)
+  fireBeam(from, dir, len, color) {
+    const add = (o) => new THREE.MeshBasicMaterial({ color: o.c, transparent: true, opacity: o.o, blending: THREE.AdditiveBlending, depthWrite: false });
+    const beam = new THREE.Group(); beam.position.copy(from);
+    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    const mats = [];
+    for (const [r, c, o] of [[0.035, 0xffffff, 1], [0.1, color, 0.75], [0.26, color, 0.22]]) {
+      const m = add({ c, o }), cy = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 10, 1, true), m); cy.position.y = 0.5; beam.add(cy); mats.push(m);
+    }
+    const flare = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), add({ c: 0xf0d8ff, o: 1 })); flare.position.copy(from); mats.push(flare.material);
+    beam.scale.set(1, 0.01, 1);
+    this.scene.add(beam, flare);
+    (this.beams ||= []).push({ beam, flare, mats, len, t: 0, dur: 0.36, base: mats.map((m) => m.opacity) });
+  }
+  updateBeams(dt) {
+    if (!this.beams?.length) return;
+    for (const B of this.beams) {
+      B.t += dt;
+      const k = B.t / B.dur, grow = Math.min(1, B.t / 0.05), fade = k < 0.55 ? 1 : Math.max(0, 1 - (k - 0.55) / 0.45);
+      const w = (0.6 + 0.4 * fade) * (0.85 + Math.random() * 0.3);
+      B.beam.scale.set(w, B.len * grow, w);
+      B.flare.scale.setScalar(w * (1.2 - 0.5 * k));
+      B.mats.forEach((m, i) => { m.opacity = B.base[i] * fade * (i ? 0.8 + Math.random() * 0.2 : 1); });
+    }
+    this.beams = this.beams.filter((B) => {
+      if (B.t < B.dur) return true;
+      this.scene.remove(B.beam, B.flare);
+      for (const o of [B.beam, B.flare]) o.traverse((x) => { x.geometry?.dispose(); x.material?.dispose(); });
+      return false;
+    });
   }
   sigilSlowAt(x, z) { for (const S of this.sigils || []) if (Math.hypot(x - S.x, z - S.z) < SIGIL.r) return SIGIL.slow; return 1; }
   updateSigils(dt) {
     if (!this.sigils?.length) return;
     for (const S of this.sigils) {
       S.t -= dt;
-      S.g.rotation.y += dt * 0.6; S.mat.opacity = Math.min(0.55, S.t * 0.4) * (0.8 + Math.sin(this.time * 6) * 0.2);
+      S.g.rotation.y += dt * 0.5; S.runes.rotation.y -= dt * 1.4; S.mat.opacity = Math.min(0.55, S.t * 0.4) * (0.8 + Math.sin(this.time * 6) * 0.2);
+      if (Math.random() < dt * 22) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * SIGIL.r; this.fx.add.spawn({ x: S.x + Math.cos(a) * r, y: 0.1, z: S.z + Math.sin(a) * r, vy: 0.9 + Math.random(), life: 0.9, size: 0.12, size1: 0.02, r: S.col.r, g: S.col.g, b: S.col.b, alpha: 0.8 }); }
       // enemy shots break on it
       for (const q of this.projectiles) if (!q.friendly && Math.hypot(q.pos.x - S.x, q.pos.z - S.z) < SIGIL.r) q.life = 0;
       if (S.storm && S.mine && (S.zapT -= dt) <= 0) {
@@ -2082,6 +2129,7 @@ class Game {
         this.separate();
         this.updateProjectiles(dt);
         this.updateSigils(dt);
+        this.updateBeams(dt);
         this.updateVeils(dt);
         this.updateHearts(dt);
         this.seals.update(dt);
