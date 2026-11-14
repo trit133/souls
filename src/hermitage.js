@@ -226,7 +226,7 @@ function hangingLamp(g, style, color, x, y, z) {
   return [];
 }
 const WORKBENCH = { knight: { at: [-1.3, 1.75], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.4, 1.75], ry: 0.3, glow: 0xff3a2a }, mage: { at: [-1.35, 1.75], ry: 0.3, glow: 0x7aa8ff } };
-const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x5a1414 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
+const JUKEBOX = { knight: { at: [-0.75, -2.65], ry: 0.15, wood: 0x5a1414 }, rogue: { at: [-1.2, -2.7], ry: 0.2, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
 // deck plating: square plates with darker seams (and the odd darker plate)
 function deck(g, M, rx, rz, r, size = 0.96) {
