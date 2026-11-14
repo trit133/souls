@@ -27,6 +27,9 @@ import { ITEMS, RARITY, TIERS, itemValue, iconEl } from './items.js';
 import { REGIONS } from './regions.js';
 import { BOSSES } from './boss.js';
 import { GUIDE } from './guide.js';
+import { COMBOS } from './combos.js';
+import { WEAPON_SETS } from './weaponmoves.js';
+import { AREAS } from './regions.js';
 import { WEAPONS, WEAPON_REGIONS, BASE_WEAPON, weaponFor, armoury, ownsWeapon, hasEvo, equippedWeapon, recipeState, spend, weaponIcon, weaponsOf } from './weapons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -391,8 +394,11 @@ export class Hermitage {
         <div class="hm-note" id="hm-stash-note">Shared by all your characters.</div><div id="hm-slots"></div><div id="hm-tip" class="hidden"></div><div id="hm-worth"></div></div>
       <div id="hm-juke" class="hidden"><div class="hm-sh"><span>Jukebox</span><button class="mini-btn" id="hm-juke-close">Close</button></div>
         <div class="hm-note">Pick a record for the menus. More are out there to be found.</div><div id="hm-recs"></div></div>
-      <div id="hm-work" class="hidden"><div class="hm-sh"><span>Workbench</span><button class="mini-btn" id="hm-work-close">Close</button></div>
-        <div class="hm-note">Craft new weapons and evolutions from the materials in your stash.</div><div id="hm-work-body" class="wb-body"></div></div>
+      <div id="hm-work" class="hidden wk"><div class="hm-sh"><span>Workbench</span><button class="mini-btn" id="hm-work-close">Close</button></div>
+        <div class="hm-note">Forge new weapons and evolutions from the materials in your stash. Hover anything for the details.</div>
+        <div class="wk-main"><div class="wk-tabs"><button data-wt="weapons">Weapons</button><button data-wt="evos">Evolutions</button></div>
+          <div id="wk-grid" class="wk-grid"></div><div id="wk-detail" class="wk-detail"></div></div>
+        <div id="wk-tip" class="wk-tip hidden"></div></div>
       <div id="hm-equip" class="hidden"><div class="hm-sh"><span>Equipment</span><button class="mini-btn" id="hm-equip-close">Close</button></div>
         <div class="hm-note">The weapon you take into a raid, and its evolution.</div><div id="hm-equip-body" class="wb-body"></div></div>
       <div class="hm-bottom">
@@ -422,6 +428,8 @@ export class Hermitage {
     $('hm-work-close').addEventListener('click', () => this.setWork(false));
     $('hm-equip-close').addEventListener('click', () => this.setEquip(false));
     for (const id of ['hm-work', 'hm-equip']) $(id).addEventListener('click', (e) => e.stopPropagation());
+    this.wkTab = 'weapons'; this.wkSel = null;
+    el.querySelectorAll('.wk-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.wkTab = b.dataset.wt; this.wkSel = null; this.renderWork(); }));
     // Solo Raid opens the world map (worldmap.js): pick an area there (Night Raid is toggled there too) to begin
     $('hm-solo').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -669,49 +677,119 @@ export class Hermitage {
     if (v) { this.setStash(false); this.setJuke(false); this.setGuide?.(false); this.setEquip?.(false); this.renderWork(); this.game.audio.play('uiTick', 1); }
     $('hm-work')?.classList.toggle('hidden', !v);
   }
-  // a recipe as rows of material icons, have / need
-  recipeEl(recipe) {
-    const d = this.game.accounts.data, R = recipeState(d, recipe), el = document.createElement('div'); el.className = 'wb-recipe';
-    for (const r of R.rows) {
-      const row = document.createElement('div'); row.className = 'wb-mat' + (r.have >= r.need ? ' ok' : '');
-      row.append(iconEl(r.id, 1.5), Object.assign(document.createElement('span'), { textContent: `${r.have}/${r.need}` }));
-      row.title = r.id.replace(/_/g, ' ');
-      el.append(row);
+  // where a material can be found: the open areas whose drums, chests or hoard can roll its rarity (else the harder
+  // areas still to come)
+  whereFound(id) {
+    const it = ITEMS[id], out = [];
+    for (const A of Object.values(AREAS)) {
+      if (A.region !== it.region || !A.loot) continue;
+      const src = [A.loot.drum?.[it.rarity] && 'supply drums', A.loot.chest?.[it.rarity] && 'chests', A.loot.hoard?.[it.rarity] && 'the hoard'].filter(Boolean);
+      if (src.length) out.push(`${src.join(', ')} in ${A.name}`);
     }
-    return { el, ok: R.ok };
+    return out.length ? out.join('; ') : `the harder areas of ${REGIONS.find((r) => r.id === it.region)?.name || 'its region'} (not open yet)`;
+  }
+  // the floating card for a material under the mouse
+  showTip(id, e) {
+    const it = ITEMS[id], R = RARITY[it.rarity], tip = $('wk-tip'), d = this.game.accounts.data;
+    tip.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${R.name} material · ${REGIONS.find((r) => r.id === it.region)?.name || ''}</span><i>${it.desc}</i>`
+      + `<em>In your stash: ${d?.items?.[id] || 0} · worth ◆ ${itemValue(id)} each</em><u>Found in ${this.whereFound(id)}.</u>`;
+    tip.classList.remove('hidden');
+    const box = $('hm-work').getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(box.width - w - 8, e.clientX - box.left + 14) + 'px';
+    tip.style.top = Math.min(box.height - h - 8, e.clientY - box.top + 14) + 'px';
+  }
+  // ---------- the workbench: a grid of this character's weapons (or evolutions), the one hovered or picked in detail
+  setWork(v) {
+    this.workOpen = v;
+    if (v) { this.setStash(false); this.setJuke(false); this.setGuide?.(false); this.setEquip?.(false); this.renderWork(); this.game.audio.play('uiTick', 1); }
+    $('hm-work')?.classList.toggle('hidden', !v);
+    $('hm-hint')?.style.setProperty('visibility', v ? 'hidden' : ''); // (the scene's hint would show through its header)
+  }
+  // what the grid shows: { key, type: 'weapon' | 'evo' | 'unknown', id, region }
+  workEntries() {
+    const kind = this.kind;
+    if (this.wkTab === 'evos') return weaponsOf(kind).map((id) => ({ key: 'e:' + id, type: 'evo', id }));
+    return [{ key: 'w:' + BASE_WEAPON[kind], type: 'weapon', id: BASE_WEAPON[kind] },
+      ...WEAPON_REGIONS.map((R) => { const id = weaponFor(kind, R.id); return id ? { key: 'w:' + id, type: 'weapon', id } : { key: 'u:' + R.id, type: 'unknown', region: R }; })];
   }
   renderWork() {
-    const g = this.game, d = g.accounts.data, kind = this.kind, body = $('hm-work-body');
+    const d = this.game.accounts.data, grid = $('wk-grid');
     if (!d) return;
-    body.replaceChildren();
-    const head = (t) => body.append(Object.assign(document.createElement('div'), { className: 'wb-h', textContent: t }));
-    const card = (icon, title, sub, extra) => {
-      const c = document.createElement('div'); c.className = 'wb-card';
-      const top = document.createElement('div'); top.className = 'wb-top';
-      top.append(icon, Object.assign(document.createElement('div'), { className: 'wb-t', innerHTML: `<b>${title}</b><span>${sub}</span>` }));
-      c.append(top); if (extra) c.append(...[].concat(extra)); body.append(c); return c;
-    };
-    const button = (label, ok, fn) => { const b = document.createElement('button'); b.className = 'mini-btn wb-go'; b.textContent = label; b.disabled = !ok; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; };
-    head('Weapons');
-    const base = BASE_WEAPON[kind];
-    card(weaponIcon(base, 2), WEAPONS[base].name, 'Your starting weapon · owned');
-    for (const R of WEAPON_REGIONS) {
-      const id = weaponFor(kind, R.id);
-      if (!id) { const box = document.createElement('div'); box.className = 'wb-unknown'; box.textContent = '?'; card(box, 'Unknown', `A weapon of ${R.name} · not yet in the game`); continue; }
-      const W = WEAPONS[id];
-      if (ownsWeapon(d, id)) { card(weaponIcon(id, 2), W.name, `${R.name} · owned`); continue; }
-      const rec = this.recipeEl(W.recipe);
-      card(weaponIcon(id, 2, 'dark'), W.name, `${R.name} · not yet made`, [Object.assign(document.createElement('div'), { className: 'wb-d', textContent: W.desc }), rec.el,
-        button('Craft', rec.ok, () => { spend(d, W.recipe); armoury(d).owned[id] = 1; g.accounts.save(); g.ui.toast(`${W.name.toUpperCase()} FORGED · equip it at the equipment stand`, 3); g.audio.play('clang', 0.8); this.renderWork(); })]);
+    document.querySelectorAll('#hm-work .wk-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.wt === this.wkTab));
+    const list = this.workEntries();
+    if (!list.some((x) => x.key === this.wkSel)) this.wkSel = list[0]?.key;
+    grid.replaceChildren(...list.map((x) => {
+      const t = document.createElement('button'); t.className = 'wk-tile' + (x.key === this.wkSel ? ' sel' : '');
+      let icon, name, badge = '';
+      if (x.type === 'unknown') { icon = Object.assign(document.createElement('div'), { className: 'wk-q', textContent: '?' }); name = 'Unknown'; t.classList.add('dim'); }
+      else {
+        const W = WEAPONS[x.id], have = x.type === 'weapon' ? ownsWeapon(d, x.id) : hasEvo(d, W.evo.id);
+        icon = weaponIcon(x.id, 4, have ? null : 'dark'); name = x.type === 'weapon' ? W.name : W.evo.name;
+        if (have) badge = '<span class="wk-ok">✓</span>';
+        else if (recipeState(d, x.type === 'weapon' ? W.recipe : W.evo.recipe).ok && (x.type === 'weapon' || ownsWeapon(d, x.id))) badge = '<span class="wk-can">!</span>';
+      }
+      t.append(icon); t.insertAdjacentHTML('beforeend', `<span class="wk-n">${name}</span>${badge}`);
+      // hovering a tile picks it (the detail stays on it while you move over to read it)
+      const pick = () => { if (this.wkSel === x.key) return; this.wkSel = x.key; grid.querySelectorAll('.wk-tile').forEach((y) => y.classList.toggle('sel', y === t)); this.renderDetail(x); };
+      t.addEventListener('pointerenter', pick);
+      t.addEventListener('click', (e) => { e.stopPropagation(); pick(); });
+      return t;
+    }));
+    this.renderDetail(list.find((x) => x.key === this.wkSel));
+  }
+  // the right side: everything about one weapon or evolution, its recipe, and the button to make it
+  renderDetail(x) {
+    const g = this.game, d = g.accounts.data, box = $('wk-detail'), kind = this.kind;
+    box.replaceChildren(); box.scrollTop = 0; $('wk-tip').classList.add('hidden');
+    if (!x) return;
+    const add = (html, cls = '') => { const e = document.createElement('div'); if (cls) e.className = cls; e.innerHTML = html; box.append(e); return e; };
+    if (x.type === 'unknown') {
+      const head = add('', 'wk-head'); head.append(Object.assign(document.createElement('div'), { className: 'wk-q big', textContent: '?' }));
+      head.insertAdjacentHTML('beforeend', `<div><h3>Unknown weapon</h3><span>${x.region.name}</span></div>`);
+      add(`A weapon of ${x.region.name}. That region isn't in the game yet; when it is, its materials will forge a new weapon here.`, 'wk-p');
+      return;
     }
-    head('Evolutions');
-    for (const id of weaponsOf(kind).filter((w) => ownsWeapon(d, w))) {
-      const W = WEAPONS[id], E = W.evo;
-      if (hasEvo(d, E.id)) { card(weaponIcon(id, 2), E.name, `${W.short} evolution · built (switch it on at the equipment stand)`, Object.assign(document.createElement('div'), { className: 'wb-d', textContent: E.desc })); continue; }
-      const rec = this.recipeEl(E.recipe);
-      card(weaponIcon(id, 2, 'dark'), E.name, `${W.short} evolution · not yet built`, [Object.assign(document.createElement('div'), { className: 'wb-d', textContent: E.desc }), rec.el,
-        button('Build', rec.ok, () => { spend(d, E.recipe); const A = armoury(d); A.evos[E.id] = 1; A.evoOn[id] = 1; g.accounts.save(); g.ui.toast(`${E.name.toUpperCase()} BUILT`, 3); g.audio.play('clang', 0.8); this.renderWork(); })]);
+    const W = WEAPONS[x.id], evo = x.type === 'evo', E = W.evo, R = W.region ? REGIONS.find((r) => r.id === W.region)?.name : null;
+    const have = evo ? hasEvo(d, E.id) : ownsWeapon(d, x.id), recipe = evo ? E.recipe : W.recipe;
+    const head = add('', 'wk-head'); head.append(weaponIcon(x.id, 5, have ? null : 'dark'));
+    head.insertAdjacentHTML('beforeend', `<div><h3>${evo ? E.name : W.name}</h3><span>${evo ? `Evolution of the ${W.name}` : R ? `${R} · crafted weapon` : 'Starting weapon'} · ${have ? '<b class="wk-yes">Owned</b>' : '<b class="wk-no">Not yet made</b>'}</span></div>`);
+    if (evo) {
+      add(E.desc, 'wk-p');
+      add(`<b>Only with the ${W.name}.</b> One evolution is active at a time; switch it on or off at the equipment stand.`, 'wk-p dim');
+    } else {
+      add(W.desc, 'wk-p');
+      add(`<h4>Special · ${W.special.name}</h4>${W.special.desc}`, 'wk-sec');
+      add(`<h4>Evolution · ${E.name}</h4>${E.desc}${hasEvo(d, E.id) ? ' <b class="wk-yes">(built)</b>' : ''}`, 'wk-sec');
+      const combos = (WEAPON_SETS[x.id]?.combos || COMBOS[kind] || []).map((c) => `<li><b>${c.name}</b>: ${c.desc}</li>`).join('');
+      add(`<h4>Combos</h4><ul>${combos}</ul>`, 'wk-sec');
     }
+    if (!recipe || have) { if (!recipe) add('Every character starts with it.', 'wk-p dim'); return; }
+    // the recipe, a row per material: hover one for its card
+    const R2 = recipeState(d, recipe), rec = add('<h4>Recipe</h4>', 'wk-sec wk-rec');
+    for (const r of R2.rows) {
+      const it = ITEMS[r.id], ok = r.have >= r.need, row = document.createElement('div'); row.className = 'wk-mat' + (ok ? ' ok' : '');
+      row.append(iconEl(r.id, 2));
+      row.insertAdjacentHTML('beforeend', `<span class="wk-mn" style="color:${RARITY[it.rarity].color}">${it.name}</span><span class="wk-mc">${r.have} / ${r.need}</span><span class="wk-mk">${ok ? '✓' : '✗'}</span>`);
+      row.addEventListener('pointermove', (e) => this.showTip(r.id, e));
+      row.addEventListener('pointerleave', () => $('wk-tip').classList.add('hidden'));
+      row.addEventListener('click', (e) => { e.stopPropagation(); this.showTip(r.id, e); });
+      rec.append(row);
+    }
+    const missing = R2.rows.reduce((s2, r) => s2 + Math.max(0, r.need - r.have), 0), needWeapon = evo && !ownsWeapon(d, x.id);
+    const b = document.createElement('button'); b.className = 'menu-btn primary wk-go';
+    b.textContent = needWeapon ? `Forge the ${W.short} first` : missing ? `Missing ${missing} material${missing > 1 ? 's' : ''}` : evo ? 'Build' : 'Forge';
+    b.disabled = needWeapon || !!missing;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (b.disabled) return;
+      spend(d, recipe);
+      const A = armoury(d);
+      if (evo) { A.evos[E.id] = 1; A.evoOn[x.id] = 1; } else A.owned[x.id] = 1;
+      g.accounts.save(); g.audio.play('clang', 0.8);
+      g.ui.toast(evo ? `${E.name.toUpperCase()} BUILT` : `${W.name.toUpperCase()} FORGED · equip it at the equipment stand`, 3);
+      this.renderWork();
+    });
+    box.append(b);
   }
 
   // ---------- the equipment stand: equip a weapon you own, switch its evolution on or off ----------

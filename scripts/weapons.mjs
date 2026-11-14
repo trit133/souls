@@ -81,14 +81,22 @@ const bench = await page.evaluate(() => {
   // enough materials for the greatsword and its evolution
   d.items = { scrap_iron: 40, spent_casings: 20, ash_rag: 20, copper_coil: 10, promethium_residue: 10, cracked_lens: 10, servo_motor: 6, purity_seal: 6, augury_shard: 4, oracle_core: 2 };
   g.hermitage.setKind('knight', true); g.hermitage.setWork(true);
-  const cards = [...document.querySelectorAll('#hm-work-body .wb-card')];
-  res.menu = cards.map((c) => c.querySelector('.wb-t b').textContent + (c.querySelector('.wb-unknown') ? ' [?]' : '') + (c.querySelector('.wb-go') ? (c.querySelector('.wb-go').disabled ? ' [locked]' : ' [can craft]') : ''));
+  // the grid's tiles: an owned one ticked, an unmade one dark (! when it can be made), the regions to come '?'
+  res.menu = [...document.querySelectorAll('#wk-grid .wk-tile')].map((t) => t.querySelector('.wk-n').textContent + (t.querySelector('.wk-q') ? ' [?]' : '') + (t.querySelector('.wk-ok') ? ' [owned]' : '') + (t.querySelector('.wk-can') ? ' [can forge]' : ''));
   return res;
 });
 await page.screenshot({ path: '/tmp/wpn-workbench.png' });
-await page.click('#hm-work-body .wb-go:not([disabled])'); await page.waitForTimeout(200); // craft the slab
-const crafted = await page.evaluate(() => ({ owned: !!game.accounts.data.weapons.owned.greatsword, iron: game.accounts.data.items.scrap_iron, menu: [...document.querySelectorAll('#hm-work-body .wb-card .wb-t b')].map((x) => x.textContent) }));
-await page.click('#hm-work-body .wb-go:not([disabled])'); await page.waitForTimeout(200); // build Beast Within
+// hover the slab's tile: the detail fills in; hover a recipe row: the material's card; then forge it
+await page.hover('#wk-grid .wk-tile:nth-child(2)'); await page.waitForTimeout(150);
+const detail = await page.evaluate(() => ({ title: document.querySelector('#wk-detail h3')?.textContent, sections: [...document.querySelectorAll('#wk-detail h4')].map((h) => h.textContent), rows: document.querySelectorAll('#wk-detail .wk-mat').length, button: document.querySelector('#wk-detail .wk-go')?.textContent }));
+await page.hover('#wk-detail .wk-mat:last-of-type'); await page.waitForTimeout(150);
+detail.tip = await page.evaluate(() => !document.getElementById('wk-tip').classList.contains('hidden') && document.getElementById('wk-tip').innerText.replace(/\n/g, ' | '));
+await page.screenshot({ path: '/tmp/wpn-workbench.png' });
+await page.click('#wk-detail .wk-go'); await page.waitForTimeout(200); // forge the slab (still the one shown)
+const crafted = await page.evaluate(() => ({ owned: !!game.accounts.data.weapons.owned.greatsword, iron: game.accounts.data.items.scrap_iron, menu: [...document.querySelectorAll('#wk-grid .wk-tile .wk-n')].map((x) => x.textContent) }));
+await page.click('.wk-tabs [data-wt=evos]'); await page.waitForTimeout(100);
+await page.click('#wk-grid .wk-tile:nth-child(2)'); await page.click('#wk-detail .wk-go'); await page.waitForTimeout(200); // build Beast Within
+await page.screenshot({ path: '/tmp/wpn-workbench-evos.png' });
 const built = await page.evaluate(() => ({ berserk: !!game.accounts.data.weapons.evos.berserk }));
 await page.evaluate(() => game.hermitage.setEquip(true)); await page.waitForTimeout(200);
 await page.screenshot({ path: '/tmp/wpn-equip.png' });
@@ -99,13 +107,14 @@ await page.click('#hm-equip-body .wb-card.on .wb-evo .wb-go'); await page.waitFo
 const evoOff = await page.evaluate(() => game.loadoutFor('knight'));
 const wardrobe = await page.evaluate(() => { game.hermitage.setEquip(false); return game.skinMenu.slots('knight').map((s) => s.id); });
 await b.close();
-const out = { ...mech, bench, crafted, built, equipped, evoOff, wardrobe };
+const out = { ...mech, bench, detail, crafted, built, equipped, evoOff, wardrobe };
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(10), JSON.stringify(v));
 const ok = ['greatsword', 'wristblade', 'psystaff'].every((w) => out[w].moves.length >= 3 && out[w].finisher && out[w].model)
   && out.guard.blocked === 'block' && out.guard.lostOf100 <= 30 && out.guard.rage.t > 7 && !out.guard.staggeredInRage
   && out.dash.inDash && out.dash.untouchable && out.dash.moved > 2.5 && out.dash.cd > 2 && !out.dash.again && out.dash.veil.shade && out.dash.veil.hunterGivesUp && out.dash.backstabX >= 2.9
   && out.sigil.placed && out.sigil.storm && out.sigil.slow === 0.5 && out.sigil.shotBroke && out.sigil.zapped && out.sigil.gone
-  && out.bench.migrated.aegis && out.bench.menu.some((m) => m.includes('[?]')) && out.crafted.owned && out.built.berserk && out.equipped.load.weapon === 'greatsword' && out.equipped.load.evo === 'berserk'
+  && out.bench.migrated.aegis && out.bench.menu.some((m) => m.includes('[?]')) && out.bench.menu.some((m) => m.includes('[can forge]'))
+  && out.detail.sections.includes('Recipe') && out.detail.rows >= 6 && out.detail.button === 'Forge' && out.detail.tip && out.detail.tip.includes('Found in') && out.crafted.owned && out.built.berserk && out.equipped.load.weapon === 'greatsword' && out.equipped.load.evo === 'berserk'
   && !out.equipped.rigHasShield && out.evoOff.evo === null && out.wardrobe.includes('greatsword') && !out.wardrobe.includes('shield');
 console.log(ok ? 'weapons work' : 'WEAPONS PROBLEM');
 console.log(errs.length ? 'ERRORS\n' + errs.join('\n') : 'OK no errors');
