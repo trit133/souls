@@ -16,46 +16,56 @@ const GS_HIGH_L = { armR: [-1.75, 0, 0.9], foreR: [-0.5, 0, 0], handR: [1.2, 0, 
 const GS_SWEEP_R = { armR: [-1.35, 0, 0.15], foreR: [-0.45, 0, 0], handR: [1.3, 0, 0], armL: [-1.2, 0, -0.8], foreL: [-0.5, 0, 0], handL: [1.2, 0, 0] };
 const GS_OVER = { armR: [-3.0, 0, 0.4], foreR: [-0.8, 0, 0], handR: [0.7, 0, 0], armL: [-2.9, 0, 0.15], foreL: [-0.9, 0, 0], handL: [0.7, 0, 0] };
 const GS_DOWN = { armR: [-0.75, 0, 0.1], foreR: [-0.05, 0, 0], handR: [1.45, 0, 0], armL: [-0.8, 0, 0.25], foreL: [-0.1, 0, 0], handL: [1.4, 0, 0] };
-// the slab resting on the right shoulder (its stance, anims.js slab) and low on the ground in front, after a slam
+// the slab resting on the right shoulder (its stance, anims.js slab)
 const GS_SHOULDER = { armR: [-0.9, 0, -0.35], foreR: [-1.9, 0, 0], handR: [0.3, 0, 0], armL: [-1.2, 0, -0.3], foreL: [-1.3, 0, 0], handL: [0.6, 0, 0] };
-const GS_LOW_R = { armR: [-0.55, 0, 0.1], foreR: [-0.2, 0, 0], handR: [1.5, 0, 0], armL: [-0.7, 0, -0.25], foreL: [-0.35, 0, 0], handL: [1.4, 0, 0] };
 // the second swing, before it was made slower and heavier: Struggler's rising cut keeps this shape (gRise)
 const G2_QUICK = { dur: 0.95, cost: 22, next: 'g3', combo: [0.42, 0.95], cancel: 0.56, track: 0.22, trail: [0.32, 0.5], sfx: [0.32, 'heavySwing'], hand: 'R', hits: [{ t0: 0.34, t1: 0.5, range: 3.2, arc: 3.4, dmg: 38, poise: 30 }], move: [[0.22, 0.48, 1.0]], onHitShake: 0.25 };
+// the light chain's key poses, each solved for where the right hand is and which way the blade points (the left
+// hand closes on the hilt by itself: models.js solveGrip); character frame: +z ahead, +x his left
+const GS_HI_RIGHT = { armR: [-1.31, 0.15, 0.23], foreR: [-1.72, 0, 0], handR: [1.02, 0, 0.57] };  // up over the right shoulder, the point back
+const GS_LOW_MID = { armR: [-0.02, 0.29, 0.98], foreR: [-1.74, 0, 0], handR: [1.41, 0, -0.84] };  // low in front, the point down at the middle
+const GS_LOW_LEFT = { armR: [0.12, -0.53, 1.2], foreR: [0.02, 0, 0], handR: [1.83, 0, -0.04] };   // drawn back by the left hip, flat
+const GS_FLAT_FRONT = { armR: [-0.29, 0.01, 0.82], foreR: [-1.48, 0, 0], handR: [1.47, 0, -0.37] }; // waist high, the blade straight out
+const GS_FLAT_RIGHT = { armR: [-0.2, -0.31, 0.89], foreR: [-1.32, 0, 0], handR: [1.44, 0, 0.42] };  // carried through, out to the right
+const GS_OVERHEAD = { armR: [-1.95, 0.08, 0.38], foreR: [-0.83, 0, 0], handR: [0.61, 0, 0.85] };    // raised over the head, the point back
+const GS_CHOP_DOWN = { armR: [-0.11, 0.54, 1.07], foreR: [-2.11, 0, 0], handR: [1.52, 0, -0.61] };  // down the middle, the point to the floor
 export const GREAT_ATTACKS = {
-  // heaved up off the shoulder and slammed down across the front, the point ending near the ground
+  // an angled chop: up over the right shoulder, then down and in across the body to the middle, the point low
   g1: {
     dur: 0.95, cost: 22, next: 'g2', combo: [0.42, 0.95], cancel: 0.56, track: 0.22, trail: [0.32, 0.5], sfx: [0.32, 'heavySwing'], hand: 'R',
     keys: [
       [0.12, { torso: [-0.05, -0.35, 0], ...GS_SHOULDER, legL: [-0.2, 0, 0], legR: [0.25, 0, 0], by: -0.06 }],
-      [0.3, { torso: [-0.4, -0.45, 0], head: [-0.15, 0.3, 0], ...GS_OVER, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], by: -0.04 }],
-      [0.46, { torso: [0.9, 0.4, 0], head: [0.2, -0.2, 0], ...GS_DOWN, armR: [-0.7, 0, 0.35], ...crouch(1.25) }],
-      [0.78, { torso: [0.75, 0.3, 0], ...GS_DOWN, armR: [-0.65, 0, 0.35], ...crouch(1.1) }],
+      [0.27, { torso: [-0.3, -0.6, 0], head: [-0.1, 0.35, 0], ...GS_HI_RIGHT, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.06 }],
+      [0.42, { torso: [0.85, 0.35, 0], head: [0.15, -0.2, 0], ...GS_LOW_MID, ...crouch(1.15), by: -0.3 }],
+      [0.78, { torso: [0.75, 0.3, 0], ...GS_LOW_MID, ...crouch(1.0), by: -0.26 }],
     ],
     hits: [{ t0: 0.34, t1: 0.5, range: 3.2, arc: 3.4, dmg: 36, poise: 30 }],
     move: [[0.22, 0.48, 1.0]], onHitShake: 0.25,
   },
-  // from the ground: the weight drags him down, he sinks and hauls it round low to the right, then heaves it up and
-  // across, stumbling a step after it. Slow, and it hits harder for it
+  // back the other way, flat: the blade's weight drags him down, he draws it back by his left hip with both hands
+  // and hauls it level across to the right, stumbling a step after it. Slow, and it hits harder for it
   g2: {
     dur: 1.25, cost: 24, next: 'g3', combo: [0.68, 1.25], cancel: 0.82, track: 0.4, trail: [0.54, 0.74], sfx: [0.54, 'heavySwing'], hand: 'R',
     keys: [
-      [0.2, { torso: [0.8, 0.15, 0], head: [0.1, -0.1, 0], ...GS_DOWN, ...crouch(1.3), by: -0.4 }],
-      [0.44, { torso: [0.55, -0.85, 0.1], head: [0.1, 0.5, 0], ...GS_LOW_R, legL: [-0.85, 0, 0.1], legR: [0.6, 0, -0.1], shinL: [0.6, 0, 0], shinR: [0.65, 0, 0], by: -0.4 }],
-      [0.62, { torso: [0.3, 0.95, 0], head: [0, -0.4, 0], ...GS_SWEEP_L, ...lunge(1.35), by: -0.2 }],
-      [0.76, { torso: [0.35, 1.1, 0], head: [0, -0.45, 0], ...GS_SWEEP_L, armR: [-1.15, 0, 0.9], ...lunge(1.5), by: -0.26 }],
-      [1.05, { torso: [0.4, 0.75, 0], ...GS_SWEEP_L, armR: [-0.95, 0, 0.7], ...lunge(1.1), by: -0.16 }],
+      [0.04, { torso: [0.85, 0.35, 0], ...GS_LOW_MID, ...crouch(1.15), by: -0.3 }], // (where the chop left it)
+      [0.2, { torso: [0.9, 0.4, 0], head: [0.1, -0.2, 0], ...GS_LOW_MID, ...crouch(1.3), by: -0.38 }],
+      [0.38, { torso: [0.5, 0.75, 0], head: [0, -0.45, 0], ...GS_LOW_LEFT, legL: [0.45, 0, 0.1], legR: [-0.6, 0, -0.1], shinL: [0.55, 0, 0], shinR: [0.6, 0, 0], by: -0.35 }],
+      [0.54, { torso: [0.3, 0, 0], ...GS_FLAT_FRONT, ...lunge(1.2), by: -0.22 }],
+      [0.66, { torso: [0.3, -0.95, 0], head: [0, 0.45, 0], ...GS_FLAT_RIGHT, ...lunge(1.45), by: -0.24 }],
+      [1.05, { torso: [0.35, -0.75, 0], ...GS_FLAT_RIGHT, ...lunge(1.1), by: -0.16 }],
     ],
     hits: [{ t0: 0.56, t1: 0.74, range: 3.2, arc: 3.4, dmg: 54, poise: 42 }],
     move: [[0.46, 0.72, 1.2]], onHitShake: 0.45, heavyHit: true,
   },
-  // dragged back up onto the shoulder, then over the top and down again, burying the point
+  // and down: hauled up over the head and brought straight down the middle, burying the point
   g3: {
     dur: 1.05, cost: 26, next: 'g1', combo: [0.5, 1.05], cancel: 0.62, track: 0.3, trail: [0.38, 0.54], sfx: [0.38, 'heavySwing'], hand: 'R', armor: [0.2, 0.5],
     keys: [
-      [0.16, { torso: [0.1, -0.4, 0], ...GS_SHOULDER, legL: [-0.3, 0, 0], legR: [0.3, 0, 0], by: -0.1 }],
-      [0.34, { torso: [-0.4, -0.1, 0], head: [-0.15, 0, 0], ...GS_OVER, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], by: -0.12 }],
-      [0.5, { torso: [0.9, 0.05, 0], ...GS_DOWN, ...lunge(1.4), by: -0.4 }],
-      [0.85, { torso: [0.72, 0, 0], ...GS_DOWN, ...lunge(1.2), by: -0.32 }],
+      [0.04, { torso: [0.3, -0.85, 0], ...GS_FLAT_RIGHT, ...lunge(1.2), by: -0.18 }], // (where the pull left it)
+      [0.16, { torso: [0.05, -0.55, 0], ...GS_FLAT_RIGHT, legL: [-0.3, 0, 0], legR: [0.3, 0, 0], by: -0.12 }],
+      [0.34, { torso: [-0.4, 0, 0], head: [-0.15, 0, 0], ...GS_OVERHEAD, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], by: -0.08 }],
+      [0.5, { torso: [0.85, 0, 0], head: [0.2, 0, 0], ...GS_CHOP_DOWN, ...lunge(1.4), by: -0.38 }],
+      [0.85, { torso: [0.72, 0, 0], ...GS_CHOP_DOWN, ...lunge(1.2), by: -0.32 }],
     ],
     hits: [{ t0: 0.4, t1: 0.54, range: 3.4, arc: 1.3, dmg: 48, poise: 42 }],
     move: [[0.3, 0.5, 1.2]], onHitShake: 0.45, heavyHit: true,
