@@ -57,7 +57,7 @@ export const areaOpen = (A, data) => !!A?.open && !missingGems(A, data).length;
 export const REGIONS = [
   { id: 'r1', name: 'The Shattered March', open: true, x: 0.3, y: 0.62, color: '#c8642a',
     blurb: 'The border hab-wards, where the first of the future-forged armies broke.',
-    areas: [{ id: 'r1a1', x: 0.3, y: 0.66 }, { id: 'r1a2', x: 0.56, y: 0.44 }, { id: 'r1a3', x: 0.78, y: 0.24 }, { id: 'r1f', x: 0.88, y: 0.62 }] },
+    areas: [{ id: 'r1a1', x: 0.3, y: 0.66 }, { id: 'r1a2', x: 0.56, y: 0.44 }, { id: 'r1a3', x: 0.78, y: 0.24 }, { id: 'r1f', x: 0.9, y: 0.44 }] },
   { id: 'r2', name: 'The Glass Wastes', open: false, x: 0.62, y: 0.7, color: '#7ab0c0', blurb: 'Sealed.' },
   { id: 'r3', name: 'The Forge Reaches', open: false, x: 0.74, y: 0.36, color: '#d8402a', blurb: 'Sealed.' },
   { id: 'r4', name: 'The Drowned Choir', open: false, x: 0.38, y: 0.28, color: '#5a8a6a', blurb: 'Sealed.' },

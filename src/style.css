@@ -1101,3 +1101,5 @@ body.pt-on #hm-stash, body.pt-on #hm-juke, body.pt-on #hm-work { top: var(--pt-b
 .wk-tip.hidden { display: none; }
 .wk-tip b { font: bold 14px Georgia, serif; } .wk-tip i { color: #a89878; } .wk-tip em { color: #e8c25a; font-style: normal; } .wk-tip u { text-decoration: none; color: #9ac0a0; }
 @media (max-width: 760px), (max-height: 450px) { #hm-work.wk { top: 48px; bottom: 64px; } .wk-main { grid-template-columns: 90px minmax(0, 1fr) minmax(0, 1.2fr); } .wk-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 100px; } .wk-tile .item-ic { width: 40px !important; height: 40px !important; } }
+.wm-pin.unknown .wm-lab { font: bold 22px Georgia, serif; color: #c4281e; text-shadow: 0 0 4px #000, 0 1px 0 #000; }
+.wm-pin.unknown .wm-dot { display: none; }
