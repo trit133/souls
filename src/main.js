@@ -2265,14 +2265,22 @@ class Game {
   toggleLock() {
     const p = this.player;
     if (p.lock) { p.lock = null; return; }
+    let best = null, bs = Infinity;
+    // with a mouse: the enemy nearest the cursor on screen; touch: the nearest one the way you're heading
+    const m = this.pings.mouse, mouse = m.seen && !this.input.isPhone && this.input.lastDevice !== 'touch';
     const mv = this.input.move();
     const aim = Math.hypot(mv.x, mv.y) > 0.2 ? Math.atan2(mv.x, -mv.y) : p.yaw;
-    let best = null, bs = Infinity;
+    const v = new THREE.Vector3();
     for (const e of this.enemiesAll()) {
       if (!e.alive) continue;
       const d = p.distTo(e);
       if (d > 16) continue;
-      const s = d + Math.abs(angDiff(aim, p.yawTo(e.pos))) * 4;
+      let s;
+      if (mouse) {
+        v.set(e.pos.x, 1.1 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+        if (v.z > 1) continue;
+        s = Math.hypot((v.x * 0.5 + 0.5) * innerWidth - m.x, (-v.y * 0.5 + 0.5) * innerHeight - m.y);
+      } else s = d + Math.abs(angDiff(aim, p.yawTo(e.pos))) * 4;
       if (s < bs) { bs = s; best = e; }
     }
     p.lock = best;
