@@ -41,7 +41,7 @@ export const WEAPONS = {
   psystaff: { kind: 'mage', region: 'r1', name: 'Psy-Staff', short: 'Staff', icon: 'w_psystaff', slots: ['staff'],
     desc: 'A long staff with a psychic focus at its head, fought with like a quarterstaff. Its strikes charge your mana; its heavy fires a violet laser down its length.',
     recipe: { scrap_iron: 12, copper_coil: 6, ash_rag: 6, spent_casings: 4, cracked_lens: 4, servo_motor: 2, augury_shard: 2, oracle_core: 1 },
-    special: { name: 'Warding Sigil', desc: 'A wide circle at your feet for 6 s (35 mana): everything inside when you lay it freezes solid for 5 s (a boss or mini boss isn't frozen but chilled: it moves and swings at a crawl for 4 s); 10 s before you can lay another; enemies in it are slowed and their shots break on its edge.' },
+    special: { name: 'Warding Sigil', desc: 'A wide circle at your feet for 6 s (35 mana): everything inside when you lay it freezes solid for 5 s (a boss or mini boss is not frozen but chilled: it moves and swings at a crawl for 4 s); 10 s before you can lay another; enemies in it are slowed and their shots break on its edge.' },
     evo: { id: 'stormSigil', name: 'Storm Sigil', desc: 'Your sigil calls lightning down on an enemy inside it every 0.6 s.',
       recipe: { copper_coil: 6, scrap_iron: 6, cracked_lens: 4, servo_motor: 3, augury_shard: 1 } } },
 };
