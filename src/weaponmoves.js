@@ -267,7 +267,10 @@ const ST_SWEEP_L = { armR: [-1.15, 0, 0.75], foreR: [-0.2, 0, 0], handR: [1.4, 0
 const ST_LOW_L = { armR: [-0.65, 0, 0.6], foreR: [-0.3, 0, 0], handR: [1.6, 0, 0] };
 const ST_SWEEP_R = { armR: [-1.9, 0, -0.1], foreR: [-0.4, 0, 0], handR: [0.7, 0, 0], armL: [-1.2, 0, -0.6], foreL: [-0.7, 0, 0], handL: [1.1, 0, 0] };
 const ST_THRUST = { armR: [-1.55, 0, 0.05], foreR: [0, 0, 0], handR: [1.55, 0, 0], armL: [-1.3, 0, 0.3], foreL: [-0.6, 0, 0], handL: [1.3, 0, 0] };
-const ST_LEVEL = { armR: [-1.35, 0, -0.15], foreR: [-0.35, 0, 0], handR: [1.7, 0, 0] }; // the staff levelled at chest height, aimed down its length
+// the staff levelled at chest height, pointing straight ahead down her line of sight (solved for the hand's place and
+// the staff's direction with the torso turned as in the heavy's keys), and the recoil as it fires
+const ST_LEVEL = { armR: [-0.16, 0.11, 0.7], foreR: [-1.8, 0, 0], handR: [2.02, 0, 0.95] };
+const ST_RECOIL = { armR: [-0.08, -0.01, 0.83], foreR: [-1.78, 0, 0], handR: [2.09, 0, -0.1] };
 export const STAFF_ATTACKS = {
   t1: {
     dur: 0.6, cost: 14, next: 't2', combo: [0.24, 0.6], cancel: 0.32, track: 0.12, trail: [0.12, 0.26], sfx: [0.12, 'swing'], hand: 'R',
@@ -293,13 +296,20 @@ export const STAFF_ATTACKS = {
   // heavy: Arc Lash, the staff levelled at the target and a violet laser fired down its length (10 mana)
   heavy: {
     dur: 0.7, cost: 12, mana: 10, next: 't1', combo: [0.36, 0.7], cancel: 0.4, track: 0.2, sfx: [0.24, 'fire'], hand: 'R',
-    keys: [[0.18, { torso: [0.05, -0.35, 0], head: [0.1, 0.3, 0], ...ST_LEVEL, legL: [-0.4, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.08 }],
-      [0.28, { torso: [-0.15, -0.3, 0], head: [0.05, 0.3, 0], ...ST_LEVEL, armR: [-1.2, 0, -0.15], foreR: [-0.5, 0, 0], legL: [-0.3, 0, 0], legR: [0.45, 0, 0], shinR: [0.4, 0, 0], by: -0.12 }],
+    keys: [[0.18, { torso: [0.05, -0.25, 0], head: [0.1, 0.25, 0], ...ST_LEVEL, legL: [-0.4, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.08 }],
+      [0.28, { torso: [-0.15, -0.22, 0], head: [0.05, 0.22, 0], ...ST_RECOIL, legL: [-0.3, 0, 0], legR: [0.45, 0, 0], shinR: [0.4, 0, 0], by: -0.12 }],
       [0.56, { torso: [0.05, -0.25, 0], ...ST_LEVEL, legL: [-0.35, 0, 0], legR: [0.35, 0, 0], by: -0.08 }]],
     hits: [{ t0: 0.26, t1: 0.36, range: 4.2, arc: 1.3, dmg: 24, poise: 14 }], convert: { frost: 0.5 },
     onTime: [
       { t: 0.04, fn: (p, g) => g.vfx('psyCharge', g.myRef(), 0.24) },
-      { t: 0.27, fn: (p, g) => { const tip = p.rig.tip.getWorldPosition(p.pos.clone()); g.vfx('psyLaser', tip, p.fwd().clone(), 4.2 - Math.hypot(tip.x - p.pos.x, tip.z - p.pos.z) + 0.4); } },
+      // the beam runs from the focus to where it strikes: a locked enemy in reach (its chest), otherwise the ground
+      // at the attack's reach ahead (towards the locked enemy if it's further off)
+      { t: 0.27, fn: (p, g) => {
+        const tip = p.rig.tip.getWorldPosition(p.pos.clone()), L = p.lock?.alive ? p.lock : null, R = 4.2;
+        const to = L && p.distTo(L) <= R + (L.radius || 0) ? L.pos.clone().setY(1.1 * (L.rig?.root.scale.y || 1) + (L.y || 0))
+          : p.pos.clone().addScaledVector(L ? L.pos.clone().sub(p.pos).setY(0).normalize() : p.fwd(), R).setY(0.05);
+        g.vfx('psyLaser', tip, to);
+      } },
     ],
   },
 };

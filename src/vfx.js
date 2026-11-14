@@ -44,9 +44,10 @@ export const VFX = {
     g.pfx.play('frostNova', v3(pos)); g.audio[own ? 'play' : 'remote']('clang', 0.35); // (the cold that freezes what's inside)
   },
   // the Psy-Staff's lash: a violet laser out of the focus (main.js fireBeam), a flare where it ends
-  psyLaser(g, from, dir, len, own) {
-    const a = v3(from), d = v3(dir).setY(0).normalize(), end = a.clone().addScaledVector(d, len);
+  psyLaser(g, from, to, own) {
+    const a = v3(from), end = v3(to), d = end.clone().sub(a), len = d.length(); d.normalize();
     g.fireBeam(a, d, len, 0xb070ff);
+    if (end.y < 0.2) { g.fx.scorch(end.x, end.z, 0.5); g.fx.dust(end, 6, 0.5, [0.6, 0.45, 0.8]); } // (a scorch where it hits the floor)
     g.pfx.play('psyHit', end); g.fx.sparks(end, d, 14, [0.85, 0.6, 1]);
     g.fx.addShake(own ? 0.25 : 0.1); g.audio[own ? 'play' : 'remote']('fire', 0.5);
   },
