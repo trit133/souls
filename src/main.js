@@ -752,10 +752,13 @@ class Game {
       A.save();
       if (back) setTimeout(() => this.ui.toast(`SKILL TREES REBUILT · ◆ ${back} REFUNDED`, 4), 300);
     }
-    // every weapon unlocked for joeandre (asked for 2026-11-13: testing the region weapons before area 2 exists)
+    // every weapon and every evolution unlocked for joeandre (asked for 2026-11-13: testing them before area 2 exists)
     if (A.user === 'joeandre' && A.data) {
       const W = WeaponsLib.armoury(A.data); let added = false;
-      for (const [id, w] of Object.entries(WeaponsLib.WEAPONS)) if (w.region && !W.owned[id]) { W.owned[id] = 1; added = true; }
+      for (const [id, w] of Object.entries(WeaponsLib.WEAPONS)) {
+        if (w.region && !W.owned[id]) { W.owned[id] = 1; added = true; }
+        if (w.evo && !W.evos[w.evo.id]) { W.evos[w.evo.id] = 1; added = true; }
+      }
       if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
