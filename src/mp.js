@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
-import { locomotion, P, sample } from './anims.js';
+import { locomotion, P } from './anims.js';
 import { Trail } from './fx.js';
 import { CHARS, RIPOSTE, CRITS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
@@ -65,7 +65,7 @@ class RemotePlayer extends Actor {
       // extra swing sounds inside a move (the guard counter's backhand)
       if (P0.def.onTime) for (const ev of P0.def.onTime) if (ev.sfx && !P0['s' + ev.t] && P0.t >= ev.t) { P0['s' + ev.t] = true; this.game.audio.remote(ev.sfx); }
       if (P0.t >= P0.def.dur || st === 'hurt' || st === 'knockdown' || st === 'dead' || st === 'roll' || (P0.def.emote && P0.t > 0.4 && st !== 'emote')) this.play = null;
-      else { pose = sample(P0.def.keys, P0.t, base); trail = !!P0.def.trail && P0.t >= P0.def.trail[0] && P0.t <= P0.def.trail[1]; }
+      else { pose = this.swingPose(P0.def, P0.t, base, 28); trail = !!P0.def.trail && P0.t >= P0.def.trail[0] && P0.t <= P0.def.trail[1]; }
     }
     // the move's own body language: jump height, vanishing in the shroud, a reverse-grip dagger
     const D = this.play?.def, t = this.play?.t ?? 0;

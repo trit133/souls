@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { sample, locomotion, P } from './anims.js';
 
+const Z3 = [0, 0, 0];
 export const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -111,7 +112,7 @@ export class Actor {
     }
     const base = locomotion(style, this.phase = (this.phase || 0) + dt * (2.5 + (this.puppetSpeed || 0) * 1.6), (this.puppetSpeed || 0) / 4, false, this.game.time);
     let pose = base;
-    if (this.state === 'attack' && this.atk) pose = this.attackPose(base);
+    if (this.state === 'attack' && this.atk) pose = this.attackPose(base, 18);
     else if (this.state === 'dead') pose = P.dead;
     else if (this.state === 'sit' || this.state === 'dormant' || this.state === 'broken') pose = P.rest;
     else if (this.state === 'hurt' || this.state === 'parried' || this.state === 'riposted' || this.state === 'held') pose = { ...base, ...P.stagger };
@@ -205,7 +206,22 @@ export class Actor {
     return null;
   }
 
-  attackPose(base) { return sample(this.atk.def.keys, this.atk.t, base); }
+  // the pose of a swing (def) at time t, drawn with the rig damped at `rate`: sampled a little ahead (rig.lead) so the
+  // blade on screen keeps up with the hit, shaped by the weapon's heft (anims.js sample), the hips carrying part of
+  // the torso's twist and the head staying on the target where the pose doesn't turn it. All of it visual.
+  swingPose(def, t, base, rate = 14) {
+    if (def._strike === undefined) { const t0 = def.hits?.[0]?.t0, i = t0 == null ? -1 : def.keys.findIndex(([kt]) => kt > t0 - 1e-6); def._strike = i < 0 ? null : i; }
+    const pose = sample(def.keys, t + this.rig.lead(rate), base, { heft: this.rig.feel.heft, strike: def._strike });
+    if (this.rig.grip?.swing && pose.grip == null) pose.grip = 1; // (a two-hander: both hands on it through the swing)
+    const ty = pose.torso?.[1] || 0;
+    if (ty) {
+      pose.torso = [pose.torso[0], ty * 0.72, pose.torso[2]];
+      const hp = pose.hips || Z3; pose.hips = [hp[0], hp[1] + ty * 0.28, hp[2]];
+      const hd = pose.head || Z3; if (!hd[1]) pose.head = [hd[0], -ty * 0.4, hd[2]];
+    }
+    return pose;
+  }
+  attackPose(base, rate = 14) { return this.swingPose(this.atk.def, this.atk.t, base, rate); }
 
   inWindow(w, t = this.atk?.t) { return w && t >= w[0] && t <= w[1]; }
 

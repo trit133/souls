@@ -16,7 +16,29 @@ import { KITS } from './kits.js';
 export const JOINTS = ['hips', 'torso', 'head', 'armL', 'foreL', 'handL', 'armR', 'foreR', 'handR', 'legL', 'shinL', 'legR', 'shinR'];
 // upper-body joints get an underdamped follow-through on top of the pose damping
 const FOLLOW = new Set(['torso', 'head', 'armL', 'foreL', 'handL', 'armR', 'foreR', 'handR']);
-const FK = 320, FD = 19; // follow-through spring: stiffness, damping (a little overshoot)
+
+// How a weapon feels in the hands (all of it visual): heft 0..1 shapes the swing's curve (anims.js sample: the
+// wind-up hangs, the blade carries through the strike); fk / fd are the follow-through spring the upper body
+// chases the pose with (softer = lags and overshoots more, the way a heavy blade drags the arms); grip is where the
+// left hand holds the weapon (z along it from the right hand): always, through every swing (swing: true; the walk
+// carries it one-handed), or only when a pose asks (grip: 1); lead is how
+// much of the rig's lag the swing is sampled ahead by (a fast stab wants less than a slow sweep).
+export const FEEL = {
+  sword: { heft: 0.35, fk: 320, fd: 19, lead: 0.5, grip: { z: -0.15 } },
+  greatsword: { heft: 0.8, fk: 220, fd: 14, lead: 0.42, grip: { z: -0.22, swing: true } },
+  psystaff: { heft: 0.45, fk: 300, fd: 18, lead: 0.35, grip: { z: -0.45, always: true } },
+  wristblade: { heft: 0.05, fk: 460, fd: 25, lead: 0.25 },
+  daggers: { heft: 0.1, fk: 420, fd: 23, lead: 0.45 },
+  spellknife: { heft: 0.1, fk: 420, fd: 23, lead: 0.45 },
+  spear: { heft: 0.4, fk: 300, fd: 18, grip: { z: 0.55, always: true } },
+  maul: { heft: 1, fk: 190, fd: 13, grip: { z: 0.45, swing: true } },
+  club: { heft: 0.9, fk: 200, fd: 13 },
+  rusty: { heft: 0.45, fk: 300, fd: 18 },
+  axe: { heft: 0.7, fk: 240, fd: 15 },
+  bow: { heft: 0.2, fk: 360, fd: 20 },
+};
+const FEEL_DEFAULT = { heft: 0.3, fk: 320, fd: 19 };
+const LEAD = 0.45; // how much of that lag a swing is sampled ahead by, unless the weapon says (anim-strip.mjs times the swings)
 
 function mat(color, opts = {}) {
   return new THREE.MeshLambertMaterial({ color, flatShading: true, ...opts });
@@ -57,7 +79,8 @@ export class Rig {
     this.cur = {};
     this.fol = {};
     this.materials = [];
-    this.scalars = { by: 0, guard: 0 };
+    this.scalars = { by: 0, guard: 0, grip: 0 };
+    this.feel = FEEL_DEFAULT; this.grip = null;
     this.tip = new THREE.Object3D();
     this.base = new THREE.Object3D();
     this.tipL = null; this.baseL = null;
@@ -75,6 +98,9 @@ export class Rig {
   }
 
   m(color, opts) { const x = mat(color, opts); this.materials.push(x); return x; }
+
+  // the weapon in hand: its weight in the swing, its spring, where the left hand grips it (FEEL)
+  setFeel(kind) { const f = FEEL[kind] || FEEL_DEFAULT; this.feel = f; this.grip = f.grip || null; }
 
   spring(obj, o) { const s = new Spring(obj, o); this.springs.push(s); return s; }
 
@@ -111,17 +137,21 @@ export class Rig {
         const h = Math.min(dt, 1 / 30);
         for (let i = 0; i < 3; i++) {
           if (snap) { f.p[i] = c[i]; f.v[i] = 0; continue; }
-          f.v[i] += (FK * (c[i] - f.p[i]) - FD * f.v[i]) * h;
+          f.v[i] += (this.feel.fk * (c[i] - f.p[i]) - this.feel.fd * f.v[i]) * h;
           f.p[i] += f.v[i] * h;
         }
         o.rotation.set(f.p[0], f.p[1], f.p[2]);
       } else o.rotation.set(c[0], c[1], c[2]);
     }
     for (const s in this.scalars) {
-      const t = pose[s] ?? 0;
+      let t = pose[s] ?? 0;
+      if (s === 'grip') t = this.grip ? (this.grip.always ? 1 : Math.min(1, Math.max(0, t))) : 0;
+      else if (s === 'guard') t = Math.min(1, Math.max(0, t));
       this.scalars[s] += (t - this.scalars[s]) * k;
     }
     this.body.position.y = this.hipH + this.scalars.by;
+    this.gripW = 0;
+    if (this.scalars.grip > 0.01) this.solveGrip(this.scalars.grip);
     if (this.shield) {
       const g = this.scalars.guard;
       this.shield.position.set(lerp(0.44, 0.1, g), lerp(0.22, 0.32, g), lerp(0.02, 0.45, g));
@@ -194,12 +224,56 @@ export class Rig {
     this.fx?.(dt, speed);
   }
 
+  // how far the drawn pose trails the one asked for, at pose damping `rate`: the damping's own lag plus the
+  // follow-through spring's. A swing is sampled that much ahead so the blade is where the hit is when it lands.
+  lead(rate) { return Math.min(0.12, (1 / rate + this.feel.fd / this.feel.fk) * (globalThis.__leadScale ?? this.feel.lead ?? LEAD)); }
+
+  // Two hands on one weapon: the left arm is solved (two bones) so its hand closes on the grip point of the weapon
+  // in the right hand, the elbow kept out and down, blended in by w (0..1). Visual only, like everything here.
+  solveGrip(w) {
+    const T = this.j.torso, arm = this.j.armL, fore = this.j.foreL, hand = this.j.handL, wpn = this.wpnR;
+    if (!T || !arm || !fore || !wpn || !this.grip) return;
+    wpn.updateWorldMatrix(true, false);
+    const tgt = G1.set(0, 0, this.grip.z).applyMatrix4(wpn.matrixWorld);
+    T.worldToLocal(tgt);                       // (the arm hangs from the torso)
+    const S = arm.position, d = G2.subVectors(tgt, S), a = this.dims.upper, b = this.dims.fore + 0.04, reach = (a + b) * 0.995;
+    // out of reach (a thrust that runs the right arm out, a wind-up far to the right): the hand lets go instead of
+    // the arm straining after it, and the pose's own left arm shows through
+    w *= Math.max(0, Math.min(1, 1 - (d.length() - reach - 0.03) / 0.22));
+    this.gripW = w;
+    if (w <= 0.001) return;
+    const dist = Math.min(Math.max(d.length(), Math.abs(a - b) + 0.01), reach);
+    d.normalize();
+    // the elbow: off the shoulder-to-hand line toward the pole (out to the left, down, a little back)
+    const pole = G3.set(0.5, -1, -0.35);
+    pole.addScaledVector(d, -pole.dot(d));
+    if (pole.lengthSq() < 1e-6) pole.set(1, 0, 0).addScaledVector(d, -d.x);
+    pole.normalize();
+    const ca = Math.min(1, Math.max(-1, (a * a + dist * dist - b * b) / (2 * a * dist))), sa = Math.sqrt(1 - ca * ca);
+    const u = G4.copy(d).multiplyScalar(ca).addScaledVector(pole, sa);        // upper arm, shoulder to elbow
+    const f = G5.copy(d).multiplyScalar(dist).addScaledVector(u, -a).normalize(); // forearm, elbow to hand
+    // the upper arm: its -y onto u, then twisted about u so the elbow's hinge (local x) bends the forearm onto f
+    const q = GQ1.setFromUnitVectors(DOWN, u);
+    const z1 = G6.set(0, 0, 1).applyQuaternion(q), fp = G7.copy(f).addScaledVector(u, -f.dot(u)).normalize();
+    const twist = Math.atan2(G8.crossVectors(z1, fp).dot(u), z1.dot(fp));
+    q.premultiply(GQ2.setFromAxisAngle(u, twist));
+    const bend = -Math.acos(Math.min(1, Math.max(-1, u.dot(f))));
+    if (w >= 1) { arm.quaternion.copy(q); fore.rotation.set(bend, 0, 0); } else { arm.quaternion.slerp(q, w); fore.rotation.x += (bend - fore.rotation.x) * w; }
+    // the hand turned the way the right hand holds it
+    fore.updateWorldMatrix(true, false); this.j.handR.updateWorldMatrix(true, false);
+    const qh = GQ3.setFromRotationMatrix(fore.matrixWorld).invert().multiply(GQ4.setFromRotationMatrix(this.j.handR.matrixWorld));
+    if (w >= 1) hand.quaternion.copy(qh); else hand.quaternion.slerp(qh, w);
+  }
+
   flash(r = 1, g = 1, b = 1) { this.flashT = 0.12; this.flashColor.setRGB(r, g, b); this._flashing = true; this.kick(1.4); }
 
   tipWorld(out) { return this.tip.getWorldPosition(out); }
 }
 
 const ZERO = [0, 0, 0];
+const DOWN = new THREE.Vector3(0, -1, 0);
+const G1 = new THREE.Vector3(), G2 = new THREE.Vector3(), G3 = new THREE.Vector3(), G4 = new THREE.Vector3(), G5 = new THREE.Vector3(), G6 = new THREE.Vector3(), G7 = new THREE.Vector3(), G8 = new THREE.Vector3();
+const GQ1 = new THREE.Quaternion(), GQ2 = new THREE.Quaternion(), GQ3 = new THREE.Quaternion(), GQ4 = new THREE.Quaternion();
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
@@ -304,6 +378,7 @@ export function buildHumanoid(o) {
     r.j[L ? 'armL' : 'armR'] = arm; r.j[L ? 'foreL' : 'foreR'] = fa; r.j[L ? 'handL' : 'handR'] = hand;
   }
 
+  r.setFeel(o.arm || o.weapon);
   if (!(o.kit && KITS[o.kit]?.weapon)) attachWeapon(r, o.weapon, o);
   if (o.shield && !o.kit) {
     const sh = new THREE.Group();

@@ -411,7 +411,7 @@ export class Enemy extends Actor {
         const d = this.atk.def;
         const going = this.runAttack(dt * this.attackRate(), this.game.allPlayers(), p.alive ? toP : null);
         if (this.state !== 'attack') { pose = locomotion(T.style, 0, 0, false, 0); break; }
-        pose = this.attackPose(locomotion(T.style, this.phase, 0, false, 0));
+        pose = this.attackPose(locomotion(T.style, this.phase, 0, false, 0), 22);
         rate = 22;
         this.trailOn = this.inWindow(d.trail);
         if (!going) {

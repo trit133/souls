@@ -34,8 +34,8 @@ export function comboMoves(kind, base) {
     kCrown: {
       dur: 0.95, cost: 30, comboMove: true, track: 0.2, trail: [0.3, 0.46], sfx: [0.3, 'heavySwing'], armor: [0.18, 0.42], cancel: 0.62,
       keys: [
-        [0.3, { torso: [-0.4, 0, 0], head: [-0.2, 0, 0], armR: [-3.2, 0, -0.1], foreR: [-0.7, 0, 0], handR: [0.8, 0, 0], armL: [-3.0, 0, 0.15], foreL: [-0.7, 0, 0], legL: [-0.45, 0, 0], legR: [0.2, 0, 0], by: 0.04 }],
-        [0.42, { torso: [0.8, 0, 0], armR: [-0.7, 0, 0.05], foreR: [0, 0, 0], handR: [1.4, 0, 0], armL: [-0.8, 0, 0.1], foreL: [-0.1, 0, 0], ...crouch(1.2) }],
+        [0.3, { grip: 1, torso: [-0.4, 0, 0], head: [-0.2, 0, 0], armR: [-3.2, 0, 0.4], foreR: [-0.9, 0, 0], handR: [0.8, 0, 0], armL: [-3.0, 0, 0.15], foreL: [-0.7, 0, 0], legL: [-0.45, 0, 0], legR: [0.2, 0, 0], by: 0.04 }],
+        [0.42, { grip: 1, torso: [0.8, 0, 0], armR: [-0.7, 0, 0.15], foreR: [0, 0, 0], handR: [1.4, 0, 0], armL: [-0.8, 0, 0.1], foreL: [-0.1, 0, 0], ...crouch(1.2) }],
         [0.7, { torso: [0.6, 0, 0], armR: [-0.7, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-0.7, 0, 0.1], ...crouch(1) }],
       ],
       hits: [{ t0: 0.36, t1: 0.47, range: 2.75, arc: 1.7, dmg: 48, poise: 30 }],
@@ -94,9 +94,9 @@ export function comboMoves(kind, base) {
     kImpale: {
       dur: 0.88, cost: 20, comboMove: true, track: 0.2, trail: [0.34, 0.48], sfx: [0.34, 'heavySwing'], armor: [0.15, 0.46], cancel: 0.62,
       keys: [
-        [0.3, { torso: [-0.3, 0, 0], armR: [-2.6, 0, 0.2], foreR: [-1.2, 0, 0], handR: [2.2, 0, 0], armL: [-2.4, 0, -0.3], foreL: [-1.2, 0, 0], legL: [-0.4, 0, 0], legR: [0.2, 0, 0] }],
-        [0.42, { torso: [0.75, 0, 0], armR: [-1.0, 0, 0.15], foreR: [-0.3, 0, 0], handR: [2.4, 0, 0], armL: [-1.0, 0, -0.15], foreL: [-0.3, 0, 0], ...lunge(1.4), by: -0.3 }],
-        [0.7, { torso: [0.6, 0, 0], armR: [-1.0, 0, 0.15], foreR: [-0.3, 0, 0], handR: [2.3, 0, 0], armL: [-1.0, 0, -0.15], ...lunge(1.2), by: -0.26 }],
+        [0.3, { grip: 1, torso: [-0.3, 0, 0], armR: [-2.6, 0, 0.2], foreR: [-1.2, 0, 0], handR: [2.2, 0, 0], armL: [-2.4, 0, -0.3], foreL: [-1.2, 0, 0], legL: [-0.4, 0, 0], legR: [0.2, 0, 0] }],
+        [0.42, { grip: 1, torso: [0.75, 0, 0], armR: [-1.0, 0, 0.15], foreR: [-0.3, 0, 0], handR: [2.4, 0, 0], armL: [-1.0, 0, -0.15], foreL: [-0.3, 0, 0], ...lunge(1.4), by: -0.3 }],
+        [0.7, { grip: 1, torso: [0.6, 0, 0], armR: [-1.0, 0, 0.15], foreR: [-0.3, 0, 0], handR: [2.3, 0, 0], armL: [-1.0, 0, -0.15], ...lunge(1.2), by: -0.26 }],
       ],
       hits: [{ t0: 0.38, t1: 0.48, range: 2.5, arc: 1.2, dmg: 68, poise: 30 }],
       move: [[0.3, 0.44, 1.2]],

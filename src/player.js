@@ -43,8 +43,8 @@ const KNIGHT_ATTACKS = {
   k3: {
     dur: 0.88, cost: 25, next: 'k1', combo: [0.45, 0.88], cancel: 0.48, track: 0.24, trail: [0.25, 0.4], sfx: [0.26, 'heavySwing'],
     keys: [
-      [0.27, { torso: [-0.25, -0.15, 0], armR: [-3.0, 0, -0.15], foreR: [-0.55, 0, 0], handR: [1.0, 0, 0], armL: [-2.6, 0, 0.25], foreL: [-0.6, 0, 0], legL: [-0.35, 0, 0], legR: [0.15, 0, 0], by: 0.02 }],
-      [0.38, { torso: [0.6, 0, 0], armR: [-0.95, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.75, 0, 0], legR: [0.55, 0, 0], shinL: [0.45, 0, 0], shinR: [0.5, 0, 0], by: -0.28 }],
+      [0.27, { grip: 1, torso: [-0.25, -0.15, 0], armR: [-3.0, 0, 0.2], foreR: [-0.75, 0, 0], handR: [1.0, 0, 0], armL: [-2.6, 0, 0.25], foreL: [-0.6, 0, 0], legL: [-0.35, 0, 0], legR: [0.15, 0, 0], by: 0.02 }],
+      [0.38, { grip: 1, torso: [0.6, 0, 0], armR: [-0.95, 0, 0.15], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.75, 0, 0], legR: [0.55, 0, 0], shinL: [0.45, 0, 0], shinR: [0.5, 0, 0], by: -0.28 }],
       [0.62, { torso: [0.45, 0, 0], armR: [-0.8, 0, 0.05], foreR: [-0.2, 0, 0], handR: [1.2, 0, 0], armL: [-0.7, 0, 0.1], legL: [-0.65, 0, 0], legR: [0.45, 0, 0], shinL: [0.35, 0, 0], shinR: [0.45, 0, 0], by: -0.22 }],
     ],
     hits: [{ t0: 0.28, t1: 0.39, range: 2.6, arc: 1.5, dmg: 34, poise: 25 }],
@@ -54,8 +54,8 @@ const KNIGHT_ATTACKS = {
   heavy: {
     dur: 1.1, cost: 34, next: 'k2', combo: [0.72, 1.1], cancel: 0.72, track: 0.42, trail: [0.42, 0.58], sfx: [0.42, 'heavySwing'], armor: [0.25, 0.58],
     keys: [
-      [0.42, { torso: [-0.35, -0.35, 0], armR: [-3.1, 0, -0.3], foreR: [-0.95, 0, 0], handR: [0.6, 0, 0], armL: [-2.2, 0, 0.3], foreL: [-0.8, 0, 0], legL: [-0.5, 0, 0], legR: [0.35, 0, 0], shinR: [0.5, 0, 0], by: -0.2 }],
-      [0.55, { torso: [0.75, 0.1, 0], armR: [-0.8, 0, 0.1], foreR: [0, 0, 0], handR: [1.35, 0, 0], armL: [-0.9, 0, 0.1], legL: [-0.85, 0, 0], legR: [0.65, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.38 }],
+      [0.42, { grip: 1, torso: [-0.35, -0.35, 0], armR: [-3.1, 0, 0.5], foreR: [-1.1, 0, 0], handR: [0.6, 0, 0], armL: [-2.2, 0, 0.3], foreL: [-0.8, 0, 0], legL: [-0.5, 0, 0], legR: [0.35, 0, 0], shinR: [0.5, 0, 0], by: -0.2 }],
+      [0.55, { grip: 1, torso: [0.75, 0.1, 0], armR: [-0.8, 0, 0.15], foreR: [0, 0, 0], handR: [1.35, 0, 0], armL: [-0.9, 0, 0.1], legL: [-0.85, 0, 0], legR: [0.65, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.38 }],
       [0.85, { torso: [0.6, 0.1, 0], armR: [-0.7, 0, 0.1], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], legL: [-0.75, 0, 0], legR: [0.55, 0, 0], shinL: [0.45, 0, 0], shinR: [0.55, 0, 0], by: -0.32 }],
     ],
     hits: [{ t0: 0.44, t1: 0.57, range: 2.7, arc: 1.6, dmg: 52, poise: 37 }],
@@ -66,8 +66,8 @@ const KNIGHT_ATTACKS = {
   chargeSlam: {
     dur: 1.0, cost: 16, next: 'k2', combo: [0.7, 1.0], cancel: 0.72, track: 0.3, trail: [0.36, 0.52], sfx: [0.36, 'heavySwing'], armor: [0, 0.5],
     keys: [
-      [0.2, { torso: [-0.35, 0, 0], armR: [-3.0, 0, -0.15], foreR: [-0.5, 0, 0], handR: [1.0, 0, 0], armL: [-2.5, 0, 0.2], foreL: [-0.5, 0, 0], legL: [-1.1, 0, 0], shinL: [1.6, 0, 0], legR: [-0.2, 0, 0], shinR: [1.4, 0, 0] }],
-      [0.44, { torso: [0.7, 0, 0], armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.0, 0, 0.1], legL: [-0.8, 0, 0], legR: [0.6, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.3 }],
+      [0.2, { grip: 1, torso: [-0.35, 0, 0], armR: [-3.0, 0, 0.1], foreR: [-0.5, 0, 0], handR: [1.0, 0, 0], armL: [-2.5, 0, 0.2], foreL: [-0.5, 0, 0], legL: [-1.1, 0, 0], shinL: [1.6, 0, 0], legR: [-0.2, 0, 0], shinR: [1.4, 0, 0] }],
+      [0.44, { grip: 1, torso: [0.7, 0, 0], armR: [-0.9, 0, 0.15], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.0, 0, 0.1], legL: [-0.8, 0, 0], legR: [0.6, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.3 }],
       [0.75, { torso: [0.5, 0, 0], armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], ...lunge(1), by: -0.2 }],
     ],
     hits: [{ t0: 0.42, t1: 0.52, range: 2.7, arc: 1.8, dmg: 40, poise: 29 }],
@@ -504,7 +504,7 @@ export class Player extends Actor {
         if (J) { const t = this.atk.t; this.atkLift = true; this.y = t > J[0] && t < J[1] ? J[2] * Math.sin(Math.PI * (t - J[0]) / (J[1] - J[0])) : 0; }
         if (this.state !== 'attack' || !this.atk) { pose = this.basePose(); break; }
         const t = this.atk.t;
-        pose = this.attackPose(this.basePose());
+        pose = this.attackPose(this.basePose(), 28);
         rate = 28;
         this.trailOn = this.inWindow(d.trail);
         if (this.buf && (this.buf.a === 'attack' || this.buf.a === 'heavy') && d.combo && t >= d.combo[0]) {

@@ -303,7 +303,7 @@ export class Boss extends Actor {
           const [t0, t1, ang] = d.spin;
           if (t >= t0 && t < t1) this.yaw += ang * adt / (t1 - t0);
         }
-        pose = this.attackPose(loco(0));
+        pose = this.attackPose(loco(0), 18);
         rate = 18;
         this.trailOn = this.inWindow(d.trail);
         if (!going) {
@@ -356,7 +356,7 @@ export class Boss extends Actor {
     if (this.state !== 'attack') this.trailOn = false;
     if (this.state !== 'dead') this.regenPoise(dt);
     this.applyKnockback(dt);
-    if (!pose) pose = this.state === 'attack' && this.atk ? this.attackPose(loco(0)) : loco(0);
+    if (!pose) pose = this.state === 'attack' && this.atk ? this.attackPose(loco(0), rate) : loco(0);
     if (this.state !== 'dead') this.syncRig(dt, pose, rate); else this.rig.apply(pose, dt, rate);
     this.trail.update(dt, this.trailOn, this.rig.base, this.rig.tip);
 

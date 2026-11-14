@@ -11,11 +11,11 @@ const A = 'attack', H = 'heavy', R = 'roll';
 
 // ================= THE PENITENT SLAB (Templar) =================
 // both hands on the hilt: wide sweeps that carry the body round, an overhead that buries the tip, a crushing slam
-const GS_HIGH_R = { armR: [-1.7, 0, -1.25], foreR: [-0.35, 0, 0], handR: [1.15, 0, 0], armL: [-1.5, 0, -0.7], foreL: [-0.7, 0, 0], handL: [1.0, 0, 0] };
+const GS_HIGH_R = { armR: [-2.1, 0, 0.1], foreR: [-0.9, 0, 0], handR: [1.15, 0, 0], armL: [-1.5, 0, -0.7], foreL: [-0.7, 0, 0], handL: [1.0, 0, 0] };
 const GS_SWEEP_L = { armR: [-1.35, 0, 0.95], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.25, 0, 1.2], foreL: [-0.3, 0, 0], handL: [1.2, 0, 0] };
-const GS_HIGH_L = { armR: [-1.55, 0, 1.15], foreR: [-0.4, 0, 0], handR: [1.2, 0, 0], armL: [-1.7, 0, 1.3], foreL: [-0.3, 0, 0], handL: [1.1, 0, 0] };
-const GS_SWEEP_R = { armR: [-1.3, 0, -1.1], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.2, 0, -0.8], foreL: [-0.5, 0, 0], handL: [1.2, 0, 0] };
-const GS_OVER = { armR: [-3.0, 0, -0.25], foreR: [-0.8, 0, 0], handR: [0.7, 0, 0], armL: [-2.9, 0, 0.15], foreL: [-0.9, 0, 0], handL: [0.7, 0, 0] };
+const GS_HIGH_L = { armR: [-1.75, 0, 0.9], foreR: [-0.5, 0, 0], handR: [1.2, 0, 0], armL: [-1.7, 0, 1.3], foreL: [-0.3, 0, 0], handL: [1.1, 0, 0] };
+const GS_SWEEP_R = { armR: [-1.35, 0, 0.15], foreR: [-0.45, 0, 0], handR: [1.3, 0, 0], armL: [-1.2, 0, -0.8], foreL: [-0.5, 0, 0], handL: [1.2, 0, 0] };
+const GS_OVER = { armR: [-3.0, 0, 0.4], foreR: [-0.8, 0, 0], handR: [0.7, 0, 0], armL: [-2.9, 0, 0.15], foreL: [-0.9, 0, 0], handL: [0.7, 0, 0] };
 const GS_DOWN = { armR: [-0.75, 0, 0.1], foreR: [-0.05, 0, 0], handR: [1.45, 0, 0], armL: [-0.8, 0, 0.25], foreL: [-0.1, 0, 0], handL: [1.4, 0, 0] };
 export const GREAT_ATTACKS = {
   g1: {
@@ -64,7 +64,7 @@ export const GREAT_ATTACKS = {
   },
 };
 // the blade raised as a wall (Blade Guard)
-export const GREAT_GUARD = { guard: 1, torso: [0.1, 0.2, 0], armR: [-1.45, 0, 0.55], foreR: [-1.35, 0, 0], handR: [0.1, 0, 0], armL: [-1.4, 0, -0.35], foreL: [-1.3, 0, 0], handL: [0.2, 0, 0], legL: [-0.4, 0, 0], legR: [0.35, 0, 0], shinL: [0.3, 0, 0], shinR: [0.4, 0, 0], by: -0.14 };
+export const GREAT_GUARD = { guard: 1, grip: 1, torso: [0.1, 0.2, 0], armR: [-1.45, 0, 0.55], foreR: [-1.35, 0, 0], handR: [0.1, 0, 0], armL: [-1.4, 0, -0.35], foreL: [-1.3, 0, 0], handL: [0.2, 0, 0], legL: [-0.4, 0, 0], legR: [0.35, 0, 0], shinL: [0.3, 0, 0], shinR: [0.4, 0, 0], by: -0.14 };
 export const GREAT_GUARD_HIT = { ...GREAT_GUARD, torso: [-0.15, 0.25, 0], head: [-0.2, 0, 0], by: -0.2 };
 
 function greatCombos(G) {
@@ -200,7 +200,7 @@ export const VEIL = { dur: 5, backstab: 3 };
 
 // ================= THE PSY-STAFF (Adept) =================
 // held in both hands: reaching sweeps and thrusts; the heavy throws a lash of lightning from the focus
-const ST_HOLD_R = { armR: [-1.0, 0, -0.5], foreR: [-0.9, 0, 0], handR: [1.0, 0, 0], armL: [-1.1, 0, -0.1], foreL: [-1.2, 0, 0], handL: [0.8, 0, 0] };
+const ST_HOLD_R = { armR: [-1.0, 0, 0.1], foreR: [-0.9, 0, 0], handR: [1.0, 0, 0], armL: [-1.1, 0, -0.1], foreL: [-1.2, 0, 0], handL: [0.8, 0, 0] };
 const ST_SWEEP_L = { armR: [-1.4, 0, 0.9], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], armL: [-1.1, 0, 1.0], foreL: [-0.6, 0, 0], handL: [1.1, 0, 0] };
 const ST_SWEEP_R = { armR: [-1.3, 0, -1.0], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], armL: [-1.2, 0, -0.6], foreL: [-0.7, 0, 0], handL: [1.1, 0, 0] };
 const ST_THRUST = { armR: [-1.55, 0, 0.05], foreR: [0, 0, 0], handR: [1.55, 0, 0], armL: [-1.3, 0, 0.3], foreL: [-0.6, 0, 0], handL: [1.3, 0, 0] };
