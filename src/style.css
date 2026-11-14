@@ -779,6 +779,9 @@ button.pxbtn { justify-content: center; }
 .hm-slot { aspect-ratio: 1; background: #1c120c; border: 2px solid #3a2414; box-shadow: inset 0 0 6px #000; }
 .hm-bottom { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; align-items: center; gap: 14px; pointer-events: none; }
 .hm-bottom > * { pointer-events: auto; }
+.hm-corner { position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; gap: 6px; }
+.hm-corner .hidden { display: none; }
+@media (max-width: 1100px) { .hm-corner { flex-direction: column; align-items: flex-end; bottom: calc(80px + env(safe-area-inset-bottom)); } }
 #hm-night.on { filter: drop-shadow(0 0 8px #7a5aff); }
 #hm-hint { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); font: 12px monospace; color: #c8b890; letter-spacing: 1px; opacity: .8; transition: opacity 1s; pointer-events: none; text-shadow: 0 1px 2px #000; }
 #hm-hint.gone { opacity: 0; }

@@ -480,6 +480,7 @@ export class Hermitage {
           <div id="hm-go" class="hidden"><button class="mini-btn" id="hm-night">Night Raid: Off</button><button class="mini-btn" id="hm-begin">Begin</button></div></div>
         <button class="menu-btn primary" id="hm-party">Party Raid</button>
       </div>
+      <div class="hm-corner"><button class="mini-btn" id="hm-fs" data-fs>Fullscreen</button><button class="mini-btn" id="hm-settings">Settings</button></div>
       <div id="hm-hint">Hover the things around the fire</div>`;
     document.body.append(el);
     this.el = el;
@@ -487,11 +488,13 @@ export class Hermitage {
     el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
     $('hm-back').addEventListener('click', () => this.close());
+    $('hm-settings').addEventListener('click', (e) => { e.stopPropagation(); this.game.openSettings(); }); // (Fullscreen: data-fs, main.js)
+    $('hm-fs').addEventListener('click', (e) => e.stopPropagation());
     $('hm-guide-btn').addEventListener('click', (e) => { e.stopPropagation(); this.setGuide(!this.guideOpen); });
     $('hm-guide-close').addEventListener('click', () => this.setGuide(false));
     $('hm-guide').addEventListener('click', (e) => e.stopPropagation());
