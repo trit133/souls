@@ -146,7 +146,8 @@ function weaponStand(glow) {
   box(g, 0.34, 0.16, 0.03, M.glow, 0, 1.5, 0.06); // the plaque
   return { group: g };
 }
-const EQUIP = { knight: { at: [1.5, 1.8], ry: -0.35, glow: 0xffa040 }, rogue: { at: [1.55, 1.8], ry: -0.35, glow: 0xff3a2a }, mage: { at: [1.5, 1.85], ry: -0.35, glow: 0x7aa8ff } };
+const EQUIP = { knight: { at: [-1.75, -2.2], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.85, -2.25], ry: 0.3, glow: 0xff3a2a }, // (between the wardrobe and the jukebox; the Adept's stays front right)
+  mage: { at: [1.5, 1.85], ry: -0.35, glow: 0x7aa8ff } };
 const WORKBENCH = { knight: { at: [-1.3, 1.75], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.4, 1.75], ry: 0.3, glow: 0xff3a2a }, mage: { at: [-1.35, 1.75], ry: 0.3, glow: 0x7aa8ff } };
 const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x5a1414 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
