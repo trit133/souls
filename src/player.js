@@ -10,6 +10,7 @@ import { Trail } from './fx.js';
 import { EMOTES } from './pings.js';
 import { WEAPON_SETS, GREAT_GUARD, GREAT_GUARD_HIT, DASH, VEIL, SIGIL } from './weaponmoves.js';
 import { COMBOS } from './combos.js';
+import { bazaarPerks } from './traders.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 
 // ---------- move sets ----------
@@ -361,10 +362,11 @@ export class Player extends Actor {
     // status effects build on players too (meters over the health bar)
     this.isPlayer = true;
     this.status = new StatusState(this, 100);
-    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0)) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1) * (T.glassFang ? 0.75 : 1)); // Stalwart Vow +30%, Glass Fang −25%
+    const BZ = bazaarPerks(game.accounts.user ? game.accounts.data : null); // (the Bazaar traders' level-5 buffs: traders.js)
+    this.maxHp = this.hp = Math.round((c.hp + (T.hp || 0) + BZ.hp) * (1 + pct('hpPct')) * (T.stalwart ? 1.3 : 1) * (T.glassFang ? 0.75 : 1)); // Stalwart Vow +30%, Glass Fang −25%
     if (T.stalwart) this.dmgMul *= 0.85; // ... and 15% less damage
     this.maxSt = this.st = Math.round((c.st + (T.st || 0)) * (1 + pct('stPct')));
-    this.flasks = this.maxFlasks = c.flasks + (T.flask || 0);
+    this.flasks = this.maxFlasks = c.flasks + (T.flask || 0) + BZ.flasks;
     this.potionMul = 1 + pct('potion');
     this.maxMana = this.mana = c.caster ? 100 + (T.mana || 0) : 0;
     this.evo = L.evo || null; // (one evolution, its weapon's own: 'aegisRam', 'redRiposte', 'twinPlasma', 'berserk', 'ghostVeil', 'stormSigil')

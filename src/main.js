@@ -47,6 +47,8 @@ import { FireTitle } from './title.js';
 import { attachCardFx } from './cardfx.js';
 import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
+import { Bazaar } from './bazaar.js';
+import { noteKill, restockAll, relicsWanted } from './traders.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
@@ -275,6 +277,7 @@ class Game {
     for (const e of [...this.enemies, ...this.reserves]) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
+    this.clearRelics();
     for (const S of this.sigils || []) this.scene.remove(S.g); this.sigils = []; // (a sigil or a laser left from the last run)
     for (const B of this.beams || []) B.t = B.dur; this.updateBeams(0);
     this.clearHearts();
@@ -428,6 +431,7 @@ class Game {
     for (const id of ['go-lobby', 'victory-lobby']) $(id).addEventListener('click', () => this.afterRunLobby());
     $('btn-settings').addEventListener('click', () => this.openSettings());
     this.hermitage = new Hermitage(this);
+    this.bazaar = new Bazaar(this);
     this.worldMap = new WorldMap(this);
     this.partyTab = new PartyTab(this);
     this.pings = new Pings(this);
@@ -573,6 +577,7 @@ class Game {
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
     this.raidLoot = {}; this.lootDone = false; this.bossFelled = false; // (a raid's materials: in the stash the moment you pick them up)
+    if (this.run?.raid) this.placeRelics(); else this.clearRelics();
     this.pouchOpen = false; this.renderPouch();
     this.ui.setRunGold(0);
     $('run-gold').title = 'Gold banked to your account this run';
@@ -901,8 +906,47 @@ class Game {
   // the killing blow earns that player emeralds (the host tells teammates about theirs); a boss is worth 2
   creditKill(e) {
     const k = e.lastHitBy;
-    if (k === this.player) this.addKill(1, !!e.isBoss);
-    else if (k?.pid && this.mp.active) this.mp.send({ t: 'kill', boss: !!e.isBoss }, k.pid);
+    if (k === this.player) { this.addKill(1, !!e.isBoss); this.bazaarKill(e.type); }
+    else if (k?.pid && this.mp.active) this.mp.send({ t: 'kill', boss: !!e.isBoss, type: e.type }, k.pid);
+  }
+
+  // a kill of yours counts toward a trader's hunt (traders.js); a finished hunt gets a word on screen
+  bazaarKill(type) {
+    const d = this.accounts.data;
+    if (!d || !this.accounts.user || !type) return;
+    const T = noteKill(d, type);
+    if (T) { this.ui.toastSmall?.(`${T.name}'s hunt is done: hand it in at the Bazaar`); this.audio.play('uiTick', 1); }
+    this.accounts.save();
+  }
+
+  // ---------- the Bazaar's relics: hidden in a raid area while a trader's quest wants one (traders.js) ----------
+  // each by one of the area's supply drums (somewhere new each raid), a glint and a faint pillar of light marking it;
+  // walk over it to take it (straight into the stash, kept if you fall)
+  placeRelics() {
+    this.clearRelics();
+    const d = this.accounts.data, want = this.accounts.user ? relicsWanted(d, this.run?.raid) : [], spots = [...(this.chests?.drums || [])];
+    for (const id of want) {
+      if (!spots.length) break;
+      const D = spots.splice(Math.floor(Math.random() * spots.length), 1)[0].def, a = Math.random() * Math.PI * 2, x = D.x + Math.cos(a) * 0.9, z = D.z + Math.sin(a) * 0.9;
+      const g = new THREE.Group(); g.position.set(x, 0, z);
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: 0xc890ff })); gem.position.y = 0.55; gem.scale.y = 1.4; g.add(gem);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 3.2, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xb070ff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); pillar.position.y = 1.6; g.add(pillar);
+      this.scene.add(g);
+      this.relics.push({ id, x, z, g, gem, t: Math.random() * 6 });
+    }
+  }
+  clearRelics() { for (const R of this.relics || []) this.scene.remove(R.g); this.relics = []; }
+  updateRelics(dt) {
+    const p = this.player;
+    for (const R of [...(this.relics || [])]) {
+      R.t += dt; R.gem.rotation.y += dt * 2; R.gem.position.y = 0.55 + Math.sin(R.t * 2.5) * 0.08;
+      if (Math.random() < dt * 6) this.fx.add.spawn({ x: R.x + (Math.random() - 0.5) * 0.3, y: 0.3, z: R.z + (Math.random() - 0.5) * 0.3, vy: 1.2, life: 0.8, size: 0.1, size1: 0.02, r: 0.8, g: 0.6, b: 1, alpha: 0.9 });
+      if (!p?.alive || Math.hypot(p.pos.x - R.x, p.pos.z - R.z) > 1.0) continue;
+      this.scene.remove(R.g); this.relics.splice(this.relics.indexOf(R), 1);
+      this.addLoot({ [R.id]: 1 }); this.lootFeed({ [R.id]: 1 });
+      this.ui.toast(`${ITEMS[R.id].name.toUpperCase()} FOUND`, 2.5); this.audio.play('heal', 0.7);
+      this.fx.burst({ x: R.x, y: 0.6, z: R.z }, 24, [0.8, 0.6, 1], 3, 0.7, 0.2);
+    }
   }
 
   // kills: counted per character, and each one is an emerald (a boss, 2) to spend in the customizer
@@ -1320,6 +1364,8 @@ class Game {
   commitLoot() {
     if (!this.run?.raid || this.lootDone) return null;
     this.lootDone = true;
+    const d = this.accounts.data;
+    if (d && this.accounts.user) { restockAll(d); this.accounts.save(); } // (the Bazaar's traders restock after every raid)
     return { kept: { ...(this.raidLoot || {}) } };
   }
 
@@ -2057,6 +2103,7 @@ class Game {
     this.camera.fov = aspect > maxA ? 2 * Math.atan(Math.tan((48 / 2) * Math.PI / 180) * maxA / aspect) * 180 / Math.PI : 48;
     this.camera.updateProjectionMatrix();
     this.hermitage?.resize(aspect);
+    this.bazaar?.resize(aspect);
     this.fx.setScale(px.h * 0.9 * (48 / this.camera.fov));
   }
 
@@ -2066,6 +2113,11 @@ class Game {
     let rdt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     this.pings?.update(rdt);
+    if (this.bazaar?.active && this.mode === 'title') {
+      this.bazaar.update(rdt);
+      this.pixel.render(this.bazaar.scene, this.bazaar.camera);
+      return;
+    }
     if (this.hermitage?.active && this.mode === 'title') {
       this.hermitage.update(rdt);
       this.pixel.render(this.hermitage.scene, this.hermitage.camera);
@@ -2142,6 +2194,7 @@ class Game {
         this.updateBeams(dt);
         this.updateVeils(dt);
         this.updateHearts(dt);
+        this.updateRelics(dt);
         this.seals.update(dt);
         this.chests.update(dt);
         this.chests.updateDrums();

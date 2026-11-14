@@ -61,7 +61,7 @@ export const GUIDE = [
       <h4>Keeping them</h4>
       <p>Everything you pick up goes straight into your stash and is yours to keep, even if you fall. Gold too, the moment you earn it. The pouch lists what you've found this raid.</p>
       <p>Leave whenever you like by the camp gate where you came in, or by the way out in the boss's pit once it's dead.</p>
-      <p>Materials wait in your stash. Each is worth gold; a bazaar will buy them one day.</p>`,
+      <p>Materials wait in your stash. Each is worth gold; the Bazaar's traders buy and sell them.</p>`,
   },
   {
     id: 'fight', title: 'Fighting',
@@ -102,6 +102,18 @@ export const GUIDE = [
         <li>A new weapon isn't stronger, just different: its own moves, combos and special. Equip it, and switch its evolution on or off, at the <b>equipment</b> stand; change its look at the wardrobe.</li>
         <li>Pick a <b>record</b> for the menus at the jukebox.</li>
         <li><b>Night Raid</b>, once unlocked, plays the whole raid in near darkness against tougher enemies for more gold. Toggle it on the map.</li>
+      </ul>`,
+  },
+  {
+    id: 'bazaar', title: 'The Bazaar',
+    body: () => `
+      <p>Once Executor Hask is dead, a <b>Bazaar</b> button appears at the top of the Sanctum: a night market of traders under a broken overpass. Ten stalls; most are still shuttered.</p>
+      <ul>
+        <li><b>Mother Grist</b> deals in common and uncommon materials. <b>Brother Vesk</b> opens once Archon Varek is dead, and deals in rare, epic and legendary.</li>
+        <li>Each <b>sells</b> from a limited stock (Grist at 3× an item's worth, Vesk at 2.5×) that refills after every raid, and <b>buys</b> from your stash at a share of its worth: 20% at first, rising to 80% as you level them up.</li>
+        <li>Each has a line of <b>quests</b>: hunts (your own kills, in any raid), supplies from your stash, or a <b>relic</b> hidden in a raid area (look for a violet glint and a pillar of light; it's yours the moment you touch it, even if you fall).</li>
+        <li>Quests pay gold, emeralds and experience. A trader with a quest ready to hand in has a <b>!</b> over their head (and on the Sanctum's Bazaar button).</li>
+        <li>At <b>level 5</b> a trader's buff is yours for good, for every character: Grist's Tonic (+300 health), Vesk's Vial (one more injector).</li>
       </ul>`,
   },
   {

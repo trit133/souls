@@ -30,6 +30,7 @@ import { GUIDE } from './guide.js';
 import { COMBOS } from './combos.js';
 import { WEAPON_SETS } from './weaponmoves.js';
 import { AREAS } from './regions.js';
+import { bazaarOpen, anyClaimable } from './traders.js';
 import { WEAPONS, WEAPON_REGIONS, BASE_WEAPON, weaponFor, armoury, ownsWeapon, hasEvo, equippedWeapon, recipeState, spend, weaponIcon, weaponsOf } from './weapons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -456,7 +457,7 @@ export class Hermitage {
     el.id = 'hermitage'; el.className = 'hidden';
     el.innerHTML = `
       <div class="hm-top">
-        <div class="hm-left"><button class="mini-btn" id="hm-back">Title</button><button class="mini-btn" id="hm-guide-btn">How to Play</button></div>
+        <div class="hm-left"><button class="mini-btn" id="hm-back">Title</button><button class="mini-btn" id="hm-guide-btn">How to Play</button><button class="mini-btn hidden" id="hm-bazaar">Bazaar<i id="hm-bz-bang" class="hidden">!</i></button></div>
         <div class="hm-pick"><span id="hm-name">Templar</span><button class="mini-btn hm-icon" id="hm-chars" title="Characters" aria-label="Characters"><span id="hm-chars-ic"></span></button><div id="hm-list" class="hidden"></div></div>
         <div id="hm-gold"></div>
       </div>
@@ -488,13 +489,15 @@ export class Hermitage {
     el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-bazaar', 'ember'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
     $('hm-back').addEventListener('click', () => this.close());
     $('hm-settings').addEventListener('click', (e) => { e.stopPropagation(); this.game.openSettings(); }); // (Fullscreen: data-fs, main.js)
     $('hm-fs').addEventListener('click', (e) => e.stopPropagation());
+    // the Bazaar: once Executor Hask is dead (traders.js); a "!" when a trader has a quest to hand in
+    $('hm-bazaar').addEventListener('click', (e) => { e.stopPropagation(); this.game.audio.unlock(); this.game.bazaar.open(); });
     $('hm-guide-btn').addEventListener('click', (e) => { e.stopPropagation(); this.setGuide(!this.guideOpen); });
     $('hm-guide-close').addEventListener('click', () => this.setGuide(false));
     $('hm-guide').addEventListener('click', (e) => e.stopPropagation());
@@ -605,6 +608,8 @@ export class Hermitage {
   refresh() {
     const d = this.game.accounts.data;
     $('hm-gold').textContent = d ? `◆ ${d.gold}` : '';
+    $('hm-bazaar').classList.toggle('hidden', !bazaarOpen(d));
+    $('hm-bz-bang').classList.toggle('hidden', !anyClaimable(d));
   }
 
   // the outfit may have changed in the wardrobe
@@ -970,8 +975,8 @@ export class Hermitage {
     const region = (id) => REGIONS.find((r) => r.id === ITEMS[id].region)?.name || '';
     const show = (id, n, owned) => {
       const it = ITEMS[id], R = RARITY[it.rarity], v = itemValue(id);
-      tip.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${it.kind === 'gem' ? 'Gem' : R.name + ' material'} · ${region(id)}</span><i>${it.desc}</i>`
-        + (it.kind === 'gem' ? (owned ? '<em>Not used up: you only need to carry it.</em>' : `<em>Dropped by ${BOSSES[it.boss]?.name.split(',')[0] || 'its boss'}.</em>`)
+      tip.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${it.kind === 'gem' ? 'Gem' : it.kind === 'relic' ? 'Relic' : R.name + ' material'} · ${region(id)}</span><i>${it.desc}</i>`
+        + (it.kind === 'relic' ? '<em>A trader at the Bazaar wants this. Hand it in there.</em>' : it.kind === 'gem' ? (owned ? '<em>Not used up: you only need to carry it.</em>' : `<em>Dropped by ${BOSSES[it.boss]?.name.split(',')[0] || 'its boss'}.</em>`)
           : `<em>Worth ◆ ${v} each${n > 1 ? ` · ◆ ${v * n} for ${n}` : ''}</em>`);
       tip.classList.remove('hidden');
     };
@@ -985,8 +990,8 @@ export class Hermitage {
       slots.append(el);
     };
     if (tab === 'items') {
-      $('hm-stash-note').textContent = 'Materials from your raids, shared by all your characters. A bazaar will buy them one day.';
-      const have = Object.entries(d.items || {}).filter(([id, n]) => n > 0 && ITEMS[id]?.kind === 'mat')
+      $('hm-stash-note').textContent = 'Materials from your raids, shared by all your characters. The Bazaar\'s traders buy and sell them.';
+      const have = Object.entries(d.items || {}).filter(([id, n]) => n > 0 && (ITEMS[id]?.kind === 'mat' || ITEMS[id]?.kind === 'relic'))
         .sort((a, b) => TIERS.indexOf(ITEMS[b[0]].rarity) - TIERS.indexOf(ITEMS[a[0]].rarity) || ITEMS[a[0]].region.localeCompare(ITEMS[b[0]].region));
       for (const [id, n] of have) slot(id, n);
       for (let k = have.length; k < STASH_SLOTS; k++) { const el = document.createElement('div'); el.className = 'hm-slot'; slots.append(el); }

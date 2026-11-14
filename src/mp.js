@@ -325,6 +325,7 @@ export class Multiplayer {
       case 'extract': g.extract(); break; // (someone took the party out through a door)
       case 'bfound': g.basements.found(d.k, true); break;
       case 'kgold': g.earnKill(d.n, g.netMap?.[d.id]); break; // a teammate's kill: your share
+      case 'kill': g.addKill(1, !!d.boss); g.bazaarKill(d.type); break; // (the host: that was your killing blow)
       case 'descend': if (this.isHost) g.descend(); break;
       case 'act': g.enterAct(d.n); break;
       // ----- hits on this player, decided here -----
