@@ -563,7 +563,7 @@ class Game {
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.user ? treeStats(kind, this.accounts.data) : {});
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
     this.runBanked = 0; this.bankedKeys = new Set();
-    this.raidLoot = {}; this.lootDone = false; this.bossFelled = false; // (a raid's materials, kept when you leave: commitLoot)
+    this.raidLoot = {}; this.lootDone = false; this.bossFelled = false; // (a raid's materials: in the stash the moment you pick them up)
     this.pouchOpen = false; this.renderPouch();
     this.ui.setRunGold(0);
     $('run-gold').title = 'Gold banked to your account this run';
@@ -593,7 +593,6 @@ class Game {
   }
 
   toTitle() {
-    if (this.run?.raid && this.player && ['play', 'wait', 'reward'].includes(this.mode)) this.commitLoot(this.securedShare); // (quitting a raid counts as falling)
     this.mode = 'title';
     this.pings.clear();
     $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
@@ -1023,10 +1022,10 @@ class Game {
       this.mode = 'over';
       $('gameover-title').textContent = 'The run has ended';
       if (this.accounts.data) { this.accounts.data.stats.bestArea = Math.max(this.accounts.data.stats.bestArea, this.seenMod + 1); this.accounts.save(); }
-      const share = this.run?.raid ? this.securedShare : 0, res = this.commitLoot(share);
+      const res = this.commitLoot();
       $('gameover-stats').innerHTML = [
         `Banked this run: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
-        this.run?.raid ? `Fell in ${this.areaName} · shrines broken ${Math.min(3, this.seals.broken)}/3 · ${Math.round(share * 100)}% of your materials kept<br>Kept: ${res && countItems(res.kept) ? itemsText(res.kept) : 'nothing'}${res && countItems(res.lost) ? ` · lost: ${itemsText(res.lost)}` : ''}` : this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
+        this.run?.raid ? `Fell in ${this.areaName} · shrines broken ${Math.min(3, this.seals.broken)}/3<br>Materials found: ${res && countItems(res.kept) ? itemsText(res.kept) : 'none'}${res && countItems(res.kept) && !this.accounts.user ? ' (guest: not saved)' : ''}` : this.run ? `Reached ${this.areaName} (${this.act + 1} of 4)` : `Reached area ${this.seenMod + 1} of ${this.world.mods.length} — ${this.world.mods[this.seenMod].name}`,
         `Bosses felled: ${felled.length ? felled.join(', ') : 'none'}`,
         `Boons: ${this.player.boonList.length ? this.player.boonList.map((x) => BOONS[x.key].name + (x.n > 1 ? ' ×' + x.n : '')).join(', ') : 'none'}`,
         `Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
@@ -1260,7 +1259,7 @@ class Game {
     if (this.accounts.data) {
       const st = this.accounts.data.stats;
       st.wins++;
-      st.winsBy = st.winsBy || {}; st.winsBy[this.kind] = (st.winsBy[this.kind] || 0) + 1; // raises this tree's node limit
+      st.winsBy = st.winsBy || {}; st.winsBy[this.kind] = (st.winsBy[this.kind] || 0) + 1;
       this.accounts.save();
     }
     const goldLine = `Banked this run: ◆ ${this.runBanked}${pay.bonus ? ` (incl. ×3 bonus ◆ ${pay.bonus})` : ''}${this.accounts.user ? '' : ' (guest: not saved)'}`;
@@ -1276,7 +1275,7 @@ class Game {
   }
 
   // the raid's boss is dead: its gem (or, once you have it, extra gold), and a way out opens in the pit. The raid goes
-  // on until you leave through a door (extract)
+  // on until you leave through a door (extract) or quit
   raidComplete(enc) {
     this.world.setGate(enc.gateIn, true, false);
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
@@ -1307,24 +1306,20 @@ class Game {
     }, 2000);
   }
 
-  // what a raid lets you keep: a share k of the materials you picked up (1 = all), into the stash. Once a raid
-  commitLoot(k) {
+  // the raid's haul (what you picked up, already in the stash), once, for the end screens
+  commitLoot() {
     if (!this.run?.raid || this.lootDone) return null;
     this.lootDone = true;
-    // that share of everything you carry, the rarest kept first
-    const all = Object.entries(this.raidLoot || {}).flatMap(([id, n]) => Array(n).fill(id))
-      .sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a].rarity));
-    const keep = Math.round(all.length * k), kept = {}, lost = {};
-    all.forEach((id, i) => { const to = i < keep ? kept : lost; to[id] = (to[id] || 0) + 1; });
-    const d = this.accounts.data;
-    if (d) { d.items = addItems(d.items || {}, kept); this.accounts.save(); }
-    return { kept, lost };
+    return { kept: { ...(this.raidLoot || {}) } };
   }
-  // dying keeps a third of what you carry for each shrine broken (all three: everything)
-  get securedShare() { return Math.min(3, this.seals.broken) / 3; }
 
-  // picked up in a raid (a chest, a drum): into the pouch until you leave
-  addLoot(items) { addItems(this.raidLoot ||= {}, items); this.renderPouch(); }
+  // picked up in a raid (a chest, a drum): straight into the stash, kept even if you fall; the pouch lists this raid's haul
+  addLoot(items) {
+    addItems(this.raidLoot ||= {}, items);
+    const d = this.accounts.data;
+    if (d) { d.items = addItems(d.items || {}, items); this.accounts.save(); }
+    this.renderPouch();
+  }
 
   // what you just got: big lines with each item's icon, in its rarity's colour, that fade after a few seconds
   lootFeed(items) {
@@ -1369,9 +1364,9 @@ class Game {
     const n = countItems(this.raidLoot);
     $('pouch-btn').textContent = n ? `POUCH ${n}` : 'POUCH';
     if (!this.pouchOpen) return;
-    const share = this.securedShare, list = Object.entries(this.raidLoot || {}).filter(([, k]) => k > 0)
+    const list = Object.entries(this.raidLoot || {}).filter(([, k]) => k > 0)
       .sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b[0]].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a[0]].rarity));
-    $('pc-safe').innerHTML = `If you fall: <b>${Math.round(share * 100)}%</b> kept (${Math.min(3, this.seals.broken)}/3 shrines). Leave by a way out to keep it all.`;
+    $('pc-safe').textContent = this.accounts.user ? 'Found this raid. Already in your stash, kept even if you fall.' : 'Found this raid (guest: not saved).';
     $('pc-list').replaceChildren(...(list.length ? list.map(([id, k]) => {
       const it = ITEMS[id], R = ItemsLib.RARITY[it.rarity], row = document.createElement('div');
       row.className = 'pc-row'; row.style.borderColor = R.color;
@@ -1382,17 +1377,17 @@ class Game {
     $('pc-worth').textContent = list.length ? `Worth ◆ ${list.reduce((s, [id, k]) => s + ItemsLib.itemValue(id) * k, 0)}` : '';
   }
 
-  // out through a door (the camp gate, the hidden hatch, the pit once the boss is dead): keep everything
+  // out through a door (the camp gate, or the pit once the boss is dead)
   extract() {
     if (!this.run?.raid || (this.mode !== 'play' && this.mode !== 'wait')) return;
-    const res = this.commitLoot(1) || { kept: {} };
+    const res = this.commitLoot() || { kept: {} };
     this.mode = 'over';
     this.audio.play(this.bossFelled ? 'victory' : 'fog'); this.audio.stopMusic(1); this.audio.ambience(null);
     const s = Math.round(this.time - this.startTime), n = countItems(res.kept);
     document.querySelector('#victory .banner').textContent = this.bossFelled ? `${this.areaName.toUpperCase()} IS PURGED` : `OUT OF ${this.areaName.toUpperCase()}`;
     $('victory-stats').innerHTML = [
       `${CHAR_NAMES[this.kind]}  ·  Time ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  ·  shrines ${Math.min(3, this.seals.broken)}/3${this.bossFelled ? '  ·  boss slain' : ''}`,
-      `Materials kept: ${n ? itemsText(res.kept) : 'none'}${n && !this.accounts.user ? ' (guest: not saved)' : ''}`,
+      `Materials found: ${n ? itemsText(res.kept) : 'none'}${n && !this.accounts.user ? ' (guest: not saved)' : ''}`,
       `Banked this raid: ◆ ${this.runBanked}${this.accounts.user ? '' : ' (guest: not saved)'}`,
     ].join('<br>');
     for (const k of ['hud', 'touch', 'boss', 'reward']) this.ui.show(k, false);

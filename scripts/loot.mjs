@@ -1,6 +1,5 @@
 // Materials (items.js) in a raid: chests roll a rarity with more and tougher guards the rarer they are; supply drums
-// smash for materials; what you carry goes to the stash when you leave by a door (all of it) or die (a third per
-// shrine broken); the boss drops its head gem once (then gold) and opens a way out; the stash shows Items / Gems /
+// smash for materials, straight into the stash the moment you get them (kept if you die); the boss drops its head gem once (then gold) and opens a way out; the stash shows Items / Gems /
 // Runes. A party's chests give each about half. node scripts/loot.mjs [url with ?server=]
 import { chromium } from 'playwright';
 const url = process.argv[2] || 'http://localhost:4173/?server=' + encodeURIComponent('http://127.0.0.1:4111');
@@ -43,20 +42,18 @@ const out = await page.evaluate(async () => {
   const got = I.countItems(g.raidLoot) - before;
   const tiers = Object.keys(g.raidLoot).map((id) => I.TIERS.indexOf(I.ITEMS[id].rarity));
   res.chest = { rarity: c.def.rarity, got, topTierFound: Math.max(...tiers) >= I.TIERS.indexOf(c.def.rarity) };
-  // 4. fall with one shrine broken: a third kept
-  const carried = { ...g.raidLoot }, n = I.countItems(carried);
-  g.seals.breakSeal(g.seals.list[0]);
+  // 4. fall with no shrine broken: everything found is kept (already in the stash)
+  const carried = { ...g.raidLoot }, n = I.countItems(carried), inStash = I.countItems(g.accounts.data.items);
   p.hp = 0; p.die?.(); g.gameOver(); await new Promise((r) => setTimeout(r, 3600));
   const st1 = I.countItems(g.accounts.data.items);
-  res.death = { carried: n, expected: Math.round(n / 3), kept: st1, share: Math.round(g.securedShare * 100), stats: document.getElementById('gameover-stats').innerText.split('\n').find((l) => l.startsWith('Kept')) };
+  res.death = { carried: n, inStashBefore: inStash, kept: st1, stats: document.getElementById('gameover-stats').innerText.split('\n').find((l) => l.startsWith('Materials')) };
   g.toTitle();
 
-  // 5. out through the camp gate: everything kept
+  // 5. out through the camp gate
   p = begin();
   g.addLoot({ scrap_iron: 3, servo_motor: 1 });
   const gate = g.world.dungeon.exits.find((e) => e.label.includes('camp'));
-  const hatch = g.world.dungeon.exits.find((e) => e.label.includes('hatch'));
-  res.exits = { count: g.world.dungeon.exits.length, gateReach: g.world.dungeon.reach(gate.x, gate.z), hatchReach: g.world.dungeon.reach(hatch.x, hatch.z), hatchAt: [Math.round(hatch.x), Math.round(hatch.z)] };
+  res.exits = { count: g.world.dungeon.exits.length, gateReach: g.world.dungeon.reach(gate.x, gate.z) };
   p.pos.set(gate.x, 0, gate.z); g.lastGood = null; run(2); g.input.pressed.add('interact'); run(2);
   res.extract = { mode: g.mode, victory: !document.getElementById('victory').classList.contains('hidden'), banner: document.querySelector('#victory .banner').textContent, stash: I.countItems(g.accounts.data.items) - st1 };
   g.toTitle();
@@ -99,8 +96,8 @@ out.stash.runes = await page.evaluate(() => document.getElementById('hm-stash-no
 await b.close();
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(12), JSON.stringify(v));
 const ok = out.chests.every((c) => c.rarity) && out.drums >= 8 && out.drum.broken && Object.keys(out.drum.loot).length && out.drum.obstacleGone && out.drum.modelGone && out.drum.othersStanding && out.drum.chestLid && out.drum.pieces >= 10 && out.drum.piecesSettled && out.drum.feed.length && out.drum.feed[0][2] >= 20 && out.drum.plain > 0 && out.pouch.rows > 0
-  && out.chest.got >= 2 && out.chest.topTierFound && out.death.kept === out.death.expected && out.extract.victory && out.extract.stash === 4
-  && out.exits.count === 2 && out.exits.gateReach && out.exits.hatchReach && out.boss.gem && out.boss.pitExit && out.boss.againGold >= 250
+  && out.chest.got >= 2 && out.chest.topTierFound && out.death.kept === out.death.carried && out.death.inStashBefore === out.death.carried && out.extract.victory && out.extract.stash === 4
+  && out.exits.count === 1 && out.exits.gateReach && out.boss.gem && out.boss.pitExit && out.boss.againGold >= 250
   && out.partyShare > 0.35 && out.partyShare < 0.65 && out.stash.items > 0 && out.stash.gems.shown === 3 && out.stash.gems.owned === 1;
 console.log(ok ? 'loot works' : 'LOOT PROBLEM');
 console.log(errs.length ? 'ERRORS\n' + errs.join('\n') : 'OK no errors');

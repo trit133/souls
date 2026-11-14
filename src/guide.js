@@ -12,7 +12,7 @@ export const GUIDE = [
       <ol>
         <li>Pick a raid off the <b>world map</b> (Solo Raid or Party Raid).</li>
         <li>In the raid: find and break <b>three shrines</b>, find the boss's hidden lair, kill the boss.</li>
-        <li>Grab <b>materials</b> from drums and chests on the way, and get out alive to keep them.</li>
+        <li>Grab <b>materials</b> from drums and chests on the way. They're yours the moment you pick them up.</li>
         <li>Come back here and spend your <b>gold</b> on your skill tree and your <b>emeralds</b> on your look.</li>
       </ol>
       <p>Each region has three raid areas. Its bosses each drop a <b>gem</b>; carry all of a region's gems to face its master.</p>`,
@@ -54,12 +54,8 @@ export const GUIDE = [
         <li>The <b>hoard</b> deep in one vault holds the best of all, behind a War Servitor and two big elites.</li>
       </ul>
       <h4>Keeping them</h4>
-      <p>What you pick up rides in your pouch until you leave. The map's line shows how much you carry and how much of it is safe.</p>
-      <ul>
-        <li><b>Leave through a way out</b> (green-lit doors) and you keep it all: the camp gate where you came in, a hatch hidden somewhere on the ward's edge, and the pit once the boss is dead.</li>
-        <li><b>Die</b> (or quit) and you keep a third for each shrine broken, rarest first. All three shrines keep everything.</li>
-        <li><b>Gold</b> is always kept, the moment you earn it.</li>
-      </ul>
+      <p>Everything you pick up goes straight into your stash and is yours to keep, even if you fall. Gold too, the moment you earn it. The pouch lists what you've found this raid.</p>
+      <p>Leave whenever you like by the camp gate where you came in, or by the way out in the boss's pit once it's dead.</p>
       <p>Materials wait in your stash. Each is worth gold; a bazaar will buy them one day.</p>`,
   },
   {

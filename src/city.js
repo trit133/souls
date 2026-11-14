@@ -69,10 +69,10 @@ export class City {
     this.shrineSites = shuffle([over[0], under[0], rest[0]], r);
     this.shrineKinds = shuffle(['elite', 'circle', 'altar'], r);
     this.shrineTrait = pick(r, ELITES);
-    // the hidden way out: a hatch at the end of a lane on the ward's north, west or east edge
+    // (once the hidden hatch's spot: still drawn so the rest of the layout stays the same)
     const edge = [];
     for (let k = 0; k < N; k++) edge.push({ x: X(k), z: X(0), dx: 0, dz: -1 }, { x: X(0), z: X(k), dx: -1, dz: 0 }, { x: X(N - 1), z: X(k), dx: 1, dz: 0 });
-    this.hatch = pick(r, edge);
+    pick(r, edge);
     // only the basements something waits in: the boss's, the shrines' down here, and one treasure vault (the hoard)
     const unders = [...VAULT_SITES, ...BOSS_SITES.filter((k) => k !== this.bossSite)];
     this.cacheSite = pick(r, unders.filter((k) => !this.shrineSites.includes(k)));
@@ -229,7 +229,6 @@ export class City {
     for (const b of this.buildings) this.buildBuilding(w, b);
     this.camp(w);
     this.rim(w);
-    { const H = this.hatch; this.at(w, H.x, H.z); this.exitDoor(w, H.x + H.dx * 2.7, H.z + H.dz * 2.7, H.dx, H.dz, 'Slip out through the hatch'); }
 
     // 3. basements (and the boss's vault and arena)
     let k = 0;

@@ -439,17 +439,6 @@ export function refundOf(tree, have, gone) {
   return sum;
 }
 
-// the most nodes a tree can hold: 70 in the first section, 120 once that character beats it (Varek),
-// 160 in the second section, 190 once that is beaten
-export function nodeCap(data, kind) {
-  const st = data?.stats || {};
-  if (st.section2WinsBy?.[kind]) return 190;
-  if (st.section2By?.[kind]) return 160;
-  if (st.winsBy?.[kind]) return 120;
-  return 70;
-}
-export const capHint = (cap) => (cap <= 70 ? 'Beat Varek with this character to raise the limit to 120' : cap <= 120 ? 'More nodes open in the next section' : 'More nodes open as you go deeper');
-
 export function neighbours(tree, id) {
   const out = [];
   for (const [a, b] of tree.edges) { if (a === id) out.push(b); else if (b === id) out.push(a); }

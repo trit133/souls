@@ -3,8 +3,8 @@
 // to the region's main boss: not consumed, only needed). Each material has a gold value by rarity and region (shown
 // for now; a bazaar will buy them later). What a raid can drop is per area (regions.js: AREAS[id].loot).
 //
-// A raid keeps what you pick up in a pouch (Game.raidLoot) until you leave: through an exit door you keep it all; if
-// you die you keep a third for each shrine broken (all three: everything). Gold is banked the moment it's earned.
+// What you pick up in a raid goes straight into the stash, kept even if you die (Game.raidLoot lists the raid's haul
+// for the pouch). Gold is banked the moment it's earned.
 
 export const RARITY = {
   common: { name: 'Common', color: '#b8b0a0', value: 5 },
