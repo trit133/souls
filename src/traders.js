@@ -19,7 +19,7 @@ export const TRADERS = [
     id: 'grist', name: 'Mother Grist', title: 'Rag-and-bone crone',
     blurb: 'Buys anything that can be scraped, sewn or melted down. Sells it back to you dearer.',
     unlocked: (d) => !!d?.gems?.gem_hask, lockText: 'Beat Executor Hask',
-    rarities: ['common', 'uncommon'], markup: 3, runes: true,
+    rarities: ['common', 'uncommon'], markup: 3,
     stock: { common: [6, 8, 10, 13, 16], uncommon: [3, 4, 5, 7, 9] },
     perk: { hp: 300, name: "Grist's Tonic", desc: '+300 base health for every character' },
     quests: [

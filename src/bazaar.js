@@ -249,7 +249,6 @@ export class Bazaar {
         const price = sellPrice(T, id), left = s.stock[id];
         row(id, `<b>◆ ${price}</b><span>${left} in stock</span>`, [['Buy', () => { if (buy(d, T, id)) { this.game.audio.play('uiTick', 1); this.say(`Bought ${ITEMS[id].name} for ◆ ${price}.`); done(); } }, left > 0 && d.gold >= price]]);
       }
-      if (T.runes) { const n = document.createElement('div'); n.className = 'bz-note'; n.textContent = 'Runes: the shelf is bare for now. She says she\'s expecting some.'; body.append(n); }
       const n = document.createElement('div'); n.className = 'bz-note'; n.textContent = 'Stock refills after every raid, and grows as this trader levels up.'; body.append(n);
     } else if (this.tab === 'sell') {
       const ids = Object.keys(d.items || {}).filter((id) => d.items[id] > 0 && dealsIn(T, id)).sort((a, b) => RARITY_ORDER(b, a));
