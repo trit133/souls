@@ -25,6 +25,10 @@ const GROUND = {
   city: { walk: [0x4c4a46, 0x3e3c39], out: [0x24221f, 0x36332f], grid: 4, seam: 0.86, sub: 2 },
   // cellars, sewers and bunkers under it: wet walls stepping up round the rooms
   under: { walk: [0x3c403c, 0x303430], out: [0x121412, 0x20241f], wall: true, grid: 2, seam: 0.74 },
+  // the Sump Lines (sump.js): wet ferrocrete tunnel floors in plates, black rock rising round them
+  sump: { walk: [0x3a3e38, 0x2e322d], out: [0x0e100e, 0x1a1d19], wall: true, grid: 2, seam: 0.78, sub: 2 },
+  // Saint Orsk's Spire (spire.js): worn flagstones, pale and cold, the ground outside them dark ash and old graves
+  spire: { walk: [0x5a5652, 0x4a4744], out: [0x1e1c1c, 0x2e2a2a], grid: 1.5, seam: 0.8, sub: 2 },
 };
 // a visual-only random 0..1 from a position (never the world's rand: that stream lays out the levels)
 const vh = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };

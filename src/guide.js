@@ -41,6 +41,11 @@ export const GUIDE = [
         <li><b>Hold the uplink:</b> stand in the ring for 30 seconds while waves come at you. The timer only runs with someone inside.</li>
         <li><b>Heretic idols:</b> break the three idols round the shrine while enemies pour out of it.</li>
       </ul>
+      <p>The deeper areas each have a shrine of their own, and it's always one of their three:</p>
+      <ul>
+        <li><b>Flood valves</b> (The Sump Lines): three valves stand round the shrine. Stand at one for 5 seconds to turn it (it slips back if you leave) while the drowned keep coming. Open all three.</li>
+        <li><b>Choir bells</b> (Saint Orsk's Spire): three bells hang round the shrine and the choir sings a hymn of four notes on them, lighting each bell in turn. Strike the bells in that order. A wrong bell starts the hymn over and calls guards in.</li>
+      </ul>
       <h4>The boss</h4>
       <p>The boss's lair is under one of the ward's big buildings, behind a door marked <b>LOCKED</b>. It opens once all three shrines are broken. Kill the boss for its <b>gem</b> (or extra gold if you already have it), and a way out opens in its pit.</p>`,
   },

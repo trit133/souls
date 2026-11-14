@@ -464,6 +464,14 @@ const NEW_TYPES = {
     model: { cloth: 0x2a2420, armor: 0x3a3632, skin: 0x7a6e66, head: 'bare', weapon: 'club', bulk: 1.5, eyes: 0xffc040, kit: 'bellwarden' },
   },
 };
+// a shrine bell (the Choir Bells shrine: city.js, seals.js): hangs in its frame and never breaks; a strike rings it
+// (the shrine hears which), no damage
+NEW_TYPES.chime = {
+  name: 'Choir Bell', hp: 1e6, poise: 999, scale: 1, radius: 0.6, run: 0, walk: 0, aggro: 0, prefer: 0, style: 'sword', turn: 0, still: true,
+  cd: [99, 99], moves: {}, weights: {}, superArmor: true, noBar: true,
+  onReceive: (e, info) => { e.game.seals?.strike?.(e); return { ...info, dmg: 0, poise: 0 }; },
+  model: { cloth: 0x1e1c1e, armor: 0x3a3a40, skin: 0x5a544e, head: 'none', eyes: 0x000000, kit: 'chime' },
+};
 for (const [k, T] of Object.entries(NEW_TYPES)) { T.hp *= NUM; TYPES[k] = T; }
 export const FOE_NAMES = Object.fromEntries(Object.entries(TYPES).map(([k, T]) => [k, T.name]).filter(([, n]) => n));
 
@@ -473,6 +481,28 @@ export const FOE_NAMES = Object.fromEntries(Object.entries(TYPES).map(([k, T]) =
 const setWeapon = (r, g, base, tip) => { r.wpnR = g; r.base.position.set(0, 0, base); g.add(r.base); r.tip.position.set(0, 0, tip); g.add(r.tip); };
 
 Object.assign(KITS, {
+  // a shrine's choir bell: the body is taken away, a bronze bell hangs at the beam's height with a clapper, its lip
+  // and a band that glow in its own colour when the choir sings it (seals.js sets rig.bellGlow)
+  chime: {
+    weapon: true,
+    build(r, o) {
+      const keep = new Set([r.j.torso]);
+      const strip0 = (obj) => { for (const c of [...obj.children]) { if (c.isMesh && !keep.has(c)) obj.remove(c); else strip0(c); } };
+      strip0(r.body);
+      const bronze = r.m(0x8a6a2a), dark = r.m(0x4a3a1e), glow = new THREE.MeshBasicMaterial({ color: 0x2a2010 });
+      r.bellGlow = glow;
+      const g = new THREE.Group(); g.position.y = 2.75 - r.hipH; r.body.add(g); // (hangs from the frame's beam)
+      g.add(box(0.12, 0.14, 0.12, dark, 0, -0.04, 0));
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.46, 0.8, 10, 1), bronze); bell.position.y = -0.5; g.add(bell);
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), bronze); crown.position.y = -0.1; g.add(crown);
+      const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.52, 0.07, 12), dark); lip.position.y = -0.92; g.add(lip);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.35, 0.06, 12), glow); band.position.y = -0.5; g.add(band);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.49, 0.03, 12), glow); ring.position.y = -0.87; g.add(ring);
+      g.add(box(0.05, 0.5, 0.05, dark, 0, -0.75, 0)); const cl = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), dark); cl.position.y = -1.02; g.add(cl);
+      r.bellG = g;
+      r.base.position.set(0, -0.5, 0); g.add(r.base); r.tip.position.set(0, -0.9, 0); g.add(r.tip);
+    },
+  },
   // a Sump Wretch: hunched and swollen, a rebreather grown into the face, blisters that glow, one arm a fan of hooked
   // claws (the other has shorter ones), rags and a drowned man's harness
   wretch: {

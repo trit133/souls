@@ -1,5 +1,4 @@
-// The Shattered March's deeper enemies (foes.js): under ?preview the Sump Lines and Saint Orsk's Spire open on
-// Ashfall Ward's streets with their own mix. Checks each raid spawns its area's types (heavy and melee in the right
+// The Shattered March's deeper enemies (foes.js), in the Sump Lines and Saint Orsk's Spire. Checks each raid spawns its area's types (heavy and melee in the right
 // places); each new type, set on a player alone, uses every move, hurts, and its trick works (the Hook Warden drags
 // you in, the Castellan's shield guards its front, the Augur blinks away and marks ahead of you, the Bell-Warden's
 // ring reaches out); then shots of every type idle and in each move. /tmp/look/foe-<type>-<move>.png
@@ -7,7 +6,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 mkdirSync('/tmp/look', { recursive: true });
-const url = process.argv[2] || 'http://localhost:4199/?preview';
+const url = process.argv[2] || 'http://localhost:4199/';
 const only = process.argv[3]?.split(',');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 900, height: 600 } })).newPage();

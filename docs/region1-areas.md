@@ -175,16 +175,46 @@ legendary.
 
 ## Status
 
-Done (2026-11-14):
-- This design.
-- All eight enemies in `src/foes.js`: stats, moves, animations, detailed models, defences, names and area colours.
-- Areas 2 and 3 defined in `src/regions.js` (blurbs, enemy mix, colours, loot tables). They stay **locked** on the
-  world map until their maps are built. For testing, `?preview` opens them now, using Ashfall Ward's map with the new
-  enemies.
+Done 2026-11-14:
+- This design, and all eight enemies (`src/foes.js`).
+- **Both maps**, open on the world map: `src/sump.js` and `src/spire.js`. Each is a City (`src/city.js`) with its own
+  plan (block layout, lanes, landmark and vault sites, shrine kinds) and its own look. The maze, walking grid,
+  basements, chests, enemies and boss vault are shared code. Ashfall Ward builds exactly as before
+  (`scripts/raid-fingerprint.mjs`).
+  - The Sump Lines: tiled tunnel walls with iron ribs, pipe runs, cables and caged hazard lamps. Flooded channels down
+    about half the tunnels (they slow you). Stations (rail beds, benches, departure boards), collapsed stations with
+    black pools, caged pump yards, round cisterns (the squares, water up to the shrine), and cave-ins. Station Ninefold
+    (concourse, ticket booths, a faceless saint, a dead clock tower), the Pump Cathedral (the great engine with
+    candles at its foot, a stained-glass control window) and the Sluice Works (a drained channel, hanging floodgates,
+    winches). You come down by a maintenance lift. Dim everywhere, with your cone always on. Roofed rooms and
+    basements are fully dark.
+  - Saint Orsk's Spire: cloister walls of limestone and basalt with buttresses, blind pointed arcades, gold bands,
+    crenels and candle niches. Steps between the three terraces. Chapels (pews, altar, icons, a censer), roofless
+    chapels, bell-yards with graves, cloister garths with stone penitents, and ossuary heaps. Pitched slate roofs with
+    pinnacles. The Great Nave (columns, a great stained window with the Eye, and a tower with a spire), the Bell
+    Foundry (furnace, mould pits, a half-cast bell, chimneys, a bell-cote) and the Augury Well (a shaft of violet light
+    ringed by seers' chairs, under a dome). The Pilgrims' Gate camp. A building between you and the camera drops to
+    its wall stumps, filled with dark, because these are too tall to turn to glass.
+- **Area chests and drums** (`CHEST_LOOKS` in `src/chests.js`): Sump pressure lockers (valve-wheel lock, gauge,
+  hazard chevrons; the hoard's has two wheels and the regime eagle) and promethium canisters. Spire reliquaries (an
+  ebony casket with a chapel-roof lid, gilt corners, a glowing saint icon as the lock, wax seals and candles; the hoard
+  is longer, with a sword on the lid) and offering urns (clay ossuary jars for the plain ones). Breaking a drum leaves
+  pieces in the area's materials.
+- **Two new shrines** (`src/seals.js`), each always one of its area's three:
+  - *Flood Valves* (Sump Lines): three valves 6-7 m out. Stand at one for 5 s to turn it (it slips back when you
+    leave). The drowned come in every 7 s. All three open breaks it.
+  - *Choir Bells* (Spire): three bells in frames (`chime` in foes.js: strikeable, never breaks, no health bar). The
+    choir sings a four-note hymn on them every 7 s, each bell lighting in its own colour. Strike them in order. A
+    wrong bell starts it over and calls guards. A straggler comes every 14 s anyway.
+  - Both work in a party (`scripts/party-shrines.mjs`). The guest can do all the work.
+- Loot as designed: the Sump reaches epic, the Spire reaches legendary.
+- Tests: `scripts/shrines.mjs`, `scripts/party-shrines.mjs`, `scripts/look-area.mjs` (screenshots),
+  `scripts/raid-fingerprint.mjs`. `scripts/raid.mjs` passes on the Sump Lines too. On the Spire it passes apart from
+  its glass check, because the Spire cuts buildings to stumps instead.
 
 Next:
-1. Build the Sump Lines map (`src/sump.js`, reusing City's grid, navigation and building code with a tunnel look),
-   then the Spire (`src/spire.js`).
-2. Promethium slicks, the Toll, and re-dressing the boss arenas.
-3. Better sync for guests in a party: the flame and bile cones and the Augur's blink are drawn by the host only for now
-   (the damage itself is synced).
+1. Promethium slicks that light up, and the Toll (main.js hooks).
+2. Re-dress the boss arenas (the Cold Pumps for Vael, the Bell Foundry for Gorrath). They use the old themes with
+   new names.
+3. Guest-side visuals for the flame and bile cones and the Augur's blink.
+4. Whether area 2 should wait until area 1 is cleared (right now all three are open).

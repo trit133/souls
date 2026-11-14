@@ -21,8 +21,16 @@ import { AREAS } from './regions.js';
 const REACH = 1.9, HEAL_PCT = 0.3;
 const LOCKED = 0xc02a1e;
 
+// an area's own chests and drums (sump.js, spire.js): { chest(w, x, z, yaw, big, rarity, kit), drum(w, x, z, plain, kit),
+// debris: { stave, hoop, lid (materials), dust: [r, g, b] } } keyed by the map's look. A chest returns what
+// buildChest does (group, lid that swings open on x, glow material for the lock, halo); kit: { rarityHex, LOCKED }
+export const CHEST_LOOKS = {};
+const kit = () => ({ rarityHex, LOCKED });
+
 // a squat iron-bound munitions chest with a lid that swings up and a lit lock: what the map builds at (x, z)
 export function buildChest(w, x, z, yaw, big = false, rarity = 'common') {
+  const own = CHEST_LOOKS[w.dungeon?.look]?.chest;
+  if (own) { const c = own(w, x, z, yaw, big, rarity, kit()); w.ob(x, z, big ? 1.05 : 0.7); return { x, z, big, rarity, ...c }; }
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = yaw; g.userData.noMerge = true;
   if (big) g.scale.setScalar(1.55);
   const part = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); parent.add(m); return m; };
@@ -47,6 +55,8 @@ const rarityHex = (r) => parseInt(RARITY[r].color.slice(1), 16);
 
 // a supply drum: a rusted promethium drum with hazard bands and an amber seal light; smash it for what's inside
 export function buildDrum(w, x, z, plain = false) {
+  const own = CHEST_LOOKS[w.dungeon?.look]?.drum;
+  if (own) { const g = own(w, x, z, plain, kit()); w.ob(x, z, 0.42); return { x, z, plain, group: g, ob: w.obstacles[w.obstacles.length - 1], look: w.dungeon.look }; }
   const g = new THREE.Group(); g.position.set(x, 0, z); g.userData.noMerge = true;
   const part = (geo, mat, py) => { const m = new THREE.Mesh(geo, mat); m.position.y = py; g.add(m); return m; };
   part(new THREE.CylinderGeometry(0.34, 0.36, 0.95, 8), plain ? w.mats.logDark : w.mats.rust, 0.48);
@@ -187,7 +197,7 @@ export class Chests {
   breakApart(d) {
     if (d.apart) return;
     d.apart = true;
-    const g = this.game, M = g.world.mats, D = d.def, plain = D.plain;
+    const g = this.game, M = g.world.mats, D = d.def, plain = D.plain, L = CHEST_LOOKS[D.look]?.debris;
     D.group.visible = false;
     const obs = g.world.obstacles, k = obs.indexOf(D.ob); if (k >= 0) obs.splice(k, 1); // (nothing left to walk round)
     const add = (geo, mat, x, y, z, ry, v, spin) => {
@@ -197,16 +207,16 @@ export class Chests {
     const stave = new THREE.BoxGeometry(0.22, 0.92, 0.06);
     for (let n = 0; n < 8; n++) {
       const a = (n / 8) * Math.PI * 2 + Math.random() * 0.3, sp = 1.8 + Math.random() * 2.2;
-      add(stave, plain ? M.logDark : M.rust, D.x + Math.cos(a) * 0.32, 0.48, D.z + Math.sin(a) * 0.32, -a + Math.PI / 2,
+      add(stave, L?.stave || (plain ? M.logDark : M.rust), D.x + Math.cos(a) * 0.32, 0.48, D.z + Math.sin(a) * 0.32, -a + Math.PI / 2,
         new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 2.5, Math.sin(a) * sp), new THREE.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 9));
     }
     const hoop = new THREE.TorusGeometry(0.36, 0.035, 4, 10);
     for (const y of [0.22, 0.74]) {
       const a = Math.random() * 6.28;
-      add(hoop, plain ? M.metal : M.hazard, D.x, y, D.z, 0, new THREE.Vector3(Math.cos(a) * 1.2, 1.5 + Math.random() * 2, Math.sin(a) * 1.2), new THREE.Vector3(3 + Math.random() * 4, 0, Math.random() * 3));
+      add(hoop, L?.hoop || (plain ? M.metal : M.hazard), D.x, y, D.z, 0, new THREE.Vector3(Math.cos(a) * 1.2, 1.5 + Math.random() * 2, Math.sin(a) * 1.2), new THREE.Vector3(3 + Math.random() * 4, 0, Math.random() * 3));
     }
-    add(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8), M.metal, D.x, 0.97, D.z, 0, new THREE.Vector3((Math.random() - 0.5) * 2, 4 + Math.random() * 2, (Math.random() - 0.5) * 2), new THREE.Vector3(6, 0, 4));
-    g.fx.burst({ x: D.x, y: 0.6, z: D.z }, 14, plain ? [0.4, 0.35, 0.3] : [0.7, 0.45, 0.2], 3, 0.5, 0.18);
+    add(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8), L?.lid || M.metal, D.x, 0.97, D.z, 0, new THREE.Vector3((Math.random() - 0.5) * 2, 4 + Math.random() * 2, (Math.random() - 0.5) * 2), new THREE.Vector3(6, 0, 4));
+    g.fx.burst({ x: D.x, y: 0.6, z: D.z }, 14, L?.dust || (plain ? [0.4, 0.35, 0.3] : [0.7, 0.45, 0.2]), 3, 0.5, 0.18);
     g.fx.dust?.({ x: D.x, y: 0, z: D.z }, 4, 0.5);
     g.audio.play('clang', 0.55);
   }

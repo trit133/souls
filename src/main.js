@@ -11,6 +11,7 @@ import { WeaponFx } from './weaponfx.js';
 import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
+import './sump.js'; import './spire.js'; // (the deeper areas' own maps, registered on City.MAPS)
 import { AREAS } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
@@ -377,7 +378,7 @@ class Game {
   darkLight(dt) {
     const D = this.world.dungeon;
     if (!D?.darkAt || this.night) return;
-    const dark = this.player && D.darkAt(this.player.pos.x, this.player.pos.z) ? 1 : 0;
+    const dark = this.player && D.darkAt(this.player.pos.x, this.player.pos.z) ? D.darkness?.(this.player.pos.x, this.player.pos.z) ?? 1 : 0; // (how dark: an area can be dim rather than black)
     const k = (this.darkK = (this.darkK || 0) + (dark - (this.darkK || 0)) * Math.min(1, dt * 4));
     this.hemi.intensity = 2.0 - 1.72 * k; this.sun.intensity = 2.0 * (1 - k);
     (this._sky ||= [new THREE.Color(0x9aa6c8), new THREE.Color(0x40507a), new THREE.Color(0x1a1712), new THREE.Color(0x040508)]);
@@ -2303,7 +2304,7 @@ class Game {
     const v = new THREE.Vector3();
     const w = window.innerWidth, h = window.innerHeight;
     for (const e of this.enemies) {
-      if (!e.alive || (e.hpShow <= 0 && this.player.lock !== e && !e.status.bars().length)) continue;
+      if (!e.alive || e.T?.noBar || (e.hpShow <= 0 && this.player.lock !== e && !e.status.bars().length)) continue; // (a shrine's bell: no bar)
       v.set(e.pos.x, 2.25 * e.rig.root.scale.y, e.pos.z).project(this.camera);
       if (v.z > 1) continue;
       list.push({ x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, v: e.hp / e.maxHp, status: e.status.bars().map((b) => ({ k: b.k, flash: b.flash, color: STATUS[b.k].color })) });
