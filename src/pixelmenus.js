@@ -27,7 +27,12 @@ function frames() {
 }
 
 // a button as a pixel tile; its text node stays (hidden) and the label follows it
+// on a phone the pixel lettering is drawn at half the scale (html.phone; style.css shrinks the buttons round it)
+const PHONE = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse) and (hover: none)').matches;
+const phonePx = (px) => (PHONE ? Math.max(1, Math.floor(px / 2)) : px);
+
 export function pxButton(btn, tone = 'rust', px = 3) {
+  px = phonePx(px);
   if (btn.plabel) return;
   btn.classList.add('pxbtn'); btn.dataset.tone = btn.dataset.tone || tone;
   const holder = document.createElement('span'); holder.className = 'pxlab';
@@ -48,7 +53,7 @@ export function pxText(el, o = {}) {
   if (el.plabel) return;
   const holder = document.createElement('span'); holder.className = 'pxlab';
   const text = () => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
-  const L = new PixelLabel(holder, text(), { font: o.font || 'big', px: o.px || 4 });
+  const L = new PixelLabel(holder, text(), { font: o.font || 'big', px: phonePx(o.px || 4) });
   el.plabel = L; el.classList.add('pxtext');
   el.appendChild(holder);
   live.add({ L, el: o.hover || el });
