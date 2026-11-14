@@ -1051,6 +1051,7 @@ class Game {
   }
 
   startRevive(target) {
+    this.player.endVeil?.(); // (Ghost Veil: reaching for a fallen teammate shows you)
     this.reviving = { pid: target.pid, t: 1.5 };
     this.player.setState('rest');
   }

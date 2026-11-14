@@ -36,7 +36,7 @@ export const WEAPONS = {
     desc: 'A blade that springs from the bracer of one hand. Quick punching stabs; its heavy is a short, sudden jab.',
     recipe: { ash_rag: 14, spent_casings: 8, scrap_iron: 6, copper_coil: 4, cracked_lens: 3, purity_seal: 2, augury_shard: 2, oracle_core: 1 },
     special: { name: 'Blink Dash', desc: 'A short, very fast dash you can\'t be hit during. Ready again after 3 s.' },
-    evo: { id: 'ghostVeil', name: 'Ghost Veil', desc: 'After a dash you fade from sight for 5 s: enemies lose you, and a stab in the back of one facing away does triple damage. Attacking ends it.',
+    evo: { id: 'ghostVeil', name: 'Ghost Veil', desc: 'After a dash you fade from sight for 5 s: enemies lose you, and a stab in the back of one facing away does triple damage. Attacking or reviving a teammate ends it.',
       recipe: { ash_rag: 8, spent_casings: 6, cracked_lens: 4, purity_seal: 3, augury_shard: 1 } } },
   psystaff: { kind: 'mage', region: 'r1', name: 'Psy-Staff', short: 'Staff', icon: 'w_psystaff', slots: ['staff'],
     desc: 'A long staff with a psychic focus at its head. Reaching strikes charge your mana; its heavy is a lash of lightning.',
