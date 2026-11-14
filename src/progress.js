@@ -7,7 +7,7 @@ export const enemyGold = (type) => (type === 'brute' ? 3 : 1) * NUM;
 // player gets further and kills more, which is the growth), a brute twice that, an elite three times. Tuned so a run
 // buys about one skill tree node (scripts/income.mjs).
 export const KILL_GOLD = [1.5, 1.5, 1.5, 1.5].map((g) => g * NUM);
-export const killGold = (e) => (e.effigy ? 0 : Math.round(KILL_GOLD[Math.min(3, e.tier || 0)] * (e.elite ? 3 : e.type === 'brute' ? 2 : 1)));
+export const killGold = (e) => (e.effigy ? 0 : Math.round(KILL_GOLD[Math.min(3, e.tier || 0)] * (e.elite ? 3 : e.heavy ? 2 : 1)));
 // In a party every kill pays everyone a share: a party fights 30% / 60% more enemies, so clearing an area leaves each
 // player about what they'd earn clearing it alone (2 players 87% each, 3 players 77%)
 export const partyShare = (players) => 1 / (1 + extraEnemyShare(players));

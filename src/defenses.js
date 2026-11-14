@@ -16,6 +16,16 @@ const TYPES = {
   spear: { armor: [2, 8], res: [3, 10], crit: [3, 6], critDmg: [25, 40] },
   grunt: { armor: [5, 10], res: [5, 10], crit: [3, 6], critDmg: [25, 40] },
   brute: { armor: [10, 15], res: [8, 15], crit: [4, 8], critDmg: [30, 45] },
+  // the Sump Lines (foes.js): about 5 more armour and resistance than Ashfall Ward's
+  wretch: { armor: [8, 12], res: [8, 14], crit: [5, 8], critDmg: [30, 45] },
+  hook: { armor: [9, 14], res: [8, 14], crit: [4, 7], critDmg: [30, 45] },
+  torcher: { armor: [6, 10], res: [8, 14], always: { fire: [25, 35] }, crit: [3, 6], critDmg: [25, 40] }, // (fire-proofed)
+  hulk: { armor: [15, 20], res: [12, 18], always: { poison: [20, 30] }, crit: [5, 9], critDmg: [35, 50] },
+  // Saint Orsk's Spire: about 10 more
+  flagellant: { armor: [10, 15], res: [12, 18], always: { bleed: [25, 35] }, crit: [8, 12], critDmg: [35, 50] }, // (used to bleeding)
+  castellan: { armor: [20, 26], res: [14, 20], crit: [5, 8], critDmg: [40, 55] },
+  augur: { armor: [8, 12], res: [16, 22], crit: [10, 14], critDmg: [40, 55] },
+  bellwarden: { armor: [22, 28], res: [16, 22], crit: [6, 10], critDmg: [45, 60] },
 };
 const ELITE = 5, ELITE_CRIT = 3, ELITE_CRIT_DMG = 5; // an elite: its type's ranges, this much higher
 const BOSSES = {

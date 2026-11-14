@@ -24,7 +24,7 @@ import { Chests } from './chests.js';
 import { Basements } from './basements.js';
 import { Minimap } from './minimap.js';
 import { Player } from './player.js';
-import { Enemy, NIGHT } from './enemies.js';
+import { Enemy, NIGHT, TYPES as FOE_TYPES } from './enemies.js';
 import { Boss, BOSS_MOVES, BOSSES } from './boss.js';
 import { UI } from './ui.js';
 import { angDiff } from './actor.js';
@@ -227,7 +227,7 @@ class Game {
 
   // a party fights 15% / 30% more regular enemies, placed near the originals
   extraSpawns(players, seed) {
-    const share = extraEnemyShare(players), pool = this.world.spawns.filter((s) => s.type !== 'brute' && !s.o.reserve && !s.o.effigy && !s.o.elite);
+    const share = extraEnemyShare(players), pool = this.world.spawns.filter((s) => s.type !== 'brute' && !FOE_TYPES[s.type]?.heavy && !s.o.reserve && !s.o.effigy && !s.o.elite);
     const r = rng(seed + 7), out = [];
     for (let i = 0, n = Math.round(pool.length * share); i < n; i++) {
       const s = pool[Math.floor(r() * pool.length)];
@@ -1603,7 +1603,7 @@ class Game {
 
   // evolved knight's shield charge meeting an enemy: a little damage and a hard shove
   shieldBash(p, e, dir) {
-    const push = (e.isBoss ? 4 : e.type === 'brute' ? 7 : 12) * (1 + (p.tree?.chargeKb || 0) / 100);
+    const push = (e.isBoss ? 4 : e.heavy ? 7 : 12) * (1 + (p.tree?.chargeKb || 0) / 100);
     const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
     if (e.puppet) {
       this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100), poise: 12, kb: [dir.x * push, dir.z * push] });
@@ -2174,7 +2174,7 @@ class Game {
     if (this.foeShown === foe) return;
     this.foeShown = foe;
     const NAMES = { grunt: 'Zealot', spear: 'Pike Zealot', archer: 'Needle Gunner', brute: 'War Servitor', effigy: 'Heretic Idol' };
-    const name = foe.isBoss ? foe.name.split(',')[0] : `${foe.elite ? ELITE[foe.elite].name + ' ' : ''}${NAMES[foe.type] || foe.type}`;
+    const name = foe.isBoss ? foe.name.split(',')[0] : `${foe.elite ? ELITE[foe.elite].name + ' ' : ''}${NAMES[foe.type] || FOE_TYPES[foe.type]?.name || foe.type}`;
     const d = foe.def || { armor: 0, res: {} }, deals = Object.keys(foe.elems || {});
     // damage per hit: its moves' hits averaged (an archer's arrow), with its scaling and the elements it adds
     const hits = foe.type === 'archer' ? [12] : Object.entries(foe.moves || {}).filter(([k]) => k !== 'holdBurst').flatMap(([, m]) => (m.hits || []).filter((h) => h.dmg > 0 && !h.pctHp).map((h) => h.dmg));
@@ -2243,7 +2243,7 @@ class Game {
       if (d < m && d > 1e-4) {
         const push = (m - d);
         // the boss and brutes are immovable for the player
-        const wa = b.isBoss || b.type === 'brute' ? 1 : 0.5, wb = 1 - wa;
+        const wa = b.isBoss || b.heavy ? 1 : 0.5, wb = 1 - wa;
         a.move(-dx / d * push * wa, -dz / d * push * wa);
         b.move(dx / d * push * wb, dz / d * push * wb);
       }

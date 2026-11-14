@@ -5,6 +5,11 @@
 // The old regime looked into the future with sorcery and stole its machines for their arms and armour; it only fed
 // the old wars until everything burned. The last of that regime fight their way toward the one who started it all.
 
+import './foes.js'; // (the deeper areas' own enemies join the enemy types)
+
+// ?preview opens the areas whose maps aren't built yet, on Ashfall Ward's streets, to try their enemies
+const PREVIEW = typeof location !== 'undefined' && new URLSearchParams(location.search).has('preview');
+
 // enemy looks per area (merged over each type's model in enemies.js): every area dresses its own
 const ASHFALL_LOOK = {
   grunt: { cloth: 0x4a3a2a, armor: 0x4e4438, head: 'hood', eyes: 0xffa040 }, // (scavenger gangs in rag and scrap plate)
@@ -23,8 +28,21 @@ export const AREAS = {
     // weapons can't be forged from Ashfall Ward alone)
     loot: { drum: { common: 80, uncommon: 18, rare: 2 }, chest: { common: 32, uncommon: 42, rare: 26 }, hoard: { rare: 100 } },
   },
-  r1a2: { id: 'r1a2', region: 'r1', name: 'The Sump Lines', kind: 'locked', blurb: 'Flooded transit tunnels under the ward.' },
-  r1a3: { id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: 'locked', blurb: 'A cathedral-fortress on the ward\'s edge.' },
+  // (designed in docs/region1-areas.md: their maps come next; until then they're locked, or under ?preview borrow
+  // Ashfall Ward's streets with their own enemies)
+  r1a2: {
+    id: 'r1a2', region: 'r1', name: 'The Sump Lines', kind: PREVIEW ? 'city' : 'locked', boss: 'vael', open: PREVIEW,
+    blurb: 'Flooded transit tunnels under the ward. The ones who stayed below changed; the gangs who work the pumps burn them out.',
+    mix: { wretch: 4, hook: 2, torcher: 2, hulk: 0.5 }, look: {}, heavy: 'hulk', melee: ['wretch', 'hook'],
+    // epic first shows here (Augury Shards: the region's weapons can be forged from here on)
+    loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 40, rare: 32, epic: 10 }, hoard: { rare: 60, epic: 40 } },
+  },
+  r1a3: {
+    id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: PREVIEW ? 'city' : 'locked', boss: 'gorrath', open: PREVIEW,
+    blurb: 'The high augur\'s cathedral-fortress on the ward\'s edge. His order still sings in the bell-towers, still reads what is coming, and still turns back all who climb.',
+    mix: { flagellant: 3, castellan: 2, augur: 1.5, bellwarden: 0.5 }, look: {}, heavy: 'bellwarden', melee: ['flagellant', 'castellan'],
+    loot: { drum: { common: 58, uncommon: 30, rare: 9, epic: 3 }, chest: { common: 8, uncommon: 32, rare: 38, epic: 18, legendary: 4 }, hoard: { epic: 70, legendary: 30 } },
+  },
 };
 
 // map positions are 0..1 across the world map (regions) and across a region's own map (areas)

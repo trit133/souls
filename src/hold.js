@@ -21,7 +21,7 @@ export const HOLD_BURST = {
 };
 
 const now = (e) => e.game.time;
-const bursts = (e) => e.isBoss || e.type === 'brute';
+const bursts = (e) => e.isBoss || e.heavy;
 
 // can a combo hold it right now?
 export function isWeak(e) {

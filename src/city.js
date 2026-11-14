@@ -742,6 +742,7 @@ export class City {
   // ---------- enemies (this raid's stream: they stand somewhere new every time) ----------
   populate(w) {
     const r = this.r, mixW = this.area.mix, look = this.area.look, placed = [];
+    const { heavy, melee } = this.foes();
     const free = (x, z, gap = 2.2) => w.walkable(x, z, 0.6) && this.reach(x, z) && !placed.some((p) => Math.hypot(p.x - x, p.z - z) < gap)
       && !this.stairs.some((s) => Math.hypot(s.x - x, s.z - z) < 3) && Math.hypot(x - this.startAt.x, z - this.startAt.z) > 18
       && !w.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 0.7);
@@ -757,12 +758,12 @@ export class City {
     const add = (type, p, o = {}) => {
       this.at(w, p.x, p.z);
       placed.push(p);
-      const sit = !o.elite && !o.event && (type === 'grunt' || type === 'spear') && r() < 0.22;
+      const sit = !o.elite && !o.event && melee.includes(type) && r() < 0.22;
       w.spawn(type, p.x, p.z, r() * Math.PI * 2, { ...o, sit, look });
       return w.spawns[w.spawns.length - 1];
     };
-    const regular = (noBrute) => { let t = weighted(r, mixW); if (t === 'brute' && noBrute) t = 'grunt'; return t; };
-    const pack = (n, x0, x1, z0, z1, o = {}) => { let brute = false; const out = []; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === 'brute') brute = true; out.push(add(t, p)); } return out; };
+    const regular = (noBrute) => { let t = weighted(r, mixW); if (t === heavy && noBrute) t = melee[0]; return t; };
+    const pack = (n, x0, x1, z0, z1, o = {}) => { let brute = false; const out = []; for (let k = 0; k < n; k++) { const p = spotIn(x0, x1, z0, z1, o); if (!p) continue; const t = regular(brute); if (t === heavy) brute = true; out.push(add(t, p)); } return out; };
 
     // the shrines' guards first (so nothing else crowds them)
     for (const S of this.sites) {
@@ -770,7 +771,7 @@ export class City {
       const box = [d.x - 8, d.x + 8, d.z - 8, d.z + 8];
       if (S.kind === 'elite') {
         const p = spotIn(...box, near) || { x: d.x + 3, z: d.z + 3 };
-        d.guards.push(add(r() < 0.35 ? 'brute' : pick(r, ['grunt', 'spear']), p, { elite: this.shrineTrait }));
+        d.guards.push(add(r() < 0.35 ? heavy : pick(r, melee), p, { elite: this.shrineTrait }));
         for (let k = 0; k < 3 + Math.floor((this.players - 1) / 2); k++) { const q = spotIn(...box, near); if (q) d.guards.push(add(regular(true), q)); }
       } else if (S.kind === 'altar') {
         for (let k = 0; k < 3; k++) {
@@ -832,9 +833,9 @@ export class City {
         placed.push(...chests.map((c) => ({ x: c.x, z: c.z })));
         const ring = { ring: { x: h.x, z: h.z + 4, r: 6 }, avoid: h, avoidR: 3, gap: 2.6 };
         const spot = () => spotIn(h.x - 7, h.x + 7, h.z, h.z + 9, ring) || { x: h.x + (r() - 0.5) * 6, z: h.z + 5 };
-        guards.push(add('brute', spot()));
+        guards.push(add(heavy, spot()));
         const trait = pick(r, ELITES);
-        for (let k = 0; k < 2; k++) guards.push(add(pick(r, ['grunt', 'spear']), spot(), { elite: trait, big: true }));
+        for (let k = 0; k < 2; k++) guards.push(add(pick(r, melee), spot(), { elite: trait, big: true }));
         for (const c of chests) { c.guards = guards; c.hoard = true; w.chests.push(c); }
       }
       else pack(u.kind === 'vault' ? 2 + (r() < 0.5 ? 1 : 0) : 2, L.x0, L.x0 + L.W, L.z0, L.z0 + L.H);
@@ -846,11 +847,14 @@ export class City {
     for (const p of drums) { placed.push(p); this.at(w, p.x, p.z); w.drums.push(buildDrum(w, p.x, p.z)); }
   }
 
-  // a chest's guards by its rarity: rare and up bring elites, a legendary one a War Servitor too
+  // the area's heavy (a War Servitor in Ashfall Ward) and its melee fighters (shrine elites, the hoard's big guards)
+  foes() { return { heavy: this.area.heavy || 'brute', melee: this.area.melee || ['grunt', 'spear'] }; }
+
+  // a chest's guards by its rarity: rare and up bring elites, a legendary one the area's heavy too
   toughen(guards, rarity, r) {
     const t = TIERS.indexOf(rarity), trait = pick(r, ELITES);
     guards.forEach((sp, k) => {
-      if (t >= 4 && k === 0) sp.type = 'brute';
+      if (t >= 4 && k === 0) sp.type = this.foes().heavy;
       else if ((t >= 2 && k === 0) || (t >= 3 && k <= 2)) sp.o.elite = trait;
     });
     return guards;

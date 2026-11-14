@@ -197,7 +197,8 @@ export class Enemy extends Actor {
   constructor(game, type, x, z, yaw = 0, opts = {}) {
     const T = TYPES[type], E = ELITE[opts.elite], G = opts.big ? TYPES.brute : null; // big: a regular enemy at a War Servitor's size and toughness
     // tier = mini bosses passed before this module
-    const tier = opts.tier || 0, ts = tierStats(tier, opts.players || 1), party = partyScale(opts.players || 1, type === 'brute');
+    const heavy = type === 'brute' || !!T.heavy; // (a War Servitor, or another area's heavy: foes.js)
+    const tier = opts.tier || 0, ts = tierStats(tier, opts.players || 1), party = partyScale(opts.players || 1, heavy);
     const rig = buildHumanoid({ ...T.model, ...(opts.look?.[type] || {}), scale: (G ? G.scale : T.scale) * (E ? 1.2 : 1), eyes: E ? E.color : TIER_EYES[tier] ?? T.model.eyes, eyeGlow: E ? 0xffffff : tier >= 3 ? 0xff1a10 : null });
     super(game, rig, { x, z, yaw, hp: Math.round((G || T).hp * ts.hp * party.hp * (E ? 2.6 : 1)), radius: (G || T).radius * (E ? 1.15 : 1), poise: (G || T).poise * (E ? 2 : 1) });
     this.tier = tier; this.dmgScale = ts.dmg * party.dmg; this.spdScale = ts.spd * party.spd;
@@ -221,8 +222,9 @@ export class Enemy extends Actor {
     }
     this.uid = 'E' + UID++;
     this.mod = opts.mod ?? null;
-    this.status = new StatusState(this, type === 'brute' ? 180 : 100);
-    if (type === 'brute' && !this.moves.holdBurst) this.moves.holdBurst = HOLD_BURST; // breaks out of a combo lock
+    this.heavy = heavy;
+    this.status = new StatusState(this, heavy ? 180 : 100);
+    if (heavy && !this.moves.holdBurst) this.moves.holdBurst = HOLD_BURST; // breaks out of a combo lock
     this.type = type;
     this.T = T;
     this.home = { x, z, yaw };
@@ -235,7 +237,7 @@ export class Enemy extends Actor {
     this.phase = Math.random() * 6;
     this.speed = 0;
     this.trackMul = 1;
-    this.trail = new Trail(game.scene, type === 'brute' ? 0xffb080 : 0xffe0c0, 12, 0.4);
+    this.trail = new Trail(game.scene, heavy ? 0xffb080 : 0xffe0c0, 12, 0.4);
     this.hpShow = 0;
     this.lastMove = null;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
@@ -248,11 +250,12 @@ export class Enemy extends Actor {
   watchGap() { return this.night ? NIGHT.watch : 10 + Math.random() * 5; }
 
   critable() { return this.state === 'parried'; }
-  attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.atkScale; }
+  attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.atkScale * (this.T.rate?.(this) ?? 1); }
 
   // elemental damage this enemy carries (a share of each hit, taken out of the physical): { fire: 0.25 } or null.
   // Its weapon shows the element(s), like a player's.
   setElems(elems) {
+    if (this.T.elems) { const o = { ...(elems || {}) }; for (const [k, v] of Object.entries(this.T.elems)) o[k] = Math.max(o[k] || 0, v); elems = addedElems(o); } // (its own, always)
     if (this.elite === 'blazing') elems = addedElems({ ...(elems || {}), fire: Math.max(elems?.fire || 0, 0.3) }); // fire on every hit
     if (this.effigy) elems = null;
     this.elems = elems; this.elemBuild = 1;
@@ -355,6 +358,7 @@ export class Enemy extends Actor {
       case 'chase': {
         if (!p.alive || unseen || !this.game.sameRoom(this, p)) { this.setState('return'); break; }
         if (Math.hypot(this.pos.x - this.home.x, this.pos.z - this.home.z) > 30 && dist > 8) { this.setState('return'); break; }
+        if (T.think?.(this, dt, p, dist)) break; // (its own trick: an Augur's blink)
         this.cd -= dt;
         const behind = Math.abs(angDiff(this.yaw, toP)) > 1.4;
         if (this.urgent && (this.urgentT -= dt) <= 0) this.urgent = false;
@@ -509,6 +513,7 @@ export class Enemy extends Actor {
     if (!this.alive) return 'none';
     if (this.puppet) return this.puppetHit(info);
     if (this.dmgTaken) info = { ...info, dmg: info.dmg * this.dmgTaken };
+    if (this.T.onReceive) info = this.T.onReceive(this, info); // (a Castellan's shield)
     if (this.T.still) {
       this.hp -= info.dmg; this.hpShow = 4; this.rig.flash(1, 0.4, 0.3);
       if (this.hp <= 0) { this.die(); this.game.pfx?.play('poof', this.pos.clone().setY(0.6), { size: 1.4 }); return 'kill'; }
@@ -543,9 +548,9 @@ export class Enemy extends Actor {
       if (this.state === 'attack') { this.releaseToken(); if (this.tele) { this.tele.dead = true; this.tele = null; } }
       this.atk = null;
       this.setState('hurt');
-      this.hurtDur = this.type === 'brute' ? 1.1 : 0.45;
+      this.hurtDur = this.heavy ? 1.1 : 0.45;
       const away = new THREE.Vector3(this.pos.x - info.srcPos.x, 0, this.pos.z - info.srcPos.z).normalize();
-      if (!info.noKnock) this.kb.copy(away).multiplyScalar(this.type === 'brute' ? 3 : 5);
+      if (!info.noKnock) this.kb.copy(away).multiplyScalar(this.heavy ? 3 : 5);
       return 'stagger';
     }
     if (this.state === 'chase' || this.state === 'recover') this.counter(0.15);
