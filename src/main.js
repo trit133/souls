@@ -1912,7 +1912,10 @@ class Game {
     this.fx.burst({ x: pos.x, y: 0.5, z: pos.z }, 40, storm ? [0.6, 0.85, 1] : [0.78, 0.56, 1], 5, 0.7, 0.22);
     this.fx.shockwave(pos.x, pos.z, R, 0x9fdcff, 0.5);
     // everything inside when it's laid freezes solid (decided where the enemies are run: alone, or the party's host)
-    if (!this.isGuest) for (const e of this.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) < SIGIL.r + e.radius) e.freezeFor?.(e.isBoss ? SIGIL.bossFreeze : SIGIL.freeze);
+    // (a boss or mini boss isn't frozen but chilled: slowed right down for a while, frost on it on every screen)
+    if (!this.isGuest) for (const e of this.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) < SIGIL.r + e.radius) {
+      if (e.isBoss) { e.chillFor(SIGIL.bossChill); this.vfx('chill', { e: e.netId }, SIGIL.bossChill); } else e.freezeFor?.(SIGIL.freeze);
+    }
   }
   // a laser: a white-hot core in violet glow from `from` along dir for len m, flickering, fading in ~0.35 s, with a
   // flare where it leaves the focus (visual)
@@ -1948,10 +1951,13 @@ class Game {
   }
   sigilSlowAt(x, z) { for (const S of this.sigils || []) if (Math.hypot(x - S.x, z - S.z) < SIGIL.r) return SIGIL.slow; return 1; }
   updateSigils(dt) {
+    for (const e of this.enemiesAll()) if (e.chillFxUntil > this.time && e.alive && Math.random() < dt * 40) {
+      const s = e.rig.root.scale.y || 1; this.fx.add.spawn({ x: e.pos.x + (Math.random() - 0.5) * e.radius * 2, y: (0.3 + Math.random() * 1.8) * s, z: e.pos.z + (Math.random() - 0.5) * e.radius * 2, vy: 0.4, life: 0.8, size: 0.16, size1: 0.03, r: 0.7, g: 0.9, b: 1, alpha: 0.85 });
+    }
     if (!this.sigils?.length) return;
     for (const S of this.sigils) {
       S.t -= dt;
-      S.g.rotation.y += dt * 0.5; S.runes.rotation.y -= dt * 1.4; S.mat.opacity = Math.min(0.55, S.t * 0.4) * (0.8 + Math.sin(this.time * 6) * 0.2);
+      S.g.rotation.y += dt * 0.5; // (and below: frost drifting off anything chilled) S.runes.rotation.y -= dt * 1.4; S.mat.opacity = Math.min(0.55, S.t * 0.4) * (0.8 + Math.sin(this.time * 6) * 0.2);
       if (Math.random() < dt * 22) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * SIGIL.r; this.fx.add.spawn({ x: S.x + Math.cos(a) * r, y: 0.1, z: S.z + Math.sin(a) * r, vy: 0.9 + Math.random(), life: 0.9, size: 0.12, size1: 0.02, r: S.col.r, g: S.col.g, b: S.col.b, alpha: 0.8 }); }
       // enemy shots break on it
       for (const q of this.projectiles) if (!q.friendly && Math.hypot(q.pos.x - S.x, q.pos.z - S.z) < SIGIL.r) q.life = 0;

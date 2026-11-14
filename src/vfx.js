@@ -51,6 +51,12 @@ export const VFX = {
     g.pfx.play('psyHit', end); g.fx.sparks(end, d, 14, [0.85, 0.6, 1]);
     g.fx.addShake(own ? 0.25 : 0.1); g.audio[own ? 'play' : 'remote']('fire', 0.5);
   },
+  // a boss or mini boss chilled by the sigil: a burst of cold, then frost drifting off it while it lasts (main.js)
+  chill(g, ref, dur) {
+    const e = g.entityRef(ref); if (!e) return;
+    e.chillFxUntil = g.time + dur;
+    const s = e.rig.root.scale.y || 1; g.pfx.play('freezeHit', e.pos.clone().setY(1.2 * s), { size: 1.4 }); g.statusPopup?.(e, 'CHILLED', '#9fdcff');
+  },
   psyCharge(g, who, life) {
     const p = g.playerRef(who); if (!p) return;
     const at = { pos: new THREE.Vector3() };

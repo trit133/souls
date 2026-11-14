@@ -49,14 +49,14 @@ export class UI {
     this.flaskEl.textContent = p.flasks;
     // rogue parry / evolved knight shield charge cooldowns
     const sp = p.c?.special;
-    const cd = sp === 'parry' ? ['Parry', p.parryCd] : sp === 'dash' ? ['Dash', p.dashCd] : p.evo === 'aegisRam' ? ['Charge', p.chargeCd]
+    const cd = sp === 'parry' ? ['Parry', p.parryCd] : sp === 'dash' ? ['Dash', p.dashCd] : sp === 'sigil' ? ['Sigil', p.sigilCd || 0] : p.evo === 'aegisRam' ? ['Charge', p.chargeCd]
       : p.evo === 'berserk' ? (p.rageT > 0 ? ['Beast', -p.rageT] : ['Beast', p.rageCd]) : null;
     const txt = cd ? (cd[1] < 0 ? `${cd[0]} ${Math.ceil(-cd[1])}s left` : cd[1] > 0 ? `${cd[0]} ${Math.ceil(cd[1])}s` : `${cd[0]} ready`) : '';
     if (txt !== this.abTxt) {
       this.abTxt = txt;
       const el = (this.abEl ||= document.getElementById('ability'));
       el.textContent = txt; el.classList.toggle('ready', !!cd && !(cd[1] > 0));
-      document.getElementById('b-special')?.classList.toggle('cd', (sp === 'parry' || sp === 'dash') && cd[1] > 0);
+      document.getElementById('b-special')?.classList.toggle('cd', (sp === 'parry' || sp === 'dash' || sp === 'sigil') && cd[1] > 0);
     }
     // status build-up on you: a big icon per building status with its meter under it; it flashes each time a hit
     // adds to it, and bursts when it procs. Built once per status and updated in place (so the flashes replay)

@@ -347,8 +347,9 @@ const STAFF_COMBOS = [
   { id: 'arc', name: 'Arc Sweep', desc: 'A sweep, a roll, then the staff whirled all the way round.', steps: [[A, 't1', 0.27], [R, 'roll', 0.38], [A, 'tSpin']] },
   { id: 'thunder', name: 'Thunderhead', desc: 'The lash, a sweep, then lightning breaks all round you (14 mana).', steps: [[H, 'heavy', 0.38], [A, 'tc1', 0.27], [H, 'tStorm']] },
 ];
-// r: its radius; freeze: how long enemies caught inside when it's laid are frozen solid (a boss: bossFreeze)
-export const SIGIL = { mana: 35, dur: 6, r: 5.5, slow: 0.5, zapEvery: 0.6, freeze: 5, bossFreeze: 2.5 };
+// r: its radius; cd: seconds before it can be laid again; freeze: how long enemies caught inside when it's laid are
+// frozen solid. A boss or mini boss isn't frozen: it's chilled for bossChill s, moving and swinging at chill speed
+export const SIGIL = { mana: 35, dur: 6, r: 5.5, slow: 0.5, zapEvery: 0.6, cd: 10, freeze: 5, bossChill: 4, chill: 0.3 };
 
 // a region weapon's class overrides (player.js weaponChar adds the combos)
 export const WEAPON_SETS = {

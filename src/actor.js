@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { sample, locomotion, P } from './anims.js';
+import { SIGIL } from './weaponmoves.js';
 
 const Z3 = [0, 0, 0];
 export const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
@@ -70,6 +71,9 @@ export class Actor {
     this.setState('frozen');
     return true;
   }
+  // chilled (a boss or mini boss in a Psy-Staff's sigil: it can't be frozen): moves and swings at SIGIL.chill speed
+  chillFor(dur) { if (this.alive && !this.puppet) this.chillUntil = this.game.time + dur; }
+  chillMul() { return this.chillUntil > this.game.time ? SIGIL.chill : 1; }
   // the pose it's held in while frozen: wherever the rig was
   heldPose() {
     if (!this.icePose) { this.icePose = { by: this.rig.scalars.by }; for (const k in this.rig.cur) this.icePose[k] = this.rig.cur[k].slice(); }
@@ -107,7 +111,7 @@ export class Actor {
   move(dx, dz) {
     if (!dx && !dz) return;
     const w = this.game.world;
-    const slow = w.slowAt(this.pos.x, this.pos.z) * (this.team !== 'player' ? this.game.sigilSlowAt?.(this.pos.x, this.pos.z) ?? 1 : 1); // (a Psy-Staff's sigil slows enemies) // bog water
+    const slow = w.slowAt(this.pos.x, this.pos.z) * (this.team !== 'player' ? (this.game.sigilSlowAt?.(this.pos.x, this.pos.z) ?? 1) * this.chillMul() : 1); // (a Psy-Staff's sigil slows enemies; a chilled boss crawls) // bog water
     const to = _to.set(this.pos.x + dx * slow, 0, this.pos.z + dz * slow);
     // enemies and bosses are confined to the module they spawned in (in a dungeon, that chamber and its neighbours)
     w.resolve(this.pos, to, this.radius, this.roam ?? this.mod ?? null);

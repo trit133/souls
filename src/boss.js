@@ -145,7 +145,7 @@ export class Boss extends Actor {
 
   get target() { return this.game.targetOf(this); }
   critable() { return this.state === 'parried' || this.state === 'broken'; }
-  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.atkScale; }
+  attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.atkScale * this.chillMul(); }
 
   reset() {
     this.basePoise = this.basePoise || this.maxPoise; this.maxPoise = this.basePoise; this.breaks = 0;

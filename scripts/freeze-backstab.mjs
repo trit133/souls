@@ -1,4 +1,5 @@
-// The Psy-Staff's sigil (radius 5.5) freezes the enemies inside it when laid: 5 s for an enemy, 2.5 s for a boss,
+// The Psy-Staff's sigil (radius 5.5, 10 s between casts) freezes the enemies inside it when laid for 5 s (a boss or
+// mini boss isn't frozen: it's chilled for 4 s, moving and swinging at 30%),
 // held in place in a block of ice, hurt by hits but not knocked out of it, and thawing back into the fight; a party
 // guest sees the same. The Ghost Veil's first strike is always the backstab (the Wrist Blades' rip: triple damage,
 // facing or not). The Penitent Slab's second swing is slower and hits harder; the staff's heavy fires a laser.
@@ -32,15 +33,17 @@ Object.assign(res, await A.evaluate(() => {
   for (const e of grunts) { e.sitting = false; e.target = p; e.setState('chase'); }
   run(0.1);
   p.castSigil(p.pos.clone().set(0, 0, 1), 0); run(0.45);
+  p.setState('move'); out.cooldown = { again: p.castSigil(p.pos.clone().set(0, 0, 1), 0), left: +p.sigilCd.toFixed(1), hud: (g.ui.update(0, p), document.getElementById('ability').textContent) };
   out.sigil = { states: grunts.map((e) => e.state), left: grunts.map((e) => +((e.frozenUntil || 0) - g.time).toFixed(1)), ice: grunts.map((e) => !!e.ice?.visible) };
   const hp0 = grunts[0].hp; g.resolveHit(p, grunts[0], p.c.attacks.t3.hits[0], p.c.attacks.t3); run(0.05);
   out.hitFrozen = { hpLost: Math.round(hp0 - grunts[0].hp), state: grunts[0].state };
   const pos0 = grunts[1].pos.clone(); run(3); out.heldStill = +grunts[1].pos.distanceTo(pos0).toFixed(2);
   run(2); out.thawed = { states: grunts.slice(0, 2).map((e) => e.state), ice: grunts.slice(0, 2).map((e) => !!e.ice?.visible) };
-  // a boss inside: 2.5 s
+  // a boss inside: chilled, not frozen (after the cooldown)
   const boss = g.bosses[0];
   const enc = g.encounters.find((x) => x.boss); // (a boss is in the fight once its encounter starts)
-  if (enc) { g.startEncounter(enc); const boss = enc.boss; boss.update = Object.getPrototypeOf(boss).update; boss.setState('neutral'); boss.pos.set(p.pos.x + 2, 0, p.pos.z + 2); run(0.1); p.mana = 1e4; p.setState('move'); p.castSigil(p.pos.clone().set(0, 0, 1), 0); run(0.45); out.boss = { state: boss.state, left: +((boss.frozenUntil || 0) - g.time).toFixed(1) }; }
+  run(p.sigilCd + 0.05); // (the cooldown runs out)
+  if (enc) { g.startEncounter(enc); const boss = enc.boss; boss.update = Object.getPrototypeOf(boss).update; boss.setState('neutral'); boss.pos.set(p.pos.x + 2, 0, p.pos.z + 2); p.iframe = () => true; run(0.1); p.mana = 1e4; p.setState('move'); out.cdOver = p.castSigil(p.pos.clone().set(0, 0, 1), 0); run(0.45); out.boss = { state: boss.state, chillLeft: +((boss.chillUntil || 0) - g.time).toFixed(1), speed: boss.chillMul(), frost: boss.chillFxUntil > g.time }; }
 
   // 2. the laser
   p = begin('mage', 'psystaff');
@@ -98,7 +101,8 @@ await b.close();
 for (const [k, v] of Object.entries(res)) log(k, v);
 const s = res.sigil, ok = s.states[0] === 'frozen' && s.states[1] === 'frozen' && s.states[2] !== 'frozen' && Math.abs(s.left[0] - 4.8) < 0.2 && s.ice[0] && !s.ice[2]
   && res.hitFrozen.hpLost > 0 && res.hitFrozen.state === 'frozen' && res.heldStill < 0.05 && !res.thawed.states.includes('frozen') && !res.thawed.ice.includes(true)
-  && res.boss?.state === 'frozen' && Math.abs(res.boss.left - 2.3) < 0.2 && res.laser === 1
+  && res.cooldown.again === false && Math.abs(res.cooldown.left - 9.6) < 0.2 && /Sigil \d+s/.test(res.cooldown.hud) && res.cdOver === true
+  && res.boss?.state !== 'frozen' && Math.abs(res.boss.chillLeft - 3.8) < 0.2 && res.boss.speed === 0.3 && res.boss.frost && res.laser === 1
   && res.veil.plain.key === 'w1' && res.veil.veiled.key === 'wRip' && res.veil.veiled.backstab && !res.veil.plain.backstab && res.veil.ratio > 2.6 && res.veil.ratio < 3.4
   && res.slab.g2[0] === 1.25 && res.slab.g2[2] === 54 && res.slab.gc2 === 58 && res.slab.gRise[0] === 0.95 && res.slab.gRise[1] === 0.34
   && res.party[0][0] === 'frozen' && res.party[0][1] && res.party[1][0] === 'frozen' && res.party[1][1] && res.party[1][2] === 1;

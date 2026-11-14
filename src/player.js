@@ -451,7 +451,7 @@ export class Player extends Actor {
       if (this.ripLift) { this.y = 0; this.ripLift = false; }
     }
     this.parryCd = Math.max(0, (this.parryCd || 0) - dt);
-    this.dashCd = Math.max(0, this.dashCd - dt); this.rageCd = Math.max(0, this.rageCd - dt);
+    this.dashCd = Math.max(0, this.dashCd - dt); this.rageCd = Math.max(0, this.rageCd - dt); this.sigilCd = Math.max(0, (this.sigilCd || 0) - dt);
     if (this.rageT > 0 && (this.rageT -= dt) <= 0) this.game.ui.toastSmall?.('The beast sleeps');
     if (this.rageT > 0 && Math.random() < dt * 30) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.8, y: 0.3 + Math.random() * 1.6, z: this.pos.z + (Math.random() - 0.5) * 0.8, vy: 1.5, life: 0.5, size: 0.18, size1: 0.02, r: 1, g: 0.15, b: 0.08, alpha: 0.9 });
     this.updateVeil(dt);
@@ -1001,7 +1001,10 @@ export class Player extends Actor {
 
   // ---------- the Psy-Staff: a warding sigil at your feet (main.js placeSigil does the rest) ----------
   castSigil(dir, mag) {
-    return this.startCast(SIGIL.mana - (this.tree.fireCost || 0) * 0.4, 0.55, 0.28, () => this.game.vfx('sigil', this.pos.clone().setY(0.05), this.evo === 'stormSigil', this.game.myRef()), dir, mag);
+    if (this.sigilCd > 0) return false; // (SIGIL.cd between them: the HUD counts it down)
+    const ok = this.startCast(SIGIL.mana - (this.tree.fireCost || 0) * 0.4, 0.55, 0.28, () => this.game.vfx('sigil', this.pos.clone().setY(0.05), this.evo === 'stormSigil', this.game.myRef()), dir, mag);
+    if (ok) this.sigilCd = SIGIL.cd;
+    return ok;
   }
 
   // ---------- the Wrist Blade: a short dash you can't be hit in, and (Ghost Veil) the fade after it ----------
