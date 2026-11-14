@@ -136,21 +136,95 @@ function workbench(glow) {
   box(g, 0.12, 0.05, 0.05, M.glow, -0.05, 1.62, -0.3); // a lamp tube over it
   return { group: g, glow: M.glow };
 }
-// the equipment stand: an iron rack with a weapon on its hooks, a plaque glowing in the hideout's colour
-function weaponStand(glow) {
-  const g = new THREE.Group(), M = { iron: L(0x2c2c30), dark: L(0x141416), steel: L(0x9a9ca4), grip: L(0x3a2616), trim: L(0x6a5634), glow: new THREE.MeshBasicMaterial({ color: glow }) };
-  box(g, 1.2, 0.12, 0.5, M.dark, 0, 0.06, 0); // the plinth
-  for (const sx of [-1, 1]) box(g, 0.09, 1.7, 0.09, M.iron, sx * 0.52, 0.9, 0); // uprights
-  box(g, 1.18, 0.08, 0.1, M.iron, 0, 1.72, 0); box(g, 1.1, 0.05, 0.08, M.trim, 0, 1.1, 0.04); box(g, 1.1, 0.05, 0.08, M.trim, 0, 0.6, 0.04);
-  for (const sx of [-0.32, 0, 0.32]) box(g, 0.04, 0.12, 0.08, M.steel, sx, 1.16, 0.08); // hooks
-  // a greatsword and a staff racked across it
-  box(g, 0.05, 0.22, 1.3, M.steel, 0, 1.25, 0.12, Math.PI / 2); box(g, 0.05, 0.05, 0.36, M.grip, -0.82, 1.25, 0.12, Math.PI / 2);
-  box(g, 0.04, 0.04, 1.2, M.grip, 0, 0.74, 0.12, Math.PI / 2); box(g, 0.08, 0.08, 0.08, M.glow, 0.62, 0.74, 0.12);
-  box(g, 0.34, 0.16, 0.03, M.glow, 0, 1.5, 0.06); // the plaque
-  return { group: g };
+// the equipment stand, one per hideout (each a set piece in its own right, lit from above: see LAMPS):
+//  Templar: an armoury shrine: a stepped plinth, iron uprights crowned with spikes under a pointed arch and a
+//   crusade cross, a crimson banner behind, a sword and a heater shield and the Slab racked on it, a glowing seal
+//  Shrike: a looted steel locker stood upright, doors hanging open, red-lit inside, blades on a pegboard, a chain
+//   and a hook, a red warning lamp on top
+//  Adept: a stasis pedestal: a brass drum of copper coils, a glass column of cold light with the staff floating in
+//   it, rune rings turning round it (turned in update: stand.spin)
+function equipStand(kind) {
+  const g = new THREE.Group(), steel = L(0xa4a8b0), grip = L(0x3a2616), dark = L(0x141416), spin = [];
+  const glowM = (c) => new THREE.MeshBasicMaterial({ color: c });
+  if (kind === 'knight') {
+    const iron = L(0x2c2c30), gold = L(0x9a7a34), red = L(0x6a1412), glow = glowM(0xffa040);
+    box(g, 1.7, 0.14, 0.75, dark, 0, 0.07, 0); box(g, 1.45, 0.12, 0.6, iron, 0, 0.2, 0); // the steps
+    for (const sx of [-1, 1]) { box(g, 0.13, 2.2, 0.13, iron, sx * 0.66, 1.36, 0); const sp = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 4), gold); sp.position.set(sx * 0.66, 2.6, 0); g.add(sp); }
+    // the pointed arch and the cross on it
+    for (const sx of [-1, 1]) box(g, 0.1, 0.62, 0.1, iron, sx * 0.34, 2.56, 0, 0, 0, sx * 0.95);
+    box(g, 0.07, 0.42, 0.07, gold, 0, 2.95, 0); box(g, 0.26, 0.07, 0.07, gold, 0, 3.0, 0);
+    box(g, 1.2, 1.7, 0.03, red, 0, 1.4, -0.12); box(g, 1.2, 0.1, 0.05, gold, 0, 2.26, -0.11); // the banner
+    box(g, 1.32, 0.07, 0.12, gold, 0, 1.75, 0.03); box(g, 1.32, 0.07, 0.12, gold, 0, 0.95, 0.03); // the rails
+    // the sword, point down; the shield; the slab across the top rail
+    box(g, 0.05, 1.0, 0.1, steel, -0.36, 1.2, 0.1); box(g, 0.3, 0.05, 0.07, gold, -0.36, 1.74, 0.1); box(g, 0.05, 0.22, 0.05, grip, -0.36, 1.88, 0.1);
+    box(g, 0.5, 0.62, 0.06, red, 0.3, 1.25, 0.1); box(g, 0.1, 0.62, 0.07, gold, 0.3, 1.25, 0.11); box(g, 0.5, 0.08, 0.07, gold, 0.3, 1.35, 0.11);
+    box(g, 1.5, 0.24, 0.06, steel, 0, 1.94, 0.12); box(g, 0.34, 0.06, 0.06, grip, -0.9, 1.94, 0.12);
+    box(g, 0.36, 0.2, 0.03, glow, 0, 0.55, 0.32); // the seal-plaque
+    return { group: g, spin };
+  }
+  if (kind === 'rogue') {
+    const tin = L(0x3e4044), rust = L(0x5a3a26), red = glowM(0xff3a2a);
+    box(g, 1.2, 2.1, 0.06, tin, 0, 1.05, -0.3); // the back
+    for (const sx of [-1, 1]) box(g, 0.06, 2.1, 0.6, tin, sx * 0.6, 1.05, 0); // the sides
+    box(g, 1.26, 0.06, 0.66, tin, 0, 2.1, 0); box(g, 1.26, 0.12, 0.66, rust, 0, 0.06, 0);
+    // the doors, hanging open, one off a hinge
+    box(g, 0.58, 2.0, 0.04, tin, -0.86, 1.05, 0.48, 1.1); box(g, 0.58, 1.9, 0.04, rust, 0.9, 0.98, 0.45, -1.3, 0, 0.08);
+    for (const y of [1.7, 1.75, 1.8]) box(g, 0.3, 0.02, 0.03, dark, -0.95, y, 0.62, 1.1); // vents
+    // red light inside, the pegboard and the blades on it
+    box(g, 1.1, 0.04, 0.04, red, 0, 2.0, -0.2); box(g, 1.08, 1.6, 0.03, L(0x2a1c18), 0, 1.15, -0.26);
+    for (let i = 0; i < 5; i++) { const x = -0.4 + i * 0.2; box(g, 0.03, 0.5, 0.06, steel, x, 1.45 - (i % 2) * 0.08, -0.22, 0, 0, (i - 2) * 0.08); box(g, 0.05, 0.14, 0.05, grip, x, 1.76 - (i % 2) * 0.08, -0.22); }
+    box(g, 0.14, 0.12, 0.42, rust, -0.25, 0.8, -0.05); box(g, 0.03, 0.05, 0.5, steel, -0.25, 0.8, 0.22); // a wrist blade's bracer and blade
+    box(g, 0.14, 0.12, 0.42, rust, 0.25, 0.8, -0.05); box(g, 0.03, 0.05, 0.5, steel, 0.25, 0.8, 0.22);
+    for (let i = 0; i < 6; i++) box(g, 0.05, 0.08, 0.05, L(0x6a6c72), 0.5, 1.9 - i * 0.09, 0.0); // a chain, a hook at its end
+    box(g, 0.04, 0.12, 0.04, steel, 0.5, 1.3, 0.04);
+    box(g, 0.18, 0.12, 0.18, dark, 0, 2.2, 0); box(g, 0.14, 0.1, 0.14, red, 0, 2.31, 0); // the warning lamp
+    return { group: g, spin };
+  }
+  // mage
+  const brass = L(0xb89a4a), copper = L(0x8a4a2a), coil = glowM(0x7aa8ff);
+  cyl(g, 0.5, 0.58, 0.22, dark, 0, 0.11, 0, 12); cyl(g, 0.42, 0.46, 0.5, brass, 0, 0.47, 0, 12);
+  for (let i = 0; i < 4; i++) cyl(g, 0.47, 0.47, 0.05, i % 2 ? copper : coil, 0, 0.3 + i * 0.12, 0, 12);
+  cyl(g, 0.46, 0.4, 0.08, brass, 0, 0.76, 0, 12); cyl(g, 0.46, 0.4, 0.08, brass, 0, 2.5, 0, 12); // top and bottom rims of the column
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.66, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0x7aa8ff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  glass.position.y = 1.63; g.add(glass);
+  for (const a of [0, 2.1, 4.2]) box(g, 0.05, 1.7, 0.05, brass, Math.cos(a) * 0.38, 1.63, Math.sin(a) * 0.38);
+  // the staff floating in the light, and two rune rings round it
+  const staff = new THREE.Group(); staff.position.y = 1.62; g.add(staff);
+  box(staff, 0.05, 1.3, 0.05, L(0x3a2a20), 0, 0, 0); box(staff, 0.07, 0.06, 0.07, brass, 0, 0.2, 0); box(staff, 0.07, 0.06, 0.07, brass, 0, -0.3, 0);
+  const focus = new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), glowM(0xc890ff)); focus.position.y = 0.72; focus.scale.y = 1.6; staff.add(focus);
+  spin.push({ obj: staff, axis: 'y', speed: 0.6 });
+  for (const [y, r, sp] of [[1.25, 0.5, 1.2], [2.05, 0.44, -0.9]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.018, 4, 32), coil); ring.rotation.x = Math.PI / 2; ring.position.y = y;
+    const holder = new THREE.Group(); holder.add(ring); for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; box(holder, 0.06, 0.06, 0.02, coil, Math.cos(a) * r, y, Math.sin(a) * r, -a); }
+    g.add(holder); spin.push({ obj: holder, axis: 'y', speed: sp });
+  }
+  return { group: g, spin };
 }
-const EQUIP = { knight: { at: [-1.75, -2.2], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.85, -2.25], ry: 0.3, glow: 0xff3a2a }, // (between the wardrobe and the jukebox; the Adept's stays front right)
-  mage: { at: [1.5, 1.85], ry: -0.35, glow: 0x7aa8ff } };
+// where it stands: the Templar's and the Shrike's right of the vox-caster, behind the fire, left of the chest;
+// the Adept's front right
+const EQUIP = { knight: { at: [2.0, -1.45], ry: -0.45, glow: 0xffa040, scale: 0.78 }, rogue: { at: [1.95, -1.55], ry: -0.4, glow: 0xff3a2a, scale: 0.85 },
+  mage: { at: [2.05, 1.7], ry: -0.35, glow: 0x7aa8ff, scale: 0.62 } };
+// the lamps hung over everything you can use, one look per hideout: an iron cage-lantern on a chain (Templar), a
+// bare bulb in a wire guard on a cable, red (Shrike), a floating focus crystal (Adept)
+const LAMPS = { knight: { color: 0xffb060, power: 3.2, style: 'lantern' }, rogue: { color: 0xff5040, power: 3.0, style: 'bulb' }, mage: { color: 0x9ac0ff, power: 3.0, style: 'crystal' } };
+function hangingLamp(g, style, color, x, y, z) {
+  const lit = new THREE.MeshBasicMaterial({ color }), iron = L(0x1e1e22);
+  if (style === 'lantern') {
+    box(g, 0.02, 1.4, 0.02, iron, x, y + 0.85, z); // the chain
+    box(g, 0.24, 0.05, 0.24, iron, x, y + 0.17, z); box(g, 0.2, 0.05, 0.2, iron, x, y - 0.15, z);
+    for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(g, 0.025, 0.3, 0.025, iron, x + dx * 0.1, y, z + dz * 0.1);
+    box(g, 0.13, 0.22, 0.13, lit, x, y, z);
+  } else if (style === 'bulb') {
+    box(g, 0.015, 1.4, 0.015, iron, x, y + 0.82, z); box(g, 0.08, 0.1, 0.08, iron, x, y + 0.14, z);
+    box(g, 0.1, 0.12, 0.1, lit, x, y, z);
+    for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) box(g, 0.012, 0.22, 0.012, iron, x + dx * 0.08, y - 0.01, z + dz * 0.08);
+  } else {
+    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), lit); c.position.set(x, y, z); c.scale.y = 1.7; g.add(c);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.012, 4, 20), lit); halo.position.set(x, y, z); halo.rotation.x = Math.PI / 2; g.add(halo);
+    return [c, halo];
+  }
+  return [];
+}
 const WORKBENCH = { knight: { at: [-1.3, 1.75], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.4, 1.75], ry: 0.3, glow: 0xff3a2a }, mage: { at: [-1.35, 1.75], ry: 0.3, glow: 0x7aa8ff } };
 const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x5a1414 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
@@ -568,7 +642,16 @@ export class Hermitage {
     this.stashLid = stash.lid; this.lidAngle = 0;
     const J = JUKEBOX[kind], juke = jukebox(J.wood); juke.group.position.set(J.at[0], 0, J.at[1]); juke.group.rotation.y = J.ry; g.add(juke.group);
     const W = WORKBENCH[kind], bench = workbench(W.glow); bench.group.position.set(W.at[0], 0, W.at[1]); bench.group.rotation.y = W.ry; bench.group.scale.setScalar(0.56); g.add(bench.group);
-    const E = EQUIP[kind], stand = weaponStand(E.glow); stand.group.position.set(E.at[0], 0, E.at[1]); stand.group.rotation.y = E.ry; stand.group.scale.setScalar(0.62); g.add(stand.group);
+    const E = EQUIP[kind], stand = equipStand(kind); stand.group.position.set(E.at[0], 0, E.at[1]); stand.group.rotation.y = E.ry; stand.group.scale.setScalar(E.scale); g.add(stand.group);
+    this.standSpin = stand.spin;
+    const standLight = new THREE.PointLight(E.glow, 1.6, 3.2, 1.5); standLight.position.set(E.at[0], 1.2, E.at[1] + 0.8); scene.add(standLight);
+    // a lamp hung over each thing you can use, with a pool of light falling on it
+    const LP = LAMPS[kind]; this.lamps = [];
+    for (const [x, z, h] of [[2.95, -0.2, 2.3], [-2.95, -0.7, 2.9], [J.at[0], J.at[1], 2.8], [W.at[0], W.at[1], 2.2], [E.at[0], E.at[1], E.scale * 3.1 + 0.5]]) {
+      const parts = hangingLamp(g, LP.style, LP.color, x, h, z);
+      const sl = new THREE.SpotLight(LP.color, LP.power * 3, 5, 0.62, 0.55, 1.4); sl.position.set(x, h - 0.1, z); sl.target.position.set(x, 0, z); scene.add(sl, sl.target);
+      this.lamps.push({ sl, parts, base: LP.power * 3, ph: r() * 6, y: h });
+    }
     const benchLight = new THREE.PointLight(W.glow, 1.2, 2.6, 1.5); benchLight.position.set(W.at[0] + 0.3, 1.4, W.at[1] + 0.5); scene.add(benchLight);
     this.juke = juke; this.jukeLight = new THREE.PointLight(0xffb060, 1.6, 3, 1.5); this.jukeLight.position.set(J.at[0], 1.0, J.at[1] + 0.7); scene.add(this.jukeLight);
     this.items = [
@@ -922,6 +1005,13 @@ export class Hermitage {
     this.fire.update(dt, t);
     this.fireLight.intensity = this.firePower * (1 + Math.sin(t * 11) * 0.1 + Math.sin(t * 23) * 0.06);
     for (const s of this.small) s.pl.intensity = s.base * (0.9 + Math.sin(t * 7 + s.ph) * 0.1);
+    // the hung lamps: a lantern's flame breathes, a bulb now and then stutters, a crystal bobs; the Adept's pedestal turns
+    for (const l of this.lamps || []) {
+      const style = LAMPS[this.kind].style, stutter = style === 'bulb' && Math.sin(t * 1.3 + l.ph) > 0.97 ? 0.35 : 1;
+      l.sl.intensity = l.base * stutter * (style === 'lantern' ? 0.92 + Math.sin(t * 9 + l.ph) * 0.08 : 1);
+      if (style === 'crystal') for (const m of l.parts) { m.position.y = l.y + Math.sin(t * 1.5 + l.ph) * 0.05; if (m.geometry.type === 'OctahedronGeometry') m.rotation.y += dt * 1.2; }
+    }
+    for (const sp of this.standSpin || []) sp.obj.rotation[sp.axis] += sp.speed * dt;
     // the lid swings open while the stash is
     this.lidAngle += ((this.stashOpen ? -1.15 : 0) - this.lidAngle) * Math.min(1, dt * 8);
     this.stashLid.rotation.x = this.lidAngle;
