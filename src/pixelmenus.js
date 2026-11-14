@@ -27,9 +27,9 @@ function frames() {
 }
 
 // a button as a pixel tile; its text node stays (hidden) and the label follows it
-// on a phone the pixel lettering is drawn at half the scale (html.phone; style.css shrinks the buttons round it)
+// on a phone the pixel lettering is drawn smaller (about 0.6x; html.phone; style.css shrinks the buttons round it)
 const PHONE = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse) and (hover: none)').matches;
-const phonePx = (px) => (PHONE ? Math.max(1, Math.floor(px / 2)) : px);
+const phonePx = (px) => (PHONE ? Math.max(1.5, Math.round(px * 1.2) / 2) : px); // (half steps: whole device pixels on a 2x / 3x screen)
 
 export function pxButton(btn, tone = 'rust', px = 3) {
   px = phonePx(px);

@@ -59,7 +59,7 @@ export class Home {
       if (ic) pixelIcon(ic, ic.dataset.icon, big ? 6 : 3);
       const lab = t.querySelector('.tile-t');
       const phone = document.documentElement.classList.contains('phone') || matchMedia('(pointer: coarse) and (hover: none)').matches; // (a phone: half-size lettering)
-      if (lab) { const L = new PixelLabel(lab, lab.textContent.trim(), { px: phone ? (big ? 2 : 1) : (big ? 5 : 3) }); L.tile = t; lab.plabel = L; this.labels.push(L); }
+      if (lab) { const L = new PixelLabel(lab, lab.textContent.trim(), { px: phone ? (big ? 3 : 1.5) : (big ? 5 : 3) }); L.tile = t; lab.plabel = L; this.labels.push(L); }
     }
     for (const t of document.querySelectorAll('#menu .tile')) {
       const cv = document.createElement('canvas');

@@ -1159,11 +1159,11 @@ body.pt-on #hm-stash, body.pt-on #hm-juke, body.pt-on #hm-work { top: var(--pt-b
 
 /* ---------- phones: much smaller buttons and boxes (html.phone only; desktop never matches) ---------- */
 /* every pixel button: a thin frame and tight padding round its (half-scale) lettering */
-html.phone button.pxbtn { border-width: 4px; border-image-width: 4px; padding: 2px 5px; margin: 2px; }
-html.phone button.pxbtn.mini-btn { border-width: 3px; border-image-width: 3px; padding: 1px 3px; }
+html.phone button.pxbtn { border-width: 5px; border-image-width: 5px; padding: 4px 8px; margin: 3px; }
+html.phone button.pxbtn.mini-btn { border-width: 4px; border-image-width: 4px; padding: 2px 5px; }
 html.phone #hermitage button.pxbtn.mini-btn, html.phone #bazaar button.pxbtn.mini-btn { min-height: 0; min-width: 0; }
-html.phone .menu-btn:not(.pxbtn) { margin: 4px; padding: 6px 14px; font-size: 13px; letter-spacing: 1px; }
-html.phone .mini-btn:not(.pxbtn) { padding: 3px 7px; font-size: 11px; }
+html.phone .menu-btn:not(.pxbtn) { margin: 4px; padding: 8px 18px; font-size: 15px; letter-spacing: 1px; }
+html.phone .mini-btn:not(.pxbtn) { padding: 5px 9px; font-size: 13px; }
 /* the Sanctum: its top bar, raid buttons, hover label and side panels */
 html.phone .hm-top { top: calc(4px + env(safe-area-inset-top)); padding: 0 calc(6px + env(safe-area-inset-left)); }
 html.phone #hm-gold { font-size: 11px; min-width: 0; }
@@ -1176,7 +1176,7 @@ html.phone #hm-hint { top: 44px; font-size: 9px; }
 html.phone #hm-stash, html.phone #hm-juke, html.phone #hm-work, html.phone #hm-equip { top: 34px; bottom: 6px; width: 44vw; padding: 5px; border-width: 2px; overflow-y: auto; }
 html.phone .hm-sh { font-size: 12px; letter-spacing: 1px; }
 html.phone .hm-note { margin: 3px 0 4px; font-size: 9px; }
-html.phone .hm-tabs button { padding: 2px 0; font-size: 9px; }
+html.phone .hm-tabs button { padding: 4px 0; font-size: 10px; }
 html.phone #hm-tip, html.phone .wk-tip { font-size: 9px !important; padding: 4px 6px !important; max-width: 46vw; }
 html.phone #hm-guide { font-size: 10px; }
 html.phone #hm-bazaar i { width: 12px; height: 12px; line-height: 12px; font-size: 9px; top: -5px; right: -5px; }
@@ -1195,11 +1195,11 @@ html.phone .bz-row { gap: 4px; padding: 3px 2px; }
 html.phone .bz-row .item-ic { width: 16px !important; height: 16px !important; }
 html.phone .bz-nm b { font-size: 10px; } html.phone .bz-nm span, html.phone .bz-rt span { font-size: 8px; }
 html.phone .bz-rt { min-width: 42px; } html.phone .bz-rt b { font-size: 10px; }
-html.phone .bz-btn { padding: 2px 5px; font-size: 9px; border-width: 1px; }
+html.phone .bz-btn { padding: 4px 8px; font-size: 11px; border-width: 1px; }
 html.phone .bz-note { margin: 4px 1px; font-size: 8px; }
 html.phone .bz-quest { padding: 5px; font-size: 9px; border-width: 1px; } html.phone .bz-quest h4 { font-size: 11px; margin-bottom: 2px; }
 html.phone .bz-goal { margin-top: 4px; font-size: 9px; } html.phone .bz-reward { margin-top: 3px; font-size: 8px; }
-html.phone .bz-claim { margin-top: 4px; padding: 4px; font-size: 10px; }
+html.phone .bz-claim { margin-top: 5px; padding: 6px; font-size: 12px; }
 html.phone #bz-msg { min-height: 0; margin-top: 3px; font-size: 8px; }
 /* the maps: the picked area's box, and the pins' names */
 html.phone #wm-panel { width: 38vw; font: 9px/1.3 monospace; padding: 5px 7px; border-width: 1px; right: calc(6px + env(safe-area-inset-right)); bottom: calc(6px + env(safe-area-inset-bottom)); max-height: 60vh; overflow-y: auto; }
@@ -1210,8 +1210,8 @@ html.phone .wm-top { top: calc(4px + env(safe-area-inset-top)); padding: 0 calc(
 html.phone .wm-pin { font-size: 9px; gap: 1px; padding: 2px; } html.phone .wm-pin .wm-dot { width: 8px; height: 8px; }
 /* in a raid: no enemy description card on a phone */
 html.phone #foe-panel { display: none !important; }
-html.phone #hm-solo, html.phone #hm-party { min-width: 110px; }
+html.phone #hm-solo, html.phone #hm-party { min-width: 150px; }
 html.phone #hm-slots { grid-template-columns: repeat(8, 1fr); gap: 2px; }
 html.phone .tiles { gap: 6px; }
-html.phone .tile-big, html.phone .tile-small { height: 40px; padding: 3px 6px; }
-html.phone .tile-big { width: 130px; } html.phone .tile-small, html.phone #btn-settings { width: 115px; } html.phone .tile-fs { width: 100px; }
+html.phone .tile-big, html.phone .tile-small { height: 52px; padding: 4px 8px; }
+html.phone .tile-big { width: 165px; } html.phone .tile-small, html.phone #btn-settings { width: 145px; } html.phone .tile-fs { width: 125px; }
