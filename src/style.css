@@ -915,6 +915,7 @@ html.phone .fp-res { font-size: 8px; } html.phone .fp-none { font-size: 8px; }
 /* the world map (worldmap.js): pixel art scaled up hard, region and area pins over it, a panel for the picked area */
 #worldmap { position: fixed; inset: 0; z-index: 11; background: #0a0806; display: flex; flex-direction: column; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
 #worldmap.hidden { display: none; }
+#worldmap.over { z-index: 30; } /* (a party's host picking: over the lobby and the end screens) */
 .wm-top { position: absolute; left: 0; right: 0; top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; padding: 0 calc(14px + env(safe-area-inset-left)); z-index: 2; pointer-events: none; }
 .wm-top > * { pointer-events: auto; }
 .wm-sp { width: 80px; }

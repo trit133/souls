@@ -268,7 +268,7 @@ export class Multiplayer {
   afterReady() {
     const n = this.members.length;
     this.game.renderReady(this.ready.size, n);
-    if (this.isHost && n >= 2 && this.members.every((m) => this.ready.has(m.id))) this.startRun();
+    if (this.isHost && n >= 2 && this.members.every((m) => this.ready.has(m.id))) this.game.pickPartyArea(); // (everyone's ready: the host picks the next area)
     else if (this.isHost && n < 2) this.game.renderReady(-1, n);
   }
 
@@ -299,6 +299,7 @@ export class Multiplayer {
       case 'chat': if (typeof d.s === 'string' && d.s.trim()) this.addChat({ name: this.nameOf(from), text: d.s.trim().slice(0, 140) }); break;
       case 'e': this.onEvent(from, d); break;
       case 'ready': this.ready.add(from); this.afterReady(); break;
+      case 'picking': this.game.hostPicking?.(!d.off); break;
       case 'p': this.peers.get(from)?.apply(d); break;
       case 'snap': {
         // the host's clock onto ours: the smallest gap seen (the least-delayed snapshot), let creep up slowly so a

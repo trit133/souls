@@ -481,7 +481,7 @@ class Game {
     $('lobby-create').addEventListener('click', () => tryNet(() => this.mp.create(this.lobbyKind)));
     $('lobby-joinbtn').addEventListener('click', () => tryNet(() => this.mp.join($('lobby-input').value.trim(), this.lobbyKind)));
     $('lobby-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('lobby-joinbtn').click(); });
-    $('lobby-start').addEventListener('click', () => this.mp.startRun());
+    $('lobby-start').addEventListener('click', () => this.pickPartyArea()); // (the host picks where on the world map first)
     // stay in the room but walk the Sanctum; the party tab (partytab.js) has a Lobby button back
     $('lobby-home').addEventListener('click', () => {
       this.ui.show('lobby', false);
@@ -539,6 +539,22 @@ class Game {
   openWorldMap() {
     this.audio.unlock();
     this.worldMap.open((id) => { this.raidArea = id; this.hermitage.begin(); });
+  }
+  // a party's host picks the region and area on the world map (over the lobby or the end screen); Deploy starts the
+  // party's raid there, Back leaves things as they were. The others are told the host is choosing
+  pickPartyArea() {
+    const m = this.mp;
+    if (!m.isHost || m.members.length < 2) return;
+    this.audio.unlock();
+    m.sendAll({ t: 'picking' });
+    this.worldMap.open((id) => { this.raidArea = id; m.startRun(); }, () => m.sendAll({ t: 'picking', off: 1 }), { over: true });
+  }
+  // a guest: what the host is up to
+  hostPicking(on) {
+    const t = on ? 'The host is choosing where to raid…' : '';
+    if (!this.mp.code) return;
+    if ($('lobby-wait')) $('lobby-wait').textContent = on ? t : 'Waiting for the host to start';
+    if (on) { $('ready-status').textContent = t; $('victory-ready').textContent = t; }
   }
   backToMap() {
     this.toTitle();

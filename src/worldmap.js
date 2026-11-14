@@ -34,9 +34,11 @@ export class WorldMap {
   }
 
   // onPick(areaId) when you deploy; onBack when you leave the map
-  open(onPick, onBack) {
+  // o.over: above the party lobby and the end screens (a party's host picking the area)
+  open(onPick, onBack, o = {}) {
     if (!this.el) this.buildDom();
     this.onPick = onPick; this.onBack = onBack;
+    this.el.classList.toggle('over', !!o.over);
     this.el.classList.remove('hidden');
     this.showWorld();
   }

@@ -26,13 +26,13 @@ const code = await A.textContent('#lobby-code');
 await B.click('#hm-party'); await B.fill('#lobby-input', code); await B.click('#lobby-joinbtn'); await A.waitForTimeout(400);
 
 for (const area of ['r1a2', 'r1a3']) {
-  await A.evaluate((a) => { game.raidArea = a; game.mp.startRun(); }, area); await A.waitForTimeout(3000);
+  await A.evaluate((a) => { game.accounts.data.gems = { gem_hask: 1, gem_vael: 1 }; game.raidArea = a; game.mp.startRun(); }, area); // (the host carries the gems these areas need) await A.waitForTimeout(3000);
   const names = [await A.evaluate(() => game.world.dungeon?.def.name), await B.evaluate(() => game.world.dungeon?.def.name)];
   check(names[0] === names[1] && names[0] === (area === 'r1a2' ? 'The Sump Lines' : 'Saint Orsk\'s Spire'), `${area}: both in ${names[0]} / ${names[1]}`);
-  for (const p of [A, B]) await p.evaluate(() => { for (const e of game.enemiesAll()) if (!e.T?.still) e.update = () => {}; game.player.hp = game.player.maxHp = 1e8; });
+  for (const p of [A, B]) await p.evaluate(() => { for (const e of [...game.enemiesAll(), ...game.reserves]) if (!e.T?.still) e.update = () => {}; game.player.hp = game.player.maxHp = 1e8; });
   if (area === 'r1a2') {
     const v = await A.evaluate(() => { const s = game.seals.list.find((x) => x.def.kind === 'valve'); return s.def.valves.map((v) => ({ x: v.x, z: v.z })); });
-    for (const q of v) { await B.evaluate((q) => { game.player.pos.set(q.x, 0, q.z); game.player.setState('move'); }, q); await A.waitForTimeout(6500); }
+    for (const q of v) { await B.evaluate((q) => { game.player.pos.set(q.x, 0, q.z); game.player.setState('move'); }, q); await A.waitForTimeout(8000); }
     const host = await A.evaluate(() => { const s = game.seals.list.find((x) => x.def.kind === 'valve'); return { state: s.state, done: s.def.valves.filter((v) => v.done).length }; });
     const guest = await B.evaluate(() => { const s = game.seals.list.find((x) => x.def.kind === 'valve'); return { state: s.state, done: s.def.valves.filter((v) => v.done).length, wheelTurned: s.def.valves.some((v) => Math.abs(v.wheel.rotation.z) > 0.5) }; });
     console.log('valves', JSON.stringify(host), JSON.stringify(guest));
