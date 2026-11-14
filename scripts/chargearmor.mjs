@@ -8,7 +8,7 @@ const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stac
 await page.goto(url); await page.waitForTimeout(700);
 const out = await page.evaluate(() => {
   const g = game, o = {}; g.audio.play = () => {}; g.start('knight');
-  const p = g.player; p.evolved = true; p.hp = p.maxHp = 1e6;
+  const p = g.player; p.evo = 'aegisRam'; p.evolved = true; p.hp = p.maxHp = 1e6; // (Aegis Ram: weapons.js)
   const hitWith = (state, heavy) => {
     p.setState('move'); p.chargeCd = 0;
     if (state === 'charge') p.startCharge(p.fwd(), 1); else p.doAttack('chargeSlam', p.fwd(), 1);

@@ -677,3 +677,104 @@ export const MAGE_ARMORY = {
     },
   },
 };
+
+// ================= the region weapons' skins (weapons.js), one slot each =================
+// each builds into a group in the right hand, blade along +z, and returns [tip, base] for the swing trail
+KNIGHT_ARMORY.greatsword = {
+  // Dragon Slab: a slab of raw iron as tall as a man, a heavy chamfered tip, a plain wrapped grip and a block guard
+  slab(r, M, g) {
+    B(g, 0.06, 0.06, 0.52, M.detail, 0, 0, -0.08); B(g, 0.09, 0.09, 0.08, M.trim, 0, 0, -0.36);
+    B(g, 0.16, 0.42, 0.1, M.trim, 0, 0, 0.22);
+    B(g, 0.07, 0.36, 1.85, M.main, 0, 0, 1.2); B(g, 0.07, 0.26, 0.2, M.main, 0, -0.05, 2.2, 0.5);
+    for (const z of [0.6, 1.1, 1.7]) B(g, 0.072, 0.04, 0.08, M.detail, 0, 0.12, z); // nicks and old rivets
+    B(g, 0.074, 0.02, 1.7, M.detail, 0, -0.16, 1.15); // the edge, darker where it's been ground
+    return [2.3, 0.35];
+  },
+  // Relic Slab: the slab with a reliquary housing at the cross, a burning seal and chained scripture
+  relic(r, M, g) {
+    KNIGHT_ARMORY.greatsword.slab(r, M, g);
+    B(g, 0.18, 0.24, 0.2, M.trim, 0, 0, 0.42); B(g, 0.08, 0.08, 0.06, M.glow, 0.06, 0.06, 0.42);
+    B(g, 0.03, 0.3, 0.03, M.detail, 0.06, -0.24, 0.42); B(g, 0.01, 0.16, 0.08, r.m(0xd8c8a0), 0.065, -0.42, 0.42);
+    B(g, 0.075, 0.03, 1.5, M.glow, 0, 0.06, 1.25); // a channel burning up the flat
+    return [2.3, 0.35];
+  },
+  // Molten Slab: black iron cracked open, lava glowing through
+  molten(r, M, g) {
+    KNIGHT_ARMORY.greatsword.slab(r, M, g);
+    for (let i = 0; i < 7; i++) B(g, 0.076, 0.02, 0.22, M.glow, 0, -0.12 + ((i * 37) % 24) / 100, 0.5 + i * 0.25, 0, 0, 0.4 * (i % 2 ? 1 : -1));
+    B(g, 0.12, 0.12, 0.12, M.glow, 0, 0, -0.4);
+    return [2.3, 0.35];
+  },
+  // Void Slab: a jagged black edge with a violet void core and teeth along the back
+  void(r, M, g) {
+    B(g, 0.06, 0.06, 0.52, M.detail, 0, 0, -0.08); B(g, 0.2, 0.46, 0.08, M.trim, 0, 0, 0.22, 0, 0, 0.785);
+    B(g, 0.07, 0.34, 1.9, M.main, 0, 0, 1.22); B(g, 0.074, 0.08, 1.7, M.glow, 0, 0, 1.2);
+    for (let i = 0; i < 8; i++) K(g, 0.05, 0.14, M.trim, 0, 0.2, 0.4 + i * 0.22, 0, 0, 0);
+    K(g, 0.17, 0.4, M.main, 0, 0, 2.3, PI / 2, 0, 0);
+    return [2.4, 0.35];
+  },
+};
+ROGUE_ARMORY.wristblade = {
+  // Hidden Blade: a plain bracer on the forearm and a thin blade that springs out under the fist
+  hidden(r, M, g) {
+    B(g, 0.11, 0.1, 0.3, M.trim, 0, -0.01, -0.2); for (const z of [-0.3, -0.2, -0.1]) B(g, 0.115, 0.105, 0.02, M.detail, 0, -0.01, z);
+    B(g, 0.05, 0.04, 0.12, M.detail, 0, -0.06, 0.0);
+    B(g, 0.018, 0.05, 0.5, M.main, 0, -0.06, 0.3); K(g, 0.025, 0.08, M.main, 0, -0.06, 0.58, PI / 2, 0, 0);
+    B(g, 0.02, 0.012, 0.44, M.glow, 0, -0.085, 0.3);
+    return [0.62, 0.05];
+  },
+  // Twin Prong: two blades side by side and a heavier, riveted bracer
+  twin(r, M, g) {
+    B(g, 0.13, 0.12, 0.32, M.trim, 0, -0.01, -0.2); for (const z of [-0.32, -0.08]) B(g, 0.03, 0.03, 0.03, M.detail, 0.07, 0.04, z);
+    for (const s of [1, -1]) { B(g, 0.016, 0.045, 0.46, M.main, s * 0.03, -0.06, 0.28); K(g, 0.022, 0.07, M.main, s * 0.03, -0.06, 0.55, PI / 2, 0, 0); }
+    return [0.6, 0.05];
+  },
+  // Phase Blade: a bracer of humming coils and a blade of hard light
+  phase(r, M, g) {
+    B(g, 0.11, 0.11, 0.3, M.detail, 0, -0.01, -0.2); for (const z of [-0.28, -0.18, -0.08]) C(g, 0.065, 0.065, 0.03, M.trim, 0, -0.01, z, PI / 2);
+    B(g, 0.03, 0.06, 0.56, M.glow, 0, -0.06, 0.32); B(g, 0.05, 0.08, 0.04, M.trim, 0, -0.06, 0.03);
+    return [0.64, 0.05];
+  },
+  // Bone Fang: a hooked blade of serrated bone lashed to a leather bracer
+  fang(r, M, g) {
+    B(g, 0.11, 0.1, 0.3, M.detail, 0, -0.01, -0.2); for (const z of [-0.26, -0.14]) B(g, 0.12, 0.02, 0.03, M.trim, 0, 0.04, z);
+    for (let i = 0; i < 4; i++) B(g, 0.02, 0.06, 0.13, M.main, 0, -0.06 - i * 0.012, 0.08 + i * 0.12, -0.12 * i);
+    for (let i = 0; i < 4; i++) K(g, 0.015, 0.04, M.main, 0, -0.1 - i * 0.015, 0.1 + i * 0.12, PI, 0, 0);
+    return [0.58, 0.05];
+  },
+};
+MAGE_ARMORY.staff = {
+  // Focus Staff: a dark shaft bound in brass, a caged focus crystal at the head
+  focus(r, M, g) {
+    C(g, 0.03, 0.035, 2.0, M.main, 0, 0, 0.1, PI / 2);
+    for (const z of [-0.7, -0.1, 0.5]) C(g, 0.042, 0.042, 0.06, M.trim, 0, 0, z, PI / 2);
+    C(g, 0.05, 0.03, 0.1, M.trim, 0, 0, -0.92, PI / 2);
+    for (let i = 0; i < 4; i++) { const a = (i / 4) * PI * 2; B(g, 0.02, 0.02, 0.26, M.trim, Math.cos(a) * 0.07, Math.sin(a) * 0.07, 1.22); }
+    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), M.glow); c.position.set(0, 0, 1.24); c.scale.z = 1.6; g.add(c);
+    return [1.3, 0.3];
+  },
+  // Bone Staff: a long femur-white shaft wired together, a small skull with lit eyes at the head
+  bone(r, M, g) {
+    for (let i = 0; i < 4; i++) C(g, 0.034, 0.03, 0.5, M.main, 0, 0, -0.78 + i * 0.5, PI / 2);
+    for (const z of [-0.53, -0.03, 0.47]) C(g, 0.045, 0.045, 0.05, M.trim, 0, 0, z, PI / 2);
+    B(g, 0.16, 0.15, 0.16, M.main, 0, 0, 1.2); B(g, 0.1, 0.05, 0.08, M.main, 0, -0.08, 1.24);
+    for (const s of [1, -1]) B(g, 0.035, 0.035, 0.02, M.glow, s * 0.04, 0.02, 1.285);
+    return [1.3, 0.3];
+  },
+  // Storm Rod: a metal rod wound in coils, a sparking orb held in prongs
+  storm(r, M, g) {
+    C(g, 0.03, 0.03, 2.0, M.detail, 0, 0, 0.1, PI / 2);
+    for (let i = 0; i < 6; i++) C(g, 0.05, 0.05, 0.04, M.trim, 0, 0, 0.3 + i * 0.1, PI / 2);
+    for (let i = 0; i < 3; i++) { const a = (i / 3) * PI * 2; B(g, 0.02, 0.02, 0.24, M.trim, Math.cos(a) * 0.08, Math.sin(a) * 0.08, 1.2, Math.sin(a) * 0.3, -Math.cos(a) * 0.3, 0); }
+    const o = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), M.glow); o.position.set(0, 0, 1.24); g.add(o);
+    return [1.32, 0.3];
+  },
+  // Seer's Staff: a pale shaft and a great ring at the head with an open eye in it
+  seer(r, M, g) {
+    C(g, 0.03, 0.035, 2.0, M.main, 0, 0, 0.1, PI / 2);
+    ring(g, 0.2, 0.025, M.trim, 0, 0, 1.3, 0, PI / 2, 16);
+    B(g, 0.03, 0.14, 0.2, M.main, 0, 0, 1.3); B(g, 0.035, 0.06, 0.06, M.glow, 0, 0, 1.3);
+    for (const s of [1, -1]) K(g, 0.03, 0.12, M.trim, 0, s * 0.24, 1.3, s > 0 ? 0 : PI, 0, 0);
+    return [1.5, 0.3];
+  },
+};

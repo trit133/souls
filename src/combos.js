@@ -241,9 +241,9 @@ export const COMBOS = {
 };
 
 // the combos as a tree of inputs: root[input] -> { move, at, next: { input: node }, combo (when it ends here) }
-export function comboTree(kind, attacks = {}) {
+export function comboTree(kind, attacks = {}, list = COMBOS[kind]) { // (a region weapon brings its own list: weaponmoves.js)
   const root = {};
-  for (const c of COMBOS[kind] || []) {
+  for (const c of list || []) {
     let level = root, node = null;
     c.steps.forEach(([input, move, at], i) => {
       node = level[input] ||= { move, at, next: {}, names: [], fast: true, depth: i + 1 };

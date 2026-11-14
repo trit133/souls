@@ -314,6 +314,7 @@ export class Enemy extends Actor {
     this.status.update(dt, this.game);
     tickHold(this, dt);
     const p = this.game.targetOf(this);
+    const unseen = p.veilT > 0 || p.veiled; // (Ghost Veil: they lose you)
     const dist = this.distTo(p);
     const toP = this.yawTo(p.pos);
     const T = this.T;
@@ -341,7 +342,7 @@ export class Enemy extends Actor {
           pose = locomotion(T.style, this.phase, s, false, this.game.time + this.phase);
         }
         const sense = (this.state === 'sit' ? T.aggro * 0.6 : T.aggro) * this.aggroMul;
-        if (p.alive && dist < sense && this.game.sameRoom(this, p)) this.alert();
+        if (p.alive && !unseen && dist < sense && this.game.sameRoom(this, p)) this.alert();
         break;
       }
       case 'alert': {
@@ -352,7 +353,7 @@ export class Enemy extends Actor {
         break;
       }
       case 'chase': {
-        if (!p.alive || !this.game.sameRoom(this, p)) { this.setState('return'); break; }
+        if (!p.alive || unseen || !this.game.sameRoom(this, p)) { this.setState('return'); break; }
         if (Math.hypot(this.pos.x - this.home.x, this.pos.z - this.home.z) > 30 && dist > 8) { this.setState('return'); break; }
         this.cd -= dt;
         const behind = Math.abs(angDiff(this.yaw, toP)) > 1.4;
@@ -470,7 +471,7 @@ export class Enemy extends Actor {
         pose = locomotion(T.style, this.phase, d > 0.5 ? 0.9 : 0, false, this.game.time);
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * dt * 0.3);
         if (d <= 0.5) { this.setState(this.sitting ? 'sit' : 'idle'); this.yaw = this.home.yaw; }
-        if (p.alive && dist < T.aggro * 0.7 * this.aggroMul && this.t > 1.0 && this.game.sameRoom(this, p)) this.setState('chase');
+        if (p.alive && !unseen && dist < T.aggro * 0.7 * this.aggroMul && this.t > 1.0 && this.game.sameRoom(this, p)) this.setState('chase');
         break;
       }
     }

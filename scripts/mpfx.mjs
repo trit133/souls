@@ -25,7 +25,7 @@ await B.evaluate(() => {
 });
 // A, host knight (evolved): shield charge, leaping slam, a knee crit on a knocked-down grunt, a heal, a block
 await A.evaluate(() => {
-  const p = game.player; p.evolved = true; p.buildSpectralShield(); p.hp = p.maxHp = 1e6; p.st = p.maxSt = 999;
+  const p = game.player; p.evo = 'aegisRam'; p.evolved = true; p.buildSpectralShield(); // (Aegis Ram: the sword's evolution, weapons.js) p.hp = p.maxHp = 1e6; p.st = p.maxSt = 999;
   window.press = (a, held) => { game.input.pressed.add(a); };
 });
 const act = async (fn, ms) => { await A.evaluate(fn); await A.waitForTimeout(ms); };

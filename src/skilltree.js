@@ -393,8 +393,18 @@ function load(kind) {
 // the gen script's copy of a node (what treelayout.js keeps)
 export const saveNode = (n) => Object.fromEntries(Object.entries(n).filter(([k, v]) => v !== undefined && v !== null && v !== false && !(k === 'give' && !Object.keys(v).length)).map(([k, v]) => [k, typeof v === 'number' ? +v.toFixed(2) : v]));
 
-// the trees, with their evolutions filled in
-const finish = (t) => { for (const n of t.nodes.values()) { if (n.role === 'evo') { n.evo = EVOS[t.kind]; n.big = true; } if (n.role === 'soon') n.soon = PLANS[t.kind].soon[n.soon]; } return t; };
+// Evolutions left the tree for the workbench (weapons.js): the evolution node and the three still to come are now
+// big notables of their own. (`evoId`: the old evolution node, so its owners get that evolution built: migrateTree)
+const MASTERY = [['Weapon Mastery', { physPct: 6, hpPct: 4 }], ["Veteran's Grit", { stPct: 6, hpPct: 3 }], ['Hardened', { armor: 4, hpPct: 3 }], ['Killing Rhythm', { aspd: 4, physPct: 3 }]];
+const finish = (t) => {
+  for (const n of t.nodes.values()) {
+    if (n.role !== 'evo' && n.role !== 'soon') continue;
+    const [name, give] = MASTERY[n.role === 'evo' ? 0 : 1 + ((n.soon ?? 0) % 3)];
+    if (n.role === 'evo') t.evoId = n.id;
+    n.role = 'mastery'; n.notable = name; n.give = { ...give }; n.big = true; delete n.soon;
+  }
+  return t;
+};
 export const TREES = { knight: finish(load('knight')), rogue: finish(load('rogue')), mage: finish(load('mage')) };
 // flat health and flat damage per hit are NUM times bigger (scale.js); the give objects are shared, so copy them
 const FLAT = ['hp', 'physDmg', 'fireDmg', 'bleedDmg', 'poisonDmg', 'frostDmg'];
@@ -469,7 +479,6 @@ export function sumStats(kind, have, picks = {}) {
     const n = tree?.nodes.get(id);
     if (!n) continue;
     for (const [k, v] of Object.entries(giveOf(n, picks))) s[k] = (s[k] || 0) + v;
-    if (n.evo) s.evolved = true;
   }
   for (const [k, cap] of Object.entries(CAPS)) if (s[k] > cap) s[k] = cap;
   return s;
@@ -523,13 +532,23 @@ function costOld(v, kind, id) {
   const c = table[Math.min(ring, table.length - 1)] || 0;
   return v !== 3 && SOCKETS_V1[kind]?.includes(id) ? Math.round(c * 1.5) : c;
 }
-export const TREE_VERSION = 18;
+export const TREE_VERSION = 19;
+// 18 -> 19: evolutions left the tree for the workbench; whoever owned one gets it built there (the node stays,
+// a notable now)
+const EVO_OF = { knight: 'aegisRam', rogue: 'redRiposte', mage: 'twinPlasma' };
 // version 7 -> 8 rebuilt only the Knight's tree (regions, notables, keystones): his nodes come back as gold at the
 // ring price paid; the others' trees are untouched
 // (versions 7-17 are refunded at the version-17 prices, treecost-v7.js: the closest record kept of them)
 const COST_V7 = (id, kind = 'knight') => COST_V7T[kind]?.[id] || 0;
 export function migrateTree(data) {
   if (!data || data.treeV >= TREE_VERSION) return 0;
+  if (data.treeV === 18) {
+    for (const k of Object.keys(EVO_OF)) if ((data.tree?.[k] || []).includes(TREES[k].evoId)) {
+      const w = (data.weapons ||= {}); (w.evos ||= {})[EVO_OF[k]] = 1;
+    }
+    data.treeV = 19;
+    return 0;
+  }
   // 10 -> 11 and 11 -> 12: the evolutions moved (6 links from the start, 6 from each other), so every tree's nodes come back
   if (data.treeV >= 10 && data.treeV <= 17) { // (17 -> 18: travel nodes, clusters, 280 nodes; 16 -> 17: the Knight's lines thinned, resistances spread round the outside;
     // 14 -> 15: damage nodes for every element; 15 -> 16: stats regrouped: centre basics, outer quarters, armour 60%) // (12 -> 13: resistance and armour nodes added; 13 -> 14: crit nodes put into the lines)

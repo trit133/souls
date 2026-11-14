@@ -69,7 +69,7 @@ export const GUIDE = [
         <li><b>Stamina</b> is everything: attacks, rolls and parries use it. At zero you can't do any of them until it refills.</li>
         <li><b>Roll</b> through attacks; with no direction held you backstep.</li>
         <li><b>Light and heavy attacks</b> chain into <b>combos</b>: when your weapon glints and a red mark shows over your head, press the next input in time.</li>
-        <li>The <b>Templar</b> blocks with his shield, the <b>Shrike</b> parries (a clean parry leaves the enemy open for a deadly strike), the <b>Adept</b> fights with bolts and fireballs fed by the mana her knife hits build.</li>
+        <li>The special button belongs to your <b>weapon</b>. With the starting weapons the <b>Templar</b> blocks with his shield, the <b>Shrike</b> parries (a clean parry leaves the enemy open for a deadly strike), the <b>Adept</b> fires plasma fed by the mana her knife hits build. The crafted weapons bring their own: the <b>Penitent Slab</b>'s Blade Guard, the <b>Wrist Blade</b>'s dash, the <b>Psy-Staff</b>'s warding sigil.</li>
         <li><b>Heal</b> with your injectors; a chest gives you another. Red hearts dropped by enemies heal too.</li>
         <li><b>Lock on</b> to keep facing one enemy.</li>
         <li>One enemy fights you at a time; the rest circle and step in now and then. Elites glow and hit harder.</li>
@@ -97,7 +97,8 @@ export const GUIDE = [
       <ul>
         <li><b>Gold</b> comes from kills, chests and bosses. Spend it on your character's <b>skill tree</b>: click your character by the fire.</li>
         <li><b>Emeralds</b> come from kills and chests. Spend them on armour and colours at the <b>wardrobe</b>.</li>
-        <li><b>Materials</b> fill the <b>stash</b> chest, shared by all your characters. The <b>workbench</b> will work them one day.</li>
+        <li><b>Materials</b> fill the <b>stash</b> chest, shared by all your characters. At the <b>workbench</b> they become new <b>weapons</b> (one per class in each region, needing its rarest materials from the harder areas) and <b>evolutions</b> (one per weapon; the starting weapons' from Ashfall Ward's materials).</li>
+        <li>A new weapon isn't stronger, just different: its own moves, combos and special. Equip it, and switch its evolution on or off, at the <b>equipment</b> stand; change its look at the wardrobe.</li>
         <li>Pick a <b>record</b> for the menus at the jukebox.</li>
         <li><b>Night Raid</b>, once unlocked, plays the whole raid in near darkness against tougher enemies for more gold. Toggle it on the map.</li>
       </ul>`,

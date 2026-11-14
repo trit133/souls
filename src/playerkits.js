@@ -289,7 +289,7 @@ const KNIGHT = {
   },
 };
 // The Last Crusade's armoury (armory.js) replaces every piece
-for (const slot in KNIGHT_ARMORY) Object.assign(KNIGHT[slot], KNIGHT_ARMORY[slot]);
+for (const slot in KNIGHT_ARMORY) KNIGHT[slot] = Object.assign(KNIGHT[slot] || {}, KNIGHT_ARMORY[slot]);
 KITS.knight = {
   weapon: true,
   build(r, o) {
@@ -299,6 +299,14 @@ KITS.knight = {
     for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34, 0x2a2a30, 0x8ad8ff); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); }
     const ch = S('chest', 0x7a7e86, 0x6a1412, 0x2a2a30, 0x8ad8ff); (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips);
     const lg = S('legs', 0x7a7e86, 0x5a5e66, 0x2a2a30, 0xff8a3a); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips);
+    if (o.arm === 'greatsword') {
+      // the Penitent Slab in both hands, no shield (weapons.js)
+      const gsM = S('greatsword', 0x5e5e66, 0x4a4036, 0x2a2420, 0xff7a2a);
+      const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
+      const [len, baseZ] = (KNIGHT.greatsword[gsM.piece] || KNIGHT.greatsword.slab)(r, gsM, g);
+      r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
+      return;
+    }
     const shM = S('shield', 0x5a1412, 0x8a6a34, 0x2a2a30, 0x8ad8ff); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
     const swM = S('sword', 0x8c929c, 0x8a6a34, 0x2a2a30, 0x8ad8ff);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
@@ -509,7 +517,7 @@ const ROGUE = {
     },
   },
 };
-for (const slot in ROGUE_ARMORY) Object.assign(ROGUE[slot], ROGUE_ARMORY[slot]);
+for (const slot in ROGUE_ARMORY) ROGUE[slot] = Object.assign(ROGUE[slot] || {}, ROGUE_ARMORY[slot]);
 KITS.rogue = {
   weapon: true,
   build(r, o) {
@@ -519,6 +527,13 @@ KITS.rogue = {
     const mk = S('mask', 0x34343a, 0x8a2420, 0x1e1e22, 0xff3a24); (ROGUE.mask[mk.piece] || ROGUE.mask.wrap)(r, mk, H, T);
     const sh = S('shirt', 0x4a3a2c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T);
     for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); }
+    if (o.arm === 'wristblade') {
+      // the Wrist Blade on the right forearm, nothing in the left hand (weapons.js)
+      const wb = S('wristblade', 0xc4cad3, 0x4a3626, 0x2a1c14, 0xff4a3a);
+      const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
+      const [tip, base] = (ROGUE.wristblade[wb.piece] || ROGUE.wristblade.hidden)(r, wb, g);
+      r.base.position.set(0, -0.06, base); g.add(r.base); r.tip.position.set(0, -0.06, tip); g.add(r.tip);
+    } else {
     const kn = S('knives', 0xc4cad3, 0x2a1c14, 0x1e1e22, 0xff4a3a);
     const dagger = (ROGUE.knives[kn.piece] || ROGUE.knives.curved)(r, kn);
     r.wpnR = dagger(r.j.handR);
@@ -527,6 +542,7 @@ KITS.rogue = {
     r.wpnL = dagger(r.j.handL);
     r.tipL = new THREE.Object3D(); r.tipL.position.set(0, 0.05, 0.5); r.wpnL.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; r.wpnL.add(r.baseL);
+    }
     // a lower, coiled stance (visual only); idle: flip the right dagger end over end every few seconds
     r.poseMod = (p) => ({ ...p, by: (p.by ?? 0) - 0.05, torso: add(p.torso, [0.08, 0, 0]), head: add(p.head, [-0.07, 0, 0]) });
     let idleT = 0, flip = -1;
@@ -731,7 +747,7 @@ const MAGE = {
     },
   },
 };
-for (const slot in MAGE_ARMORY) Object.assign(MAGE[slot], MAGE_ARMORY[slot]);
+for (const slot in MAGE_ARMORY) MAGE[slot] = Object.assign(MAGE[slot] || {}, MAGE_ARMORY[slot]);
 KITS.mage = {
   weapon: true,
   build(r, o) {
@@ -757,6 +773,13 @@ KITS.mage = {
     H.add(box(0.02, 0.05, 0.015, rune, -0.065, 0.14, 0.128));
     const hp = pivot(H, 0, 0.3, -0.15);
     strip(r, hp, 0, 0, 0, 0.08, [0.14, 0.14, 0.12], hair, { rx: 0.35, bend: 0.15, taper: 0.8, th: 0.07, lx: [-0.3, 1.2] });
+    if (o.arm === 'psystaff') {
+      // the Psy-Staff in both hands (weapons.js)
+      const stM = S('staff', 0x3a2a20, 0xb89a4a, 0x1e1e22, 0xc890ff);
+      const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
+      const [tip, base] = (MAGE.staff[stM.piece] || MAGE.staff.focus)(r, stM, g);
+      r.base.position.set(0, 0, base); g.add(r.base); r.tip.position.set(0, 0, tip); g.add(r.tip);
+    } else {
     // the wand in her casting hand
     const waM = S('wand', 0x3a2a20, 0xb89a4a, 0x1e1e22, 0xa8e8ff);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
@@ -772,6 +795,7 @@ KITS.mage = {
     const orbit = pivot(r.j.handL, 0, 0, 0);
     for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2; orbit.add(rbox(0.04, 0.04, 0.012, glyph, Math.cos(a) * 0.17, 0.04 * Math.sin(a * 2), Math.sin(a) * 0.17, 0, a, 0.78)); }
     r.spinners.push({ obj: orbit, axis: 'y', speed: 3.2 });
+    }
     // ---- The Last Crusade: a halo emitter turning behind her head (a brass ring with four glowing nodes), neural
     // ports at the temples, a cable down her spine
     { const { bulk: b } = r.dims, brass = r.m(0x8a6a34), hose = r.m(0x161618);

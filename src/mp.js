@@ -3,7 +3,7 @@ import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
-import { CHARS, RIPOSTE, CRITS } from './player.js';
+import { CHARS, RIPOSTE, CRITS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
 import { packOutfit, unpackOutfit } from './outfits.js';
 import { SERVER } from './account.js';
@@ -17,7 +17,7 @@ const r2 = (v) => Math.round(v * 100) / 100;
 // another player, as seen on this device
 class RemotePlayer extends Actor {
   constructor(game, m) {
-    const c = CHARS[m.kind] || CHARS.knight;
+    const c = weaponChar(m.kind, m.weapon) || CHARS.knight; // (their weapon: its moves, its model)
     super(game, buildHumanoid({ ...outfitModel(c.model, m.kind, m.outfit || {}), scale: 1 }), { x: 0, z: -2.5, hp: c.hp, radius: 0.42, team: 'player', poise: 0 });
     this.isRemote = true;
     this.pid = m.id; this.uid = 'R' + m.id; this.name = m.name; this.kind = m.kind; this.c = c;
@@ -144,7 +144,8 @@ export class Multiplayer {
 
   raw(m) { if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(m)); }
   // the class and the outfit worn, so teammates see it: "knight:helmet=winged/gold/default,..."
-  wire(kind) { return `${kind}:${packOutfit(this.game.equippedOutfit(kind))}`; }
+  // a member on the wire: class, outfit and weapon ('knight:helmet=.../...#greatsword')
+  wire(kind) { return `${kind}:${packOutfit(this.game.equippedOutfit(kind))}#${this.game.loadoutFor(kind).weapon}`; }
   async create(kind) { await this.connect(); this.raw({ t: 'create', kind: this.wire(kind) }); }
   async join(code, kind) { await this.connect(); this.raw({ t: 'join', code, kind: this.wire(kind) }); }
   setKind(kind) { this.raw({ t: 'kind', kind: this.wire(kind) }); }
@@ -198,7 +199,10 @@ export class Multiplayer {
     if (m.t === 'roster') {
       const before = this.code === m.code ? this.members : null;
       this.code = m.code; this.host = m.host;
-      this.members = m.members.map((x) => { const s = String(x.kind), i = s.indexOf(':'), kind = i < 0 ? s : s.slice(0, i); return { ...x, kind, outfit: unpackOutfit(kind, i < 0 ? '' : s.slice(i + 1)) }; });
+      this.members = m.members.map((x) => {
+        const s = String(x.kind), i = s.indexOf(':'), kind = i < 0 ? s : s.slice(0, i), rest = i < 0 ? '' : s.slice(i + 1), j = rest.indexOf('#');
+        return { ...x, kind, outfit: unpackOutfit(kind, j < 0 ? rest : rest.slice(0, j)), weapon: j < 0 ? null : rest.slice(j + 1) };
+      });
       if (!before) this.addChat({ sys: true, text: `You're in room ${m.code}` });
       else {
         for (const x of m.members) if (!before.some((y) => y.id === x.id)) this.addChat({ sys: true, text: `${x.name} joined` });

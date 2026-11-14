@@ -312,7 +312,6 @@ export class TreeUI {
     const keys = [...new Set([...Object.keys(cur), ...Object.keys(next || {})])].filter((k) => !SHOWN.has(k) && STATS[k]);
     for (const k of keys) h += row(STATS[k].name, (S) => (S[k] ? STATS[k].fmt(+fmt(S[k])) + (CAPS[k] && S[k] >= CAPS[k] ? ' (max)' : '') : '—'));
     if (!keys.length) h += '<div class="ts-none">None yet</div>';
-    h += row('Evolution', (S) => (S.evolved ? 'Owned' : '—'));
     // the combos: inputs as pixel badges (with this player's keys), and the four still to come
     const binds = this.game.settings?.binds || {}, key = (a) => (binds[a]?.[0] ? keyLabel(binds[a][0]) : '');
     const BADGE = { attack: ['R1', 'attack'], heavy: ['R2', 'heavy'], roll: ['ROLL', 'roll'] };

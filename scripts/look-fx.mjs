@@ -24,6 +24,6 @@ await shot('plasma', base('mage') + "; game.spawnSpell(game.player, 'fire');", 1
 await shot('cryo', base('mage') + "; game.spawnSpell(game.player, 'bolt');", 10);
 await shot('heal', base('knight') + "; game.player.hp = 10; game.input.pressed.add('heal');", 34);
 await shot('parry', base('rogue') + "; game.pfx.play('parry', game.player.pos.clone().setY(1.2));", 8);
-await shot('aegis', base('knight') + "; game.player.evolved = true; game.player.chargeCd = 0; game.player.startCharge(game.player.fwd(), 1);", 6);
+await shot('aegis', base('knight') + "; game.player.evo = 'aegisRam'; game.player.evolved = true; game.player.chargeCd = 0; game.player.startCharge(game.player.fwd(), 1);", 6);
 await b.close();
 console.log(errs.length ? 'ERRORS\n' + errs.join('\n') : 'OK no errors');

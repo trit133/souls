@@ -65,6 +65,24 @@ const STYLE = {
     p.armR = [-0.25, 0, -0.2]; p.foreR = [-0.55, 0, 0]; p.handR = [0.95, 0, 0];
     p.armL = [-0.4, 0, -0.1]; p.foreL = [-0.9, 0, 0];
   },
+  // the Penitent Slab: carried over the right shoulder, the blade lying back along it
+  slab(p, s, sw, sprint) {
+    p.armR = [-0.9, 0, -0.35]; p.foreR = [-1.9, 0, 0]; p.handR = [0.3, 0, 0];
+    p.armL = [-0.15 - sw * 0.4, 0, 0.1]; p.foreL = [-0.45, 0, 0];
+    p.torso[0] += 0.06; p.torso[1] -= 0.12; p.by -= 0.03;
+  },
+  // the Wrist Blade: right fist up and forward with the blade under it, left hand guarding the face
+  wrist(p, s, sw, sprint) {
+    p.armR = [-0.45 - (sprint ? sw * 0.5 : 0), 0, -0.2]; p.foreR = [-1.55, 0, 0]; p.handR = [0.7, 0, 0];
+    p.armL = [-0.55 + (sprint ? sw * 0.5 : 0), 0, 0.3]; p.foreL = [-1.7, 0, 0]; p.handL = [0.3, 0, 0];
+    p.torso[0] += 0.12; p.by -= 0.05;
+  },
+  // the Psy-Staff: held across the body in both hands, the focus up and forward
+  staff(p, s, sw, sprint) {
+    p.armR = [-0.55, 0, -0.3]; p.foreR = [-1.05, 0, 0]; p.handR = [1.25, 0, 0];
+    p.armL = [-0.85, 0, -0.05]; p.foreL = [-1.15, 0, 0]; p.handL = [0.9, 0, 0];
+    if (sprint) { p.armR[0] -= sw * 0.3; p.armL[0] += sw * 0.3; }
+  },
   spear(p) {
     p.armR = [-0.15, 0, -0.1]; p.foreR = [-1.35, 0, 0]; p.handR = [1.3, 0, 0];
     p.armL = [-0.7, 0, -0.1]; p.foreL = [-0.8, 0, 0];

@@ -37,6 +37,15 @@ export const VFX = {
   redSlash(g, hp, dir) { g.pfx.play('redSlash', hp, { dir }); },
   redCrit(g, hp, own) { g.pfx.play('redCrit', hp); g.fx.addShake(own ? 0.6 : 0.3); },
   redPoof(g, pos) { g.pfx.play('redPoof', pos); },
+  // ---------- the region weapons (weapons.js) ----------
+  // the Psy-Staff's warding sigil (main.js placeSigil: on every screen; a Storm Sigil zaps from its owner's)
+  sigil(g, pos, storm, ref, own) { g.placeSigil(v3(pos), storm, g.playerRef(ref)); g.audio[own ? 'play' : 'remote']('fire', 0.6); },
+  // the Wrist Blade's Ghost Veil: a puff of smoke, then the body a thin shade (or back)
+  veil(g, ref, on) {
+    const p = g.playerRef(ref); if (!p) return;
+    g.pfx.play('shroud', p.pos.clone().setY(0.6));
+    g.setVeiled(p, on);
+  },
   // ---------- spellsword ----------
   impale(g, feet, hp, own) {
     g.pfx.play('circle', feet); g.pfx.play('boltHit', hp); g.fx.addShake(own ? 0.6 : 0.3);

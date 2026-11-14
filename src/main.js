@@ -15,6 +15,9 @@ import { AREAS } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
 import * as ItemsLib from './items.js';
+import { loadout, BASE_WEAPON } from './weapons.js';
+import * as WeaponsLib from './weapons.js';
+import { SIGIL, VEIL } from './weaponmoves.js';
 import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
 import { Chests } from './chests.js';
@@ -35,7 +38,7 @@ import { rng } from './world.js';
 import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare } from './progress.js';
 const FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
 import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
-import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION } from './skilltree.js';
+import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION, TREES } from './skilltree.js';
 import { playerParts, enemyParts, scaleParts, sumParts, ELEMS, TYPES, TYPE_COLOR, BUILD_PER_DMG, SPELL_BUILD, rollElems, mitigate } from './damage.js';
 import { TreeUI } from './treeui.js';
 import { SkinMenu } from './skinmenu.js';
@@ -127,6 +130,7 @@ class Game {
     this.seals = new Seals(this);
     this.chests = new Chests(this);
     this.itemsLib = ItemsLib; // (the item tables, for the stash and the test scripts)
+    this.weaponsLib = { ...WeaponsLib, TREES }; // (the weapons and the trees, for the test scripts)
     this.basements = new Basements(this);
     this.minimap = new Minimap(this);
     this.buildRun();
@@ -532,10 +536,13 @@ class Game {
   // every player in the run: this device's plus teammates
   allPlayers() { return this.mp.active ? [this.player, ...this.mp.peers.values()] : [this.player]; }
 
+  // the weapon and evolution a character fights with (weapons.js); a guest has the starting weapon
+  loadoutFor(kind) { return this.accounts.user && this.accounts.data ? loadout(this.accounts.data, kind) : { weapon: BASE_WEAPON[kind], evo: null }; }
+
   targetOf(e) {
     let best = this.player, bd = Infinity;
     for (const p of this.allPlayers()) {
-      if (!p.alive) continue;
+      if (!p.alive || p.veilT > 0 || p.veiled) continue; // (Ghost Veil: unseen)
       const d = e.distTo(p);
       if (d < bd) { bd = d; best = p; }
     }
@@ -575,7 +582,7 @@ class Game {
     this.audio.ambience(this.night ? 'night' : 'day', this.act);
     this.ui.setMaxHp(this.player.maxHp, this.player.maxSt);
     this.ui.hp.snap(1); this.ui.st.snap(1);
-    $('b-special').textContent = { knight: 'BLOCK', rogue: 'PARRY', mage: 'FIRE' }[kind];
+    $('b-special').textContent = { block: 'BLOCK', parry: 'PARRY', fire: 'FIRE', guard: 'GUARD', dash: 'DASH', sigil: 'SIGIL' }[this.player.c.special] || 'SPECIAL';
     $('b-heavy').textContent = kind === 'mage' ? 'BOLT' : 'R2';
     document.querySelector('.bar.mn').classList.toggle('hidden', kind !== 'mage');
     this.ui.show('menu', false); this.ui.show('hud'); this.ui.show('victory', false); this.ui.show('death', false);
@@ -744,6 +751,12 @@ class Game {
       const back = migrateTree(A.data);
       A.save();
       if (back) setTimeout(() => this.ui.toast(`SKILL TREES REBUILT · ◆ ${back} REFUNDED`, 4), 300);
+    }
+    // every weapon unlocked for joeandre (asked for 2026-11-13: testing the region weapons before area 2 exists)
+    if (A.user === 'joeandre' && A.data) {
+      const W = WeaponsLib.armoury(A.data); let added = false;
+      for (const [id, w] of Object.entries(WeaponsLib.WEAPONS)) if (w.region && !W.owned[id]) { W.owned[id] = 1; added = true; }
+      if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
     if (A.user && A.data && !A.data.cosmeticsV1) {
@@ -1395,6 +1408,11 @@ class Game {
       parryable: !!(h.parry ?? def.parry), unblockable: !!def.unblockable,
     };
     if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
+    // Ghost Veil: the first strike out of hiding, into the back of one facing away, does triple damage
+    if (att === this.player && att.veilStrike && tg.yaw != null && Math.abs(angDiff(tg.yaw, tg.yawTo(att.pos))) > 1.9) {
+      info.dmg *= VEIL.backstab; info.backstab = true;
+      this.statusPopup(tg, 'BACKSTAB', '#ff4a3a'); this.vfx('redCrit', tg.pos.clone().setY(1.2));
+    }
     if (h.pctHp) { info.dmg = (tg.maxHp || 100) * h.pctHp; info.elems = null; } // a share of the target's health, pure force (the hold burst)
     // an enemy's critical hit (its rolled chance and bonus: defenses.js)
     else if (att !== this.player) { const cm = critRoll(att.def?.crit, att.def?.critDmg); if (cm > 1) { info.dmg *= cm; info.crit = true; } }
@@ -1408,11 +1426,11 @@ class Game {
         att.onParried();
         this.audio.play('parry');
         this.mp.event({ k: 'parry' });
-        if (tg.evolved) { this.ui.redFlash(); tg.rig.flash(1, 0.1, 0.1); tg.instantRiposte(att); }
+        if (tg.evo === 'redRiposte') { this.ui.redFlash(); tg.rig.flash(1, 0.1, 0.1); tg.instantRiposte(att); }
         const w = tg.rig.tipL ? tg.rig.tipL.getWorldPosition(new THREE.Vector3()) : hp;
         this.fx.sparks(w, null, 26, [1, 0.95, 0.7]);
         this.pfx.play('parry', w);
-        this.hitstop(0.12); if (!tg.evolved) this.slow = 0.35;
+        this.hitstop(0.12); if (tg.evo !== 'redRiposte') this.slow = 0.35;
         this.fx.addShake(0.4);
       } else if (r === 'block' || r === 'guardbreak') {
         this.audio.play('clang');
@@ -1602,7 +1620,7 @@ class Game {
     for (const e of this.enemiesAll()) {
       if (!e.alive) continue;
       const np = e.nextParry();
-      const early = PARRY_EARLY + (p.evolved ? 0.05 : 0) + (p.tree?.parryWin || 0) / 1000; // Red Riposte adds 50ms
+      const early = PARRY_EARLY + (p.evo === 'redRiposte' ? 0.05 : 0) + (p.tree?.parryWin || 0) / 1000; // Red Riposte adds 50ms
       if (!np || np.tth < PARRY_LATE - slack || np.tth > early + slack) continue;
       if (e.distTo(p) > (np.h.range ?? 3) + p.radius + 0.8) continue;
       if (Math.abs(angDiff(e.yaw, e.yawTo(p.pos))) > (np.h.arc ?? 2) / 2 + 0.5) continue;
@@ -1738,7 +1756,7 @@ class Game {
   }
 
   spawnSpell(p, kind, spread = 0, dmg = null) { // dmg: override (combo finishers' lances)
-    const S = SPELLS[kind], big = kind === 'fire' && p.evolved ? 1.45 : 1;
+    const S = SPELLS[kind], big = kind === 'fire' && p.evo === 'twinPlasma' ? 1.45 : 1;
     const f = p.fwd().clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
     const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25, p.pos.z + f.z * 0.8);
     // the sphere only carries the shot; what you see is the pixelfx bolt or fireball riding on it
@@ -1849,6 +1867,54 @@ class Game {
       if (D.fadedAt?.(e.pos.x, e.pos.z)) { e.rig.root.visible = false; continue; } // (in a building faded to glass: unseen)
       const near = e.alive && e.rig.root.visible && Math.abs(e.pos.x - me.x) < 20 && Math.abs(e.pos.z - me.z) < 20;
       this.ghostSet(e, near && D.hides(e.pos.x, e.pos.z), 0xd04030);
+    }
+  }
+
+  // ---------- the Psy-Staff's warding sigils (placed by VFX.sigil on every screen) ----------
+  // enemies inside one move at half speed (enemies.js), their shots break on its edge, and a Storm Sigil (its owner's
+  // screen) calls lightning onto one of them every 0.6 s
+  placeSigil(pos, storm, owner) {
+    const g = new THREE.Group(); g.position.set(pos.x, 0.06, pos.z);
+    const mat = new THREE.MeshBasicMaterial({ color: storm ? 0x9ad0ff : 0xc890ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(SIGIL.r - 0.25, SIGIL.r, 48), mat); ring.rotation.x = -Math.PI / 2; g.add(ring);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(SIGIL.r * 0.45, SIGIL.r * 0.5, 6), mat); inner.rotation.x = -Math.PI / 2; g.add(inner);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2, b = new THREE.Mesh(new THREE.PlaneGeometry(0.12, SIGIL.r * 0.5), mat); b.rotation.x = -Math.PI / 2; b.rotation.z = a; b.position.set(Math.cos(a + Math.PI / 2) * SIGIL.r * 0.72, 0, -Math.sin(a + Math.PI / 2) * SIGIL.r * 0.72); g.add(b); }
+    this.scene.add(g);
+    (this.sigils ||= []).push({ x: pos.x, z: pos.z, t: SIGIL.dur, storm, mine: owner === this.player, g, mat, zapT: SIGIL.zapEvery });
+    this.fx.burst({ x: pos.x, y: 0.5, z: pos.z }, 24, storm ? [0.6, 0.85, 1] : [0.78, 0.56, 1], 3, 0.6, 0.2);
+  }
+  sigilSlowAt(x, z) { for (const S of this.sigils || []) if (Math.hypot(x - S.x, z - S.z) < SIGIL.r) return SIGIL.slow; return 1; }
+  updateSigils(dt) {
+    if (!this.sigils?.length) return;
+    for (const S of this.sigils) {
+      S.t -= dt;
+      S.g.rotation.y += dt * 0.6; S.mat.opacity = Math.min(0.55, S.t * 0.4) * (0.8 + Math.sin(this.time * 6) * 0.2);
+      // enemy shots break on it
+      for (const q of this.projectiles) if (!q.friendly && Math.hypot(q.pos.x - S.x, q.pos.z - S.z) < SIGIL.r) q.life = 0;
+      if (S.storm && S.mine && (S.zapT -= dt) <= 0) {
+        S.zapT = SIGIL.zapEvery;
+        const inside = this.enemiesAll().filter((e) => e.alive && Math.hypot(e.pos.x - S.x, e.pos.z - S.z) < SIGIL.r + e.radius);
+        const e = inside[Math.floor(Math.random() * inside.length)];
+        if (e) { this.vfx('boltHit', e.pos.clone().setY(1.2)); this.fx.sparks(e.pos.clone().setY(2.5), new THREE.Vector3(0, -1, 0), 10, [0.7, 0.9, 1]); this.spellDamage({ dmg: 14 * NUM, poise: 6, pos: e.pos.clone(), kind: 'bolt' }, e); }
+      }
+    }
+    this.sigils = this.sigils.filter((S) => { if (S.t > 0) return true; this.scene.remove(S.g); return false; });
+  }
+  // ---------- Ghost Veil: whoever is veiled shows as a thin shade in their armour's colour, trailing ghosts ----------
+  setVeiled(p, on) {
+    if (!p?.rig) return;
+    p.veiled = on;
+    const col = p.c?.model ? (p.rig.armorHex ?? p.c.model.armor) : 0x8a8a90;
+    p.veilMat ||= new THREE.MeshBasicMaterial({ color: new THREE.Color(col).lerp(new THREE.Color(0xe8f0ff), 0.35), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending }); // (your armour's colour, paled to a ghost)
+    p.rig.root.traverse((o) => { if (!o.isMesh || o.userData.ghost) return; if (on) { o.userData.mat0 ??= o.material; o.material = p.veilMat; } else if (o.userData.mat0) { o.material = o.userData.mat0; o.userData.mat0 = null; } });
+  }
+  updateVeils(dt) {
+    for (const p of this.allPlayers()) {
+      if (!p.veiled) continue;
+      if ((p.veilFxT = (p.veilFxT || 0) - dt) > 0) continue;
+      p.veilFxT = 0.045;
+      const c = new THREE.Color(p.veilMat.color);
+      for (const y of [0.35, 0.95, 1.55]) this.fx.add.spawn({ x: p.pos.x + (Math.random() - 0.5) * 0.25, y, z: p.pos.z + (Math.random() - 0.5) * 0.25, life: 0.55, size: 0.42, size1: 0.08, r: c.r, g: c.g, b: c.b, alpha: 0.45 });
     }
   }
 
@@ -1972,6 +2038,8 @@ class Game {
         }
         this.separate();
         this.updateProjectiles(dt);
+        this.updateSigils(dt);
+        this.updateVeils(dt);
         this.updateHearts(dt);
         this.seals.update(dt);
         this.chests.update(dt);

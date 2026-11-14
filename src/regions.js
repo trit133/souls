@@ -19,7 +19,9 @@ export const AREAS = {
     blurb: 'A hab-ward burned hollow in the first war. Scavenger gangs hold the tenements; the cellars run deeper than the maps say.',
     mix: { grunt: 4, spear: 2, archer: 2, brute: 0.4 }, look: ASHFALL_LOOK,
     // what its drums and chests hold (items.js): the first area of a region tops out low; the harder ones reach higher
-    loot: { drum: { common: 80, uncommon: 18, rare: 2 }, chest: { common: 30, uncommon: 38, rare: 22, epic: 8, legendary: 2 }, hoard: { rare: 45, epic: 40, legendary: 15 } },
+    // (the first area tops out at rare: Augury Shards and Oracle Cores wait in the harder areas, so the region's new
+    // weapons can't be forged from Ashfall Ward alone)
+    loot: { drum: { common: 80, uncommon: 18, rare: 2 }, chest: { common: 32, uncommon: 42, rare: 26 }, hoard: { rare: 100 } },
   },
   r1a2: { id: 'r1a2', region: 'r1', name: 'The Sump Lines', kind: 'locked', blurb: 'Flooded transit tunnels under the ward.' },
   r1a3: { id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: 'locked', blurb: 'A cathedral-fortress on the ward\'s edge.' },

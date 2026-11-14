@@ -15,7 +15,7 @@
 import * as THREE from 'three';
 import { buildHumanoid } from './models.js';
 import { P } from './anims.js';
-import { CHARS } from './player.js';
+import { CHARS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
 import { tickOutfitColors, forgetRig } from './outfits.js';
 import { pxButton, pxText } from './pixelmenus.js';
@@ -27,6 +27,7 @@ import { ITEMS, RARITY, TIERS, itemValue, iconEl } from './items.js';
 import { REGIONS } from './regions.js';
 import { BOSSES } from './boss.js';
 import { GUIDE } from './guide.js';
+import { WEAPONS, WEAPON_REGIONS, BASE_WEAPON, weaponFor, armoury, ownsWeapon, hasEvo, equippedWeapon, recipeState, spend, weaponIcon, weaponsOf } from './weapons.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
@@ -132,6 +133,20 @@ function workbench(glow) {
   box(g, 0.12, 0.05, 0.05, M.glow, -0.05, 1.62, -0.3); // a lamp tube over it
   return { group: g, glow: M.glow };
 }
+// the equipment stand: an iron rack with a weapon on its hooks, a plaque glowing in the hideout's colour
+function weaponStand(glow) {
+  const g = new THREE.Group(), M = { iron: L(0x2c2c30), dark: L(0x141416), steel: L(0x9a9ca4), grip: L(0x3a2616), trim: L(0x6a5634), glow: new THREE.MeshBasicMaterial({ color: glow }) };
+  box(g, 1.2, 0.12, 0.5, M.dark, 0, 0.06, 0); // the plinth
+  for (const sx of [-1, 1]) box(g, 0.09, 1.7, 0.09, M.iron, sx * 0.52, 0.9, 0); // uprights
+  box(g, 1.18, 0.08, 0.1, M.iron, 0, 1.72, 0); box(g, 1.1, 0.05, 0.08, M.trim, 0, 1.1, 0.04); box(g, 1.1, 0.05, 0.08, M.trim, 0, 0.6, 0.04);
+  for (const sx of [-0.32, 0, 0.32]) box(g, 0.04, 0.12, 0.08, M.steel, sx, 1.16, 0.08); // hooks
+  // a greatsword and a staff racked across it
+  box(g, 0.05, 0.22, 1.3, M.steel, 0, 1.25, 0.12, Math.PI / 2); box(g, 0.05, 0.05, 0.36, M.grip, -0.82, 1.25, 0.12, Math.PI / 2);
+  box(g, 0.04, 0.04, 1.2, M.grip, 0, 0.74, 0.12, Math.PI / 2); box(g, 0.08, 0.08, 0.08, M.glow, 0.62, 0.74, 0.12);
+  box(g, 0.34, 0.16, 0.03, M.glow, 0, 1.5, 0.06); // the plaque
+  return { group: g };
+}
+const EQUIP = { knight: { at: [1.5, 1.8], ry: -0.35, glow: 0xffa040 }, rogue: { at: [1.55, 1.8], ry: -0.35, glow: 0xff3a2a }, mage: { at: [1.5, 1.85], ry: -0.35, glow: 0x7aa8ff } };
 const WORKBENCH = { knight: { at: [-1.3, 1.75], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.4, 1.75], ry: 0.3, glow: 0xff3a2a }, mage: { at: [-1.35, 1.75], ry: 0.3, glow: 0x7aa8ff } };
 const JUKEBOX = { knight: { at: [0.95, -2.7], ry: -0.2, wood: 0x5a1414 }, rogue: { at: [0.45, -2.8], ry: 0.05, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
@@ -376,7 +391,9 @@ export class Hermitage {
       <div id="hm-juke" class="hidden"><div class="hm-sh"><span>Jukebox</span><button class="mini-btn" id="hm-juke-close">Close</button></div>
         <div class="hm-note">Pick a record for the menus. More are out there to be found.</div><div id="hm-recs"></div></div>
       <div id="hm-work" class="hidden"><div class="hm-sh"><span>Workbench</span><button class="mini-btn" id="hm-work-close">Close</button></div>
-        <div class="hm-note">Materials you find in raids will be worked here: upgrading your notables and crafting runes for the sockets in your tree. Coming soon.</div></div>
+        <div class="hm-note">Craft new weapons and evolutions from the materials in your stash.</div><div id="hm-work-body" class="wb-body"></div></div>
+      <div id="hm-equip" class="hidden"><div class="hm-sh"><span>Equipment</span><button class="mini-btn" id="hm-equip-close">Close</button></div>
+        <div class="hm-note">The weapon you take into a raid, and its evolution.</div><div id="hm-equip-body" class="wb-body"></div></div>
       <div class="hm-bottom">
         <div class="hm-solo-wrap"><button class="menu-btn primary" id="hm-solo">Solo Raid</button>
           <div id="hm-go" class="hidden"><button class="mini-btn" id="hm-night">Night Raid: Off</button><button class="mini-btn" id="hm-begin">Begin</button></div></div>
@@ -389,7 +406,7 @@ export class Hermitage {
     el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
@@ -402,6 +419,8 @@ export class Hermitage {
     $('hm-stash-close').addEventListener('click', () => this.setStash(false));
     $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
     $('hm-work-close').addEventListener('click', () => this.setWork(false));
+    $('hm-equip-close').addEventListener('click', () => this.setEquip(false));
+    for (const id of ['hm-work', 'hm-equip']) $(id).addEventListener('click', (e) => e.stopPropagation());
     // Solo Raid opens the world map (worldmap.js): pick an area there (Night Raid is toggled there too) to begin
     $('hm-solo').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -480,7 +499,7 @@ export class Hermitage {
   }
 
   close(toMenu = true) {
-    this.active = false; this.setStash(false); this.setJuke(false); this.setGuide(false); this.setHover(null);
+    this.active = false; this.setStash(false); this.setJuke(false); this.setGuide(false); this.setWork(false); this.setEquip(false); this.setHover(null);
     this.el.classList.add('hidden');
     if (toMenu) this.game.ui.show('menu');
   }
@@ -540,13 +559,15 @@ export class Hermitage {
     this.stashLid = stash.lid; this.lidAngle = 0;
     const J = JUKEBOX[kind], juke = jukebox(J.wood); juke.group.position.set(J.at[0], 0, J.at[1]); juke.group.rotation.y = J.ry; g.add(juke.group);
     const W = WORKBENCH[kind], bench = workbench(W.glow); bench.group.position.set(W.at[0], 0, W.at[1]); bench.group.rotation.y = W.ry; bench.group.scale.setScalar(0.56); g.add(bench.group);
+    const E = EQUIP[kind], stand = weaponStand(E.glow); stand.group.position.set(E.at[0], 0, E.at[1]); stand.group.rotation.y = E.ry; stand.group.scale.setScalar(0.62); g.add(stand.group);
     const benchLight = new THREE.PointLight(W.glow, 1.2, 2.6, 1.5); benchLight.position.set(W.at[0] + 0.3, 1.4, W.at[1] + 0.5); scene.add(benchLight);
     this.juke = juke; this.jukeLight = new THREE.PointLight(0xffb060, 1.6, 3, 1.5); this.jukeLight.position.set(J.at[0], 1.0, J.at[1] + 0.7); scene.add(this.jukeLight);
     this.items = [
       { id: 'stash', group: stash.group, label: 'Reliquary', sub: 'Shared by all your characters' },
       { id: 'wardrobe', group: wardrobe, label: 'Armoury', sub: 'Change your look' },
       { id: 'jukebox', group: juke.group, label: 'Vox-Caster', sub: 'Choose the music' },
-      { id: 'workbench', group: bench.group, label: 'Workbench', sub: 'Upgrades and crafting (coming soon)' },
+      { id: 'workbench', group: bench.group, label: 'Workbench', sub: 'Craft weapons and evolutions' },
+      { id: 'equip', group: stand.group, label: 'Equipment', sub: 'Choose your weapon and its evolution' },
     ];
     this.showRecord(false);
     this.scene = scene;
@@ -560,7 +581,7 @@ export class Hermitage {
     if (!this.scene) return;
     const kind = this.kind;
     if (this.rig) { this.scene.remove(this.rig.root); forgetRig(this.rig.root); }
-    const rig = buildHumanoid({ ...outfitModel(CHARS[kind].model, kind, this.game.equippedOutfit(kind)), scale: 1 });
+    const rig = buildHumanoid({ ...outfitModel((weaponChar(kind, this.game.loadoutFor(kind).weapon) || CHARS[kind]).model, kind, this.game.equippedOutfit(kind)), scale: 1 }); // (holding the weapon you've equipped)
     rig.idle = true; rig.root.position.set(SCENES[kind].seatX || 0, 0.0, 0.05); rig.root.rotation.y = this.seatYaw;
     rig.apply(P.rest, 1, 60);
     this.scene.add(rig.root);
@@ -618,6 +639,7 @@ export class Hermitage {
     else if (it.id === 'stash') this.setStash(!this.stashOpen);
     else if (it.id === 'jukebox') this.setJuke(!this.jukeOpen);
     else if (it.id === 'workbench') this.setWork(!this.workOpen);
+    else if (it.id === 'equip') this.setEquip(!this.equipOpen);
   }
 
   // ---------- How to Play: a page per topic, its tabs down the side ----------
@@ -640,11 +662,86 @@ export class Hermitage {
     $('g-page').scrollTop = 0;
   }
 
-  // ---------- the workbench (its panel only, for now) ----------
+  // ---------- the workbench: craft this character's weapons and their evolutions (weapons.js) ----------
   setWork(v) {
     this.workOpen = v;
-    if (v) { this.setStash(false); this.setJuke(false); this.setGuide?.(false); this.game.audio.play('uiTick', 1); }
+    if (v) { this.setStash(false); this.setJuke(false); this.setGuide?.(false); this.setEquip?.(false); this.renderWork(); this.game.audio.play('uiTick', 1); }
     $('hm-work')?.classList.toggle('hidden', !v);
+  }
+  // a recipe as rows of material icons, have / need
+  recipeEl(recipe) {
+    const d = this.game.accounts.data, R = recipeState(d, recipe), el = document.createElement('div'); el.className = 'wb-recipe';
+    for (const r of R.rows) {
+      const row = document.createElement('div'); row.className = 'wb-mat' + (r.have >= r.need ? ' ok' : '');
+      row.append(iconEl(r.id, 1.5), Object.assign(document.createElement('span'), { textContent: `${r.have}/${r.need}` }));
+      row.title = r.id.replace(/_/g, ' ');
+      el.append(row);
+    }
+    return { el, ok: R.ok };
+  }
+  renderWork() {
+    const g = this.game, d = g.accounts.data, kind = this.kind, body = $('hm-work-body');
+    if (!d) return;
+    body.replaceChildren();
+    const head = (t) => body.append(Object.assign(document.createElement('div'), { className: 'wb-h', textContent: t }));
+    const card = (icon, title, sub, extra) => {
+      const c = document.createElement('div'); c.className = 'wb-card';
+      const top = document.createElement('div'); top.className = 'wb-top';
+      top.append(icon, Object.assign(document.createElement('div'), { className: 'wb-t', innerHTML: `<b>${title}</b><span>${sub}</span>` }));
+      c.append(top); if (extra) c.append(...[].concat(extra)); body.append(c); return c;
+    };
+    const button = (label, ok, fn) => { const b = document.createElement('button'); b.className = 'mini-btn wb-go'; b.textContent = label; b.disabled = !ok; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; };
+    head('Weapons');
+    const base = BASE_WEAPON[kind];
+    card(weaponIcon(base, 2), WEAPONS[base].name, 'Your starting weapon · owned');
+    for (const R of WEAPON_REGIONS) {
+      const id = weaponFor(kind, R.id);
+      if (!id) { const box = document.createElement('div'); box.className = 'wb-unknown'; box.textContent = '?'; card(box, 'Unknown', `A weapon of ${R.name} · not yet in the game`); continue; }
+      const W = WEAPONS[id];
+      if (ownsWeapon(d, id)) { card(weaponIcon(id, 2), W.name, `${R.name} · owned`); continue; }
+      const rec = this.recipeEl(W.recipe);
+      card(weaponIcon(id, 2, 'dark'), W.name, `${R.name} · not yet made`, [Object.assign(document.createElement('div'), { className: 'wb-d', textContent: W.desc }), rec.el,
+        button('Craft', rec.ok, () => { spend(d, W.recipe); armoury(d).owned[id] = 1; g.accounts.save(); g.ui.toast(`${W.name.toUpperCase()} FORGED · equip it at the equipment stand`, 3); g.audio.play('clang', 0.8); this.renderWork(); })]);
+    }
+    head('Evolutions');
+    for (const id of weaponsOf(kind).filter((w) => ownsWeapon(d, w))) {
+      const W = WEAPONS[id], E = W.evo;
+      if (hasEvo(d, E.id)) { card(weaponIcon(id, 2), E.name, `${W.short} evolution · built (switch it on at the equipment stand)`, Object.assign(document.createElement('div'), { className: 'wb-d', textContent: E.desc })); continue; }
+      const rec = this.recipeEl(E.recipe);
+      card(weaponIcon(id, 2, 'dark'), E.name, `${W.short} evolution · not yet built`, [Object.assign(document.createElement('div'), { className: 'wb-d', textContent: E.desc }), rec.el,
+        button('Build', rec.ok, () => { spend(d, E.recipe); const A = armoury(d); A.evos[E.id] = 1; A.evoOn[id] = 1; g.accounts.save(); g.ui.toast(`${E.name.toUpperCase()} BUILT`, 3); g.audio.play('clang', 0.8); this.renderWork(); })]);
+    }
+  }
+
+  // ---------- the equipment stand: equip a weapon you own, switch its evolution on or off ----------
+  setEquip(v) {
+    this.equipOpen = v;
+    if (v) { this.setStash(false); this.setJuke(false); this.setGuide?.(false); this.setWork(false); this.renderEquip(); this.game.audio.play('uiTick', 1); }
+    $('hm-equip')?.classList.toggle('hidden', !v);
+  }
+  renderEquip() {
+    const g = this.game, d = g.accounts.data, kind = this.kind, body = $('hm-equip-body');
+    if (!d) return;
+    body.replaceChildren();
+    const cur = equippedWeapon(d, kind), A = armoury(d);
+    for (const id of weaponsOf(kind).filter((w) => ownsWeapon(d, w))) {
+      const W = WEAPONS[id], on = id === cur, c = document.createElement('div'); c.className = 'wb-card' + (on ? ' on' : '');
+      const top = document.createElement('div'); top.className = 'wb-top';
+      top.append(weaponIcon(id, 2), Object.assign(document.createElement('div'), { className: 'wb-t', innerHTML: `<b>${W.name}</b><span>${on ? 'Equipped' : W.region ? 'Crafted' : 'Starting weapon'} · special: ${W.special.name}</span>` }));
+      c.append(top, Object.assign(document.createElement('div'), { className: 'wb-d', textContent: `${W.desc} ${W.special.name}: ${W.special.desc}` }));
+      if (!on) { const b = document.createElement('button'); b.className = 'mini-btn wb-go'; b.textContent = 'Equip'; b.addEventListener('click', (e) => { e.stopPropagation(); A.equip[kind] = id; g.accounts.save(); this.placeCharacter(); g.audio.play('clang', 0.6); this.renderEquip(); }); c.append(b); }
+      // its evolution: on or off (only on this weapon)
+      const E = W.evo, ev = document.createElement('div'); ev.className = 'wb-evo';
+      if (hasEvo(d, E.id)) {
+        const live = A.evoOn[id] !== 0;
+        ev.innerHTML = `<span>Evolution · <b>${E.name}</b></span>`;
+        const t = document.createElement('button'); t.className = 'mini-btn wb-go' + (live ? ' lit' : ''); t.textContent = live ? 'On' : 'Off';
+        t.addEventListener('click', (e) => { e.stopPropagation(); A.evoOn[id] = live ? 0 : 1; g.accounts.save(); this.renderEquip(); });
+        ev.append(t);
+      } else ev.innerHTML = `<span>Evolution · ${E.name}: build it at the workbench</span>`;
+      c.append(ev);
+      body.append(c);
+    }
   }
 
   // ---------- the jukebox ----------

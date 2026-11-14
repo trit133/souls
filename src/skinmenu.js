@@ -8,9 +8,9 @@ import * as THREE from 'three';
 import { buildHumanoid } from './models.js';
 import { locomotion } from './anims.js';
 import { PixelPass } from './pixel.js';
-import { CHARS } from './player.js';
+import { CHARS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
-import { CHANNELS, SLOTS, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
+import { CHANNELS, slotsFor, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = { knight: 'Templar', rogue: 'Shrike', mage: 'Adept' }; // (display names: The Last Crusade)
@@ -21,7 +21,7 @@ export class SkinMenu {
     this.game = game;
     this.kind = 'knight'; this.slot = null; this.try = null; // try: { type: 'piece'|'main'|'trim', id }
     this.renderer = null; this.rig = null; this.raf = 0;
-    document.querySelectorAll('[data-skin-kind]').forEach((b) => b.addEventListener('click', () => { this.kind = b.dataset.skinKind; this.slot = SLOTS[this.kind][0].id; this.try = null; this.render(); }));
+    document.querySelectorAll('[data-skin-kind]').forEach((b) => b.addEventListener('click', () => { this.kind = b.dataset.skinKind; this.slot = this.slots(this.kind)[0].id; this.try = null; this.render(); }));
     document.querySelectorAll('[data-outfit]').forEach((b) => b.addEventListener('click', () => this.useOutfit(+b.dataset.outfit)));
     $('skins-back').addEventListener('click', () => this.close());
     $('cz-buy').addEventListener('click', () => this.buy());
@@ -41,7 +41,7 @@ export class SkinMenu {
 
   open(kind) {
     this.kind = kind || this.game.lobbyKind || 'knight';
-    this.slot = SLOTS[this.kind][0].id; this.try = null;
+    this.slot = this.slots(this.kind)[0].id; this.try = null;
     this.game.ui.show('skins');
     this.render();
     if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame((t) => this.tick(t)); }
@@ -107,7 +107,7 @@ export class SkinMenu {
     $('skin-note').textContent = signed ? 'Emeralds: 1 for every kill, 2 for a boss. The selected outfit is the one you wear.' : 'Sign in to customize (emeralds and outfits are kept on your account).';
     // slots, each with the piece it wears
     const all = d ? wornOutfit(d, kind) : {};
-    $('cz-slots').replaceChildren(...SLOTS[kind].map((s) => {
+    $('cz-slots').replaceChildren(...this.slots(kind).map((s) => {
       const b = document.createElement('button');
       b.className = 'cz-slot' + (s.id === this.slot ? ' on' : '') + (this.try && s.id === this.slot ? ' trying' : '');
       const piece = pieceList(kind, s.id).find((p) => p.id === all[s.id]?.piece) || pieceList(kind, s.id)[0];
@@ -117,7 +117,7 @@ export class SkinMenu {
       b.addEventListener('click', () => { this.slot = s.id; this.try = null; this.render(); });
       return b;
     }));
-    $('cz-pieces-h').textContent = `Pieces · ${SLOTS[kind].find((s) => s.id === this.slot)?.name || ''}`;
+    $('cz-pieces-h').textContent = `Pieces · ${this.slots(kind).find((s) => s.id === this.slot)?.name || ''}`;
     // pieces for the slot
     const worn = d ? wornOutfit(d, kind)[this.slot] : null;
     $('cz-pieces').replaceChildren(...pieceList(kind, this.slot).map((p, i) => {
@@ -157,7 +157,7 @@ export class SkinMenu {
     $('cz-trying').textContent = '';
     if (t) {
       const name = t.type === 'piece' ? pieceList(kind, this.slot).find((p) => p.id === t.id)?.name : COLORS.find((c) => c.id === t.id)?.name;
-      const slot = SLOTS[kind].find((s) => s.id === this.slot)?.name;
+      const slot = this.slots(kind).find((s) => s.id === this.slot)?.name;
       $('cz-trying').textContent = `Trying on: ${name} (${t.type === 'piece' ? slot : `${slot} ${t.type} colour`})${d && d.emeralds < price ? ` · you have ${d.emeralds}` : ''}`;
       b.textContent = `Buy · ${price}`;
       b.disabled = !d || d.emeralds < price;
@@ -183,10 +183,14 @@ export class SkinMenu {
     this.fitStage();
     const rot = this.rig?.root.rotation.y || 0;
     if (this.rig) { this.scene.remove(this.rig.root); forgetRig(this.rig.root); }
-    this.rig = buildHumanoid({ ...outfitModel(CHARS[this.kind].model, this.kind, this.shown()), scale: 1 });
+    this.rig = buildHumanoid({ ...outfitModel(this.char(this.kind).model, this.kind, this.shown()), scale: 1 });
     this.rig.idle = true; this.rig.root.rotation.y = rot;
     this.scene.add(this.rig.root);
   }
+
+  // the weapon in hand (weapons.js): its own skin slot shows, the others' don't, and the preview holds it
+  char(kind) { return weaponChar(kind, this.game.loadoutFor(kind).weapon) || CHARS[kind]; }
+  slots(kind) { return slotsFor(kind, this.game.loadoutFor(kind).weapon); }
 
   // the preview fills the stage in the middle (and follows it when the window changes size)
   fitStage() {
@@ -207,7 +211,7 @@ export class SkinMenu {
     if (this.held > 0) this.held -= dt; // just dragged: hold still a moment
     else if (!this.drag) this.rig.root.rotation.y += dt * 0.7;
     this.rig.setGlow?.(0.8 + Math.sin(now / 600) * 0.2);
-    this.rig.apply(locomotion(CHARS[this.kind].style, 0, 0, false, now / 1000), dt, 10);
+    this.rig.apply(locomotion(this.char(this.kind).style, 0, 0, false, now / 1000), dt, 10);
     tickOutfitColors(now / 1000);
     this.pixel.render(this.scene, this.camera);
   }

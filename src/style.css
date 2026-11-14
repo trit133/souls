@@ -770,8 +770,8 @@ button.pxbtn { justify-content: center; }
 #hm-label.hidden { display: none; }
 #hm-label b { display: block; font: bold 15px Georgia, serif; letter-spacing: 1px; color: #ffd36a; }
 #hm-label span { display: block; font: 11px monospace; color: #d8c8a8; margin-top: 2px; }
-#hm-stash, #hm-juke, #hm-work { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
-#hm-stash.hidden, #hm-juke.hidden, #hm-work.hidden { display: none; }
+#hm-stash, #hm-juke, #hm-work, #hm-equip { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: 62px; bottom: 86px; width: min(340px, 44vw); display: flex; flex-direction: column; padding: 10px; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 10px 30px rgba(0,0,0,.7); animation: hmslide .25s ease-out; }
+#hm-stash.hidden, #hm-juke.hidden, #hm-work.hidden, #hm-equip.hidden { display: none; }
 @keyframes hmslide { from { transform: translateX(40px); opacity: 0; } }
 .hm-sh { display: flex; justify-content: space-between; align-items: center; color: #ffd36a; font: bold 18px Georgia, serif; letter-spacing: 2px; }
 .hm-note { margin: 6px 0 8px; font: 11px monospace; color: #b8a888; }
@@ -783,7 +783,7 @@ button.pxbtn { justify-content: center; }
 #hm-hint { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); font: 12px monospace; color: #c8b890; letter-spacing: 1px; opacity: .8; transition: opacity 1s; pointer-events: none; text-shadow: 0 1px 2px #000; }
 #hm-hint.gone { opacity: 0; }
 .tile-herm { min-height: 150px; }
-@media (max-width: 700px), (max-height: 450px) { #hm-stash, #hm-work { width: 52vw; top: 54px; bottom: 70px; } .hm-bottom { gap: 8px; } }
+@media (max-width: 700px), (max-height: 450px) { #hm-stash, #hm-work, #hm-equip { width: 52vw; top: 54px; bottom: 70px; } .hm-bottom { gap: 8px; } }
 button.pxbtn > #hm-chars-ic { display: inline-flex; } /* the person icon on the characters button */
 
 /* the title: Hermitage as wide as Fullscreen, Settings in the bottom right corner */
@@ -1050,3 +1050,20 @@ body.pt-on #hm-stash, body.pt-on #hm-juke, body.pt-on #hm-work { top: var(--pt-b
 .pw-side.l { left: -80px; } .pw-side.r { left: 80px; }
 
 #b-ping { right: 178px; bottom: 182px; font-size: 10px; letter-spacing: .5px; }
+
+/* the workbench and the equipment stand (hermitage.js renderWork / renderEquip) */
+.wb-body { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+.wb-h { margin-top: 4px; color: #e8a050; font: bold 12px monospace; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid #3a2414; padding-bottom: 2px; }
+.wb-card { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: #1a100a; border: 2px solid #3a2414; }
+.wb-card.on { border-color: #c8862a; box-shadow: inset 0 0 8px rgba(200,134,42,.3); }
+.wb-top { display: flex; gap: 8px; align-items: center; }
+.wb-top .item-ic, .wb-unknown { image-rendering: pixelated; flex: none; background: #0c0806; border: 2px solid #2a1a10; }
+.wb-unknown { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #000; color: #5a4a3a; font: bold 18px monospace; }
+.wb-t { display: flex; flex-direction: column; } .wb-t b { color: #f0d8a8; font: bold 13px Georgia, serif; } .wb-t span { color: #9a8a70; font: 11px monospace; }
+.wb-d { color: #b8a888; font: 11px/1.4 monospace; }
+.wb-recipe { display: flex; flex-wrap: wrap; gap: 4px; }
+.wb-mat { display: flex; align-items: center; gap: 3px; padding: 1px 4px; background: #0e0806; border: 1px solid #3a1a14; color: #c86a5a; font: bold 11px monospace; }
+.wb-mat.ok { border-color: #3a4a1a; color: #a8d070; } .wb-mat .item-ic { image-rendering: pixelated; }
+.wb-go { align-self: flex-end; } .wb-go:disabled { opacity: .45; cursor: default; } .wb-go.lit { color: #ffd36a; }
+.wb-evo { display: flex; justify-content: space-between; align-items: center; gap: 6px; color: #b8a888; font: 11px monospace; border-top: 1px solid #2a1a10; padding-top: 4px; }
+.wb-evo b { color: #ffd36a; }

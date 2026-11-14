@@ -38,19 +38,25 @@ export const colorPrice = (c) => (c.special ? PRICE.specialColor : PRICE.color);
 export const SLOTS = {
   knight: [
     { id: 'helmet', name: 'Helmet' }, { id: 'pauldronL', name: 'L Shoulder' }, { id: 'pauldronR', name: 'R Shoulder' },
-    { id: 'chest', name: 'Chest' }, { id: 'legs', name: 'Legs' }, { id: 'sword', name: 'Sword' }, { id: 'shield', name: 'Shield' },
+    { id: 'chest', name: 'Chest' }, { id: 'legs', name: 'Legs' }, { id: 'sword', name: 'Sword', weapon: 'sword' }, { id: 'shield', name: 'Shield', weapon: 'sword' },
+    { id: 'greatsword', name: 'Greatsword', weapon: 'greatsword' },
   ],
   rogue: [
     { id: 'mask', name: 'Mask' }, { id: 'cloak', name: 'Cloak' }, { id: 'shirt', name: 'Shirt' },
-    { id: 'bandL', name: 'L Arm Band' }, { id: 'bandR', name: 'R Arm Band' }, { id: 'knives', name: 'Knives' },
+    { id: 'bandL', name: 'L Arm Band' }, { id: 'bandR', name: 'R Arm Band' }, { id: 'knives', name: 'Knives', weapon: 'daggers' },
+    { id: 'wristblade', name: 'Wrist Blade', weapon: 'wristblade' },
   ],
   mage: [
     { id: 'shoulder', name: 'Shoulder' }, { id: 'shirt', name: 'Shirt' }, { id: 'pants', name: 'Pants' },
-    { id: 'wand', name: 'Wand' }, { id: 'sword', name: 'Sword' },
+    { id: 'wand', name: 'Wand', weapon: 'spellknife' }, { id: 'sword', name: 'Sword', weapon: 'spellknife' },
+    { id: 'staff', name: 'Staff', weapon: 'psystaff' },
   ],
 };
+// the slots the wardrobe shows with a weapon in hand: the body, and that weapon's own (a weapon slot only with it)
+export const slotsFor = (kind, weaponId) => (SLOTS[kind] || []).filter((s) => !s.weapon || s.weapon === weaponId);
 export const PIECES = {
   knight: {
+    greatsword: [{ id: 'slab', name: 'Dragon Slab', desc: 'Raw iron as tall as a man, nicked and riveted.' }, { id: 'relic', name: 'Relic Slab', desc: 'A reliquary at the cross and a channel burning up the flat.' }, { id: 'molten', name: 'Molten Slab', desc: 'Black iron cracked open, lava glowing through.', special: true }, { id: 'void', name: 'Void Slab', desc: 'A jagged black edge with a violet void at its core.', special: true }],
     helmet: [{ id: 'great', name: 'Great Helm', desc: 'A closed helm with a plume.' }, { id: 'barbute', name: 'Barbute', desc: 'An open T-slit helm with a nasal.' }, { id: 'winged', name: 'Winged Helm', desc: 'Gilded wings and a turning halo.', special: true }, { id: 'crowned', name: 'Crown of the Fallen King', desc: 'A gold crown over a burning visor.', special: true }],
     pauldronL: [{ id: 'segmented', name: 'Segmented', desc: 'Layered lames that rattle.' }, { id: 'spiked', name: 'Spiked', desc: 'A rounded cap with three spikes.' }, { id: 'lion', name: 'Lionheart', desc: 'A roaring lion with a swaying mane.', special: true }, { id: 'sunburst', name: 'Sunburst', desc: 'Gilded rays round a glowing sun stone.', special: true }],
     pauldronR: [{ id: 'segmented', name: 'Segmented', desc: 'Layered lames that rattle.' }, { id: 'spiked', name: 'Spiked', desc: 'A rounded cap with three spikes.' }, { id: 'lion', name: 'Lionheart', desc: 'A roaring lion with a swaying mane.', special: true }, { id: 'sunburst', name: 'Sunburst', desc: 'Gilded rays round a glowing sun stone.', special: true }],
@@ -60,6 +66,7 @@ export const PIECES = {
     shield: [{ id: 'heater', name: 'Heater Shield', desc: 'A cross on a field.' }, { id: 'round', name: 'Round Shield', desc: 'Boards, a rim and a big boss.' }, { id: 'kite', name: 'Sun Kite', desc: 'A tall kite shield with a glowing sun.', special: true }, { id: 'dragon', name: 'Dragon Crest', desc: 'A gold dragon with burning eyes.', special: true }],
   },
   rogue: {
+    wristblade: [{ id: 'hidden', name: 'Hidden Blade', desc: 'A plain bracer and a thin blade under the fist.' }, { id: 'twin', name: 'Twin Prong', desc: 'Two blades side by side, a heavier riveted bracer.' }, { id: 'phase', name: 'Phase Blade', desc: 'Humming coils and a blade of hard light.', special: true }, { id: 'fang', name: 'Bone Fang', desc: 'A hooked blade of serrated bone.', special: true }],
     mask: [{ id: 'wrap', name: 'Face Wrap', desc: 'A dark wrap and a scarf.' }, { id: 'iron', name: 'Iron Half-Mask', desc: 'A riveted mask with breathing slits.' }, { id: 'bone', name: 'Bone Mask', desc: 'A cracked skull face with burning eyes.', special: true }, { id: 'kitsune', name: 'Kitsune', desc: 'A white fox mask with glowing slit eyes.', special: true }],
     cloak: [{ id: 'tattered', name: 'Tattered Cloak', desc: 'A deep hood and three ragged panels.' }, { id: 'mantle', name: 'Short Mantle', desc: 'A hood and a shoulder cape.' }, { id: 'wraith', name: 'Wraith Shroud', desc: 'Ghostly wisps stream from it.', special: true }, { id: 'raven', name: 'Raven Cloak', desc: 'Black feathers and a feathered collar.', special: true }],
     shirt: [{ id: 'jerkin', name: 'Jerkin', desc: 'Crossed straps, pouches and wraps.' }, { id: 'brigandine', name: 'Brigandine', desc: 'A studded vest over a high collar.' }, { id: 'assassin', name: "Assassin's Garb", desc: 'A crimson sash and a bandolier of knives.', special: true }, { id: 'shadowweave', name: 'Shadowweave', desc: 'Violet runes glowing through it.', special: true }],
@@ -68,6 +75,7 @@ export const PIECES = {
     knives: [{ id: 'curved', name: 'Curved Daggers', desc: 'Swept guards and hooked points.' }, { id: 'stiletto', name: 'Stilettos', desc: 'Long thin spikes.' }, { id: 'spectral', name: 'Spectral Blades', desc: 'Blades of red ghost-light.', special: true }, { id: 'fang', name: 'Beast Fangs', desc: 'Serrated fangs of bone.', special: true }],
   },
   mage: {
+    staff: [{ id: 'focus', name: 'Focus Staff', desc: 'A brass-bound shaft and a caged focus crystal.' }, { id: 'bone', name: 'Bone Staff', desc: 'Wired bone and a small skull with lit eyes.' }, { id: 'storm', name: 'Storm Rod', desc: 'Coils and a sparking orb held in prongs.', special: true }, { id: 'seer', name: "Seer's Staff", desc: 'A great ring with an open eye in it.', special: true }],
     shoulder: [{ id: 'mantle', name: 'Rune Mantle', desc: 'A coat mantle with a rune.' }, { id: 'pauldron', name: 'Steel Pauldron', desc: 'A plated shoulder.' }, { id: 'crystal', name: 'Crystal Crown', desc: 'Crystal shards and a crown of orbiting crystals.', special: true }, { id: 'phoenix', name: 'Phoenix', desc: 'Feathers of living flame.', special: true }],
     shirt: [{ id: 'runecoat', name: 'Rune Coat', desc: 'A high collar and split tails.' }, { id: 'robe', name: 'Long Robe', desc: 'A robe to the ankles with a sash.' }, { id: 'starcape', name: 'Star Cape', desc: 'The rune coat and a star-flecked cape.', special: true }, { id: 'archmage', name: 'Archmage Robe', desc: 'A towering collar, gold chains, glowing runes.', special: true }],
     pants: [{ id: 'trousers', name: 'Trousers', desc: 'Plain trousers and boots.' }, { id: 'greaves', name: 'Greaved Boots', desc: 'Steel shin guards.' }, { id: 'runed', name: 'Runed Leggings', desc: 'Rune bands glowing round the shins.', special: true }, { id: 'astral', name: 'Astral Leggings', desc: 'Star-flecked, with shards circling the knees.', special: true }],

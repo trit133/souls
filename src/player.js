@@ -8,6 +8,8 @@ import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { Trail } from './fx.js';
 import { EMOTES } from './pings.js';
+import { WEAPON_SETS, GREAT_GUARD, GREAT_GUARD_HIT, DASH, VEIL, SIGIL } from './weaponmoves.js';
+import { COMBOS } from './combos.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 
 // ---------- move sets ----------
@@ -190,7 +192,26 @@ CHARS.mage = {
 };
 
 // each class's combo moves join its attacks (so teammates can play them too), and its combos as a tree of inputs
-for (const k of Object.keys(CHARS)) { Object.assign(CHARS[k].attacks, comboMoves(k, CHARS[k].attacks)); CHARS[k].combos = comboTree(k, CHARS[k].attacks); }
+for (const k of Object.keys(CHARS)) { Object.assign(CHARS[k].attacks, comboMoves(k, CHARS[k].attacks)); CHARS[k].combos = comboTree(k, CHARS[k].attacks); CHARS[k].comboList = COMBOS[k]; }
+// what the special button does with the starting weapons
+Object.assign(CHARS.knight, { special: 'block', weapon: 'sword' }); Object.assign(CHARS.rogue, { special: 'parry', weapon: 'daggers' }); Object.assign(CHARS.mage, { special: 'fire', weapon: 'spellknife' });
+
+// a class fighting with one of its weapons (weapons.js): the starting weapon is the class itself; a region weapon
+// brings its own moves, combos, stance, special and model (weaponmoves.js)
+const WCHAR = new Map();
+export function weaponChar(kind, weaponId) {
+  const S = WEAPON_SETS[weaponId], base = CHARS[kind];
+  if (!S || !base) return base;
+  const key = kind + ':' + weaponId;
+  if (WCHAR.has(key)) return WCHAR.get(key);
+  const attacks = { ...S.attacks };
+  Object.assign(attacks, S.extra(attacks));
+  const c = { ...base, style: S.style, attacks, light: S.light, special: S.special, dual: S.dual, trail: S.trail, boltHeavy: S.boltHeavy, weapon: weaponId,
+    model: { ...base.model, ...S.model, arm: weaponId }, comboList: S.combos };
+  c.combos = comboTree(kind, attacks, S.combos);
+  WCHAR.set(key, c);
+  return c;
+}
 
 // ---------- critical hits ----------
 // One per character and situation (see critFor). Times are in crit time (rt = t * rate); `hitAt` is when the
@@ -284,7 +305,9 @@ const PARRY = {
 export class Player extends Actor {
   // `upgrades`: permanent upgrade levels from the player's account ({ dmg: 2, hp: 1, ... })
   constructor(game, kind, x, z, upgrades = {}) {
-    const c = CHARS[kind];
+    // the weapon this character carries and its evolution, if built and switched on (weapons.js)
+    const L = game.loadoutFor?.(kind) || {};
+    const c = weaponChar(kind, L.weapon);
     const outfit = game.equippedOutfit?.(kind) || {};
     const rig = buildHumanoid({ ...outfitModel(c.model, kind, outfit), scale: 1 });
     super(game, rig, { x, z, hp: c.hp, radius: 0.42, team: 'player', yaw: Math.PI, poise: 0 });
@@ -331,9 +354,11 @@ export class Player extends Actor {
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0);
     this.potionMul = 1 + pct('potion');
     this.maxMana = this.mana = c.caster ? 100 + (T.mana || 0) : 0;
-    this.evolved = !!T.evolved;
+    this.evo = L.evo || null; // (one evolution, its weapon's own: 'aegisRam', 'redRiposte', 'twinPlasma', 'berserk', 'ghostVeil', 'stormSigil')
+    this.evolved = !!this.evo;
     this.ripRate = 1;
-    if (kind === 'knight' && this.evolved) this.buildSpectralShield();
+    this.dashCd = 0; this.veilT = 0; this.rageT = 0; this.rageCd = 0;
+    if (this.evo === 'aegisRam') this.buildSpectralShield();
     this.fatigueT = 0;
     this.setState('move');
   }
@@ -359,6 +384,7 @@ export class Player extends Actor {
   iframe() {
     if (this.state === 'roll') return this.inWindow([this.c.roll.iframes[0], this.c.roll.iframes[1] + (this.tree?.iframe || 0)], this.t);
     if (this.state === 'backstep') return this.t >= 0.02 && this.t <= 0.22;
+    if (this.state === 'dash') return true; // (the Wrist Blade's dash: untouchable all the way)
     if (this.chargeArmored()) return true; // Shield Charge and its leaping overhead: untouchable
     return this.state === 'knockdown' || this.state === 'riposte' || this.state === 'rest' || this.state === 'dead';
   }
@@ -368,7 +394,7 @@ export class Player extends Actor {
   // the Knight's Shield Charge and its leaping overhead can't be broken or hurt: hits pass through him (iframe)
   chargeArmored() { return this.alive && (this.state === 'charge' || (this.state === 'attack' && this.atkKey === 'chargeSlam')); }
   comboArmored() { return this.armorSeq != null && this.armorSeq === this.stateSeq && this.alive; }
-  setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; }
+  setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; if (s !== 'attack') this.veilStrike = false; }
 
   worldDir(mv) { return new THREE.Vector3(mv.x, 0, -mv.y); }
 
@@ -412,6 +438,10 @@ export class Player extends Actor {
       if (this.ripLift) { this.y = 0; this.ripLift = false; }
     }
     this.parryCd = Math.max(0, (this.parryCd || 0) - dt);
+    this.dashCd = Math.max(0, this.dashCd - dt); this.rageCd = Math.max(0, this.rageCd - dt);
+    if (this.rageT > 0 && (this.rageT -= dt) <= 0) this.game.ui.toastSmall?.('The beast sleeps');
+    if (this.rageT > 0 && Math.random() < dt * 30) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.8, y: 0.3 + Math.random() * 1.6, z: this.pos.z + (Math.random() - 0.5) * 0.8, vy: 1.5, life: 0.5, size: 0.18, size1: 0.02, r: 1, g: 0.15, b: 0.08, alpha: 0.9 });
+    this.updateVeil(dt);
     this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
     const mv = input.move();
@@ -432,13 +462,13 @@ export class Player extends Actor {
     switch (this.state) {
       case 'move': {
         if (this.tryAct(dir, mag)) break;
-        this.blocking = this.kind === 'knight' && input.held.special;
+        this.blocking = (this.c.special === 'block' || this.c.special === 'guard') && input.held.special;
         const wantSprint = input.sprintHeld() && mag > 0.3 && !this.blocking && this.st > 0.5 && !this.sprintLock;
         if (this.st <= 0.5) this.sprintLock = true;
         if (this.sprintLock && this.st > 10) this.sprintLock = false;
         this.sprinting = wantSprint;
         let sp = (this.sprinting ? this.c.sprint : this.c.walk) * mag;
-        if (this.blocking) sp *= 0.5;
+        if (this.blocking) sp *= this.c.special === 'guard' ? 0.22 : 0.5; // (the slab is a wall: you can barely move behind it)
         sp *= (1 - 0.1 * this.fatigue) * this.moveMul * this.status.slow();
         if (this.sprinting) { this.st -= 14 * dt; this.stDelay = 0.4; }
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.01 ? sp : 0);
@@ -455,10 +485,10 @@ export class Player extends Actor {
           const side = angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z));
           if (Math.abs(side) > 0.8 && Math.abs(side) < 2.3) { pose.hips = [0, -Math.sign(side) * 0.5, 0]; pose.torso[1] = Math.sign(side) * 0.5; }
         }
-        if (this.blocking) Object.assign(pose, this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
+        if (this.blocking) Object.assign(pose, this.c.special === 'guard' ? (this.blockHitT > 0 ? GREAT_GUARD_HIT : GREAT_GUARD) : this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
         if (this.speed > 1 && (this.stepT -= dt) <= 0) { this.stepT = this.sprinting ? 0.28 : 0.38; if (this.sprinting) this.game.fx.dust(this.pos, 1, 0.3); }
         // holding the shield up drains stamina; regen resumes shortly after lowering it
-        if (this.blocking) { this.st = Math.max(0, this.st - 10 * (1 - (this.tree.blockDrain || 0) / 100) * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
+        if (this.blocking) { this.st = Math.max(0, this.st - (this.c.special === 'guard' ? 13 : 10) * (1 - (this.tree.blockDrain || 0) / 100) * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
         else this.regen(dt, 48);
         break;
       }
@@ -489,6 +519,19 @@ export class Player extends Actor {
           if (this.tryAct(dir, mag)) break;
         }
         if (!going) { this.setState('move'); this.vel.set(0, 0, 0); }
+        break;
+      }
+      case 'dash': {
+        // the Wrist Blade's dash: a short burst along dashDir, leaning into it
+        const D = DASH.dur;
+        if (this.t < D) this.move(this.dashDir.x * DASH.dist / D * dt, this.dashDir.z * DASH.dist / D * dt);
+        pose = { ...locomotion(this.c.style, this.phase += dt * 30, 1, true, this.game.time), torso: [0.75, 0, 0], head: [-0.4, 0, 0], armR: [0.5, 0, -0.2], armL: [0.5, 0, 0.2], by: -0.2 };
+        rate = 30;
+        if (Math.random() < 0.8) this.game.fx.add.spawn({ x: this.pos.x, y: 0.9, z: this.pos.z, life: 0.25, size: 0.5, size1: 0.1, r: 0.5, g: 0.5, b: 0.55, alpha: 0.4 });
+        if (this.t >= D + 0.06) {
+          this.setState('move');
+          if (this.evo === 'ghostVeil') this.startVeil();
+        }
         break;
       }
       case 'roll': {
@@ -684,23 +727,32 @@ export class Player extends Actor {
       if (mag > 0.2) this.startRoll(dir); else this.startBackstep();
       return true;
     }
-    if (a === 'heavy' && this.c.caster) { this.buf = null; return this.castBolt(dir, mag) && this.comboBegin('heavy'); }
+    if (a === 'heavy' && this.c.caster && this.c.boltHeavy !== false) { this.buf = null; return this.castBolt(dir, mag) && this.comboBegin('heavy'); }
+    if (a === 'heavy' && this.c.attacks.heavy?.mana) {
+      if (this.mana < this.c.attacks.heavy.mana) { this.buf = null; this.game.ui.toastSmall?.('Not enough mana'); return false; }
+      if (!this.canSpend()) return false;
+      this.mana -= this.c.attacks.heavy.mana;
+    }
     if (a === 'attack' || a === 'heavy') {
       if (!this.canSpend()) return false;
       this.buf = null;
       if (a === 'attack' && this.tryRiposte(dir, mag)) return true;
-      if (a === 'heavy' && this.kind === 'knight' && this.game.time - (this.lastBlockT ?? -9) < 0.9) {
+      if (a === 'heavy' && this.evo === 'berserk' && this.blocking) {
+        if (this.rageCd > 0) this.game.ui.toastSmall?.(`The beast stirs in ${Math.ceil(this.rageCd)}s`);
+        else { this.startRage(); return true; }
+      }
+      if (a === 'heavy' && this.c.special === 'block' && this.game.time - (this.lastBlockT ?? -9) < 0.9) {
         this.lastBlockT = -9;
         this.doAttack('guardCounter', dir, mag);
         return true;
       }
       // evolved knight: block + heavy = shield charge; attack right after it = leaping overhead
-      if (this.kind === 'knight' && this.evolved && this.game.time - (this.chargeEndT ?? -9) < 0.6) {
+      if (this.evo === 'aegisRam' && this.game.time - (this.chargeEndT ?? -9) < 0.6) {
         this.chargeEndT = -9;
         this.doAttack('chargeSlam', dir, mag);
         return true;
       }
-      if (a === 'heavy' && this.kind === 'knight' && this.evolved && this.blocking) {
+      if (a === 'heavy' && this.evo === 'aegisRam' && this.blocking) {
         if (this.chargeCd > 0) this.game.ui.toastSmall?.(`Shield charge in ${Math.ceil(this.chargeCd)}s`);
         else { this.startCharge(dir, mag); return true; }
       }
@@ -715,12 +767,19 @@ export class Player extends Actor {
       this.game.vfx('heal', this.game.myRef());
       return true;
     }
-    if (a === 'special' && this.c.caster) { this.buf = null; return this.castFire(dir, mag); }
-    if (a === 'special' && this.kind === 'rogue') {
+    if (a === 'special' && this.c.special === 'fire') { this.buf = null; return this.castFire(dir, mag); }
+    if (a === 'special' && this.c.special === 'sigil') { this.buf = null; return this.castSigil(dir, mag); }
+    if (a === 'special' && this.c.special === 'dash') {
+      if (this.dashCd > 0) { this.buf = null; return false; }
+      if (!this.canSpend()) return false;
+      this.buf = null;
+      return this.startDash(mag > 0.2 ? dir : this.fwd().clone());
+    }
+    if (a === 'special' && this.c.special === 'parry') {
       if (this.parryCd > 0) { this.buf = null; this.game.ui.toastSmall?.('Parry recharging'); return false; }
       if (!this.canSpend()) return false;
       this.buf = null;
-      this.parryCd = Math.max(2, (this.evolved ? PARRY_CD_EVO : PARRY_CD) - (this.tree.parryCd || 0));
+      this.parryCd = Math.max(2, (this.evo === 'redRiposte' ? PARRY_CD_EVO : PARRY_CD) - (this.tree.parryCd || 0));
       this.spend(PARRY.cost);
       if (mag > 0.2 && !this.lock) this.yaw = Math.atan2(dir.x, dir.z);
       else if (this.lock) this.yaw = this.yawTo(this.lock.pos);
@@ -927,9 +986,49 @@ export class Player extends Actor {
     return this.startCast(Math.max(4, MANA_BOLT - (this.tree.boltCost || 0)), 0.5, 0.16, () => this.game.spawnSpell(this, 'bolt'), dir, mag);
   }
 
+  // ---------- the Psy-Staff: a warding sigil at your feet (main.js placeSigil does the rest) ----------
+  castSigil(dir, mag) {
+    return this.startCast(SIGIL.mana - (this.tree.fireCost || 0) * 0.4, 0.55, 0.28, () => this.game.vfx('sigil', this.pos.clone().setY(0.05), this.evo === 'stormSigil', this.game.myRef()), dir, mag);
+  }
+
+  // ---------- the Wrist Blade: a short dash you can't be hit in, and (Ghost Veil) the fade after it ----------
+  startDash(dir) {
+    this.spend(DASH.cost);
+    this.dashCd = DASH.cd;
+    this.dashDir = dir.clone().setY(0).normalize();
+    this.yaw = Math.atan2(this.dashDir.x, this.dashDir.z);
+    this.setState('dash');
+    this.game.audio.play('roll', 0.7);
+    this.game.mp.event({ k: 'sfx', s: 'roll', v: 0.7 });
+    return true;
+  }
+  startVeil() {
+    this.veilT = VEIL.dur;
+    this.game.ui.toastSmall?.('You fade from sight');
+    this.game.vfx('veil', this.game.myRef(), true);
+  }
+  endVeil() {
+    if (!this.veiled && this.veilT <= 0) return;
+    this.veilT = 0;
+    if (this.veiled) this.game.vfx('veil', this.game.myRef(), false);
+  }
+  // while veiled: the body thin as smoke, a trail of ghosts in your armour's colour behind you
+  updateVeil(dt) {
+    if (this.veilT > 0) { this.veilT -= dt; if (this.veilT <= 0) this.endVeil(); }
+  }
+
+  // ---------- the Penitent Slab: Beast Within ----------
+  startRage() {
+    this.rageT = 8; this.rageCd = 25;
+    this.game.ui.toast('THE BEAST WITHIN', 1.6);
+    this.game.audio.play('roar', 0.5);
+    this.game.fx.burst({ x: this.pos.x, y: 1, z: this.pos.z }, 40, [1, 0.15, 0.08], 5, 0.8, 0.3);
+    this.game.fx.addShake(0.4);
+  }
+
   castFire(dir, mag) {
     return this.startCast(MANA_FIRE - (this.tree.fireCost || 0), 0.95, 0.45, () => {
-      if (this.evolved) { this.game.spawnSpell(this, 'fire', -0.16); this.game.spawnSpell(this, 'fire', 0.16); }
+      if (this.evo === 'twinPlasma') { this.game.spawnSpell(this, 'fire', -0.16); this.game.spawnSpell(this, 'fire', 0.16); }
       else this.game.spawnSpell(this, 'fire');
     }, dir, mag);
   }
@@ -953,6 +1052,9 @@ export class Player extends Actor {
       const tg = this.findTarget(3.6, def.comboMove ? Math.PI : 1.0, aim); // a combo move turns to an enemy behind you too (after a roll)
       this.yaw = tg ? this.yawTo(tg.pos) : aim;
     }
+    if (this.rageT > 0) this.atkRate *= 1.25; // (Beast Within)
+    this.veilStrike = this.veilT > 0; // (Ghost Veil: the first strike out of hiding can be a backstab)
+    if (this.veilStrike) this.endVeil();
     this.startAttack(def);
     this.atkKey = name; // (startAttack looks it up among enemy move sets)
     this.vel.set(0, 0, 0);
@@ -995,18 +1097,20 @@ export class Player extends Actor {
     const mit = mitigate(info.parts || enemyParts(info.dmg, info.elems), this.tree, info.buildMul ?? 1);
     // keystones that cost you: Ember Oath and Fleeting take 15% more, Pyromania 15% more from fire
     const extra = (this.tree.emberOath ? 1.15 : 1) * (this.tree.fleeting ? 1.15 : 1);
-    info = { ...info, dmg: (mit.total + (this.tree.pyromania ? (mit.taken.fire || 0) * 0.15 : 0)) * extra };
+    info = { ...info, dmg: (mit.total + (this.tree.pyromania ? (mit.taken.fire || 0) * 0.15 : 0)) * extra * (this.rageT > 0 ? 1.2 : 1) }; // (Beast Within: 20% more)
+    if (this.veilT > 0) this.endVeil(); // (struck: the veil tears)
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
     const facing = Math.abs(angDiff(this.yaw, toSrc)) < 1.4;
     const A = info.attacker;
     if (this.state === 'parry' && A?.parryMark && A.parryMark.h === info.hit && (A.puppet || A.parryMark.atk === A.atk)) { A.parryMark = null; return 'parry'; }
     if (this.blocking && facing && !info.unblockable) {
-      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15); // stamina isn't scaled
+      const guard = this.c.special === 'guard'; // (the slab: a hit costs more stamina, but you hardly budge)
+      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15) * (guard ? 1.3 : 1); // stamina isn't scaled
       this.st -= cost; this.stDelay = 0.6;
       this.lastBlockT = this.game.time;
       this.blockHitT = 0.25;
-      this.kb.set(this.pos.x - src.x, 0, this.pos.z - src.z).normalize().multiplyScalar(info.knock === 'heavy' ? 7 : 3.5);
+      this.kb.set(this.pos.x - src.x, 0, this.pos.z - src.z).normalize().multiplyScalar((info.knock === 'heavy' ? 7 : 3.5) * (guard ? 0.4 : 1));
       if (this.st < 0) {
         this.st = 0;
         this.hp -= info.dmg * 0.35;
@@ -1024,7 +1128,7 @@ export class Player extends Actor {
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
-    if (this.tree.immovable || this.chargeArmored()) {
+    if (this.tree.immovable || this.chargeArmored() || this.rageT > 0) {
       // Immovable (Knight keystone), or mid Shield Charge: hits hurt but never stagger or knock you down
     } else if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30 * NUM)) {
       this.kb.copy(away).multiplyScalar(11);
