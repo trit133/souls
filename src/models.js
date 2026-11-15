@@ -146,14 +146,15 @@ export class Rig {
     }
     for (const s in this.scalars) {
       let t = pose[s] ?? 0;
-      if (s === 'grip') t = this.grip ? (this.grip.always ? 1 : Math.min(1, Math.max(0, t))) : 0;
+      if (s === 'grip') t = this.grip && !this.stowed ? (this.grip.always ? 1 : Math.min(1, Math.max(0, t))) : 0;
       else if (s === 'guard') t = Math.min(1, Math.max(0, t));
       this.scalars[s] += (t - this.scalars[s]) * k;
     }
     this.body.position.y = this.hipH + this.scalars.by;
     this.gripW = 0;
     if (this.scalars.grip > 0.01) this.solveGrip(this.scalars.grip);
-    if (this.shield) {
+    if (this.shield && this.stowed) { this.shield.position.set(0, 0.46, -0.2 * this.dims.bulk); this.shield.rotation.set(0.06, Math.PI, 0); } // (slung on his back: stow)
+    else if (this.shield) {
       const g = this.scalars.guard;
       this.shield.position.set(lerp(0.44, 0.1, g), lerp(0.22, 0.32, g), lerp(0.02, 0.45, g));
       this.shield.rotation.set(lerp(0.1, 0, g), lerp(Math.PI / 2, 0.05, g), 0);
@@ -191,6 +192,36 @@ export class Rig {
       e.roll += (want - e.roll) * k;
       e.roll = Math.atan2(Math.sin(e.roll), Math.cos(e.roll));
       e.g.rotation.z = e.roll;
+    }
+  }
+
+  // Weapons put away (for a ladder: player.js 'climb'): a two-hander (a great blade, a staff) slung across the back,
+  // hilt over the right shoulder; anything else at the hip (one alone on the left, a pair one each side); a shield on
+  // the back. Each goes into a holder on the torso or hips and back into the hand after. Wrist blades stay strapped on
+  stow(on) {
+    if (!!this.stowed === on) return;
+    this.stowed = on;
+    const two = !!(this.grip && (this.grip.swing || this.grip.always)), bulk = this.dims?.bulk || 1, Q = (ax, a) => new THREE.Quaternion().setFromAxisAngle(ax, a);
+    const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+    for (const key of ['wpnR', 'wpnL']) {
+      const w = this[key];
+      if (!w || this.noReverse) continue;
+      if (!on) { const u = w.userData; if (u.home) { u.home.add(w); w.position.copy(u.homePos); w.quaternion.copy(u.homeQ); } continue; }
+      w.userData.home = w.parent; w.userData.homePos = w.position.clone(); w.userData.homeQ = w.quaternion.clone();
+      const holder = (this['_stow' + key] ||= new THREE.Group());
+      if (two && key === 'wpnR') {
+        // the blade down across the back toward the left hip, its flat against him
+        // (a staff the other way up: its head over the right shoulder)
+        const up = !!this.grip.always;
+        this.j.torso.add(holder); holder.position.set(up ? 0.02 : -0.17 * bulk, up ? 0.32 : 0.74, -0.2 * bulk);
+        holder.quaternion.copy(Q(Z, 0.42)).multiply(Q(X, up ? -Math.PI / 2 : Math.PI / 2)).multiply(Q(Z, Math.PI / 2));
+      } else {
+        // at the hip, hilt up, the blade down along the thigh and a little back
+        const side = key === 'wpnL' || !this.wpnL ? 1 : -1; // (+x is his left)
+        this.j.hips.add(holder); holder.position.set(side * 0.22 * bulk, 0.02, 0.03);
+        holder.quaternion.copy(Q(X, Math.PI / 2 + 0.35));
+      }
+      holder.add(w); w.position.set(0, 0, 0); w.quaternion.identity();
     }
   }
 

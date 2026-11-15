@@ -93,6 +93,7 @@ class RemotePlayer extends Actor {
     const hand = P0?.def.hand || 'R';
     this.trail.update(dt, trail && hand !== 'L', this.rig.base, this.rig.tip);
     this.trailL?.update(dt, trail && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
+    this.rig.stow(st === 'climb'); // (his weapons put away on a ladder, as on his own screen)
     if (this.play) { /* the swing already set the pose */ }
     else if (st === 'charge') pose = { ...base, ...P.block, legL: [-0.6, 0, 0.05], legR: [0.5, 0, -0.05], shinR: [0.5, 0, 0], torso: [0.35, -0.1, 0], by: -0.12 };
     else if (st === 'cast') pose = { ...base, torso: [0.1, -0.35, 0], armR: [-1.55, 0, 0.1], foreR: [0, 0, 0], handR: [1.5, 0, 0] };

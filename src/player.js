@@ -427,7 +427,7 @@ export class Player extends Actor {
   // the Knight's Shield Charge and its leaping overhead can't be broken or hurt: hits pass through him (iframe)
   chargeArmored() { return this.alive && (this.state === 'charge' || (this.state === 'attack' && this.atkKey === 'chargeSlam')); }
   comboArmored() { return this.armorSeq != null && this.armorSeq === this.stateSeq && this.alive; }
-  setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; if (s !== 'attack') this.veilStrike = false; }
+  setState(s) { super.setState(s); this.stateSeq = (this.stateSeq || 0) + 1; if (s !== 'attack') this.veilStrike = false; this.rig?.stow(s === 'climb'); } // (weapons put away on a ladder: models.js stow)
 
   worldDir(mv) { return new THREE.Vector3(mv.x, 0, -mv.y); }
 
