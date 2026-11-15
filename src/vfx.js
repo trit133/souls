@@ -10,6 +10,7 @@ const v3 = (a) => (a instanceof THREE.Vector3 ? a : new THREE.Vector3(a.x, a.y, 
 export const VFX = {
   // ---------- knight ----------
   groundPound(g, at, own) {
+    g.fx3d?.slam(v3(at), 3.2);
     g.pfx.play('groundSlam', at);
     g.fx.shockwave(at.x, at.z, 3.2, 0xd8c8a0, 0.45);
     g.fx.dust(at, 18, 2.2);
@@ -19,7 +20,7 @@ export const VFX = {
     const up = new THREE.Vector3(dir.x * 0.6, 1.4, dir.z * 0.6).normalize();
     g.fx.blood(head, up, 46); g.fx.blood(head, dir.clone(), 20);
     g.fx.sparks(head, up, 14, [1, 0.85, 0.6]);
-    g.pfx.play('bigCrit', head); g.pfx.play('hurt', head, { dir });
+    g.pfx.play('bigCrit', head); g.pfx.play('hurt', head, { dir }); g.fx3d?.impact(v3(head), v3(dir), { heavy: true, color: 0xffd0a0 });
     g.fx.addShake(own ? 1.1 : 0.5); g.audio[own ? 'play' : 'remote']('bigHit', 1);
   },
   chargeStart(g, pos, own) {
@@ -27,7 +28,7 @@ export const VFX = {
     if (!own) { g.audio.remote('roll', 1); g.audio.remote('clang', 0.4); }
   },
   bash(g, hp, dir, own) {
-    g.pfx.play('block', hp, { dir });
+    g.fx3d?.bash(v3(hp), v3(dir));
     g.fx.sparks(hp, dir, 10, [1, 0.95, 0.8]);
     g.audio[own ? 'play' : 'remote']('clang', 0.8); g.audio[own ? 'play' : 'remote']('bigHit', 0.6);
     g.fx.addShake(own ? 0.4 : 0.2);
@@ -103,8 +104,8 @@ export const VFX = {
   },
   // ---------- combo finishers ----------
   crownCleave(g, at, own) { g.pfx.play('goldSlam', at); g.fx.burst({ x: at.x, y: 0.3, z: at.z }, 40, [1, 0.8, 0.3], 6, 0.7, 0.3); g.fx.addShake(own ? 0.6 : 0.3); },
-  steelFlash(g, at, dir) { g.pfx.play('crit', at); g.fx.sparks(at, dir, 18, [1, 0.95, 0.8]); },
-  impaleSteel(g, at, own) { g.pfx.play('bigCrit', at); g.fx.blood(at, null, 24); g.fx.addShake(own ? 0.6 : 0.3); },
+  steelFlash(g, at, dir) { g.pfx.play('crit', at); g.fx3d?.impact(v3(at), v3(dir), { heavy: true, color: 0xffb070 }); },
+  impaleSteel(g, at, own) { g.pfx.play('bigCrit', at); g.fx3d?.slam(v3(at), 2.4, { color: 0xffb070 }); g.fx.blood(at, null, 24); g.fx.addShake(own ? 0.6 : 0.3); },
   flurryEnd(g, at, dir) { g.pfx.play('redSlash', at, { dir }); g.pfx.play('redCrit', at, { size: 0.7 }); },
   xSlash(g, at, dir, blood) {
     const up = new THREE.Vector3(0, 1, 0);

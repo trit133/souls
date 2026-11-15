@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
+import { gaitPose, hasClips } from './clips.js';
 import { Trail } from './fx.js';
+import { knightArc, knightHitColor } from './fx3d.js';
 import { CHARS, RIPOSTE, CRITS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
 import { packOutfit, unpackOutfit } from './outfits.js';
@@ -23,7 +25,7 @@ class RemotePlayer extends Actor {
     this.pid = m.id; this.uid = 'R' + m.id; this.name = m.name; this.kind = m.kind; this.c = c;
     this.isPlayer = true; this.dmgMul = 1; this.phase = 0; this.s = { st: 'move' }; this.net = null;
     this.play = null; // attack playing out from an instant event, not from snapshots
-    this.trail = new Trail(game.scene, c.trail);
+    this.trail = m.kind === 'knight' ? knightArc(game.scene, c.style) : new Trail(game.scene, c.trail);
     if (c.dual) this.trailL = new Trail(game.scene, c.trail);
   }
 
@@ -54,7 +56,9 @@ class RemotePlayer extends Actor {
     this.yaw += angDiff(this.yaw, this.net.yaw) * k;
     const sp = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
     this.phase += dt * (2.5 + sp * 1.6);
-    const base = locomotion(this.c.style, this.phase, sp / this.c.walk, false, this.game.time);
+    // (a Templar moves on the baked gait, as on its own screen: clips.js)
+    const mdir = sp > 0.3 ? angDiff(this.yaw, Math.atan2(this.pos.x - ox, this.pos.z - oz)) : 0, turn = angDiff(this.lastYaw ?? this.yaw, this.yaw) / Math.max(dt, 1e-3); this.lastYaw = this.yaw;
+    const base = this.kind === 'knight' && hasClips() ? gaitPose(this, this.c.style, dt, { speed: sp, dir: mdir, turn, sprint: sp > this.c.walk * 1.2, time: this.game.time, scale: this.rig.root.scale.y }) : locomotion(this.c.style, this.phase, sp / this.c.walk, false, this.game.time);
     const st = this.s.st, tt = (this.s.tt || 0) + this.t;
     let pose = base, trail = false;
     const P0 = this.play;
@@ -238,6 +242,7 @@ export class Multiplayer {
         const dir = p ? new THREE.Vector3(e.pos.x - p.pos.x, 0, e.pos.z - p.pos.z).normalize() : null;
         g.fx.blood(c, dir, d.k === 'rip' ? 30 : d.heavy ? 16 : 9); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]);
         if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
+        else if (p?.kind === 'knight') g.fx3d.impact(c, dir, { heavy: d.heavy || p.c.style === 'slab', color: knightHitColor(p.c.style) }); // (a Templar's blow: fx3d.js)
         else g.pfx.play(d.heavy ? 'heavyHit' : 'hit', c, { dir });
         if (d.d) g.dmgPops(e, d.d, d.k === 'rip' ? 'teamcrit' : 'team');
       }

@@ -132,6 +132,9 @@ const STYLE = {
   },
 };
 
+// a weapon's hold over a pose (arms, a little lean): what locomotion() adds, for the baked gait (clips.js)
+export function styleArms(style, p, s, sw, sprint) { STYLE[style]?.(p, s, sw, sprint); return p; }
+
 // ---------- shared poses ----------
 export const P = {
   // forward roll; `e` 0..1 eased progress

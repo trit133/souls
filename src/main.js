@@ -5,6 +5,7 @@ import './style.css';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { FX } from './fx.js';
+import { Fx3D, knightHitColor } from './fx3d.js';
 import { PFX } from './pfx.js';
 import { VFX, pack, unpack } from './vfx.js';
 import { WeaponFx } from './weaponfx.js';
@@ -101,6 +102,7 @@ class Game {
     this.audio = new Audio();
     this.fx = new FX(this.scene);
     this.pfx = new PFX(this);
+    this.fx3d = new Fx3D(this.scene); // (the Templar's effects in 3D: fx3d.js)
     this.weaponFx = new WeaponFx(this);
     this.world = new World(this.scene);
     this.ui = new UI();
@@ -1588,8 +1590,9 @@ class Game {
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
     this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, d: packParts(shown) });
     this.fx.blood(hp, dir, heavy ? 16 : 9);
-    this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]);
-    this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir });
+    // the Templar's blows: a flash, streaking sparks, a shock ring (fx3d.js); everyone else's: the pixel spark
+    if (att === this.player && att.kind === 'knight') this.fx3d.impact(hp, dir, { heavy: heavy || att.c.style === 'slab', color: knightHitColor(att.c.style) });
+    else { this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]); this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir }); }
     this.hitstop(r === 'kill' ? 0.11 : heavy ? 0.09 : 0.055);
     this.fx.addShake(def.onHitShake || (r === 'kill' ? 0.35 : 0.15));
   }
@@ -2290,6 +2293,7 @@ class Game {
     this.world.update(dt, this.time, this.fx, this.player && this.mode !== 'title' ? this.player.pos : { x: 0, z: -4 });
     this.fx.update(dt);
     this.pfx.update(dt);
+    this.fx3d.update(dt, this.camera);
     tickOutfitColors(this.time); // effect colours on outfits (molten, frost, void, gilded)
     if (this.mode === 'play' || this.mode === 'wait') this.weaponFx.update(dt);
     this.updateCamera(rdt);
