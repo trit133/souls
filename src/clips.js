@@ -9,6 +9,11 @@ import { styleArms } from './anims.js';
 
 const JOINTS = ['hips', 'torso', 'head', 'armL', 'foreL', 'handL', 'armR', 'foreR', 'handR', 'legL', 'shinL', 'legR', 'shinR'];
 const GAITS = ['walk', 'jog', 'sprint'];
+// posture over the clips (they're made for a lean mannequin; on our broad, blocky knights the same motion reads as a
+// stooping ape): lean - how much of the clip's forward lean of the chest is kept (the head stays level whatever);
+// armOut - how much of the arms' swing away from the body is kept (tucked in close); crouch - how much of the hips'
+// drop is kept
+const POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wrap = (a) => { a %= Math.PI * 2; if (a > Math.PI) a -= Math.PI * 2; if (a < -Math.PI) a += Math.PI * 2; return a; };
 
@@ -59,6 +64,12 @@ export function gaitPose(who, style, dt, o) {
   const tot = G.w.idle + gw || 1;
   for (const j of JOINTS) p[j] = p[j].map((v) => v / tot);
   p.by /= tot;
+  // posture: chest up, arms in, standing taller (the legs and the stride are the clip's own)
+  const leanAll = p.hips[0] + p.torso[0];
+  p.torso[0] -= leanAll * (1 - POSTURE.lean);
+  p.head[0] = POSTURE.headLevel - (p.hips[0] + p.torso[0]) * 0.85; // (looking ahead, not at the floor or the sky)
+  for (const [k, s] of [['armL', 1], ['armR', -1]]) { const z = p[k][2] * s; p[k][2] = s * (0.12 + (z - 0.12) * POSTURE.armOut); }
+  p.by *= POSTURE.crouch;
   // the hips turn toward the way you're going, the chest stays where you face
   p.hips[1] += G.twist; p.torso[1] -= G.twist * 0.85; p.head[1] -= G.twist * 0.15;
   p.hips[2] += G.lean * 0.6; p.torso[2] += G.lean;
