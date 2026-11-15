@@ -400,7 +400,17 @@ export class Player extends Actor {
   spend(n) { if (this.freeMove) return; this.st -= n; if (this.st < 0) this.st = 0; this.stDelay = 0.6; }
   // an empty bar blocks attacks, rolls and parries until it refills a little
   canSpend() { return this.st >= 1; }
-
+  // an attack needs its whole cost in the bar (a free combo move needs none): short of it, LOW STAMINA pops up and the
+  // attack doesn't happen
+  atkCost(name) {
+    const def = this.c.attacks[name];
+    return def ? 0.9 * def.cost * (def.comboMove ? 1 : 1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100) : 0; // (every attack costs 10% less than listed)
+  }
+  affords(name) {
+    if (this.freeMove || this.st >= this.atkCost(name) - 0.01) return true;
+    if (!(this.game.time < this.lowT)) { this.lowT = this.game.time + 0.8; this.game.statusPopup(this, 'LOW STAMINA', '#d98a2a'); }
+    return false;
+  }
   iframe() {
     if (this.state === 'roll') return this.inWindow([this.c.roll.iframes[0], this.c.roll.iframes[1] + (this.tree?.iframe || 0)], this.t);
     if (this.state === 'backstep') return this.t >= 0.02 && this.t <= 0.22;
@@ -535,8 +545,9 @@ export class Player extends Actor {
           const b0 = this.buf, heavy = b0.a === 'heavy';
           this.buf = null;
           if (heavy && this.c.caster) { this.castBolt(dir, mag); break; }
-          if (!this.canSpend()) { this.buf = b0; break; }
-          if (!this.tryRiposte(dir, mag)) this.doAttack(heavy ? 'heavy' : (d.next || this.c.light), dir, mag);
+          const nm = heavy ? 'heavy' : (d.next || this.c.light);
+          if (!this.affords(nm)) break; // (LOW STAMINA: the press is spent)
+          if (!this.tryRiposte(dir, mag)) this.doAttack(nm, dir, mag);
           break;
         }
         if (this.buf && (this.buf.a === 'roll' || this.buf.a === 'heal' || this.buf.a === 'special') && t >= (d.cancel ?? d.dur)) {
@@ -759,8 +770,8 @@ export class Player extends Actor {
       this.mana -= this.c.attacks.heavy.mana;
     }
     if (a === 'attack' || a === 'heavy') {
-      if (!this.canSpend()) return false;
       this.buf = null;
+      if (!this.affords(a === 'heavy' ? 'heavy' : this.c.light)) return false; // (LOW STAMINA: the press is spent)
       if (a === 'attack' && this.tryRiposte(dir, mag)) return true;
       if (a === 'heavy' && this.evo === 'berserk' && this.blocking) {
         if (this.rageCd > 0) this.game.ui.toastSmall?.(`The beast stirs in ${Math.ceil(this.rageCd)}s`);
@@ -924,9 +935,10 @@ export class Player extends Actor {
     if (C.node.move === 'roll' || C.node.move === 'bolt') this.cmbAuto?.add(depth - 1);
     const landed = (d) => this.cmbHit?.has(d) || this.cmbAuto?.has(d);
     this.freeMove = depth >= 3 && landed(1) && landed(2);
+    this.lowStop = false;
     const ok = this.comboStep(next, dir, mag);
     this.freeMove = false;
-    if (!ok) return false;
+    if (!ok) return this.lowStop; // (short of stamina for the combo's move: LOW STAMINA, and the press does nothing else)
     this.cmbDepth = depth;
     if (depth === 3 && landed(1) && landed(2)) this.game.statusPopup(this, 'STAMINA FREE', '#7ad06a');
     this.armorSeq = this.stateSeq; // this move is armoured until it ends
@@ -945,7 +957,8 @@ export class Player extends Actor {
     }
     if (node.move === 'bolt') return this.castBolt(dir, mag);
     const def = this.c.attacks[node.move];
-    if (!def || (!this.freeMove && !this.canSpend())) return false;
+    if (!def) return false;
+    if (!this.affords(node.move)) { this.lowStop = true; return false; }
     if (def.mana) {
       if (this.mana < def.mana) { this.game.ui.toastSmall?.('Not enough mana'); return false; }
       this.mana -= def.mana;
@@ -1067,14 +1080,14 @@ export class Player extends Actor {
     const def = this.c.attacks[name];
     this.atkKey = name;
     // repeated attacks cost more and push stamina regen further out (combo moves cost a fixed, larger amount)
-    this.spend(0.9 * def.cost * (def.comboMove ? 1 : 1 + 0.9 * this.fatigue) * (1 - (this.tree.atkCost || 0) / 100)); // (every attack costs 10% less than listed)
+    this.spend(this.atkCost(name));
     this.stDelay = 0.6 + 0.7 * this.fatigue;
     this.fatigue = Math.min(1, this.fatigue + (name === 'heavy' ? 0.3 : 0.2));
     this.fatigueT = 1.0;
-    // swing speed is locked in when the attack starts: fatigue slows it a bit, and
-    // swinging with an empty bar is very slow (down to ~0.3x at zero stamina)
+    // swing speed is locked in when the attack starts: a long string of swings and a low bar each slow it a little
+    // (at worst about 0.8x; an attack the bar can't pay for doesn't happen at all: affords)
     const low = Math.min(1, this.st / (this.maxSt * 0.3));
-    this.atkRate = (1 - 0.3 * this.fatigue) * (0.35 + 0.65 * low) * this.aspdMul * (this.c.meleeRate ?? 1);
+    this.atkRate = (1 - 0.1 * this.fatigue) * (0.9 + 0.1 * low) * this.aspdMul * (this.c.meleeRate ?? 1);
     // initial facing: lock target > stick > aim-assist toward a nearby enemy
     if (this.lock) this.yaw = this.yawTo(this.lock.pos);
     else {
