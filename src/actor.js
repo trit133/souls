@@ -265,6 +265,7 @@ export class Actor {
     if (def._strike === undefined) { const t0 = def.hits?.[0]?.t0, i = t0 == null ? -1 : def.keys.findIndex(([kt]) => kt > t0 - 1e-6); def._strike = i < 0 ? null : i; }
     const pose = sample(def.keys, t + this.rig.lead(rate), base, { heft: this.rig.feel.heft, strike: def._strike });
     if (this.rig.grip?.swing && pose.grip == null) pose.grip = 1; // (a two-hander: both hands on it through the swing)
+    this.rig.edgeT = 0.15; // (blades cut with the edge: models.js Rig.edgeLead)
     const ty = pose.torso?.[1] || 0;
     if (ty) {
       pose.torso = [pose.torso[0], ty * 0.72, pose.torso[2]];

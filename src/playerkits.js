@@ -305,6 +305,7 @@ KITS.knight = {
       const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
       const [len, baseZ] = (KNIGHT.greatsword[gsM.piece] || KNIGHT.greatsword.slab)(r, gsM, g);
       r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
+      r.edges = [{ g, tip: r.tip }]; // (it cuts with the edge: models.js Rig.edgeLead)
       return;
     }
     const shM = S('shield', 0x5a1412, 0x8a6a34, 0x2a2a30, 0x8ad8ff); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
@@ -312,6 +313,7 @@ KITS.knight = {
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
     const [len, baseZ] = (KNIGHT.sword[swM.piece] || KNIGHT.sword.longsword)(r, swM, g);
     r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
+    r.edges = [{ g, tip: r.tip }];
   },
 };
 
@@ -536,9 +538,10 @@ KITS.rogue = {
         const g = new THREE.Group(); g.rotation.x = Math.PI / 2; w.add(g); // (the blade's +z down the forearm, out past the fist)
         const [tip, base] = make(r, wb, g);
         const b0 = new THREE.Object3D(), t0 = new THREE.Object3D(); b0.position.set(0, -0.06, base); t0.position.set(0, -0.06, tip); g.add(b0, t0);
-        return [w, b0, t0];
+        return [w, b0, t0, g];
       };
-      const [wR, bR, tR] = mount(r.j.foreR, -1), [wL, bL, tL] = mount(r.j.foreL, 1);
+      const [wR, bR, tR, gR] = mount(r.j.foreR, -1), [wL, bL, tL, gL] = mount(r.j.foreL, 1);
+      r.edges = [{ g: gR, tip: tR }, { g: gL, tip: tL }];
       r.wpnR = wR; r.base = bR; r.tip = tR; r.wpnL = wL; r.baseL = bL; r.tipL = tL;
       r.noReverse = true;
     } else {
@@ -550,6 +553,7 @@ KITS.rogue = {
     r.wpnL = dagger(r.j.handL);
     r.tipL = new THREE.Object3D(); r.tipL.position.set(0, 0.05, 0.5); r.wpnL.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; r.wpnL.add(r.baseL);
+    r.edges = [{ g: r.wpnR, tip: r.tip }, { g: r.wpnL, tip: r.tipL }];
     }
     // a lower, coiled stance (visual only); idle: flip the right dagger end over end every few seconds
     r.poseMod = (p) => ({ ...p, by: (p.by ?? 0) - 0.05, torso: add(p.torso, [0.08, 0, 0]), head: add(p.head, [-0.07, 0, 0]) });
@@ -800,6 +804,7 @@ KITS.mage = {
     const len = (MAGE.sword[swM.piece] || MAGE.sword.runeblade)(r, swM, g2);
     r.tipL = new THREE.Object3D(); r.tipL.position.z = len; g2.add(r.tipL);
     r.baseL = new THREE.Object3D(); r.baseL.position.z = 0.12; g2.add(r.baseL);
+    r.edges = [{ g: g2, tip: r.tipL }];
     // three glyphs orbiting the off hand
     const orbit = pivot(r.j.handL, 0, 0, 0);
     for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2; orbit.add(rbox(0.04, 0.04, 0.012, glyph, Math.cos(a) * 0.17, 0.04 * Math.sin(a * 2), Math.sin(a) * 0.17, 0, a, 0.78)); }

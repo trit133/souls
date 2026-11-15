@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { box, cyl } from './mesh.js';
 import './playerkits.js'; // the player characters' kits (pieces from their outfits)
 import { KITS } from './kits.js';
+const _ep = new THREE.Vector3(), _ev = new THREE.Vector3(), _eq = new THREE.Quaternion(); // (Rig.edgeLead)
 
 // Low-poly procedural humanoids. Every model faces +Z; the character's right
 // side is -X. Joint rotations (radians, Euler XYZ):
@@ -166,6 +167,31 @@ export class Rig {
     }
     this._flashing = this.flashT > 0;
     if (dt > 0) this.secondary(dt);
+    if (this.edges && dt > 0) this.edgeLead(dt);
+  }
+
+  // The edge goes first: through a swing (edgeT, set by actor.js swingPose) each blade (edges: [{ g, tip }], the
+  // group the blade lies along +z in, its flat facing x and its edge y) rolls about its own length so its edge, not
+  // its flat, leads the way it's moving; out of a swing it settles back. Rolling about the length leaves the tip, the
+  // trail and the other hand's grip where they were. All of it visual.
+  edgeLead(dt) {
+    const on = (this.edgeT = (this.edgeT || 0) - dt) > 0;
+    for (const e of this.edges) {
+      const p = e.tip.getWorldPosition(_ep);
+      if (!e.prev) { e.prev = p.clone(); e.roll = 0; }
+      _ev.subVectors(p, e.prev).divideScalar(dt); e.prev.copy(p);
+      let want = 0, k = 1 - Math.exp(-6 * dt);
+      if (on) {
+        e.g.getWorldQuaternion(_eq).invert(); _ev.applyQuaternion(_eq); // (in the blade's own frame, roll and all)
+        const sp = Math.hypot(_ev.x, _ev.y); // (across the blade; along it is a stab, either way is fine)
+        let d = Math.atan2(-_ev.x, _ev.y); if (d > Math.PI / 2) d -= Math.PI; else if (d < -Math.PI / 2) d += Math.PI; // (either edge)
+        want = e.roll + d; k = (1 - Math.exp(-30 * dt)) * Math.min(1, Math.max(0, (sp - 1.5) / 3));
+        if (!k) want = e.roll;
+      }
+      e.roll += (want - e.roll) * k;
+      e.roll = Math.atan2(Math.sin(e.roll), Math.cos(e.roll));
+      e.g.rotation.z = e.roll;
+    }
   }
 
   // body motion -> lean, cloth, plates, footsteps
