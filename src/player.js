@@ -347,6 +347,7 @@ export class Player extends Actor {
     this.sprinting = false;
     this.rollDir = new THREE.Vector3();
     this.trail = kind === 'knight' ? knightArc(game.scene, c.style) : new Trail(game.scene, c.trail); // (the Templar's swing: fx3d.js)
+    this.swingHead = kind === 'knight'; // (his head moves with his swings: actor.js swingPose)
     if (c.dual) this.trailL = new Trail(game.scene, c.trail);
     this.healDone = false;
     this.stepT = 0;

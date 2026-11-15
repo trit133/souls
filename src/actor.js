@@ -259,7 +259,8 @@ export class Actor {
 
   // the pose of a swing (def) at time t, drawn with the rig damped at `rate`: sampled a little ahead (rig.lead) so the
   // blade on screen keeps up with the hit, shaped by the weapon's heft (anims.js sample), the hips carrying part of
-  // the torso's twist and the head staying on the target where the pose doesn't turn it. All of it visual.
+  // the torso's twist and the head staying on the target where the pose doesn't turn it (or, for a body with swingHead,
+  // going with it). All of it visual.
   swingPose(def, t, base, rate = 14) {
     if (def._strike === undefined) { const t0 = def.hits?.[0]?.t0, i = t0 == null ? -1 : def.keys.findIndex(([kt]) => kt > t0 - 1e-6); def._strike = i < 0 ? null : i; }
     const pose = sample(def.keys, t + this.rig.lead(rate), base, { heft: this.rig.feel.heft, strike: def._strike });
@@ -268,8 +269,10 @@ export class Actor {
     if (ty) {
       pose.torso = [pose.torso[0], ty * 0.72, pose.torso[2]];
       const hp = pose.hips || Z3; pose.hips = [hp[0], hp[1] + ty * 0.28, hp[2]];
-      const hd = pose.head || Z3; if (!hd[1]) pose.head = [hd[0], -ty * 0.4, hd[2]];
+      const hd = pose.head || Z3; if (!hd[1]) pose.head = this.swingHead ? [hd[0], -ty * 0.12, hd[2] + ty * 0.08] : [hd[0], -ty * 0.4, hd[2]];
     }
+    // (a body that swings with its head, the Templar's: it goes with most of the twist and dips into the blow with the chest)
+    if (this.swingHead) { const hd = pose.head || Z3; pose.head = [hd[0] + (pose.torso?.[0] || 0) * 0.3, hd[1], hd[2]]; }
     return pose;
   }
   attackPose(base, rate = 14) { return this.swingPose(this.atk.def, this.atk.t, base, rate); }

@@ -26,6 +26,7 @@ class RemotePlayer extends Actor {
     this.isPlayer = true; this.dmgMul = 1; this.phase = 0; this.s = { st: 'move' }; this.net = null;
     this.play = null; // attack playing out from an instant event, not from snapshots
     this.trail = m.kind === 'knight' ? knightArc(game.scene, c.style) : new Trail(game.scene, c.trail);
+    this.swingHead = m.kind === 'knight';
     if (c.dual) this.trailL = new Trail(game.scene, c.trail);
   }
 

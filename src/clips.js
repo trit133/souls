@@ -30,6 +30,8 @@ const WALK_SPEED = DATA[SET.f.walk].speed, RUN_SPEED = Math.min(4, DATA[SET.f.jo
 // armOut - how much of the arms' swing away from the body is kept (tucked in close); crouch - how much of the hips'
 // drop is kept
 const POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
+// the head while moving: follow (how much of the shoulders' turn it goes with), nod (how far it dips at each footfall)
+const HEAD = { follow: 0.5, nod: 0.12 };
 // the shoulders while moving: swing (turning against the hips each step), dip (toward the planted foot), sway (the
 // weight going foot to foot on a side step)
 const SHOULDERS = { swing: 0.26, dip: 0, sway: 0 }; // (no rocking side to side: the shoulders turning with each stride, about the spine)
@@ -164,7 +166,9 @@ export function gaitPose(who, style, dt, o) {
   p.hips = eOf(hipsQ);
   p.torso = eOf(hipsQ.clone().invert().multiply(chest));
   // the head level and looking where the body faces, steady over the moving shoulders
-  p.head = eOf(chest.clone().invert().multiply(axis(X, POSTURE.headLevel)));
+  // the head: level, going with part of the shoulders' turn, dipping a little at each footfall (two a stride)
+  const nod = (0.5 - 0.5 * Math.cos(2 * ph)) * HEAD.nod * s * moving;
+  p.head = eOf(chest.clone().invert().multiply(axis(Y, Math.cos(ph) * SHOULDERS.swing * s * moving * HEAD.follow)).multiply(axis(X, POSTURE.headLevel + nod)));
   for (const [a, sg] of [['armL', 1], ['armR', -1]]) { const z = p[a][2] * sg; p[a][2] = sg * (0.12 + (z - 0.12) * POSTURE.armOut); }
   p.by *= POSTURE.crouch;
   // the weapon in hand: the arms its stance wants, the free arm swinging with the stride
