@@ -32,7 +32,9 @@ const WALK_SPEED = DATA[SET.f.walk].speed, RUN_SPEED = Math.min(4, DATA[SET.f.jo
 const POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
 // the shoulders while moving: swing (turning against the hips each step), dip (toward the planted foot), sway (the
 // weight going foot to foot on a side step)
-const SHOULDERS = { swing: 0.07, dip: 0, sway: 0 }; // (no rocking side to side: only the shoulders turning a little with each step)
+const SHOULDERS = { swing: 0.16, dip: 0, sway: 0 }; // (no rocking side to side: the shoulders turning with each stride, about the spine)
+// an arm the weapon's stance holds still pumps this much (radians each way at a run) with the stride, against the legs
+const ARM_PUMP = 0.3;
 // how much of the hips' side-to-side roll the clips have is kept (the legs need a little; the body above doesn't)
 const HIP_ROLL = 0.25;
 // a side step covers this much of a forward stride's ground
@@ -167,5 +169,15 @@ export function gaitPose(who, style, dt, o) {
   p.by *= POSTURE.crouch;
   // the weapon in hand: the arms its stance wants, the free arm swinging with the stride
   const sw = Math.sin(ph) * (0.12 + 0.5 * s + (o.sprint ? 0.25 : 0));
-  return styleArms(style, p, s, sw, !!o.sprint);
+  const clipArms = { armL: p.armL.slice(), armR: p.armR.slice() };
+  styleArms(style, p, s, sw, !!o.sprint);
+  // the arms with the stride: one the stance holds still (the sword arm, both on a great blade) still pumps forward and
+  // back against the legs, the elbow working with it; a free arm keeps the clip's own swing
+  const pump = Math.sin(ph) * ARM_PUMP * s * moving * (o.sprint ? 0.4 : 1); // (a sprinting stance swings the arm already)
+  for (const [a, f, sg] of [['armR', 'foreR', 1], ['armL', 'foreL', -1]]) {
+    if (p[a].every((v, i) => Math.abs(v - clipArms[a][i]) < 1e-6)) continue;
+    p[a] = [p[a][0] + pump * sg, p[a][1], p[a][2]];
+    p[f] = [p[f][0] - Math.abs(pump) * 0.4, p[f][1], p[f][2]];
+  }
+  return p;
 }
