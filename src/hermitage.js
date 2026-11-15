@@ -690,7 +690,7 @@ export class Hermitage {
     rig.apply({ ...P.rest, ...this.seatArms }, 1, 60);
     this.scene.add(rig.root);
     this.rig = rig;
-    const item = { id: 'char', group: rig.root, label: NAMES[kind], sub: 'Rites of augmentation (skill tree)' };
+    const item = { id: 'char', group: rig.root, label: NAMES[kind], sub: 'Rites of augmentation (skill tree)', anchor: rig.j.head }; // (labelled over his head, not over a greatsword's tip)
     this.items = this.items.filter((x) => x.id !== 'char');
     this.items.push(item);
     this.addOutline(item);
@@ -1094,7 +1094,9 @@ export class Hermitage {
     tickOutfitColors(t);
     // the label sits over the hovered thing
     if (this.hover) {
-      const b = new THREE.Box3().setFromObject(this.hover.group), top = new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 0.25, (b.min.z + b.max.z) / 2).project(this.camera);
+      // (a character: just over the head, whatever weapon rises above it; anything else: over the top of it)
+      const A = this.hover.anchor, b = A ? null : new THREE.Box3().setFromObject(this.hover.group);
+      const top = (A ? A.localToWorld(new THREE.Vector3(0, 0.62, 0)) : new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 0.25, (b.min.z + b.max.z) / 2)).project(this.camera);
       const lab = $('hm-label'), r = this.el.getBoundingClientRect();
       lab.style.left = `${(top.x * 0.5 + 0.5) * r.width}px`; lab.style.top = `${(-top.y * 0.5 + 0.5) * r.height}px`;
     }
