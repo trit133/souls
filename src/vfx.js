@@ -32,15 +32,9 @@ export const VFX = {
   quake(g, at, r, fire, own) {
     const P = v3(at);
     g.fx3d?.slam(P, r, { color: fire ? 0xff7a2a : 0xd8c8a0 });
-    g.pfx.play(fire ? 'fireRing' : 'groundSlam', P, { size: fire ? r / 4 : r / 3 });
-    // Pyresunder: the rim goes up in fire as the wave reaches it (small flame bursts all round, so the ring of fire
-    // lies on the ground as the camera sees it; the pixel effect itself is drawn side on)
-    if (fire) setTimeout(() => {
-      for (let i = 0; i < 14; i++) {
-        const a = (i + Math.random() * 0.3) / 14 * Math.PI * 2;
-        g.pfx.play('fireRing', new THREE.Vector3(P.x + Math.cos(a) * r * 0.9, 0.05, P.z + Math.sin(a) * r * 0.9), { size: 0.45 });
-      }
-    }, 150);
+    // Pyresunder: a ring of fire rolling out to the edge, like Gorrath's (game.rings: a harmless one, the damage is done)
+    if (fire) g.rings.push({ ghost: true, x: P.x, z: P.z, maxR: r, dur: 0.45, dmg: 0, t: 0, hit: new Set() });
+    else g.pfx.play('groundSlam', P, { size: r / 3 });
     g.fx.shockwave(P.x, P.z, r, fire ? 0xff6a1a : 0xd8c8a0, 0.5);
     g.fx.shockwave(P.x, P.z, r * 0.6, fire ? 0xffc040 : 0xb0a088, 0.35);
     g.fx.dust(P, fire ? 12 : 22, r * 0.9);
