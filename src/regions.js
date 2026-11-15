@@ -17,7 +17,7 @@ const ASHFALL_LOOK = {
 
 export const AREAS = {
   r1a1: {
-    id: 'r1a1', region: 'r1', name: 'Ashfall Ward', kind: 'city', boss: 'hask', open: true,
+    id: 'r1a1', region: 'r1', name: 'Ashfall Ward', kind: 'city', map: 'ward', boss: 'hask', open: true, // (its map: ward.js)
     blurb: 'A hab-ward burned hollow in the first war. Scavenger gangs hold the tenements; the cellars run deeper than the maps say.',
     mix: { grunt: 4, spear: 2, archer: 2, brute: 0.4 }, look: ASHFALL_LOOK,
     // what its drums and chests hold (items.js): the first area of a region tops out low; the harder ones reach higher

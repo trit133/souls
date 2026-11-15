@@ -63,14 +63,14 @@ class Batch {
 // ---------- growing it ----------
 // over a module's ground: tufts where it's grass, weeds in the cracks, ivy down the terraces' faces, then what the
 // map asked for (w.flora: bushes, trees, leaves, puddles, pebbles)
-export function growFlora(w, m, st) {
+export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
   const TX = st.tex; if (!TX) return;
   const sway = swayMat(), flat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, flatShading: true });
   const grass = new Batch(tuftGeo(7), sway, 9000), weeds = new Batch(tuftGeo(5), sway, 2000);
   const ivy = new Batch(leafGeo(0.13), flat, 6000), leaves = new Batch(leafGeo(0.09), flat, 3000);
   const bush = new Batch(new THREE.IcosahedronGeometry(0.34, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 600);
   const pebble = new Batch(new THREE.DodecahedronGeometry(0.06, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 1500);
-  const T = w.terrain, x0 = -36, x1 = 36, z0 = m.z1, z1 = m.z0;
+  const T = w.terrain, { x0, x1, z0, z1 } = m;
   const groundAt = (x, z) => { const inside = w.area(x, z, -0.6), f = T.floorAt(x, z); return { inside, y: inside ? f : f + w.heightAt(x, z, st) - 0.04 }; };
   const steep = (x, z) => { const h = T.floorAt(x, z); return Math.abs(T.floorAt(x + 0.3, z) - h) > 0.3 || Math.abs(T.floorAt(x - 0.3, z) - h) > 0.3 || Math.abs(T.floorAt(x, z + 0.3) - h) > 0.3 || Math.abs(T.floorAt(x, z - 0.3) - h) > 0.3; };
   // grass and weeds, on a jittered 0.4 m grid
@@ -92,7 +92,7 @@ export function growFlora(w, m, st) {
   }
   // ivy: falling down the faces of terraces from their coping, in strands
   for (const F of T.faces || []) {
-    if (F.z < z0 || F.z > z1 || vh(F.x, F.z, 11) > (F.ivy ?? 0.32)) continue;
+    if (F.z < z0 || F.z >= z1 || F.x < x0 || F.x >= x1 || vh(F.x, F.z, 11) > (F.ivy ?? 0.32)) continue;
     const strands = 1 + Math.floor(vh(F.x, F.z, 12) * 3);
     for (let k = 0; k < strands; k++) {
       const along = (vh(F.x, F.z, 13 + k) - 0.5) * F.w, len = (F.top - F.low) * (0.35 + vh(F.x, F.z, 20 + k) * 0.65);
@@ -113,7 +113,7 @@ export function growFlora(w, m, st) {
   }
   // what the map asked for
   for (const P of w.flora || []) {
-    if (P.z < z0 - 6 || P.z > z1 + 6) continue;
+    if (P.z < z0 || P.z >= z1 || P.x < x0 || P.x >= x1) continue;
     const y0 = T.floorAt(P.x, P.z);
     if (P.kind === 'bush') {
       const n = P.n ?? 4;

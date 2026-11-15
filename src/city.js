@@ -15,6 +15,8 @@
 // lane wall main.js shows your outline through it.
 import * as THREE from 'three';
 import { STEP } from './terrain.js';
+import { GROUND } from './world.js';
+import { growFlora } from './flora.js';
 import { rng } from './world.js';
 import { mix, ELITES } from './dungeon.js';
 import { arenaFurnish, stoneRing } from './modules.js';
@@ -279,6 +281,7 @@ export class City {
         const style = w.styleAt(tile.x, tile.z);
         group.add(w.groundMesh(tile.x, tile.z, T14, T14, style));
         w.cur = tile;
+        if (GROUND[style]?.tex) growFlora(w, { x0: tx, x1: tx + T14, z0: tz, z1: tz + T14, group }, GROUND[style]); // (a textured ground's grass and the rest: flora.js)
         if (style !== 'city') w.scatter('crypt', tx, tx + T14, tz, tz + T14);
         w.mergeStatic(group);
         w.tiles.push(tile);
@@ -793,7 +796,8 @@ export class City {
     beam.position.set(x, S.under ? 3 : 17, z); beam.userData.noMerge = true; w.add(beam);
     const seal = { i: w.seals.length, kind: S.kind, x, z, mod: mod.i, color, crystal, beam, broken: false, guards: [], reserves: [], effigies: [], spawnPts: [] };
     w.lights.push({ x, y: 3.6, z, color, power: 10, range: 12, src: { cond: () => !seal.broken } });
-    w.ambient.push({ x, z, update: (dt, t) => { crystal.rotation.y = t * 1.4; crystal.position.y = 3.7 + Math.sin(t * 2) * 0.12; } });
+    const y0 = w.floorAt(x, z); // (on a hill: terrain.js)
+    w.ambient.push({ x, z, update: (dt, t) => { crystal.rotation.y = t * 1.4; crystal.position.y = y0 + 3.7 + Math.sin(t * 2) * 0.12; } });
     if (S.kind === 'valve') seal.valves = this.shrinePosts(w, x, z, mod, 6.5).map((p) => this.buildValve(w, p.x, p.z, x, z));
     if (S.kind === 'bells') {
       seal.bellPosts = this.shrinePosts(w, x, z, mod, 5.2);
@@ -971,7 +975,7 @@ export class City {
     // the squares that aren't a shrine's
     for (const B of this.blocks) if (B.type === 'plaza' && !this.sites.some((S) => S.key === B.key && !S.under)) pack(1 + (r() < 0.5 ? 1 : 0), B.x0, B.x1, B.z0, B.z1);
     // gangs in the lanes
-    const lanes = shuffle([...this.open].map(edgeRect), r);
+    const lanes = shuffle(this.streets?.() ?? [...this.open].map(edgeRect), r); // (a map laid free names its own streets)
     for (const L of lanes.slice(0, 6)) pack(1 + (r() < 0.4 ? 1 : 0), L.x0, L.x1, L.z0, L.z1, { gap: 1.8 });
     // the basements
     for (const u of this.unders) {

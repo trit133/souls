@@ -12,7 +12,7 @@ import { WeaponFx } from './weaponfx.js';
 import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
-import './sump.js'; import './spire.js'; // (the deeper areas' own maps, registered on City.MAPS)
+import './sump.js'; import './spire.js'; import './ward.js'; // (the deeper areas' own maps, registered on City.MAPS)
 import { AREAS, areaOpen } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';

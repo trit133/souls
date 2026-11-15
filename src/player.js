@@ -1321,6 +1321,10 @@ export class Player extends Actor {
     const st = this.state;
     if (st === 'fall' || st === 'climb') { this.air = null; return; }
     const w = this.game.world, f = w.floorAt(this.pos.x, this.pos.z);
+    // put somewhere else since last frame (a stair, a respawn, a teleport): straight onto the ground there
+    const moved = this._lx != null && Math.hypot(px - this._lx, pz - this._lz) > 3;
+    this._lx = this.pos.x; this._lz = this.pos.z;
+    if (moved) { this.gy = f; this.air = null; return; }
     if (st === 'dead' || st === 'rest' || st === 'riposte') { this.air = null; this.gy = this.gy > f ? Math.max(f, this.gy - 9 * dt) : f; return; }
     const vx = (this.pos.x - px) / Math.max(dt, 1e-3), vz = (this.pos.z - pz) / Math.max(dt, 1e-3), sp = Math.hypot(vx, vz), cap = Math.min(1, 7 / Math.max(sp, 1e-3));
     // off a short drop in the middle of a swing: the swing plays out on the way down, and he comes down on his feet

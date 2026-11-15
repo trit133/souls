@@ -50,3 +50,30 @@ ladder). `node scripts/terrain.mjs` plays it all and saves shots to `/tmp/look/t
   - ivy strands down terrace faces (`o.ivy`: how much, default 0.32);
   - what a map asks for in `w.flora`: `{ kind: 'bush' | 'tree' | 'leaves' | 'puddle', x, z, ... }`. Only a tree's
     trunk blocks.
+
+## Ashfall Ward (`src/ward.js`)
+Area 1 is now laid by hand on the hill instead of the maze grid: 95 m across, three tiers climbing north, away from
+the camera.
+- **Lower Ward (0 m):** the camp gate, the market square (stalls, a dry well), houses, and the Manufactorum (a boss
+  site).
+- **Dry canal (−1.5 m):** right across the ward, with steps down at the west, middle and east, and two causeway
+  bridges up to the Terraces. A pulled-up ladder on its north bank is the shortcut back up.
+- **Terraces (2 m):** the Barracks (a boss site), houses on the street, and the Sunken Garden. The garden is a
+  shrine square sunk to 0 m, with a grassy bank in from the south and a 4 m drop into it off the Crest.
+- **Crest (4 m):** the Chapel (a boss site) over its plaza and a headless saint, the overgrown cemetery with its
+  mausoleum and its clearing (a shrine square), and houses. A grand stair and the east ramp come up from the
+  Terraces; a pulled-up ladder leads down from the cemetery.
+
+It's a `City` with its own `plan()`: blocks and buildings laid free, with the same shrines, chests, drums, enemies,
+basements and walking grid. Everything is built at ground level and then lifted onto the hill (`populate`: each
+building's pieces by the floor under it, everything else by `world.settle`).
+
+The houses have:
+- a brick plinth, timber framing with braces, sills and shutters (some hanging, some boarded);
+- ivy that fades with the building;
+- a pitched slate roof with holes, and a chimney;
+- inside: a hearth, a rug, a table and stools, shelves;
+- barrels and crates by some doors.
+
+`node scripts/look-ward.mjs` shoots the landmarks and checks the tiers' heights, that everything can be reached, a
+walk from the gate to the Crest, the canal ladder and the drop into the garden.

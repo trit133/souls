@@ -137,6 +137,8 @@ export function groundMaterial() {
 export function paintAt(paints, x, z, base) {
   const w = base.slice();
   for (const p of paints) {
+    const e0 = (p.edge ?? 1.2) * 1.2;
+    if (p.r != null ? Math.abs(x - p.cx) > p.r + e0 || Math.abs(z - p.cz) > p.r + e0 : x < p.x0 - e0 || x > p.x1 + e0 || z < p.z0 - e0 || z > p.z1 + e0) continue; // (nowhere near it)
     let d; // distance inside the shape's edge (positive inside)
     if (p.r != null) d = p.r - Math.hypot(x - p.cx, z - p.cz);
     else d = Math.min(x - p.x0, p.x1 - x, z - p.z0, p.z1 - z);

@@ -110,32 +110,32 @@ export class Terrain {
     const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : M.stone);
     const capMat = M.stoneDark;
     this.faces = []; // (each piece of face, for what grows on it: flora.js ivy)
+    const seen = new Set();
     // the faces: along every edge of a terrace or slope, where the ground outside is more than STEP lower, a wall
     // down to it (in 0.5 m pieces, so a slope's side steps down with it), set just inside the edge
     for (const p of this.parts) {
       if (p.t === 'hill') continue;
-      const mat = look(p.o), T = 0.3;
-      const edges = [
-        { ax: 'x', a0: p.x0, a1: p.x1, at: p.z0 - 0.06, inn: p.z0 + 0.06, mid: p.z0 + T / 2 },
-        { ax: 'x', a0: p.x0, a1: p.x1, at: p.z1 + 0.06, inn: p.z1 - 0.06, mid: p.z1 - T / 2 },
-        { ax: 'z', a0: p.z0, a1: p.z1, at: p.x0 - 0.06, inn: p.x0 + 0.06, mid: p.x0 + T / 2 },
-        { ax: 'z', a0: p.z0, a1: p.z1, at: p.x1 + 0.06, inn: p.x1 - 0.06, mid: p.x1 - T / 2 },
-      ];
+      const mat = look(p.o), T = 0.55;
+      // each edge: e the line, s which way is out. The face goes on whichever side is higher (a terrace's own edge,
+      // or the rim of a hollow cut into higher ground), facing the low side; one face per spot (seen)
+      const edges = [{ ax: 'x', a0: p.x0, a1: p.x1, e: p.z0, s: -1 }, { ax: 'x', a0: p.x0, a1: p.x1, e: p.z1, s: 1 }, { ax: 'z', a0: p.z0, a1: p.z1, e: p.x0, s: -1 }, { ax: 'z', a0: p.z0, a1: p.z1, e: p.x1, s: 1 }];
       for (const E of edges) {
         const n = Math.max(1, Math.round((E.a1 - E.a0) / 0.5)), step = (E.a1 - E.a0) / n;
         for (let k = 0; k < n; k++) {
-          const a = E.a0 + (k + 0.5) * step;
-          const [ix, iz] = E.ax === 'x' ? [a, E.inn] : [E.inn, a], [ox, oz] = E.ax === 'x' ? [a, E.at] : [E.at, a];
-          const top = this.rawAt(ix, iz), low = this.rawAt(ox, oz);
-          if (top - low <= STEP) continue;
-          const hgt = top - low + 0.04, [cx, cz] = E.ax === 'x' ? [a, E.mid] : [E.mid, a];
+          const a = E.a0 + (k + 0.5) * step, P2 = (o) => (E.ax === 'x' ? [a, E.e + o] : [E.e + o, a]);
+          const hin = this.rawAt(...P2(-E.s * 0.06)), hout = this.rawAt(...P2(E.s * 0.06));
+          if (Math.abs(hin - hout) <= STEP) continue;
+          const inHigh = hin > hout, top = Math.max(hin, hout), low = Math.min(hin, hout), side = inHigh ? -E.s : E.s;
+          const key = E.ax + Math.round(a * 4) + ':' + Math.round(E.e * 4) + ':' + side;
+          if (seen.has(key)) continue; seen.add(key);
+          const hgt = top - low + 0.04, [cx, cz] = P2(side * T / 2), nrm = -side;
           const [sw, sd] = E.ax === 'x' ? [step + 0.01, T] : [T, step + 0.01];
           const m = new THREE.Mesh(new THREE.BoxGeometry(sw, hgt, sd), mat); m.position.set(cx, low + hgt / 2 - 0.02, cz); add(m);
-          const ec = (E.at + E.inn) / 2, nrm = Math.sign(E.at - E.inn);
-          this.faces.push({ x: E.ax === 'x' ? a : ec + nrm * 0.0, z: E.ax === 'x' ? ec : a, ax: E.ax, nx: E.ax === 'z' ? nrm : 0, nz: E.ax === 'x' ? nrm : 0, low, top, w: step, ivy: p.o.ivy });
+          const [fx, fz] = P2(0);
+          this.faces.push({ x: fx, z: fz, ax: E.ax, nx: E.ax === 'z' ? nrm : 0, nz: E.ax === 'x' ? nrm : 0, low, top, w: step, ivy: p.o.ivy });
           // a coping course along the top, a little proud of the face, and the odd stone out
-          if (p.o.cap !== false) { const c = new THREE.Mesh(new THREE.BoxGeometry(sw + (E.ax === 'x' ? 0 : 0.08), 0.12, sd + (E.ax === 'x' ? 0.08 : 0)), capMat); c.position.set(cx, top + 0.0, cz); add(c); }
-          if (vh(cx, cz, 3) < 0.3 && hgt > 0.8) { const s = new THREE.Mesh(new THREE.BoxGeometry(E.ax === 'x' ? 0.28 : 0.36, 0.2, E.ax === 'x' ? 0.36 : 0.28), M.stoneDark); s.position.set(cx + (E.ax === 'x' ? 0 : (E.at < E.inn ? -0.05 : 0.05)), low + 0.25 + vh(cx, cz, 4) * (hgt - 0.6), cz + (E.ax === 'x' ? (E.at < E.inn ? -0.05 : 0.05) : 0)); add(s); }
+          if (p.o.cap !== false) { const c = new THREE.Mesh(new THREE.BoxGeometry(sw + (E.ax === 'x' ? 0 : 0.08), 0.12, sd + (E.ax === 'x' ? 0.08 : 0)), capMat); c.position.set(cx, top, cz); add(c); }
+          if (vh(cx, cz, 3) < 0.3 && hgt > 0.8) { const st = new THREE.Mesh(new THREE.BoxGeometry(E.ax === 'x' ? 0.28 : 0.36, 0.2, E.ax === 'x' ? 0.36 : 0.28), M.stoneDark); const [sx, sz] = P2(side * 0.02); st.position.set(sx, low + 0.25 + vh(cx, cz, 4) * (hgt - 0.6), sz); add(st); }
         }
       }
       // stairs: a step every ~0.22 m of rise, each a solid block down to the foot of the flight

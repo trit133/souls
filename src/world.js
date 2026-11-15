@@ -27,6 +27,8 @@ const GROUND = {
   // textured (ground.js): `tex` gives the surfaces' base weights [flag, dirt, grass, cobble] on and off the walkable
   // ground and their brightness; a map paints the rest (world.paint). The training ring
   proving: { walk: [0x8a8a8a, 0x787878], out: [0x404040, 0x585858], tex: { walk: [0, 1, 0, 0], out: [0, 0.55, 0.45, 0] } },
+  // Ashfall Ward (ward.js): the same, a shade darker (a burned ward under smoke)
+  ward: { walk: [0x7e7c78, 0x6c6a66], out: [0x3a3836, 0x4e4c48], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
   // a raid's ruined city (city.js): cracked ferrocrete streets (interiors and pavements are tinted by the city)
   city: { walk: [0x4c4a46, 0x3e3c39], out: [0x24221f, 0x36332f], grid: 4, seam: 0.86, sub: 2 },
   // cellars, sewers and bunkers under it: wet walls stepping up round the rooms
@@ -129,7 +131,7 @@ export class World {
       this.cur = m;
       if (m === this.mods[0]) this.terrain.build(this); // (its faces, steps and ladders)
       this.buildGround(m);
-      if (GROUND[m.ground]?.tex) growFlora(this, m, GROUND[m.ground]); // (grass, weeds, ivy and the rest: flora.js)
+      if (GROUND[m.ground]?.tex) growFlora(this, { x0: -36, x1: 36, z0: m.z1, z1: m.z0, group: m.group }, GROUND[m.ground]); // (grass, weeds, ivy and the rest: flora.js)
       this.scatterBorders(m);
       this.mergeStatic(m.group);
     }
@@ -300,7 +302,7 @@ export class World {
 
   // props stand on the terrain: everything a map added (and its lights) lifted to the ground under it
   settle() {
-    for (const m of this.mods) for (const o of m.group.children) { const h = this.terrain.floorAt(o.position.x, o.position.z); if (h) o.position.y += h; }
+    for (const m of this.mods) for (const o of m.group.children) { if (o.userData.noSettle || o.userData.settled) continue; const h = this.terrain.floorAt(o.position.x, o.position.z); if (h) o.position.y += h; o.userData.settled = true; }
     for (const L of this.lights) { const h = this.terrain.floorAt(L.x, L.z); if (h) L.y += h; }
     for (const f of this.fires || []) if (f.x != null) { const h = this.terrain.floorAt(f.x, f.z); if (h) f.y = (f.y || 0) + h; }
   }
@@ -351,7 +353,7 @@ export class World {
   groundMesh(cx, cz, W, L, ground) {
     const st = GROUND[ground] || GROUND.dirt;
     const terr = this.terrain.parts.length > 0;
-    const sub = Math.max(st.sub ?? (st.grid ? 3 : 1), terr ? 4 : 1); // (plated floors get a finer mesh so the seams read as lines; terrain, so its edges stay sharp)
+    const sub = Math.max(st.sub ?? (st.grid ? 3 : 1), terr ? (st.tsub ?? 4) : 1); // (plated floors get a finer mesh so the seams read as lines; terrain, so its edges stay sharp)
     const g = new THREE.PlaneGeometry(W, L, W * sub, Math.round(L) * sub);
     g.rotateX(-Math.PI / 2);
     g.translate(cx, 0, cz);
@@ -364,7 +366,8 @@ export class World {
       // (the ground follows the terrain; at an edge it takes the lower side, so the step between sits inside the
       // retaining wall rather than showing in front of it)
       const T = this.terrain, fy = terr ? Math.min(T.floorAt(x, z), T.floorAt(x - 0.13, z - 0.13), T.floorAt(x + 0.13, z - 0.13), T.floorAt(x - 0.13, z + 0.13), T.floorAt(x + 0.13, z + 0.13)) : 0;
-      if (this.area(x, z, -0.6)) {
+      const inArea = this.area(x, z, -0.6);
+      if (inArea) {
         if (fy) pos.setY(i, fy);
         c.copy(w0).lerp(w1, 0.5 + n * (st.grid ? 0.25 : 0.5));
         this.dungeon?.groundTint?.(x, z, c, n); // (a city: pavements, interiors, rubble)
@@ -386,9 +389,10 @@ export class World {
       }
       if (TX) {
         // textured: the surfaces' weights here, and a plain brightness for the colour (the textures carry the hues)
-        const inside = this.area(x, z, -0.6);
+        const inside = inArea;
         splat.set(paintAt(this.paints, x, z, inside ? TX.walk : TX.out), i * 4);
         c.copy(inside ? w0 : o0).lerp(inside ? w1 : o1, 0.5 + n * 0.5);
+        if (inside) this.dungeon?.groundTint?.(x, z, c, n); // (a city's floors under a roof)
       }
       col.set([c.r, c.g, c.b], i * 3);
     }
