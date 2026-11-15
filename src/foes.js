@@ -472,6 +472,25 @@ NEW_TYPES.chime = {
   onReceive: (e, info) => { e.game.seals?.strike?.(e); return { ...info, dmg: 0, poise: 0 }; },
   model: { cloth: 0x1e1c1e, armor: 0x3a3a40, skin: 0x5a544e, head: 'none', eyes: 0x000000, kit: 'chime' },
 };
+// the training arena's dummy (modules.js TRAINING_ARENA): straw on a post. Never fights back and never breaks: a
+// blow that would finish it fills it again, and it heals in full a few seconds after the last hit. Rocks on its post
+NEW_TYPES.dummy = {
+  name: 'Training Dummy', hp: 2000, poise: 999, scale: 1.2, radius: 0.55, run: 0, walk: 0, aggro: 0, prefer: 0, style: 'sword', turn: 0, still: true,
+  cd: [99, 99], moves: {}, weights: {}, superArmor: true, quiet: true,
+  onReceive: (e, info) => {
+    e.restT = 0; e.wob = 1;
+    if (e.hp - info.dmg <= 0) e.hp = Math.max(e.maxHp, info.dmg + 1); // (it never breaks: start it full again)
+    return info;
+  },
+  tick: (e, dt) => {
+    e.restT = (e.restT || 0) + dt;
+    if (e.restT > 3 && e.hp < e.maxHp) e.hp = e.maxHp;
+    e.wob = Math.max(0, (e.wob || 0) - dt * 1.6);
+    const top = e.rig.dummyTop;
+    if (top) { top.rotation.x = Math.sin(e.t * 17) * 0.16 * e.wob; top.rotation.z = Math.sin(e.t * 11 + 1) * 0.07 * e.wob; }
+  },
+  model: { cloth: 0x6a5a3a, armor: 0x3a3632, skin: 0x8a7a50, head: 'none', eyes: 0x000000, kit: 'dummy' },
+};
 for (const [k, T] of Object.entries(NEW_TYPES)) { T.hp *= NUM; TYPES[k] = T; }
 export const FOE_NAMES = Object.fromEntries(Object.entries(TYPES).map(([k, T]) => [k, T.name]).filter(([, n]) => n));
 
@@ -501,6 +520,34 @@ Object.assign(KITS, {
       g.add(box(0.05, 0.5, 0.05, dark, 0, -0.75, 0)); const cl = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), dark); cl.position.y = -1.02; g.add(cl);
       r.bellG = g;
       r.base.position.set(0, -0.5, 0); g.add(r.base); r.tip.position.set(0, -0.9, 0); g.add(r.tip);
+    },
+  },
+  // a training dummy: the body taken away; a post in the ground, a crossbar for arms, a stuffed sack body bound with
+  // rope and a sack head with a painted target, straw poking out. The top rocks on the post when struck (foes.js dummy)
+  dummy: {
+    weapon: true,
+    build(r, o) {
+      const strip0 = (obj) => { for (const c of [...obj.children]) { if (c.isMesh) obj.remove(c); else strip0(c); } };
+      strip0(r.body);
+      const wood = r.m(0x4a3a26), woodDk = r.m(0x2e241a), sack = r.m(0x8a7650), sackDk = r.m(0x6a5a3c), rope = r.m(0x5a4a2e), straw = r.m(0xc8a85a), paint = basic(0x9a2a1a);
+      const g = new THREE.Group(); g.position.y = -r.hipH; r.body.add(g); // (from the ground up)
+      g.add(box(0.14, 0.9, 0.14, woodDk, 0, 0.45, 0)); // the post's foot
+      g.add(box(0.5, 0.12, 0.5, woodDk, 0, 0.06, 0));
+      const top = new THREE.Group(); top.position.y = 0.8; g.add(top); r.dummyTop = top; // (rocks about the post's foot)
+      top.add(box(0.12, 1.2, 0.12, wood, 0, 0.6, 0));
+      top.add(box(1.3, 0.1, 0.1, wood, 0, 0.95, 0)); // the arms
+      for (const s of [-1, 1]) { top.add(box(0.2, 0.22, 0.2, sack, s * 0.62, 0.95, 0)); top.add(box(0.06, 0.12, 0.06, straw, s * 0.74, 0.92, 0.02)); }
+      top.add(box(0.52, 0.7, 0.36, sack, 0, 0.72, 0)); // the stuffed body
+      for (const y of [0.5, 0.92]) top.add(box(0.54, 0.05, 0.38, rope, 0, y, 0));
+      top.add(box(0.3, 0.3, 0.02, sackDk, 0, 0.72, 0.185));
+      const tgt = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.12, 12), paint); tgt.position.set(0, 0.72, 0.2); top.add(tgt);
+      top.add(box(0.06, 0.06, 0.02, paint, 0, 0.72, 0.2));
+      top.add(box(0.34, 0.34, 0.32, sack, 0, 1.28, 0)); // the head, tied off at the neck
+      top.add(box(0.2, 0.06, 0.2, rope, 0, 1.1, 0));
+      for (const x of [-0.08, 0.08]) top.add(box(0.06, 0.02, 0.02, sackDk, x, 1.32, 0.165)); // stitched eyes
+      top.add(box(0.12, 0.02, 0.02, paint, 0, 1.22, 0.165));
+      for (const [x, y, z, rz] of [[-0.12, 1.47, 0, 0.4], [0.05, 1.48, 0.05, -0.2], [0.14, 1.46, -0.04, -0.5], [0.24, 0.42, 0.1, -0.6], [-0.24, 0.44, -0.08, 0.7]]) top.add(rbox(0.03, 0.14, 0.03, straw, x, y, z, 0, 0, rz));
+      r.base.position.set(0, 0.6, 0); top.add(r.base); r.tip.position.set(0, 1.3, 0); top.add(r.tip);
     },
   },
   // a Sump Wretch: hunched and swollen, a rebreather grown into the face, blisters that glow, one arm a fan of hooked

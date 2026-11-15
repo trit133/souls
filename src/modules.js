@@ -321,6 +321,28 @@ export const BOSS_ARENA = {
   },
 };
 
+// the training arena (the Sanctum's Training button): a lit ring of sand with a training dummy in the middle that
+// never fights back and never breaks (foes.js 'dummy'). Nothing to win: no gold, no loot, no enemies. You arrive at
+// its south edge; the pause menu takes you home
+export const TRAINING_ARENA = {
+  name: 'The Proving Ring', len: 26, ground: 'arena',
+  build(w, Z, mod) {
+    const M = w.mats;
+    w.circle(0, 13, 12);
+    arenaRing(w, Z, 0, 13, 12, false, false);
+    for (const [x, d] of [[-8.5, 5], [8.5, 5], [-8.5, 21], [8.5, 21]]) w.brazier(x, Z(d), { power: 14 });
+    w.lights.push({ x: 0, y: 7, z: Z(13), color: 0xffc080, power: 18, range: 26, src: {} });
+    // a chalk circle round the dummy, weapon racks and banners along the back wall
+    const chalk = new THREE.Mesh(new THREE.RingGeometry(2.6, 2.8, 32), new THREE.MeshBasicMaterial({ color: 0x8a8070, transparent: true, opacity: 0.5 }));
+    chalk.rotation.x = -PI / 2; chalk.position.set(0, 0.03, Z(13)); chalk.userData.noMerge = true; w.add(chalk);
+    w.rack(-4, Z(23.2)); w.rack(4, Z(23.2));
+    w.banner(-9.5, Z(18)); w.banner(9.5, Z(18));
+    w.crate(-10, Z(11)); w.barrel(10, Z(10)); w.barrel(10.6, Z(11.2));
+    w.box(1.6, 0.5, 1.0, M.wood, 0, 0.25, Z(24)); // a bench by the racks
+    w.spawn('dummy', 0, 13, 0, { effigy: true });
+  },
+};
+
 export const REGULAR = Object.keys(MODULES);
 
 function shuffle(a, rand) {

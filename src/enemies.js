@@ -508,9 +508,10 @@ export class Enemy extends Actor {
       return;
     }
     const shake = this.rig.flashT > 0 ? Math.sin(this.game.time * 60) * 0.08 : 0;
-    const pose = { ...locomotion('sword', 0, 0, false, 0), armL: [0, 0, 1.45], armR: [0, 0, -1.45], foreL: [0, 0, 0.3], foreR: [0, 0, -0.3], head: [0.35 + shake, 0, 0.2], torso: [0.1, shake, 0], by: 0.3 };
+    const pose = this.T.quiet ? locomotion('sword', 0, 0, false, 0) : { ...locomotion('sword', 0, 0, false, 0), armL: [0, 0, 1.45], armR: [0, 0, -1.45], foreL: [0, 0, 0.3], foreR: [0, 0, -0.3], head: [0.35 + shake, 0, 0.2], torso: [0.1, shake, 0], by: 0.3 };
     this.syncRig(dt, pose, 10);
-    if (Math.random() < dt * 6) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.6, y: 1.9, z: this.pos.z + (Math.random() - 0.5) * 0.6, vy: 0.8, life: 0.8, size: 0.14, size1: 0.02, r: 1, g: 0.2, b: 0.15 });
+    this.T.tick?.(this, dt); // (a training dummy heals itself)
+    if (!this.T.quiet && Math.random() < dt * 6) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.6, y: 1.9, z: this.pos.z + (Math.random() - 0.5) * 0.6, vy: 0.8, life: 0.8, size: 0.14, size1: 0.02, r: 1, g: 0.2, b: 0.15 });
   }
 
   // returns 'hit' etc. Called by game.resolveHit

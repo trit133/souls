@@ -458,7 +458,7 @@ export class Hermitage {
     el.id = 'hermitage'; el.className = 'hidden';
     el.innerHTML = `
       <div class="hm-top">
-        <div class="hm-left"><button class="mini-btn" id="hm-back">Title</button><button class="mini-btn" id="hm-guide-btn">How to Play</button><button class="mini-btn hidden" id="hm-bazaar">Bazaar<i id="hm-bz-bang" class="hidden">!</i></button></div>
+        <div class="hm-left"><button class="mini-btn" id="hm-back">Title</button><button class="mini-btn" id="hm-guide-btn">How to Play</button><button class="mini-btn" id="hm-training">Training</button><button class="mini-btn hidden" id="hm-bazaar">Bazaar<i id="hm-bz-bang" class="hidden">!</i></button></div>
         <div class="hm-pick"><span id="hm-name">Templar</span><button class="mini-btn hm-icon" id="hm-chars" title="Characters" aria-label="Characters"><span id="hm-chars-ic"></span></button><div id="hm-list" class="hidden"></div></div>
         <div id="hm-gold"></div>
       </div>
@@ -490,7 +490,7 @@ export class Hermitage {
     el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-bazaar', 'ember'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-bazaar', 'ember'], ['hm-training', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
@@ -498,6 +498,7 @@ export class Hermitage {
     $('hm-settings').addEventListener('click', (e) => { e.stopPropagation(); this.game.openSettings(); }); // (Fullscreen: data-fs, main.js)
     $('hm-fs').addEventListener('click', (e) => e.stopPropagation());
     // the Bazaar: once Executor Hask is dead (traders.js); a "!" when a trader has a quest to hand in
+    $('hm-training').addEventListener('click', (e) => { e.stopPropagation(); this.game.audio.unlock(); this.game.training = true; this.begin(); }); // the training arena
     $('hm-bazaar').addEventListener('click', (e) => { e.stopPropagation(); this.game.audio.unlock(); this.game.bazaar.open(); });
     $('hm-guide-btn').addEventListener('click', (e) => { e.stopPropagation(); this.setGuide(!this.guideOpen); });
     $('hm-guide-close').addEventListener('click', () => this.setGuide(false));

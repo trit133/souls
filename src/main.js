@@ -172,6 +172,7 @@ class Game {
   // the older test scripts use them)
   newLayout() {
     const q = new URLSearchParams(location.search), night = !!(this.nightRaid && this.nightUnlocked);
+    if (this.training || q.has('training')) return ['training']; // the Sanctum's training arena (modules.js TRAINING_ARENA)
     if (q.has('chain')) return pickLayout();
     if (q.has('dungeon')) return night ? 'night' : 'dungeon';
     return { raid: areaOpen(AREAS[this.raidArea], this.accounts.data) ? this.raidArea : 'r1a1', night }; // (an area you don't have the gems for: the first)
@@ -590,9 +591,10 @@ class Game {
     if (this.player) this.player.remove();
     this.overShown = false;
     this.kind = kind;
+    if (party) this.training = false;
     if (party) this.buildRun(party.layout, party.seed, party.players); else this.buildRun();
     this.waitingOnParty = false; this.reviving = null;
-    this.respawnAt = this.run ? { ...this.world.start } : { x: 0, z: -2.5 };
+    this.respawnAt = this.run ? { ...this.world.start } : { x: 0, z: this.training ? -4 : -2.5 };
     this.player = new Player(this, kind, this.respawnAt.x, this.respawnAt.z, this.accounts.user ? treeStats(kind, this.accounts.data) : {});
     this.runes.attach(this.player, this.player.runeL); // (its socketed runes in play: runes.js)
     this.runGold = 0; this.minisFelled = 0; this.secGold = [0, 0, 0, 0]; this.roomGold = {}; this.roomKills = {};
@@ -602,10 +604,11 @@ class Game {
     this.pouchOpen = false; this.renderPouch();
     this.ui.setRunGold(0);
     $('run-gold').title = 'Gold banked to your account this run';
-    if (this.accounts.data) { this.accounts.data.stats.runs++; this.accounts.save(); }
+    if (this.accounts.data && !this.training) { this.accounts.data.stats.runs++; this.accounts.save(); }
     this.ui.setBoons([]);
     this.ui.setProgress(1, this.run ? 4 : this.world.mods.length);
-    $('progress').classList.toggle('hidden', !!this.run?.raid);
+    $('progress').classList.toggle('hidden', !!this.run?.raid || !!this.training);
+    $('restart').textContent = this.training ? 'Back to the Sanctum' : 'Quit to Title';
     document.querySelector('#victory .banner').textContent = 'THE LAST SENTINEL FALLS';
     this.minimap.el.classList.toggle('touch', this.input.isTouch);
     this.ui.show('gameover', false); this.ui.show('reward', false);
@@ -628,7 +631,7 @@ class Game {
   }
 
   toTitle() {
-    this.mode = 'title';
+    this.mode = 'title'; this.training = false;
     this.pings.clear();
     $('retry').textContent = 'Try Again'; $('again').textContent = 'Play Again';
     if (this.mp.active || this.mp.code) this.mp.leave();
