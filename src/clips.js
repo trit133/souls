@@ -32,7 +32,7 @@ const WALK_SPEED = DATA[SET.f.walk].speed, RUN_SPEED = Math.min(4, DATA[SET.f.jo
 const POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
 // the shoulders while moving: swing (turning against the hips each step), dip (toward the planted foot), sway (the
 // weight going foot to foot on a side step)
-const SHOULDERS = { swing: 0.16, dip: 0, sway: 0 }; // (no rocking side to side: the shoulders turning with each stride, about the spine)
+const SHOULDERS = { swing: 0.26, dip: 0, sway: 0 }; // (no rocking side to side: the shoulders turning with each stride, about the spine)
 // an arm the weapon's stance holds still pumps this much (radians each way at a run) with the stride, against the legs
 const ARM_PUMP = 0.3;
 // how much of the hips' side-to-side roll the clips have is kept (the legs need a little; the body above doesn't)
