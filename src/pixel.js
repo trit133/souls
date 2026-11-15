@@ -1,4 +1,4 @@
-// Pixel-art rendering: the 3D scene is drawn into a small render target (about 270 game pixels tall). One pass at
+// Pixel-art rendering: the 3D scene is drawn into a small render target (about 340 game pixels tall). One pass at
 // that same size adds a 1-pixel dark outline wherever depth jumps (silhouettes) and snaps colours to a fixed palette
 // with 4x4 ordered dithering, into a canvas of exactly that size. CSS then scales the canvas up by a whole number
 // with image-rendering: pixelated, so every game pixel is the same size and the upscale costs nothing.
@@ -13,7 +13,7 @@ THREE.ShaderChunk.lights_lambert_pars_fragment = THREE.ShaderChunk.lights_lamber
 );
 
 // target height in game pixels for each Pixel size setting
-export const PIXEL_H = { chunky: 180, medium: 270, fine: 360 };
+export const PIXEL_H = { chunky: 180, medium: 340, fine: 480 };
 
 // dark-fantasy palette (sRGB): ash and bone greys, moonlight blues, blood, embers, moss, wood, arcane
 const PALETTE = [
