@@ -52,6 +52,7 @@ import { Bazaar } from './bazaar.js';
 import { noteKill, restockAll, relicsWanted } from './traders.js';
 import { Ragdolls } from './ragdoll.js';
 import { Gore, BLADES } from './gore.js';
+import { TrainPads } from './trainpads.js';
 import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
@@ -472,6 +473,7 @@ class Game {
     this.runes = new RuneRuntime(this);
     this.ragdolls = new Ragdolls(this); // (the dead go limp: ragdoll.js)
     this.gore = new Gore(this); // (blood, oil, the neck: gore.js)
+    this.trainPads = new TrainPads(this); // (the training ring's summoning pads: trainpads.js)
     this.worldMap = new WorldMap(this);
     this.partyTab = new PartyTab(this);
     this.pings = new Pings(this);
@@ -874,7 +876,7 @@ class Game {
     // Second Wind (Knight notable): a kill heals the one who landed it
     const p = this.player, kh = p?.tree?.killHeal;
     if (kh && p.alive && e.lastHitBy === p) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * kh / 100);
-    if (this.isGuest) return;
+    if (this.isGuest || e.trainee) return; // (one called in on a training pad: worth nothing)
     // solo: your kill. A party shares each room's kills when it's cleared (see openRoom)
     if (this.mp.active) this.roomKills[e.mod] = (this.roomKills[e.mod] || 0) + 1;
     else if (!e.effigy) this.creditKill(e);
@@ -2319,6 +2321,7 @@ class Game {
       const down = this.mp.active && p.alive && p.state === 'move' ? [...this.mp.peers.values()].find((x) => !x.alive && p.distTo(x) < 2.4) : null;
       const atPortal = this.portal && p.alive && Math.hypot(p.pos.x - this.portal.x, p.pos.z - this.portal.z) < 2.2;
       const sealLine = this.seals.promptFor(p);
+      const padLine = this.training && this.world.trainPads?.length ? this.trainPads.update(dt) : null; // (the training ring's pads)
       const stair = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.stairAt?.(p.pos.x, p.pos.z) : null;
       const chest = this.chests.promptFor(p, this.input.lastDevice === 'touch' ? 'Tap' : 'F');
       const exit = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.exits?.find((e) => Math.hypot(p.pos.x - e.x, p.pos.z - e.z) < 1.8) : null;
@@ -2342,6 +2345,7 @@ class Game {
         this.ui.prompt(chest.line);
         if (presses.has('interact')) this.chests.tryOpen(chest.c);
       } else if (sealLine) this.ui.prompt(sealLine);
+      else if (padLine) this.ui.prompt(padLine);
       else if (performance.now() > (this.ui.smallT || 0)) this.ui.prompt(null);
       if (this.portal) this.portal.ring.material.opacity = 0.6 + Math.sin(this.time * 5) * 0.3;
       // trigger only once the player is fully inside the arena circle, so locking the

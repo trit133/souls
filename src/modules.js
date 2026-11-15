@@ -340,6 +340,28 @@ export const TRAINING_ARENA = {
     w.crate(-10, Z(11)); w.barrel(10, Z(10)); w.barrel(10.6, Z(11.2));
     w.box(1.6, 0.5, 1.0, M.wood, 0, 0.25, Z(24)); // a bench by the racks
     w.spawn('dummy', 0, 13, 0, { effigy: true });
+    // two summoning pads behind the dummy (trainpads.js): stand on one 3 s to call an enemy in across the ring, the
+    // amber one a small enemy, the red one a big one. An iron plate with a lit rim and a rune that spins as it charges,
+    // a post with a skull on it to say which (a small skull; a big horned one)
+    w.trainPads = [];
+    for (const [x, size] of [[-2.6, 'small'], [2.6, 'large']]) {
+      const big = size === 'large', r = big ? 1.25 : 0.95, z = Z(19.4), hex = big ? 0xff3a24 : 0xffb04a, rim = big ? M.glowRed : M.glowAmber;
+      w.cyl(r, r + 0.08, 0.12, M.stoneDark, x, 0.06, z, 12);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r - 0.06, 0.04, 4, 20), rim); ring.rotation.x = -PI / 2; ring.position.set(x, 0.13, z); w.add(ring);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(r - 0.1, 20), new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
+      glow.rotation.x = -PI / 2; glow.position.set(x, 0.14, z); glow.userData.noMerge = true; w.add(glow);
+      const rune = new THREE.Group(); rune.rotation.x = -PI / 2; rune.position.set(x, 0.145, z); rune.userData.noMerge = true; w.add(rune);
+      for (let i = 0; i < 3; i++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(r * 1.3, 0.06, 0.01), new THREE.MeshBasicMaterial({ color: hex })); bar.rotation.z = i * PI / 3; rune.add(bar); }
+      // the post and its skull, at the back edge
+      const px = x + (big ? 1.0 : -0.8), pz = z - r * 0.9;
+      w.box(0.12, 1.5, 0.12, M.logDark, px, 0.75, pz); w.ob(px, pz, 0.2);
+      w.box(big ? 0.34 : 0.22, big ? 0.3 : 0.2, big ? 0.3 : 0.2, M.bone, px, 1.6, pz);
+      w.box(big ? 0.22 : 0.14, 0.05, 0.02, rim, px, big ? 1.62 : 1.6, pz + (big ? 0.16 : 0.11));
+      if (big) for (const s of [-1, 1]) { const h = w.cyl(0.02, 0.06, 0.32, M.bone, px + s * 0.2, 1.82, pz); h.rotation.z = -s * 0.7; }
+      w.lights.push({ x, y: 1.4, z, color: hex, power: 4, range: 5, src: {} });
+      // where its enemy comes in: across the ring, the far side of the dummy
+      w.trainPads.push({ x, z, y: 0, r, size, glow, rune, t: 0, armed: true, sx: x * 0.9, sz: Z(7.5) });
+    }
     // the terrain to try (terrain.js): a terrace to the west (1.6 m: stairs up its east side, a ladder up its front;
     // dropping off it lands on your feet), a higher one to the east (3.6 m: a long ramp up from the south, a ladder
     // pulled up at the top to lower; a drop off it hurts), and a low hill by the way in
