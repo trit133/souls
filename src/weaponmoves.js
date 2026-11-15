@@ -18,8 +18,6 @@ const GS_OVER = { armR: [-3.0, 0, 0.4], foreR: [-0.8, 0, 0], handR: [0.7, 0, 0],
 const GS_DOWN = { armR: [-0.75, 0, 0.1], foreR: [-0.05, 0, 0], handR: [1.45, 0, 0], armL: [-0.8, 0, 0.25], foreL: [-0.1, 0, 0], handL: [1.4, 0, 0] };
 // the slab resting on the right shoulder (its stance, anims.js slab)
 const GS_SHOULDER = { armR: [-0.9, 0, -0.35], foreR: [-1.9, 0, 0], handR: [0.3, 0, 0], armL: [-1.2, 0, -0.3], foreL: [-1.3, 0, 0], handL: [0.6, 0, 0] };
-// the second swing, before it was made slower and heavier: Struggler's rising cut keeps this shape (gRise)
-const G2_QUICK = { dur: 0.95, cost: 22, next: 'g3', combo: [0.42, 0.95], cancel: 0.56, track: 0.22, trail: [0.32, 0.5], sfx: [0.32, 'heavySwing'], hand: 'R', hits: [{ t0: 0.34, t1: 0.5, range: 3.2, arc: 3.4, dmg: 38, poise: 30 }], move: [[0.22, 0.48, 1.0]], onHitShake: 0.25 };
 // the light chain's key poses, each solved for where the right hand is and which way the blade points (the left
 // hand closes on the hilt by itself: models.js solveGrip); character frame: +z ahead, +x his left
 const GS_HI_RIGHT = { armR: [-1.31, 0.15, 0.23], foreR: [-1.72, 0, 0], handR: [1.02, 0, 0.57] };  // up over the right shoulder, the point back
@@ -27,6 +25,13 @@ const GS_LOW_MID = { armR: [-0.02, 0.29, 0.98], foreR: [-1.74, 0, 0], handR: [1.
 const GS_LOW_LEFT = { armR: [0.12, -0.53, 1.2], foreR: [0.02, 0, 0], handR: [1.83, 0, -0.04] };   // drawn back by the left hip, flat
 const GS_FLAT_FRONT = { armR: [-0.29, 0.01, 0.82], foreR: [-1.48, 0, 0], handR: [1.47, 0, -0.37] }; // waist high, the blade straight out
 const GS_FLAT_RIGHT = { armR: [-0.2, -0.31, 0.89], foreR: [-1.32, 0, 0], handR: [1.44, 0, 0.42] };  // carried through, out to the right
+// the thrusts (solved: scripts/solve-arm.mjs): cocked back by the right hip with the point ahead (deeper for the
+// plunge), then run straight out at chest height, or long and low for the plunge
+const GS_COCK = { armR: [0.05, -0.83, 0.02], foreR: [-0.29, 0, 0], handR: [0.93, 1.63, 0.39] };
+const GS_COCK_DEEP = { armR: [0.05, 0.26, -0.32], foreR: [0, 0, 0], handR: [-0.18, 0.67, -0.22] };
+const GS_THRUST = { armR: [-0.86, 0.33, 0.21], foreR: [-0.76, 0, 0], handR: [1.12, -0.43, -0.22] };
+const GS_PLUNGE = { armR: [-1.45, -0.14, 0.28], foreR: [-0.1, 0, 0], handR: [0.81, -0.15, 0.35] };
+const DEEP_LUNGE = { legL: [-1.25, 0, 0.05], shinL: [1.15, 0, 0], legR: [0.95, 0, -0.05], shinR: [0.25, 0, 0], by: -0.44 };
 const GS_OVERHEAD = { armR: [-1.95, 0.08, 0.38], foreR: [-0.83, 0, 0], handR: [0.61, 0, 0.85] };    // raised over the head, the point back
 const GS_CHOP_DOWN = { armR: [-0.11, 0.54, 1.07], foreR: [-2.11, 0, 0], handR: [1.52, 0, -0.61] };  // down the middle, the point to the floor
 export const GREAT_ATTACKS = {
@@ -130,18 +135,31 @@ function greatCombos(G) {
       onTime: [{ t: 0.56, fn: (p, g) => { const f = front(p, 2.4); g.vfx('impaleSteel', f.clone().setY(0.4)); g.comboBlast({ ...p, pos: f, cmbStag: p.cmbStag }, 3.4, 30 * NUM, 40, 'fire'); g.fx.shockwave(f.x, f.z, 4); g.fx.addShake(0.7); } }],
       onHitShake: 0.7, heavyHit: true, finisher: 'Anvil',
     },
-    // Struggler: (sweep, a roll in, a rising cut) a thrust that runs the whole blade through
-    gRise: withDmg({ ...G2_QUICK, keys: [[0.24, { torso: [0.5, 0.6, 0], ...GS_SWEEP_R, ...crouch(1) }], [0.4, { torso: [-0.3, -0.4, 0], ...GS_HIGH_L, ...lunge(1.1) }], [0.7, { torso: [-0.2, -0.3, 0], ...GS_HIGH_L, ...lunge(0.9) }]] }, [40], { cost: 24 }),
-    gThrust: {
-      dur: 0.95, cost: 28, comboMove: true, track: 0.25, trail: [0.32, 0.46], hand: 'R', sfx: [0.32, 'heavySwing'], cancel: 0.65, armor: [0.1, 0.5],
+    // Struggler: (a sweep, a roll in) a light thrust that closes the distance, then a deep plunge that runs the whole
+    // blade through. The thrust: the Slab cocked back by his right hip, point ahead, then a dash in behind it (it stops
+    // short of whoever he's locked on to)
+    gLunge: {
+      dur: 0.95, cost: 24, comboMove: true, track: 0.3, trail: [0.3, 0.46], hand: 'R', sfx: [0.3, 'swing'], cancel: 0.6,
       keys: [
-        [0.28, { torso: [-0.3, -0.6, 0], armR: [-1.6, 0, -0.2], foreR: [-1.6, 0, 0], handR: [1.6, 0, 0], armL: [-1.5, 0, 0.1], foreL: [-1.5, 0, 0], handL: [1.5, 0, 0], legL: [0.3, 0, 0], legR: [-0.45, 0, 0], by: -0.12 }],
-        [0.4, { torso: [0.6, 0.3, 0], armR: [-1.55, 0, 0.1], foreR: [0, 0, 0], handR: [1.55, 0, 0], armL: [-1.5, 0, 0.3], foreL: [-0.1, 0, 0], handL: [1.5, 0, 0], ...lunge(1.7) }],
-        [0.72, { torso: [0.5, 0.25, 0], armR: [-1.5, 0, 0.1], foreR: [-0.1, 0, 0], handR: [1.5, 0, 0], armL: [-1.45, 0, 0.3], foreL: [-0.2, 0, 0], handL: [1.45, 0, 0], ...lunge(1.4) }],
+        [0.2, { grip: 1, torso: [-0.1, -0.75, 0], head: [0, 0.5, 0], ...GS_COCK, legL: [-0.35, 0, 0.05], legR: [0.5, 0, -0.05], shinL: [0.25, 0, 0], shinR: [0.55, 0, 0], by: -0.16 }],
+        [0.38, { grip: 1, torso: [0.45, 0.05, 0], ...GS_THRUST, ...lunge(1.5) }],
+        [0.7, { grip: 1, torso: [0.35, 0, 0], ...GS_THRUST, ...lunge(1.2) }],
       ],
-      hits: [{ t0: 0.34, t1: 0.46, range: 3.8, arc: 0.8, dmg: 96, poise: 45 }],
-      move: [[0.3, 0.44, 2.2]],
-      onTime: [{ t: 0.42, fn: (p, g) => g.vfx('impaleSteel', front(p, 2.0, 1.0)) }],
+      hits: [{ t0: 0.32, t1: 0.46, range: 3.5, arc: 1.1, dmg: 40, poise: 25 }],
+      move: [[0.24, 0.42, 3.6]], stopAt: 1.3,
+      onHitShake: 0.25,
+    },
+    // the plunge: drawn far back and low, then the whole body behind the point, a deep lunge, the blade run all the way out
+    gThrust: {
+      dur: 0.95, cost: 28, comboMove: true, track: 0.25, trail: [0.32, 0.48], hand: 'R', sfx: [0.32, 'heavySwing'], cancel: 0.68, armor: [0.1, 0.5],
+      keys: [
+        [0.26, { grip: 1, torso: [-0.25, -0.9, 0], head: [0, 0.6, 0], ...GS_COCK_DEEP, legL: [-0.2, 0, 0.1], legR: [0.75, 0, -0.1], shinL: [0.35, 0, 0], shinR: [0.85, 0, 0], by: -0.26 }],
+        [0.42, { grip: 1, torso: [0.65, 0.1, 0], head: [-0.35, 0, 0], ...GS_PLUNGE, ...DEEP_LUNGE }],
+        [0.74, { grip: 1, torso: [0.6, 0.05, 0], head: [-0.3, 0, 0], ...GS_PLUNGE, ...DEEP_LUNGE, by: -0.38 }],
+      ],
+      hits: [{ t0: 0.34, t1: 0.48, range: 4.0, arc: 0.9, dmg: 96, poise: 45 }],
+      move: [[0.3, 0.46, 2.6]], stopAt: 0.9,
+      onTime: [{ t: 0.43, fn: (p, g) => { g.vfx('impaleSteel', front(p, 2.2, 0.9)); g.hitstop(0.04); } }],
       onHitShake: 0.6, heavyHit: true, finisher: 'Struggler',
     },
   };
@@ -149,7 +167,7 @@ function greatCombos(G) {
 const GREAT_COMBOS = [
   { id: 'wheel', name: "Dragon's Wheel", desc: 'Two sweeps, then the blade carries you all the way round, twice.', steps: [[A, 'g1', 0.5], [A, 'gc2', 0.5], [A, 'gWheel']] },
   { id: 'anvil', name: 'Anvil', desc: 'The slam, a rising cut, then a leaping overhead that buries the blade and floors everything near it.', steps: [[H, 'heavy', 0.9], [A, 'gUpper', 0.44], [H, 'gCrush']] },
-  { id: 'struggler', name: 'Struggler', desc: 'A sweep, a roll in, a rising cut, then a thrust that runs the whole blade through. Plays faster.', steps: [[A, 'g1', 0.5], [R, 'roll', 0.42], [A, 'gRise', 0.42], [H, 'gThrust']] },
+  { id: 'struggler', name: 'Struggler', desc: 'A sweep, a roll in, a quick thrust that dashes you back onto them, then a deep plunge that runs the whole blade through. Plays faster.', steps: [[A, 'g1', 0.5], [R, 'roll', 0.42], [A, 'gLunge', 0.42], [H, 'gThrust']] },
 ];
 
 // ================= THE WRIST BLADES (Shrike) =================

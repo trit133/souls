@@ -1227,3 +1227,25 @@ html.phone .tiles { gap: 6px; }
 html.phone .tile-big, html.phone .tile-small { height: 52px; padding: 4px 8px; }
 html.phone .tile-big { width: 165px; } html.phone .tile-small, html.phone #btn-settings { width: 145px; } html.phone .tile-fs { width: 125px; }
 #hm-work .wk-dark, #wk-detail .wk-dark { filter: brightness(.25) grayscale(.6); }
+
+/* the combo list (combolist.js): a button under the bars, dropping down the weapon's combos until toggled off */
+#combo-hud { margin-top: 8px; pointer-events: auto; width: max-content; max-width: min(92vw, 360px); }
+#combo-btn { padding: 4px 10px; background: rgba(20,12,8,.85); border: 1px solid #6a3a1a; box-shadow: 0 0 0 1px #1a0c06; color: #e8dcc0; font: 12px Georgia, serif; letter-spacing: .04em; cursor: pointer; touch-action: manipulation; }
+#combo-btn:hover, #combo-btn.on { border-color: #b8621e; color: #ffd890; }
+#combo-list { margin-top: 4px; padding: 6px 8px; background: rgba(10,7,5,.86); border: 2px solid #6a3a1a; box-shadow: 0 0 0 2px #1a0c06, 0 6px 16px rgba(0,0,0,.6); color: #e8dcc0; max-height: 52vh; overflow-y: auto; }
+#combo-list.hidden { display: none; }
+.cl-row { padding: 5px 4px; border-bottom: 1px solid rgba(106,58,26,.45); }
+.cl-row:last-child { border-bottom: 0; }
+.cl-row.lit { background: rgba(184,98,30,.16); box-shadow: inset 2px 0 0 #e0782a; }
+.cl-name { font: bold 13px Georgia, serif; color: #f0c870; margin-bottom: 3px; }
+.cl-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.cl-step { display: inline-flex; align-items: center; gap: 4px; padding: 1px 5px; border: 1px solid #4a3426; background: rgba(0,0,0,.4); font: 11px Georgia, serif; color: #d8ccb4; }
+.cl-step b { font: bold 10px monospace; color: #1a0c06; background: #c8b48a; padding: 0 3px; }
+.cl-heavy b { background: #e07a3a; }
+.cl-roll b { background: #8ab0c8; }
+.cl-step.done { border-color: #7a5a2a; color: #8a7a62; }
+.cl-step.done b { opacity: .55; }
+.cl-step.next { border-color: #ffb040; color: #fff0c0; box-shadow: 0 0 6px rgba(255,170,60,.7); }
+.cl-arrow { font-style: normal; color: #8a6a4a; font-size: 12px; }
+.cl-desc { font: 11px/1.35 Georgia, serif; color: #a89a84; margin-top: 3px; }
+.cl-empty { font: 12px Georgia, serif; color: #a89a84; }

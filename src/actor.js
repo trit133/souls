@@ -201,7 +201,8 @@ export class Actor {
       if (o1 > o0) {
         let step = dist * (o1 - o0);
         // don't plough through the target
-        if (d.stopAt && this.target && step > 0 && this.distTo(this.target) < d.stopAt + this.target.radius) step *= 0.1;
+        const tg = this.target || this.lock; // (the player: whoever he's locked on to)
+        if (d.stopAt && tg && step > 0 && this.distTo(tg) < d.stopAt + (tg.radius || 0)) step *= 0.1;
         const f = this.fwd(); this.move(f.x * step, f.z * step);
       }
     }

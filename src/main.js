@@ -55,6 +55,7 @@ import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from 
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
 import { pixelMenus, syncRanges } from './pixelmenus.js';
+import { ComboList } from './combolist.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
 
@@ -142,6 +143,7 @@ class Game {
     this.weaponsLib = { ...WeaponsLib, TREES }; // (the weapons and the trees, for the test scripts)
     this.basements = new Basements(this);
     this.minimap = new Minimap(this);
+    this.comboList = new ComboList(this); // (the Combos button under the bars: combolist.js)
     this.buildRun();
 
     this.bindUI();
@@ -2280,6 +2282,7 @@ class Game {
         if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
       }
       this.minimap.update(rdt);
+      this.comboList.update();
       this.updateFoePanel(rdt);
 
       this.ui.update(rdt, p);

@@ -68,7 +68,7 @@ Object.assign(res, await A.evaluate(() => {
 
   // 4. the slab's second swing
   const G = (begin('knight', 'greatsword'), g.player.c.attacks);
-  out.slab = { g1: [G.g1.dur, G.g1.hits[0].dmg], g2: [G.g2.dur, G.g2.hits[0].t0, G.g2.hits[0].dmg], gc2: G.gc2.hits[0].dmg, gRise: [G.gRise.dur, G.gRise.hits[0].t0] };
+  out.slab = { g1: [G.g1.dur, G.g1.hits[0].dmg], g2: [G.g2.dur, G.g2.hits[0].t0, G.g2.hits[0].dmg], gc2: G.gc2.hits[0].dmg, gLunge: [G.gLunge.dur, G.gLunge.hits[0].t0] };
   return out;
 }));
 
@@ -104,7 +104,7 @@ const s = res.sigil, ok = s.states[0] === 'frozen' && s.states[1] === 'frozen' &
   && res.cooldown.again === false && Math.abs(res.cooldown.left - 9.6) < 0.2 && /Sigil \d+s/.test(res.cooldown.hud) && res.cdOver === true
   && res.boss?.state !== 'frozen' && Math.abs(res.boss.chillLeft - 3.8) < 0.2 && res.boss.speed === 0.3 && res.boss.frost && res.laser === 1
   && res.veil.plain.key === 'w1' && res.veil.veiled.key === 'wRip' && res.veil.veiled.backstab && !res.veil.plain.backstab && res.veil.ratio > 2.6 && res.veil.ratio < 3.4
-  && res.slab.g2[0] === 1.25 && res.slab.g2[2] === 54 && res.slab.gc2 === 58 && res.slab.gRise[0] === 0.95 && res.slab.gRise[1] === 0.34
+  && res.slab.g2[0] === 1.25 && res.slab.g2[2] === 54 && res.slab.gc2 === 58 && res.slab.gLunge[0] === 0.95 && res.slab.gLunge[1] === 0.32
   && res.party[0][0] === 'frozen' && res.party[0][1] && res.party[1][0] === 'frozen' && res.party[1][1] && res.party[1][2] === 1;
 console.log(ok ? 'freeze and backstab work' : 'FREEZE/BACKSTAB PROBLEM');
 console.log(errs.length ? 'ERRORS\n' + errs.join('\n') : 'OK no errors');
