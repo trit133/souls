@@ -297,7 +297,7 @@ KITS.knight = {
     const S = (slot, m, t, d, gl) => slotMats(r, fit, slot, m, t, d, gl);
     const helm = S('helmet', 0x7a7e86, 0x8a6a34, 0x2a2a30, 0xff5a2a); (KNIGHT.helmet[helm.piece] || KNIGHT.helmet.great)(r, helm, H);
     for (const [slot, s] of [['pauldronL', 1], ['pauldronR', -1]]) { const M = S(slot, 0x7a7e86, 0x8a6a34, 0x2a2a30, 0x8ad8ff); (KNIGHT.pauldron[M.piece] || KNIGHT.pauldron.segmented)(r, M, T, s); }
-    const ch = S('chest', 0x7a7e86, 0x6a1412, 0x2a2a30, 0x8ad8ff); r.chestGlow = ch.glowHex; // (the Sandevistan rune's afterimages: runes.js) (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips);
+    const ch = S('chest', 0x7a7e86, 0x6a1412, 0x2a2a30, 0x8ad8ff); r.chestGlow = ch.glowHex; (KNIGHT.chest[ch.piece] || KNIGHT.chest.plate)(r, ch, T, hips); // (chestGlow: the Sandevistan rune's afterimages, runes.js)
     const lg = S('legs', 0x7a7e86, 0x5a5e66, 0x2a2a30, 0xff8a3a); (KNIGHT.legs[lg.piece] || KNIGHT.legs.greaves)(r, lg, hips);
     if (o.arm === 'greatsword') {
       // the Penitent Slab in both hands, no shield (weapons.js)
@@ -527,7 +527,7 @@ KITS.rogue = {
     const S = (slot, m, t, d, gl) => slotMats(r, fit, slot, m, t, d, gl);
     const cl = S('cloak', 0x2c2a30, 0x4a4650, 0x1e1e22, 0xff3a24); (ROGUE.cloak[cl.piece] || ROGUE.cloak.tattered)(r, cl, T, H);
     const mk = S('mask', 0x34343a, 0x8a2420, 0x1e1e22, 0xff3a24); (ROGUE.mask[mk.piece] || ROGUE.mask.wrap)(r, mk, H, T);
-    const sh = S('shirt', 0x4a3a2c, 0x4a3626, 0x2a2420, 0xff3a24); r.chestGlow = sh.glowHex; // (the Sandevistan rune's afterimages: runes.js) (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T);
+    const sh = S('shirt', 0x4a3a2c, 0x4a3626, 0x2a2420, 0xff3a24); r.chestGlow = sh.glowHex; (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T); // (chestGlow: the Sandevistan rune's afterimages, runes.js)
     for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); }
     if (o.arm === 'wristblade') {
       // the Wrist Blade: one short knife in the right fist, held point-down (a reverse grip, always: the blade comes
@@ -766,7 +766,7 @@ KITS.mage = {
     const rune = basic(C.runeHi);
     r.glowMats.push({ mat: rune, lo: new THREE.Color(C.runeLo), hi: new THREE.Color(C.runeHi) });
     const glyph = basic(C.glyph);
-    const shM = S('shirt', 0x22305c, 0xb89a4a, 0x2a2420, 0x9fe4ff); r.chestGlow = shM.glowHex; // (the Sandevistan rune's afterimages: runes.js) (MAGE.shirt[shM.piece] || MAGE.shirt.runecoat)(r, shM, T, rune, hips);
+    const shM = S('shirt', 0x22305c, 0xb89a4a, 0x2a2420, 0x9fe4ff); r.chestGlow = shM.glowHex; (MAGE.shirt[shM.piece] || MAGE.shirt.runecoat)(r, shM, T, rune, hips); // (chestGlow: the Sandevistan rune's afterimages, runes.js)
     const soM = S('shoulder', 0x22305c, 0xb89a4a, 0x2a2420, 0x9fe4ff); (MAGE.shoulder[soM.piece] || MAGE.shoulder.mantle)(r, soM, T, rune, H);
     const paM = S('pants', 0x2c3a66, 0x7a86b0, 0x2a2420, 0x9fe4ff); (MAGE.pants[paM.piece] || MAGE.pants.trousers)(r, paM);
     // head: silver hair with bangs, glowing eyes, a rune mark under one eye, a ponytail that swings
