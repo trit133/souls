@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { sample, locomotion, P } from './anims.js';
+import { gaitFor, hasClips, CARRIAGE } from './clips.js';
 import { SIGIL } from './weaponmoves.js';
 
 const Z3 = [0, 0, 0];
@@ -160,7 +161,8 @@ export class Actor {
       const fx = this.atk.def.sfx;
       if (fx && !this.atk.sfx && this.atk.t >= fx[0]) { this.atk.sfx = true; this.game.audio.play(fx[1], this.sfxVol || 1); }
     }
-    const base = locomotion(style, this.phase = (this.phase || 0) + dt * (2.5 + (this.puppetSpeed || 0) * 1.6), (this.puppetSpeed || 0) / 4, false, this.game.time);
+    this.phase = (this.phase || 0) + dt * (2.5 + (this.puppetSpeed || 0) * 1.6);
+    const base = hasClips() ? gaitFor(this, style, dt, { posture: CARRIAGE[this.type] }) : locomotion(style, this.phase, (this.puppetSpeed || 0) / 4, false, this.game.time); // (the baked gait, as the host sees it: clips.js)
     let pose = base;
     if (this.state === 'attack' && this.atk) pose = this.attackPose(base, 18);
     else if (this.state === 'dead') pose = P.dead;

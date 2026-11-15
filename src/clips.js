@@ -29,7 +29,7 @@ const WALK_SPEED = DATA[SET.f.walk].speed, RUN_SPEED = Math.min(4, DATA[SET.f.jo
 // stooping ape): lean - how much of the clip's forward lean of the chest is kept (the head stays level whatever);
 // armOut - how much of the arms' swing away from the body is kept (tucked in close); crouch - how much of the hips'
 // drop is kept
-const POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
+const BASE_POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
 // the head while moving: follow (how much of the shoulders' turn it goes with), nod (how far it dips at each footfall)
 const HEAD = { follow: 0.5, nod: 0.12 };
 // the shoulders while moving: swing (turning against the hips each step), dip (toward the planted foot), sway (the
@@ -39,7 +39,8 @@ const SHOULDERS = { swing: 0.26, dip: 0, sway: 0 }; // (no rocking side to side:
 const ARM_PUMP = 0.3;
 // an arm carrying something heavy (the Penitent Slab on the right shoulder) doesn't pump, and turns back against most of
 // the shoulders' twist (this much of it), so the blade rides still
-const HEAVY_ARM = { slab: { arm: 'armR', still: 0.85 } };
+// (the Psy-Staff is held across the body in both hands: neither arm pumps, or the hold would come apart)
+const HEAVY_ARM = { slab: { arms: ['armR'], still: 0.85 }, staff: { arms: ['armR', 'armL'], still: 0.6 } };
 // how much of the hips' side-to-side roll the clips have is kept (the legs need a little; the body above doesn't)
 const HIP_ROLL = 0.25;
 // a side step covers this much of a forward stride's ground
@@ -100,6 +101,7 @@ const stride = (name) => (DATA[name].speed || 1) * DATA[name].dur;
 // dir (the way it moves, relative to where it faces: 0 ahead, ±PI/2 sideways (+ to its left), PI back), turn (how
 // fast it turns, rad/s), sprint, time, scale (the body's size: a bigger body takes longer strides) }
 export function gaitPose(who, style, dt, o) {
+  const POSTURE = o.posture ? { ...BASE_POSTURE, ...o.posture } : BASE_POSTURE;
   const G = who._gait || (who._gait = { u: 0, tu: 0, wt: 0, tdir: 1, w: { idle: 1, walk: 0, jog: 0, sprint: 0 }, d: { f: 1, b: 0, l: 0, r: 0 }, lean: 0, twist: 0 });
   const sc = o.scale || 1, sp = (o.speed || 0) / sc, k = 1 - Math.exp(-dt * 9);
   // the pace, by speed (eased, so a change of pace blends over a moment)
@@ -183,10 +185,38 @@ export function gaitPose(who, style, dt, o) {
   const pump = Math.sin(ph) * ARM_PUMP * s * moving * (o.sprint ? 0.4 : 1); // (a sprinting stance swings the arm already)
   const heavy = HEAVY_ARM[style];
   for (const [a, f, sg] of [['armR', 'foreR', 1], ['armL', 'foreL', -1]]) {
-    if (heavy?.arm === a) { p[a] = eOf(axis(Y, -Math.cos(ph) * SHOULDERS.swing * s * moving * heavy.still).multiply(qOf(p[a]))); continue; }
+    if (heavy?.arms.includes(a)) { p[a] = eOf(axis(Y, -Math.cos(ph) * SHOULDERS.swing * s * moving * heavy.still).multiply(qOf(p[a]))); continue; }
     if (p[a].every((v, i) => Math.abs(v - clipArms[a][i]) < 1e-6)) continue;
     p[a] = [p[a][0] + pump * sg, p[a][1], p[a][2]];
     p[f] = [p[f][0] - Math.abs(pump) * 0.4, p[f][1], p[f][2]];
   }
   return p;
+}
+
+// each one's own carriage over the same clips (POSTURE's knobs): the Shrike runs low and leaning in, a War Servitor or a
+// hulk stoops under its weight, a Sump Wretch hunches; anyone else stands as the Templar does
+export const CARRIAGE = {
+  rogue: { lean: 0.6, crouch: 0.9, armOut: 0.4 },
+  brute: { lean: 0.45, crouch: 0.7 }, hulk: { lean: 0.45, crouch: 0.7 }, bellwarden: { lean: 0.4, crouch: 0.7 },
+  wretch: { lean: 0.9, crouch: 1, headLevel: -0.1 }, flagellant: { lean: 0.5, crouch: 0.7 },
+};
+
+// The gait for anyone (an enemy, a boss, a teammate's or a host's puppet): its speed, the way it's going against the
+// way it faces and how fast it's turning, all measured from how it actually moved since the last frame (smoothed, so a
+// shove or a snap doesn't jerk the legs). o: { sprint, posture, scale, still (a moment it shouldn't count as moving) }
+export function gaitFor(who, style, dt, o = {}) {
+  const M = who._gm || (who._gm = { x: who.pos.x, z: who.pos.z, yaw: who.yaw, vx: 0, vz: 0, turn: 0, t: who.game.time });
+  // (asked twice in one frame, a boss's states can: the same measure again, the cycle not stepped twice)
+  if (M.t === who.game.time && M.done) return gaitPose(who, style, 0, { speed: M.sp, dir: M.dir, turn: M.turn, sprint: !!o.sprint, time: who.game.time, scale: o.scale ?? who.rig.root.scale.y, posture: o.posture });
+  const gap = who.game.time - M.t;
+  if (gap > 0.25 || dt <= 0) { M.x = who.pos.x; M.z = who.pos.z; M.yaw = who.yaw; M.vx = M.vz = M.turn = 0; } // (a while since the last: start afresh)
+  const step = Math.max(dt, 1e-3), k = 1 - Math.exp(-dt * 12);
+  let vx = (who.pos.x - M.x) / step, vz = (who.pos.z - M.z) / step;
+  if (Math.hypot(vx, vz) > 14) vx = vz = 0; // (a blink or a teleport: not a stride)
+  M.vx += (vx - M.vx) * k; M.vz += (vz - M.vz) * k;
+  M.turn += (wrap(who.yaw - M.yaw) / step - M.turn) * k;
+  M.x = who.pos.x; M.z = who.pos.z; M.yaw = who.yaw; M.t = who.game.time;
+  const sp = o.still ? 0 : Math.hypot(M.vx, M.vz), dir = sp > 0.2 ? wrap(Math.atan2(M.vx, M.vz) - who.yaw) : 0;
+  M.sp = sp; M.dir = dir; M.done = true;
+  return gaitPose(who, style, dt, { speed: sp, dir, turn: M.turn, sprint: !!o.sprint, time: who.game.time, scale: o.scale ?? who.rig.root.scale.y, posture: o.posture });
 }

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
-import { gaitPose, hasClips } from './clips.js';
+import { gaitPose, hasClips, CARRIAGE } from './clips.js';
 import { Trail } from './fx.js';
 import { knightArc, knightHitColor } from './fx3d.js';
 import { CHARS, RIPOSTE, CRITS, weaponChar } from './player.js';
@@ -57,9 +57,9 @@ class RemotePlayer extends Actor {
     this.yaw += angDiff(this.yaw, this.net.yaw) * k;
     const sp = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
     this.phase += dt * (2.5 + sp * 1.6);
-    // (a Templar moves on the baked gait, as on its own screen: clips.js)
+    // (on the baked gait, as on its own screen: clips.js)
     const mdir = sp > 0.3 ? angDiff(this.yaw, Math.atan2(this.pos.x - ox, this.pos.z - oz)) : 0, turn = angDiff(this.lastYaw ?? this.yaw, this.yaw) / Math.max(dt, 1e-3); this.lastYaw = this.yaw;
-    const base = this.kind === 'knight' && hasClips() ? gaitPose(this, this.c.style, dt, { speed: sp, dir: mdir, turn, sprint: sp > this.c.walk * 1.2, time: this.game.time, scale: this.rig.root.scale.y }) : locomotion(this.c.style, this.phase, sp / this.c.walk, false, this.game.time);
+    const base = hasClips() ? gaitPose(this, this.c.style, dt, { speed: sp, dir: mdir, turn, sprint: sp > this.c.walk * 1.2, time: this.game.time, scale: this.rig.root.scale.y, posture: CARRIAGE[this.kind] }) : locomotion(this.c.style, this.phase, sp / this.c.walk, false, this.game.time);
     const st = this.s.st, tt = (this.s.tt || 0) + this.t;
     let pose = base, trail = false;
     const P0 = this.play;

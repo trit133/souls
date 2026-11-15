@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
+import { gaitFor, hasClips, CARRIAGE } from './clips.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
 import { tierStats, TIER_EYES, partyScale } from './progress.js';
@@ -306,6 +307,14 @@ export class Enemy extends Actor {
     return this.pathDir;
   }
 
+  // walking, running, strafing round you, backing off: the baked gait (clips.js), as the players move
+  // (only near enough to be seen: it costs more than the old stride, and a dungeon can have fifty awake)
+  gait(dt) {
+    const c = this.game.player?.pos;
+    if (!hasClips() || (c && (Math.abs(this.pos.x - c.x) > 22 || Math.abs(this.pos.z - c.z) > 22))) return null;
+    return gaitFor(this, this.T.style, dt, { posture: CARRIAGE[this.type] });
+  }
+
   update(dt) {
     if (this.T.still) return this.stillUpdate(dt);
     if (this.elite && this.alive && Math.random() < dt * 14) {
@@ -343,7 +352,7 @@ export class Enemy extends Actor {
             }
           }
           this.phase += dt * (2 + s * 6);
-          pose = locomotion(T.style, this.phase, s, false, this.game.time + this.phase);
+          pose = this.gait(dt) || locomotion(T.style, this.phase, s, false, this.game.time + this.phase);
         }
         const sense = (this.state === 'sit' ? T.aggro * 0.6 : T.aggro) * this.aggroMul;
         if (p.alive && !unseen && dist < sense && this.game.sameRoom(this, p)) this.alert();
@@ -408,7 +417,7 @@ export class Enemy extends Actor {
         this.speed += (sp - this.speed) * Math.min(1, dt * 8);
         this.turnToward(toP, T.turn, dt);
         this.phase += dt * (2.5 + this.speed * 1.6);
-        pose = locomotion(T.style, this.phase, this.speed / 4, false, this.game.time);
+        pose = this.gait(dt) || locomotion(T.style, this.phase, this.speed / 4, false, this.game.time);
         if (waiting) { pose.armR = [-0.85, 0, -0.35]; pose.foreR = [-0.75, 0, 0]; pose.torso[0] += 0.15; pose.by -= 0.06; } // weapon up, ready
         break;
       }
@@ -429,7 +438,7 @@ export class Enemy extends Actor {
         break;
       }
       case 'recover': {
-        pose = locomotion(T.style, this.phase, 0, false, this.game.time);
+        pose = this.gait(dt) || locomotion(T.style, this.phase, 0, false, this.game.time);
         if (this.t > 0.15) this.turnToward(toP, T.turn * 0.5, dt);
         if (this.t >= this.recoverT) this.setState('chase');
         break;
@@ -478,7 +487,7 @@ export class Enemy extends Actor {
         this.turnToward(y, pw ? 10 : 6, dt);
         if (d > 0.5) { const f = this.fwd(); this.move(f.x * T.run * dt, f.z * T.run * dt); }
         this.phase += dt * 8;
-        pose = locomotion(T.style, this.phase, d > 0.5 ? 0.9 : 0, false, this.game.time);
+        pose = this.gait(dt) || locomotion(T.style, this.phase, d > 0.5 ? 0.9 : 0, false, this.game.time);
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * dt * 0.3);
         if (d <= 0.5) { this.setState(this.sitting ? 'sit' : 'idle'); this.yaw = this.home.yaw; }
         if (p.alive && !unseen && dist < T.aggro * 0.7 * this.aggroMul && this.t > 1.0 && this.game.sameRoom(this, p)) this.setState('chase');

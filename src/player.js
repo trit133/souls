@@ -6,7 +6,7 @@ import { outfitModel } from './playerkits.js';
 import { weaponElems, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
-import { gaitPose, hasClips } from './clips.js';
+import { gaitPose, hasClips, CARRIAGE } from './clips.js';
 import { Trail } from './fx.js';
 import { knightArc } from './fx3d.js';
 import { EMOTES } from './pings.js';
@@ -509,11 +509,11 @@ export class Player extends Actor {
         else if (mag > 0.05) this.turnToward(Math.atan2(dir.x, dir.z), 13, dt);
         this.phase += dt * (2.5 + this.speed * 1.6);
         const s = this.speed / this.c.walk;
-        // the Templar moves on the baked gait (clips.js): strafes and backpedals for real while locked on
+        // everyone moves on the baked gait (clips.js): strafes and backpedals for real while locked on
         const turn = angDiff(this.lastYaw ?? this.yaw, this.yaw) / Math.max(dt, 1e-3); this.lastYaw = this.yaw;
-        if (this.kind === 'knight' && hasClips()) pose = gaitPose(this, style, dt, { speed: this.speed, dir: angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z)), turn, sprint: this.sprinting, time: this.game.time, scale: this.rig.root.scale.y });
+        if (hasClips()) pose = gaitPose(this, style, dt, { speed: this.speed, dir: angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z)), turn, sprint: this.sprinting, time: this.game.time, scale: this.rig.root.scale.y, posture: CARRIAGE[this.kind] });
         else pose = locomotion(style, this.phase, s, this.sprinting, this.game.time);
-        if (!(this.kind === 'knight' && hasClips()) && this.lock && !this.sprinting && this.speed > 0.3) {
+        if (!hasClips() && this.lock && !this.sprinting && this.speed > 0.3) {
           // strafing: swing legs sideways when moving perpendicular to facing
           const side = angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z));
           if (Math.abs(side) > 0.8 && Math.abs(side) < 2.3) { pose.hips = [0, -Math.sign(side) * 0.5, 0]; pose.torso[1] = Math.sign(side) * 0.5; }

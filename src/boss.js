@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { locomotion, P } from './anims.js';
+import { gaitFor, hasClips } from './clips.js';
 import { Trail } from './fx.js';
 import { StatusState } from './status.js';
 import { tierScale, TIER_EYES, partyScale } from './progress.js';
@@ -280,7 +281,7 @@ export class Boss extends Actor {
         this.speed += (sp - this.speed) * Math.min(1, dt * 6);
         this.turnToward(toP, 3.2, dt);
         this.phase += dt * (2 + this.speed * 1.4);
-        pose = loco(this.speed / 4.5);
+        pose = hasClips() ? gaitFor(this, 'greatsword', dt) : loco(this.speed / 4.5); // (walking and circling on the baked gait: clips.js)
         break;
       }
       case 'attack': {
