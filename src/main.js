@@ -832,6 +832,9 @@ class Game {
         if (w.evo && !W.evos[w.evo.id]) { W.evos[w.evo.id] = 1; added = true; }
       }
       for (const id of Object.keys(RUNES)) if (!ownsRune(A.data, id)) { grantRune(A.data, id); added = true; }
+      // and the gems that open the Sump Lines and the Spire (asked for 2026-11-15: playing them)
+      A.data.gems ||= {};
+      for (const g of ['gem_hask', 'gem_vael']) if (!A.data.gems[g]) { A.data.gems[g] = 1; added = true; }
       if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
