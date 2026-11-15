@@ -728,6 +728,7 @@ export class Player extends Actor {
         break;
       }
       case 'dead': {
+        if (this.game.ragdolls?.hold(this)) { pose = null; break; } // (limp where you fell: ragdoll.js)
         pose = P.dead; rate = 7;
         break;
       }

@@ -171,7 +171,7 @@ export class Actor {
     else if (this.state === 'sit' || this.state === 'dormant' || this.state === 'broken') pose = P.rest;
     else if (this.state === 'hurt' || this.state === 'parried' || this.state === 'riposted' || this.state === 'held') pose = { ...base, ...P.stagger };
     else if (this.state === 'frozen') pose = this.heldPose();
-    if (this.state === 'dead') { this.rig.apply(pose, dt, 8); if (this.t > 4) this.rig.root.visible = false; } else this.syncRig(dt, pose, 18);
+    if (this.state === 'dead') { if (!this.game.ragdolls?.hold(this)) { this.rig.apply(pose, dt, 8); if (this.t > 4) this.rig.root.visible = false; } } else this.syncRig(dt, pose, 18); // (limp where it fell: ragdoll.js)
     this.trail?.update(dt, !!(this.atk && this.inWindow(this.atk.def.trail)), this.rig.base, this.rig.tip);
   }
 

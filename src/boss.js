@@ -349,6 +349,7 @@ export class Boss extends Actor {
         break;
       }
       case 'dead': {
+        if (this.t > 1.2 && this.game.ragdolls?.hold(this)) { pose = null; break; } // (it sinks to its knees, then goes limp: ragdoll.js)
         pose = this.t < 1.2 ? { ...P.rest, head: [0.8, 0, 0], torso: [0.7, 0, 0] } : P.dead;
         rate = 4;
         if (this.t < 3.5 && Math.random() < dt * 60) {
@@ -363,8 +364,9 @@ export class Boss extends Actor {
     if (this.state !== 'attack') this.trailOn = false;
     if (this.state !== 'dead') this.regenPoise(dt);
     this.applyKnockback(dt);
-    if (!pose) pose = this.state === 'attack' && this.atk ? this.attackPose(loco(0), rate) : loco(0);
-    if (this.state !== 'dead') this.syncRig(dt, pose, rate); else this.rig.apply(pose, dt, rate);
+    if (this.ragdoll) { /* limp: ragdoll.js poses it */ }
+    else if (!pose) pose = this.state === 'attack' && this.atk ? this.attackPose(loco(0), rate) : loco(0);
+    if (this.ragdoll) { /* */ } else if (this.state !== 'dead') this.syncRig(dt, pose, rate); else this.rig.apply(pose, dt, rate);
     this.trail.update(dt, this.trailOn, this.rig.base, this.rig.tip);
 
     // burning blade

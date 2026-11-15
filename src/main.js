@@ -50,6 +50,7 @@ import { Home } from './home.js';
 import { Hermitage } from './hermitage.js';
 import { Bazaar } from './bazaar.js';
 import { noteKill, restockAll, relicsWanted } from './traders.js';
+import { Ragdolls } from './ragdoll.js';
 import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
@@ -281,6 +282,7 @@ class Game {
   }
 
   buildLevel(layout, seed, players) {
+    this.ragdolls?.clear(); // (the last level's dead)
     for (const e of [...this.enemies, ...this.reserves]) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
@@ -440,6 +442,7 @@ class Game {
     this.hermitage = new Hermitage(this);
     this.bazaar = new Bazaar(this);
     this.runes = new RuneRuntime(this);
+    this.ragdolls = new Ragdolls(this); // (the dead go limp: ragdoll.js)
     this.worldMap = new WorldMap(this);
     this.partyTab = new PartyTab(this);
     this.pings = new Pings(this);
@@ -2243,7 +2246,7 @@ class Game {
         for (const e of this.enemies) {
           // distance culling: far enemies neither think nor draw
           const near = close(e, 42);
-          e.rig.root.visible = near && !(e.state === 'dead' && e.t > (e.effigy ? 3 : 4.5));
+          e.rig.root.visible = near && !(e.state === 'dead' && !e.ragdoll && e.t > (e.effigy ? 3 : 4.5)); // (a ragdoll stays where it fell)
           if (near) e.update(dt * this.runes.foeTime); // (a Sandevistan roll nearly stops them: runes.js)
         }
         this.blazeAura(dt);
@@ -2266,6 +2269,7 @@ class Game {
         this.chests.updateDrums();
         this.basements.update();
         this.mp.tick(dt);
+        this.ragdolls.update(dt);
         this.stepRevive(dt);
       } else {
         // keep buffered inputs during hitstop

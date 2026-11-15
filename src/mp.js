@@ -104,6 +104,7 @@ class RemotePlayer extends Actor {
     else if (st === 'land') pose = tt < 0.16 ? { ...base, ...P.land } : base;
     else if (st === 'prone') pose = tt < 0.85 ? P.prone : tt < 1.3 ? P.proneRise : base;
     else if (st === 'climb') pose = { ...base, ...P.climb(this.pos.y * 0.78) }; // (the hands going with the height)
+    else if (st === 'dead' && !this.alive && this.game.ragdolls?.hold(this)) return; // (limp where they fell: ragdoll.js)
     else if (st === 'dead') pose = P.dead;
     else if (st === 'rest') pose = P.rest;
     else if (st === 'heal') pose = { ...base, ...P.heal };

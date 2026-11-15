@@ -475,6 +475,7 @@ export class Enemy extends Actor {
         break;
       }
       case 'dead': {
+        if (this.game.ragdolls?.hold(this)) { pose = null; break; } // (limp where it fell: ragdoll.js)
         pose = P.dead; rate = 8;
         if (this.t > 2.5) this.rig.root.position.y = (this.gy || 0) - (this.t - 2.5) * 0.6;
         if (this.t > 4.5) this.rig.root.visible = false;
