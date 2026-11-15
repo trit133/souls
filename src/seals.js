@@ -151,6 +151,7 @@ export class Seals {
     if (!net && g.mp.active && !g.isGuest) g.mp.sendAll({ t: 'seal', i: d.i, s: 'b' });
     g.ui.toast(this.broken <= SEALS_NEEDED ? `WARD SHRINE BROKEN ${this.broken}/${SEALS_NEEDED}` : 'WARD SHRINE BROKEN', 2.5);
     if (opens) setTimeout(() => g.ui.toast('THE BLAST DOOR GRINDS OPEN', 3), 2600);
+    if (opens) g.bossPortal?.(d); // (a raid: a way straight down to the boss opens by the last shrine: main.js)
     this.drawLabel();
   }
 

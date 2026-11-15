@@ -5,7 +5,7 @@
 // Each kind is one instanced mesh (thousands cost one draw), shaded flat like everything else; the pixel pass on
 // top turns them into pixel art.
 import * as THREE from 'three';
-import { paintAt } from './ground.js';
+import { paintAt, TEXSETS } from './ground.js';
 
 export const FLORA_TIME = { value: 0 }; // (the wind's clock: world.update)
 const vh = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
@@ -65,6 +65,8 @@ class Batch {
 // map asked for (w.flora: bushes, trees, leaves, puddles, pebbles)
 export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
   const TX = st.tex; if (!TX) return;
+  // which of its four surfaces is grass (none underground: no grass, no weeds), which dirt or grime (pebbles), which cracked paving
+  const names = TEXSETS[TX.set || 'surface'], gI = names.indexOf('grass'), dI = Math.max(names.indexOf('dirt'), names.indexOf('grime')), cracks = ['flag', 'cobble'].map((n) => names.indexOf(n)).filter((k) => k >= 0);
   const sway = swayMat(), flat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, flatShading: true });
   const grass = new Batch(tuftGeo(7), sway, 9000), weeds = new Batch(tuftGeo(5), sway, 2000);
   const ivy = new Batch(leafGeo(0.13), flat, 6000), leaves = new Batch(leafGeo(0.09), flat, 3000);
@@ -76,17 +78,18 @@ export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
   // grass and weeds, on a jittered 0.4 m grid
   for (let z = z0; z < z1; z += 0.4) for (let x = x0; x < x1; x += 0.4) {
     const jx = x + (vh(x, z, 1) - 0.5) * 0.4, jz = z + (vh(x, z, 2) - 0.5) * 0.4;
-    const G = groundAt(jx, jz), sp = paintAt(w.paints, jx, jz, G.inside ? TX.walk : TX.out);
+    const G = groundAt(jx, jz), sp = paintAt(w.paints, jx, jz, G.inside ? TX.walk : TX.out, names);
     if (steep(jx, jz) || w.blocked(jx, jz, 0.1)) continue;
     const r = vh(jx, jz, 3), clump = 0.55 + 0.45 * Math.sin(jx * 0.9 + jz * 0.7) * Math.sin(jx * 0.31 - jz * 0.43);
-    if (sp[2] > 0.45 && r < sp[2] * 0.85 * clump) {
+    const gr = gI < 0 ? 0 : sp[gI], cr = cracks.reduce((a, k) => a + sp[k], 0), dt = dI < 0 ? 0 : sp[dI];
+    if (gr > 0.45 && r < gr * 0.85 * clump) {
       const s = 0.7 + vh(jx, jz, 4) * 0.8;
       grass.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s, GRASS[Math.floor(vh(jx, jz, 6) * GRASS.length)], s * (0.8 + vh(jx, jz, 7) * 0.6));
-    } else if ((sp[0] + sp[3]) > 0.5 && r < 0.035) {
+    } else if (gI >= 0 && cr > 0.5 && r < 0.035) {
       // a weed in a crack
       const s = 0.45 + vh(jx, jz, 4) * 0.4;
       weeds.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s, WEED[Math.floor(vh(jx, jz, 6) * WEED.length)]);
-    } else if (sp[1] > 0.5 && r < 0.05) {
+    } else if (dt > 0.5 && r < 0.05) {
       pebble.add(jx, G.y + 0.02, jz, vh(jx, jz, 8) * 3, vh(jx, jz, 9) * 3, 0, 0.6 + vh(jx, jz, 4) * 1.2, PEBBLE[Math.floor(vh(jx, jz, 6) * PEBBLE.length)], 0.5);
     }
   }

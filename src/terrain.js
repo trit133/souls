@@ -39,9 +39,9 @@ export class Terrain {
   }
 
   // ---------- heights ----------
-  rawAt(x, z) {
+  rawAt(x, z, parts = this.parts) {
     let h = 0;
-    for (const p of this.parts) {
+    for (const p of parts) {
       if (p.t === 'hill') { const d = Math.hypot(x - p.cx, z - p.cz); if (d < p.r) h += p.h * 0.5 * (1 + Math.cos(Math.PI * d / p.r)); continue; }
       if (x < p.x0 || x > p.x1 || z < p.z0 || z > p.z1) continue;
       if (p.t === 'flat') h = p.h;
@@ -49,28 +49,42 @@ export class Terrain {
     }
     return h;
   }
+  // bake: each cluster of parts (overlapping or within 2 m of each other: a map's surface, each of its basements)
+  // gets its own grid, so ground far apart never costs a grid spanning the gap
   bake() {
-    if (!this.parts.length) { this.grid = { none: true }; return; }
-    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-    for (const p of this.parts) {
-      const b = p.t === 'hill' ? [p.cx - p.r, p.cx + p.r, p.cz - p.r, p.cz + p.r] : [p.x0, p.x1, p.z0, p.z1];
-      x0 = Math.min(x0, b[0]); x1 = Math.max(x1, b[1]); z0 = Math.min(z0, b[2]); z1 = Math.max(z1, b[3]);
+    if (!this.parts.length) { this.grid = { none: true, list: [] }; return; }
+    const box = (p) => (p.t === 'hill' ? [p.cx - p.r, p.cx + p.r, p.cz - p.r, p.cz + p.r] : [p.x0, p.x1, p.z0, p.z1]);
+    let cl = this.parts.map((p) => ({ b: box(p), parts: [p] }));
+    for (let merged = true; merged;) {
+      merged = false;
+      for (let a = 0; a < cl.length && !merged; a++) for (let c = a + 1; c < cl.length; c++) {
+        const A = cl[a].b, C = cl[c].b;
+        if (A[0] - 2 > C[1] || C[0] - 2 > A[1] || A[2] - 2 > C[3] || C[2] - 2 > A[3]) continue;
+        cl[a] = { b: [Math.min(A[0], C[0]), Math.max(A[1], C[1]), Math.min(A[2], C[2]), Math.max(A[3], C[3])], parts: [...cl[a].parts, ...cl[c].parts] };
+        cl.splice(c, 1); merged = true; break;
+      }
     }
-    x0 -= 1; z0 -= 1; x1 += 1; z1 += 1;
-    const W = Math.ceil((x1 - x0) / RES) + 1, H = Math.ceil((z1 - z0) / RES) + 1, h = new Float32Array(W * H);
-    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) h[j * W + i] = this.rawAt(x0 + i * RES, z0 + j * RES);
-    this.grid = { x0, z0, W, H, h };
+    const list = cl.map(({ b, parts }) => {
+      parts.sort((p, q) => this.parts.indexOf(p) - this.parts.indexOf(q)); // (laid in order: later over earlier)
+      const x0 = b[0] - 1, z0 = b[2] - 1, W = Math.ceil((b[1] + 1 - x0) / RES) + 1, H = Math.ceil((b[3] + 1 - z0) / RES) + 1, h = new Float32Array(W * H);
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) h[j * W + i] = this.rawAt(x0 + i * RES, z0 + j * RES, parts);
+      return { x0, z0, W, H, h };
+    });
+    this.grid = { list };
   }
   // the ground's height at a point: a slope blends between grid points, a step bigger than STEP stays sharp
   floorAt(x, z) {
-    const G = this.grid || (this.bake(), this.grid);
-    if (G.none) return 0;
-    const fx = (x - G.x0) / RES, fz = (z - G.z0) / RES;
-    if (fx < 0 || fz < 0 || fx >= G.W - 1 || fz >= G.H - 1) return 0;
-    const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, W = G.W, h = G.h;
-    const a = h[j * W + i], b = h[j * W + i + 1], c = h[(j + 1) * W + i], d = h[(j + 1) * W + i + 1];
-    if (Math.max(a, b, c, d) - Math.min(a, b, c, d) > STEP) return u < 0.5 ? (v < 0.5 ? a : c) : (v < 0.5 ? b : d);
-    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+    const G0 = this.grid || (this.bake(), this.grid);
+    if (G0.none) return 0;
+    for (const G of G0.list) {
+      const fx = (x - G.x0) / RES, fz = (z - G.z0) / RES;
+      if (fx < 0 || fz < 0 || fx >= G.W - 1 || fz >= G.H - 1) continue;
+      const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, W = G.W, h = G.h;
+      const a = h[j * W + i], b = h[j * W + i + 1], c = h[(j + 1) * W + i], d = h[(j + 1) * W + i + 1];
+      if (Math.max(a, b, c, d) - Math.min(a, b, c, d) > STEP) return u < 0.5 ? (v < 0.5 ? a : c) : (v < 0.5 ? b : d);
+      return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+    }
+    return 0;
   }
 
   // ---------- ladders ----------
@@ -103,17 +117,18 @@ export class Terrain {
   }
 
   // ---------- what you see ----------
-  build(w) {
+  // what you see of the parts from `from` on (a map's later parts, its basements, are built on their own)
+  build(w, from = 0) {
     if (!this.grid) this.bake();
     const M = w.mats, add = (m) => { w.add(m); return m; };
     const brick = (this.brickMat ||= new THREE.MeshLambertMaterial({ color: 0x4e3c34, flatShading: true }));
     const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : M.stone);
     const capMat = M.stoneDark;
-    this.faces = []; // (each piece of face, for what grows on it: flora.js ivy)
+    if (!from || !this.faces) this.faces = []; // (each piece of face, for what grows on it: flora.js ivy)
     const seen = new Set();
     // the faces: along every edge of a terrace or slope, where the ground outside is more than STEP lower, a wall
     // down to it (in 0.5 m pieces, so a slope's side steps down with it), set just inside the edge
-    for (const p of this.parts) {
+    for (const p of this.parts.slice(from)) {
       if (p.t === 'hill') continue;
       const mat = look(p.o), T = 0.55;
       // each edge: e the line, s which way is out. The face goes on whichever side is higher (a terrace's own edge,
@@ -155,7 +170,7 @@ export class Terrain {
       }
     }
     // ladders: iron rails and rungs on a pivot at the top of the face (a pulled-up one lies on the terrace above)
-    for (const L of this.ladders) {
+    for (const L of from ? [] : this.ladders) {
       const g = new THREE.Group(); g.position.set(L.wall.x, L.h1, L.wall.z); g.rotation.y = L.yaw; g.userData.noMerge = true;
       const pv = new THREE.Group(); g.add(pv); L.pivot = pv;
       const len = L.h1 - L.h0 + 0.55, iron = M.metal, rung = M.log;

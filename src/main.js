@@ -414,6 +414,33 @@ class Game {
     this.portal = { x: A.x, z: A.z, g, ring };
   }
 
+  // a raid's last shrine broken: a portal opens beside it, straight down to the boss's corridor (just short of the
+  // open blast door). It's a stair like any other (city.js stairs): each player steps through on their own, and
+  // everyone gets one, since the shrine breaks on every screen
+  bossPortal(d) {
+    const D = this.world.dungeon, u = D?.unders?.find((x) => x.kind === 'boss');
+    if (!u || D.bossPortal) return;
+    const w = this.world;
+    let px = d.x, pz = d.z + 3.2;
+    for (let t = 0; t < 16 && !w.walkable(px, pz, 0.9); t++) { const a = t / 16 * Math.PI * 2; px = d.x + Math.sin(a) * 3.4; pz = d.z + Math.cos(a) * 3.4; }
+    const y = w.floorAt(px, pz), col = 0xc84aff;
+    const g = new THREE.Group(); g.position.set(px, y, pz);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.15, 24), new THREE.MeshBasicMaterial({ color: 0x07030c }));
+    disc.rotation.x = -Math.PI / 2; disc.position.y = 0.05; g.add(disc);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.45, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; g.add(ring);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.25, 6, 16, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.y = 3; g.add(beam);
+    w.root.add(g); w.extras.push(g);
+    D.bossPortal = { g, ring, beam };
+    w.lights.push({ x: px, y: y + 2, z: pz, color: col, power: 8, range: 9, src: {} });
+    w.ambient.push({ x: px, z: pz, update: (dt, t) => { ring.material.opacity = 0.6 + Math.sin(t * 5) * 0.3; beam.rotation.y = t * 0.6; ring.rotation.z = t * 0.8; } });
+    const name = D.arena?.().name || 'The boss';
+    D.stairs.push({ x: px, z: pz, to: { x: u.ox, z: u.oz - 13 }, label: `Step through to ${name}`, down: true, name, u });
+    this.fx.burst({ x: px, y: y + 1, z: pz }, 40, [0.8, 0.35, 1], 5, 0.9, 0.3);
+    setTimeout(() => this.ui.toast('A WAY DOWN TO THE BOSS OPENS BY THE SHRINE', 3), 5400);
+  }
+
   makeLockSprite() {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d');

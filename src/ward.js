@@ -71,7 +71,8 @@ export class Ward extends City {
   }
 
   // ---------- what the game asks ----------
-  styleAt(x, z) { return x > UNDER ? super.styleAt(x, z) : 'ward'; }
+  // the ward's ground; below it its own cellars' (tiles, brick, grime), the boss's arena as it was
+  styleAt(x, z) { if (x <= UNDER) return 'ward'; const s = super.styleAt(x, z); return s === 'under' ? 'wardUnder' : s; }
   // floors under a roof: boards (the textures still show through, tinted); everything else is the textures' own
   groundTint(x, z, c, n) {
     if (x > UNDER) return;
@@ -115,7 +116,7 @@ export class Ward extends City {
     T.ladder(-31, -19.55, Math.PI, H_TER, H_CREST, { raised: true });
     T.bake();
     // the hill's faces, steps and ladders: in a group of their own that's always drawn (not culled with a chunk)
-    const tg = new THREE.Group(); w.root.add(tg);
+    const tg = new THREE.Group(); w.root.add(tg); w.extras.push(tg);
     const cur = w.cur; w.cur = { i: cur.i, group: tg }; T.build(w); w.mergeStatic(tg); w.cur = cur;
 
     // the ground (ground.js): cobbled streets, flagstone squares, dirt yards and verges, grass where it's taking over
@@ -392,6 +393,43 @@ export class Ward extends City {
     if (p) { w.box(1.6, 0.08, 0.9, S.timber, p.x, 0.78, p.z); for (const [dx, dz] of [[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]]) w.box(0.08, 0.76, 0.08, S.timber, p.x + dx, 0.38, p.z + dz); for (const sx of [-1, 1]) w.box(0.4, 0.45, 0.4, S.timber, p.x + sx * 1.2, 0.22, p.z + (vh(p.x, sx) - 0.5) * 0.4); w.ob(p.x, p.z, 0.9); if (vh(p.x, p.z, 2) < 0.5) candles(w, p.x, p.z, 2); }
     p = spot(1.0);
     if (p) { const ry = vh(p.x, p.z, 3) < 0.5 ? 0 : Math.PI / 2; for (const y of [0.5, 1.1, 1.7]) w.box(1.6, 0.06, 0.45, S.timber, p.x, y, p.z, ry); for (const s of [-1, 1]) w.box(0.08, 1.9, 0.45, S.timber, p.x + (ry ? 0 : s * 0.78), 0.95, p.z + (ry ? s * 0.78 : 0), ry); w.ob(p.x, p.z, 0.7); }
+  }
+
+  // ---------- the cellars and vaults below (city.js buildUnder lays the rooms) ----------
+  // their floors: tiled rooms, brick-paved passages, grime along the walls and in the corners, flagstones in the
+  // great hall. A vault or the hoard goes down: steps in the corridor drop to a sunken hall with a raised dais at its
+  // north end, and steps climb from the side passage to a raised chamber. The boss's (its corridor and the arena)
+  // stays flat
+  buildUnder(w, b, kind, k) {
+    const T = w.terrain, from = T.parts.length;
+    super.buildUnder(w, b, kind, k);
+    const u = b.under, { ox, oz } = u, P = (s2, x0, x1, z0, z1, o) => w.paint({ x0, x1, z0, z1 }, s2, o), C = (s2, cx, cz, r, o) => w.paint({ cx, cz, r }, s2, o);
+    P('tile', ox - 7, ox + 7, oz - 7, oz + 6, { edge: 0.4 }); // the room you arrive in
+    for (const [x, z, r] of [[ox - 5, oz - 5, 1.6], [ox + 5, oz + 4, 1.2], [ox + 4.5, oz - 5.2, 1.4]]) C('grime', x, z, r, { edge: 1 });
+    if (kind === 'vault' || kind === 'cache') {
+      const H = -1.2, D = -0.2;
+      T.stairs(ox - 1.8, ox + 1.8, oz - 13, oz - 8, H, 0, 'z', { look: 'brick' });
+      T.flat(ox - 1.8, ox + 1.8, oz - 17, oz - 13, H, { look: 'brick' });
+      T.flat(ox - 13, ox + 13, oz - 42, oz - 15, H, { look: 'brick' });
+      T.flat(ox - 9, ox + 9, oz - 42, oz - 37, D, { look: 'stone' });           // the dais
+      T.stairs(ox - 2.5, ox + 2.5, oz - 37, oz - 35, D, H, 'z', { look: 'stone' });
+      T.flat(ox + 11, ox + 15, oz - 31, oz - 25, H, { look: 'brick' });
+      T.stairs(ox + 15, ox + 18, oz - 31, oz - 25, H, D, 'x', { look: 'brick' });
+      T.flat(ox + 18, ox + 26, oz - 36, oz - 20, D, { look: 'brick' });          // the raised chamber
+      P('brick', ox - 2.2, ox + 2.2, oz - 17.5, oz - 3.5, { edge: 0.3 });
+      P('flag', ox - 13, ox + 13, oz - 42, oz - 15, { edge: 0.5 });
+      P('tile', ox - 9, ox + 9, oz - 42, oz - 37, { edge: 0.3 });
+      P('brick', ox + 11, ox + 18, oz - 31.5, oz - 24.5, { edge: 0.3 });
+      P('tile', ox + 17, ox + 26, oz - 36, oz - 20, { edge: 0.4 });
+      for (const [x, z, r] of [[ox - 11, oz - 17, 2.2], [ox + 11, oz - 40, 2], [ox - 12, oz - 33, 1.6], [ox + 6, oz - 21, 1.4], [ox + 24, oz - 22, 1.8], [ox + 19, oz - 34.5, 1.2]]) C('grime', x, z, r, { edge: 1.2 });
+      for (const [x, z, r] of [[ox - 10.5, oz - 24, 0.8], [ox + 8, oz - 31, 0.6]]) w.flora.push({ kind: 'puddle', x, z, r });
+    } else {
+      // the boss's: tiles to the corridor, the corridor brick-paved up to the arena
+      P('brick', ox - 3, ox + 3, oz - 34, oz - 5, { edge: 0.3 });
+      C('grime', ox, oz - 18, 2.6, { edge: 1.4 });
+    }
+    // the faces and steps of what was just laid (always drawn: not culled with a chunk)
+    if (T.parts.length > from) { const tg = new THREE.Group(); w.root.add(tg); w.extras.push(tg); const cur = w.cur; w.cur = { i: cur.i, group: tg }; T.build(w, from); w.mergeStatic(tg); w.cur = cur; }
   }
 
   // after everything is placed (city.js populate): lift it all onto the hill (terrain.js), the buildings whole

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MODULES, MINI_ARENAS, BOSS_ARENA, FINAL_MODULES, TRAINING_ARENA } from './modules.js';
 import { Terrain, STEP } from './terrain.js';
-import { groundMaterial, paintAt } from './ground.js';
+import { groundMaterial, paintAt, TEXSETS } from './ground.js';
 import { growFlora, FLORA_TIME } from './flora.js';
 
 // The level is either a chain of modules laid out along -Z (the approach to Varek, and the old layouts the tests
@@ -29,6 +29,8 @@ const GROUND = {
   proving: { walk: [0x8a8a8a, 0x787878], out: [0x404040, 0x585858], tex: { walk: [0, 1, 0, 0], out: [0, 0.55, 0.45, 0] } },
   // Ashfall Ward (ward.js): the same, a shade darker (a burned ward under smoke)
   ward: { walk: [0x7e7c78, 0x6c6a66], out: [0x3a3836, 0x4e4c48], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
+  // its cellars and vaults: tiles, brick paving, grime and flagstones (the underground set: no grass), wet walls round
+  wardUnder: { walk: [0x8a8884, 0x7a7874], out: [0x2a2a28, 0x3a3a36], wall: true, tsub: 2, tex: { set: 'under', walk: [1, 0, 0, 0], out: [0, 0.6, 0.4, 0] } },
   // a raid's ruined city (city.js): cracked ferrocrete streets (interiors and pavements are tinted by the city)
   city: { walk: [0x4c4a46, 0x3e3c39], out: [0x24221f, 0x36332f], grid: 4, seam: 0.86, sub: 2 },
   // cellars, sewers and bunkers under it: wet walls stepping up round the rooms
@@ -139,6 +141,8 @@ export class World {
   }
 
   clear() {
+    for (const g of this.extras || []) { g.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); g.parent?.remove(g); }
+    this.extras = []; // (groups a map adds outside its chunks and tiles: its terrain, a portal; gone with the map)
     for (const m of [...(this.mods || []), ...(this.tiles || [])]) {
       m.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
       this.root.remove(m.group);
@@ -318,7 +322,7 @@ export class World {
   // height) the terrain counts too: a rise of more than STEP is a wall, and so is a drop unless the body can fall
   // (the player: `drop`)
   resolve(from, to, r, mod = null, gy = null, drop = false) {
-    const T = gy != null && !this.terrain.grid?.none ? this.terrain : null;
+    const T = gy != null && !this.terrain.grid?.none ? this.terrain : null; // (grid.list: one per cluster of terrain)
     const ok = (x, z) => { if (!this.walkable(x, z, r, mod)) return false; if (!T) return true; const h = T.floorAt(x, z); return h - gy <= STEP && (drop || gy - h <= STEP); };
     if (!ok(to.x, to.z)) {
       if (ok(to.x, from.z)) to.z = from.z;
@@ -390,7 +394,7 @@ export class World {
       if (TX) {
         // textured: the surfaces' weights here, and a plain brightness for the colour (the textures carry the hues)
         const inside = inArea;
-        splat.set(paintAt(this.paints, x, z, inside ? TX.walk : TX.out), i * 4);
+        splat.set(paintAt(this.paints, x, z, inside ? TX.walk : TX.out, TEXSETS[TX.set || 'surface']), i * 4);
         c.copy(inside ? w0 : o0).lerp(inside ? w1 : o1, 0.5 + n * 0.5);
         if (inside) this.dungeon?.groundTint?.(x, z, c, n); // (a city's floors under a roof)
       }
@@ -399,7 +403,7 @@ export class World {
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     if (TX) g.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
     g.computeVertexNormals();
-    const mesh = new THREE.Mesh(g, TX ? groundMaterial() : this.mats.ground);
+    const mesh = new THREE.Mesh(g, TX ? groundMaterial(TX.set || 'surface') : this.mats.ground);
     mesh.userData.noMerge = true;
     return mesh;
   }

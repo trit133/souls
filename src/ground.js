@@ -9,6 +9,9 @@ import * as THREE from 'three';
 
 const PX = 64, TILE = 4; // each texture is 64 px over 4 m (16 px to the metre, about the pixel pass's own scale)
 export const SURFACES = ['flag', 'dirt', 'grass', 'cobble'];
+// the sets of four a ground can blend (a style picks one: GROUND[...].tex.set): out in the open, and underground
+// (no grass down there: old tiles, brick paving, wet grime, flagstones)
+export const TEXSETS = { surface: SURFACES, under: ['tile', 'grime', 'brick', 'flag'] };
 
 // ---------- drawing the textures (seeded, so they're the same every time) ----------
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
@@ -95,24 +98,65 @@ function drawCobble() {
   c.putImageData(img, 0, 0); return cv;
 }
 
-let TEX = null;
-function textures() {
-  if (TEX) return TEX;
-  TEX = [drawFlag(), drawDirt(), drawGrass(), drawCobble()].map((cv) => {
-    const t = new THREE.CanvasTexture(cv);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  });
-  return TEX;
+// old floor tiles: half-metre squares in grout, glazed in greys and a faded green, cracked, stained, the odd one gone
+function drawTile() {
+  const r = rng(0x711e), { cv, c, img } = canvas(), n = tileNoise(r, 6);
+  const shades = [0x6c6860, 0x625e57, 0x726b61, 0x56605a, 0x5c5850];
+  for (let ty = 0; ty < 8; ty++) for (let tx = 0; tx < 8; tx++) {
+    const gone = r() < 0.06, col = hex(shades[Math.floor(r() * shades.length)]), k0 = 0.9 + r() * 0.16, crack = r() < 0.2;
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      const px = tx * 8 + x, py = ty * 8 + y, grout = x === 0 || y === 0, nn = n(px, py);
+      if (gone) { put(img, px, py, hex(0x24201c), 30, 0.8 + nn * 0.4); continue; }
+      put(img, px, py, grout ? hex(0x2c2824) : col, grout ? 45 : 200 + Math.floor(nn * 50), grout ? 1 : k0 * (0.9 + nn * 0.18) * (x === 1 || y === 1 ? 1.1 : 1) * (x === 7 || y === 7 ? 0.88 : 1));
+    }
+    if (crack && !gone) { let cx = tx * 8 + 2 + Math.floor(r() * 4), cy = ty * 8 + 1; for (let k = 0; k < 6; k++) { put(img, cx, cy, hex(0x2a2622), 60); cy++; cx += r() < 0.4 ? (r() < 0.5 ? 1 : -1) : 0; } }
+  }
+  // stains seeping across the tiles
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) if (n(x * 2, y * 2) > 0.72) { const i = (y * PX + x) * 4; for (let q = 0; q < 3; q++) img.data[i + q] *= 0.78; }
+  c.putImageData(img, 0, 0); return cv;
+}
+// brick paving: courses of small bricks in a running bond, sooty and worn, mortar dark
+function drawBrick() {
+  const r = rng(0xb41c), { cv, c, img } = canvas(), n = tileNoise(r, 5);
+  const shades = [0x5c3c30, 0x664434, 0x52362c, 0x6a4a3a, 0x483028];
+  for (let row = 0; row < 16; row++) {
+    const off = (row % 2) * 6;
+    for (let bx = -1; bx < 6; bx++) {
+      const col = hex(shades[Math.floor(r() * shades.length)]), k0 = 0.85 + r() * 0.2;
+      for (let y = 0; y < 4; y++) for (let x = 0; x < 12; x++) {
+        const px = bx * 12 + off + x, py = row * 4 + y, mortar = x === 0 || y === 0, nn = n(((px % PX) + PX) % PX, py);
+        put(img, px, py, mortar ? hex(0x262220) : col, mortar ? 40 : 180 + Math.floor(nn * 70), mortar ? 1 : k0 * (0.86 + nn * 0.24) * (y === 1 ? 1.08 : 1));
+      }
+    }
+  }
+  c.putImageData(img, 0, 0); return cv;
+}
+// wet grime: dark stone gone black with damp, a sheen on it, grit and broken bits
+function drawGrime() {
+  const r = rng(0x9e1e), { cv, c, img } = canvas(), n = tileNoise(r, 7), m = tileNoise(r, 18);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) {
+    const a = n(x, y), b = m(x, y), wet = a > 0.6;
+    put(img, x, y, hex(wet ? 0x22262a : 0x302c27), 60 + Math.floor(b * 100), (0.85 + b * 0.25) * (wet && b > 0.7 ? 1.35 : 1));
+  }
+  for (let i = 0; i < 60; i++) { const x = Math.floor(r() * PX), y = Math.floor(r() * PX); put(img, x, y, hex(r() < 0.5 ? 0x5a554c : 0x1a1816), 150); }
+  c.putImageData(img, 0, 0); return cv;
+}
+const DRAW = { flag: drawFlag, dirt: drawDirt, grass: drawGrass, cobble: drawCobble, tile: drawTile, brick: drawBrick, grime: drawGrime };
+const TEXS = {};
+function tex(name) {
+  if (TEXS[name]) return TEXS[name];
+  const t = new THREE.CanvasTexture(DRAW[name]());
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return (TEXS[name] = t);
 }
 
 // the textured ground's material: Lambert as before, its colour times the blended textures
-let MAT = null;
-export function groundMaterial() {
-  if (MAT) return MAT;
-  const T = textures();
-  MAT = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const MATS = {};
+export function groundMaterial(set = 'surface') {
+  if (MATS[set]) return MATS[set];
+  const T = TEXSETS[set].map(tex);
+  const MAT = (MATS[set] = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
   MAT.onBeforeCompile = (sh) => {
     sh.uniforms.tFlag = { value: T[0] }; sh.uniforms.tDirt = { value: T[1] }; sh.uniforms.tGrass = { value: T[2] }; sh.uniforms.tCobble = { value: T[3] };
     sh.vertexShader = 'attribute vec4 splat;\nvarying vec4 vSplat;\nvarying vec2 vGXZ;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat; vGXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
@@ -128,13 +172,13 @@ export function groundMaterial() {
         diffuseColor.rgb *= tex * 2.3;
       }`);
   };
-  MAT.customProgramCacheKey = () => 'ground-splat';
+  MAT.customProgramCacheKey = () => 'ground-splat-' + set;
   return MAT;
 }
 
 // ---------- where each surface goes ----------
 // one surface over a rect or a circle (world coords), with a ragged edge `edge` metres wide; amount 0..1
-export function paintAt(paints, x, z, base) {
+export function paintAt(paints, x, z, base, names = SURFACES) {
   const w = base.slice();
   for (const p of paints) {
     const e0 = (p.edge ?? 1.2) * 1.2;
@@ -145,7 +189,8 @@ export function paintAt(paints, x, z, base) {
     const e = p.edge ?? 1.2, rag = (Math.sin(x * 1.7 + z * 0.9) * 0.5 + Math.sin(x * 0.53 - z * 1.31) * 0.5) * e * 0.6;
     const c = Math.max(0, Math.min(1, (d + rag) / e + 0.5)) * (p.amount ?? 1);
     if (c <= 0) continue;
-    const i = SURFACES.indexOf(p.surface);
+    const i = names.indexOf(p.surface);
+    if (i < 0) continue; // (a surface of the other set)
     for (let k = 0; k < 4; k++) w[k] = w[k] * (1 - c) + (k === i ? c : 0);
   }
   return w;

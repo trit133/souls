@@ -77,3 +77,14 @@ The houses have:
 
 `node scripts/look-ward.mjs` shoots the landmarks and checks the tiers' heights, that everything can be reached, a
 walk from the gate to the Crest, the canal ladder and the drop into the garden.
+
+### Below the ward, and the way to the boss
+- The cellars and vaults use the underground texture set: old tiles, brick paving, wet grime and flagstones, with
+  no grass and no weeds (`GROUND.wardUnder`, `TEXSETS.under`).
+- A vault or the hoard goes down. Steps in the corridor drop 1.2 m to a sunken hall, with a raised dais (1 m up) at
+  its north end, and steps climb from the side passage to a raised chamber.
+- The boss's basement (its corridor and the arena) stays flat.
+- Terrain far apart gets a grid per cluster (the surface, each basement).
+- Breaking the last shrine opens a portal by it (main.js `bossPortal`). It's a stair to the boss's corridor, just
+  short of the open blast door. Every player gets one, and each steps through on their own.
+- `node scripts/ward-under.mjs` checks the heights, walks a vault, and takes the portal to the arena.
