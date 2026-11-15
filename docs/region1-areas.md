@@ -224,3 +224,33 @@ Next:
    door). Then the Gem Door, its arch set with the three gems, which stays fogged until the court is clear. Beyond it
    is Varek's throne. Everything is at the old run's last act (+30%). Varek's death is the victory. The world map says
    which gems a sealed area wants and whose they are (`scripts/final-area.mjs`).
+
+### Rebuilt 2026-11-15: hand-laid on real heights, in daylight
+Both maps were rebuilt the way Ashfall Ward was (`src/ward.js`): 95 m across, laid by hand on walkable heights
+(`src/terrain.js`), textured ground and plants, and their own buildings. The shrines (valves, bells), enemies,
+chests, drums, basements and boss vaults are unchanged. There's no slowing water and there are no rails. Each has
+its own daylight (`sky`).
+- **The Sump Lines** (`src/cut.js`) as the Drained Cut, in grey daylight under an open sky:
+  - **Marshalling Yard (0 m):** Station Ninefold (with a platform canopy and a clock tower), shanties of tin and
+    rust, the signal box.
+  - **The Cut (−3 m):** running north through the middle. A long ramp down into it, gravel and weeds, two derailed
+    carriages you can climb onto, two dark tunnels through embankment spurs, and the Basin at its north end.
+  - **Embankments (2.5 m):** the Pump Cathedral (a great drum and dome), the allotments, the turntable pit, the Sluice
+    Works (gate frames on its roof) and workshops with sawtooth roofs.
+  - **Up high:** the elevated line (5 m) with a derailed tram, and two Pump Towers (9.5 m) climbed by stairs wrapped
+    round them, with torchers on top.
+  - Pulled-up ladders lead out of the Cut.
+- **Saint Orsk's Spire** (`src/hill.js`), in low gold sun, climbing in four tiers:
+  - **Pilgrims' Yard (0 m):** the hostel and a wayside chapel. A grand stair, a switchback ramp up the east cliff,
+    and the crypt tunnel (lined with bones) up to the Cloister.
+  - **Cloister (3 m):** the garth inside a colonnade you walk through, the Scriptorium, a reliquary tower, and the
+    Augury House by the Augury Well (a deep bowl ringed by seers' chairs).
+  - **Choir Heights (6 m):** the Great Nave with its tower, the monks' cells, a chapel.
+  - **Spire's Foot (8 m):** the Bell Foundry and its furnace yard, the ossuary.
+  - **Up high:** the north rampart (11 m) between two bell towers you climb (14 m), with augurs on top. The Spire
+    itself rises behind the north wall.
+  - Pulled-up ladders lead from the Choir and the rampart.
+- Enemy paths now judge steep stairs at finer spacing, so a stair steeper than a step per metre still connects
+  (city.js `navLayer`).
+- `node scripts/look-raid.mjs r1a2|r1a3` shoots the landmarks and checks heights, that everything can be reached, and
+  a walk through.

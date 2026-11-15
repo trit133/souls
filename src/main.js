@@ -12,7 +12,7 @@ import { WeaponFx } from './weaponfx.js';
 import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
-import './sump.js'; import './spire.js'; import './ward.js'; // (the deeper areas' own maps, registered on City.MAPS)
+import './sump.js'; import './spire.js'; import './ward.js'; import './cut.js'; import './hill.js'; // (the areas' maps: Ashfall Ward, the Drained Cut, the Spire's hill) // (the deeper areas' own maps, registered on City.MAPS)
 import { AREAS, areaOpen } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
@@ -206,6 +206,7 @@ class Game {
     this.hemi.intensity = on ? 0.3 : 2.0;
     this.hemi.color.set(on ? 0x40507a : 0x9aa6c8); this.hemi.groundColor.set(on ? 0x08080a : 0x4a3a28);
     this.sun.intensity = on ? 0 : 2.0;
+    this.sun.color.set(0xffd8a8); // (an area's own sun: darkLight)
     this.world.nightLight = on ? { power: 0.3, range: 0.6 } : null; // torches, braziers and bonfires: 30% as bright, 60% the reach
     this.scene.background.set(on ? 0x040508 : 0x15130f);
     this.scene.fog.color.set(on ? 0x040508 : 0x1a1712);
@@ -396,10 +397,14 @@ class Game {
     if (!D?.darkAt || this.night) return;
     const dark = this.player && D.darkAt(this.player.pos.x, this.player.pos.z) ? D.darkness?.(this.player.pos.x, this.player.pos.z) ?? 1 : 0; // (how dark: an area can be dim rather than black)
     const k = (this.darkK = (this.darkK || 0) + (dark - (this.darkK || 0)) * Math.min(1, dt * 4));
-    this.hemi.intensity = 2.0 - 1.72 * k; this.sun.intensity = 2.0 * (1 - k);
-    (this._sky ||= [new THREE.Color(0x9aa6c8), new THREE.Color(0x40507a), new THREE.Color(0x1a1712), new THREE.Color(0x040508)]);
-    this.hemi.color.lerpColors(this._sky[0], this._sky[1], k);
-    this.scene.fog.color.lerpColors(this._sky[2], this._sky[3], k);
+    // an area's own daylight out in the open (D.sky: brighter, warmer or greyer than the ward's), going as it darkens
+    const S = D.sky || {}, H = S.hemi ?? 2.0, Sn = S.sun ?? 2.0;
+    this.hemi.intensity = H - (H - 0.28) * k; this.sun.intensity = Sn * (1 - k);
+    (this._sky ||= [new THREE.Color(0x9aa6c8), new THREE.Color(0x40507a), new THREE.Color(0x1a1712), new THREE.Color(0x040508), new THREE.Color(), new THREE.Color()]);
+    this._sky[4].set(S.hemiColor ?? 0x9aa6c8); this._sky[5].set(S.fog ?? 0x1a1712);
+    this.hemi.color.lerpColors(this._sky[4], this._sky[1], k);
+    this.scene.fog.color.lerpColors(this._sky[5], this._sky[3], k);
+    this.sun.color.set(S.sunColor ?? 0xffd8a8);
   }
 
   openPortal(enc) {

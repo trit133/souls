@@ -699,7 +699,22 @@ export class City {
     // face parts them; stairs and slopes join them); enemies never use ladders
     L.fh = new Float32Array(L.W * L.H);
     for (let j = 0; j < L.H; j++) for (let i = 0; i < L.W; i++) L.fh[j * L.W + i] = w.floorAt(L.x0 + i + 0.5, L.z0 + j + 0.5);
-    L.link = (a, b) => Math.abs(L.fh[a] - L.fh[b]) <= STEP;
+    // (judged along the way between their middles in quarter-metre steps: a stair steeper than a step per metre is
+    // still a way through; a face of any height isn't)
+    const pass = (x0, z0, x1, z1) => { let h = w.floorAt(x0, z0); for (let k = 1; k <= 4; k++) { const h2 = w.floorAt(x0 + (x1 - x0) * k / 4, z0 + (z1 - z0) * k / 4); if (Math.abs(h2 - h) > STEP) return false; h = h2; } return true; };
+    L.lE = new Uint8Array(L.W * L.H); L.lS = new Uint8Array(L.W * L.H);
+    for (let j = 0; j < L.H; j++) for (let i = 0; i < L.W; i++) {
+      const k = j * L.W + i, x = L.x0 + i + 0.5, z = L.z0 + j + 0.5;
+      if (i < L.W - 1) L.lE[k] = Math.abs(L.fh[k] - L.fh[k + 1]) <= STEP || pass(x, z, x + 1, z) ? 1 : 0;
+      if (j < L.H - 1) L.lS[k] = Math.abs(L.fh[k] - L.fh[k + L.W]) <= STEP || pass(x, z, x, z + 1) ? 1 : 0;
+    }
+    L.link = (a, b) => {
+      if (Math.abs(L.fh[a] - L.fh[b]) <= STEP) return true;
+      const d = b - a; // (a neighbour east, west, south or north; a diagonal: both ways round)
+      if (d === 1) return !!L.lE[a]; if (d === -1) return !!L.lE[b]; if (d === L.W) return !!L.lS[a]; if (d === -L.W) return !!L.lS[b];
+      const ai = a % L.W, bi = b % L.W, c1 = a - ai + bi, c2 = b - bi + ai;
+      return (L.link(a, c1) && L.link(c1, b)) || (L.link(a, c2) && L.link(c2, b));
+    };
     // reachable from where you come in
     const from = L.u ? L.u.arrive : this.startAt, seen = new Uint8Array(L.W * L.H), q = [];
     const s = this.cell(L, from.x, from.z);

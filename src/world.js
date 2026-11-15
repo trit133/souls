@@ -30,6 +30,12 @@ const GROUND = {
   // Ashfall Ward (ward.js): the same, a shade darker (a burned ward under smoke)
   ward: { walk: [0x7e7c78, 0x6c6a66], out: [0x3a3836, 0x4e4c48], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
   // its cellars and vaults: tiles, brick paving, grime and flagstones (the underground set: no grass), wet walls round
+  // the Drained Cut (cut.js): gravel, setts and weeds under grey daylight; its cellars as the ward's
+  cut: { walk: [0x828480, 0x707270], out: [0x3e403c, 0x52544e], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
+  cutUnder: { walk: [0x7a8480, 0x6a7470], out: [0x262a28, 0x343a36], wall: true, tsub: 2, tex: { set: 'under', walk: [1, 0, 0, 0], out: [0, 0.6, 0.4, 0] } },
+  // Saint Orsk's Spire (hill.js): pale stone warmed by a low sun; its crypts
+  hill: { walk: [0x9a948a, 0x8a847a], out: [0x46423c, 0x5a564e], tsub: 2, tex: { walk: [1, 0, 0, 0], out: [0, 0.45, 0.55, 0] } },
+  hillUnder: { walk: [0x847e78, 0x746e68], out: [0x24221f, 0x34302c], wall: true, tsub: 2, tex: { set: 'under', walk: [0, 0, 0, 1], out: [0, 0.6, 0.4, 0] } },
   wardUnder: { walk: [0x8a8884, 0x7a7874], out: [0x2a2a28, 0x3a3a36], wall: true, tsub: 2, tex: { set: 'under', walk: [1, 0, 0, 0], out: [0, 0.6, 0.4, 0] } },
   // a raid's ruined city (city.js): cracked ferrocrete streets (interiors and pavements are tinted by the city)
   city: { walk: [0x4c4a46, 0x3e3c39], out: [0x24221f, 0x36332f], grid: 4, seam: 0.86, sub: 2 },

@@ -62,7 +62,7 @@ export class Ward extends City {
       const kind = D.kind || 'house', yard = kind === 'yard';
       const B = { key: D.key, type: yard ? 'yard' : D.ruin ? 'ruin' : kind, x0: D.x0, x1: D.x1, z0: D.z0, z1: D.z1, cx: (D.x0 + D.x1) / 2, cz: (D.z0 + D.z1) / 2, bld: [] };
       const b = { block: B, kind, x0: D.x0, x1: D.x1, z0: D.z0, z1: D.z1, cx: B.cx, cz: B.cz, h: yard ? 2.4 : D.ruin ? 4.5 + vh(D.x0, D.z0) * 2 : D.h || 4.2, ruin: !!D.ruin, yard, part: D.part || null,
-        doors: D.doors.map(([s, t]) => ({ s, t, w: D.ruin ? 3 : kind === 'works' ? 3.2 : yard ? 2.6 : 2.4 })) };
+        doors: D.doors.map(([s, t, dw]) => ({ s, t, w: dw || (D.ruin ? 3 : kind === 'works' ? 3.2 : yard ? 2.6 : 2.4) })), shape: D.shape || null };
       if (L.boss.includes(D.key)) b.basement = 'site';
       else if (L.vaults.includes(D.key)) b.basement = 'vault';
       B.bld.push(b); this.blocks.push(B); this.buildings.push(b);
@@ -72,7 +72,9 @@ export class Ward extends City {
 
   // ---------- what the game asks ----------
   // the ward's ground; below it its own cellars' (tiles, brick, grime), the boss's arena as it was
-  styleAt(x, z) { if (x <= UNDER) return 'ward'; const s = super.styleAt(x, z); return s === 'under' ? 'wardUnder' : s; }
+  styleAt(x, z) { if (x <= UNDER) return this.ground; const s = super.styleAt(x, z); return s === 'under' ? this.groundUnder : s; }
+  get ground() { return 'ward'; }
+  get groundUnder() { return 'wardUnder'; }
   // floors under a roof: boards (the textures still show through, tinted); everything else is the textures' own
   groundTint(x, z, c, n) {
     if (x > UNDER) return;
@@ -114,10 +116,7 @@ export class Ward extends City {
     // the shortcuts: a ladder up the canal's north bank, one down from the cemetery to the Terraces (both pulled up)
     T.ladder(-6, 6.45, Math.PI, H_CANAL, H_TER, { raised: true });
     T.ladder(-31, -19.55, Math.PI, H_TER, H_CREST, { raised: true });
-    T.bake();
-    // the hill's faces, steps and ladders: in a group of their own that's always drawn (not culled with a chunk)
-    const tg = new THREE.Group(); w.root.add(tg); w.extras.push(tg);
-    const cur = w.cur; w.cur = { i: cur.i, group: tg }; T.build(w); w.mergeStatic(tg); w.cur = cur;
+    this.terrainGroup(w);
 
     // the ground (ground.js): cobbled streets, flagstone squares, dirt yards and verges, grass where it's taking over
     const P = (s, x0, x1, z0, z1, o) => w.paint({ x0, x1, z0, z1 }, s, o), C = (s, cx, cz, r, o) => w.paint({ cx, cz, r }, s, o);
@@ -157,17 +156,7 @@ export class Ward extends City {
     for (const [x, z] of [[-14, 46], [13, 46], [46, 28], [-46, 22], [28, 8], [-34, 4.5], [8, 4.5], [-46, -4], [46, 0], [30, -20.5], [46, -40], [18, -24]]) F({ kind: 'bush', x, z, n: 3 });
     for (const [x, z, r] of [[-28, 9, 0.9], [4, 10, 1.2], [26, 8.5, 0.8], [40, 9.5, 0.7], [-2, 22, 0.7], [8, 30, 0.6], [-20, 0, 0.6], [30, 2, 0.8], [-12, -24, 0.6]]) F({ kind: 'puddle', x, z, r });
 
-    // walls you can't cross (the solids city.js keeps) and their look
-    const wall = (x0, x1, z0, z1, h, mat) => {
-      this.at(w, (x0 + x1) / 2, (z0 + z1) / 2);
-      w.solids.push({ x0, x1, z0, z1 });
-      const alongX = x1 - x0 > z1 - z0, len = alongX ? x1 - x0 : z1 - z0;
-      for (let a = 0; a < len - 0.02; a += 1.2) {
-        const e = Math.min(len, a + 1.2), c = (a + e) / 2, hh = h * (0.75 + vh(x0 + a, z0, 3) * 0.35);
-        if (alongX) w.box(e - a + 0.02, hh, z1 - z0, mat, x0 + c, hh / 2, (z0 + z1) / 2); else w.box(x1 - x0, hh, e - a + 0.02, mat, (x0 + x1) / 2, hh / 2, z0 + c);
-      }
-      this.occluders.push({ x0, x1, z0, h });
-    };
+    const wall = (...a) => this.wallRun(w, ...a);
     // the parapet along the Terraces over the canal (gaps: the bridges, the ladder, a couple where it fell)
     for (const [x0, x1] of [[-47, -26], [-18, -10], [-4, 4], [9, 16], [24, 47]]) wall(x0, x1, 5.45, 5.85, 0.9, S.stoneDk);
     // and along the Crest's edge (gaps: the stair, the ladder, the garden's broken overlook, the ramp)
@@ -178,6 +167,25 @@ export class Ward extends City {
     for (const [x0, x1, z0, z1] of [[-30, -20, 30.6, 31], [-16, -16.4, 36, 45], [30, 30.4, 15, 25.5], [-44, -36, 30.6, 31], [28, 38, -12.6, -12.2], [-26, -26.4, -16, -8]]) wall(x0, x1, z0, z1, 1.4, S.brick);
 
     this.dressWard(w);
+  }
+
+  // the terrain laid so far baked, and its faces, steps and ladders built into a group of their own that's always drawn
+  // (not culled with a chunk; gone with the map: world.extras)
+  terrainGroup(w, from = 0) {
+    const T = w.terrain; T.bake();
+    const tg = new THREE.Group(); w.root.add(tg); w.extras.push(tg);
+    const cur = w.cur; w.cur = { i: cur.i, group: tg }; T.build(w, from); w.mergeStatic(tg); w.cur = cur;
+  }
+  // a wall you can't cross (a solid city.js keeps), built in uneven 1.2 m stretches h high (at ground level: settle)
+  wallRun(w, x0, x1, z0, z1, h, mat) {
+    this.at(w, (x0 + x1) / 2, (z0 + z1) / 2);
+    w.solids.push({ x0, x1, z0, z1 });
+    const alongX = x1 - x0 > z1 - z0, len = alongX ? x1 - x0 : z1 - z0;
+    for (let a = 0; a < len - 0.02; a += 1.2) {
+      const e = Math.min(len, a + 1.2), c = (a + e) / 2, hh = h * (0.75 + vh(x0 + a, z0, 3) * 0.35);
+      if (alongX) w.box(e - a + 0.02, hh, z1 - z0, mat, x0 + c, hh / 2, (z0 + z1) / 2); else w.box(x1 - x0, hh, e - a + 0.02, mat, (x0 + x1) / 2, hh / 2, z0 + c);
+    }
+    this.occluders.push({ x0, x1, z0, h });
   }
 
   // ---------- the ward's dressing (all at ground level: lifted onto the hill after: settle) ----------
@@ -429,7 +437,7 @@ export class Ward extends City {
       C('grime', ox, oz - 18, 2.6, { edge: 1.4 });
     }
     // the faces and steps of what was just laid (always drawn: not culled with a chunk)
-    if (T.parts.length > from) { const tg = new THREE.Group(); w.root.add(tg); w.extras.push(tg); const cur = w.cur; w.cur = { i: cur.i, group: tg }; T.build(w, from); w.mergeStatic(tg); w.cur = cur; }
+    if (T.parts.length > from) this.terrainGroup(w, from);
   }
 
   // after everything is placed (city.js populate): lift it all onto the hill (terrain.js), the buildings whole

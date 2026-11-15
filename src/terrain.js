@@ -122,7 +122,7 @@ export class Terrain {
     if (!this.grid) this.bake();
     const M = w.mats, add = (m) => { w.add(m); return m; };
     const brick = (this.brickMat ||= new THREE.MeshLambertMaterial({ color: 0x4e3c34, flatShading: true }));
-    const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : M.stone);
+    const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : o.look === 'iron' ? M.rust : o.look === 'pale' ? (this.paleMat ||= new THREE.MeshLambertMaterial({ color: 0x9a9284, flatShading: true })) : o.look === 'basalt' ? M.stoneDark : M.stone);
     const capMat = M.stoneDark;
     if (!from || !this.faces) this.faces = []; // (each piece of face, for what grows on it: flora.js ivy)
     const seen = new Set();
