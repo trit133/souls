@@ -37,6 +37,9 @@ const HEAD = { follow: 0.5, nod: 0.12 };
 const SHOULDERS = { swing: 0.26, dip: 0, sway: 0 }; // (no rocking side to side: the shoulders turning with each stride, about the spine)
 // an arm the weapon's stance holds still pumps this much (radians each way at a run) with the stride, against the legs
 const ARM_PUMP = 0.3;
+// an arm carrying something heavy (the Penitent Slab on the right shoulder) doesn't pump, and turns back against most of
+// the shoulders' twist (this much of it), so the blade rides still
+const HEAVY_ARM = { slab: { arm: 'armR', still: 0.85 } };
 // how much of the hips' side-to-side roll the clips have is kept (the legs need a little; the body above doesn't)
 const HIP_ROLL = 0.25;
 // a side step covers this much of a forward stride's ground
@@ -178,7 +181,9 @@ export function gaitPose(who, style, dt, o) {
   // the arms with the stride: one the stance holds still (the sword arm, both on a great blade) still pumps forward and
   // back against the legs, the elbow working with it; a free arm keeps the clip's own swing
   const pump = Math.sin(ph) * ARM_PUMP * s * moving * (o.sprint ? 0.4 : 1); // (a sprinting stance swings the arm already)
+  const heavy = HEAVY_ARM[style];
   for (const [a, f, sg] of [['armR', 'foreR', 1], ['armL', 'foreL', -1]]) {
+    if (heavy?.arm === a) { p[a] = eOf(axis(Y, -Math.cos(ph) * SHOULDERS.swing * s * moving * heavy.still).multiply(qOf(p[a]))); continue; }
     if (p[a].every((v, i) => Math.abs(v - clipArms[a][i]) < 1e-6)) continue;
     p[a] = [p[a][0] + pump * sg, p[a][1], p[a][2]];
     p[f] = [p[f][0] - Math.abs(pump) * 0.4, p[f][1], p[f][2]];
