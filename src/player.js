@@ -16,6 +16,7 @@ import { bazaarPerks } from './traders.js';
 import { runeLoadout } from './runes.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 import { STEP, SAFE_FALL } from './terrain.js';
+const FALL_FLOOR = 0.05; // (the least health a fall leaves you: landFrom)
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -1350,17 +1351,16 @@ export class Player extends Actor {
       if (hit) { this.climbing = { L: hit.L, u: hit.up ? 0 : 1, ph: 0 }; this.lock = null; this.setState('climb'); }
     }
   }
-  // down from a fall of h metres: on the feet if it's short, flat on the stomach (and hurt) if not
+  // down from a fall of h metres: on the feet if it's short, flat on the stomach (and hurt) if not. A fall never
+  // kills: it can take you down to 5% of your health and no further (already there or below, it only knocks you flat)
   landFrom(h) {
     const g = this.game;
     g.fx.dust?.(this.pos, h < SAFE_FALL ? 1 : 2, 0.4);
     if (h < SAFE_FALL) { this.setState('land'); g.audio.play('step', 0.9); return; }
-    const dmg = Math.round(this.maxHp * Math.min(0.7, 0.12 + (h - SAFE_FALL) * 0.16));
-    this.hp -= dmg;
-    g.statusPopup(this, `-${dmg}`, '#ff5a4a');
-    g.audio.play('bigHit', 0.8); g.fx.addShake?.(Math.min(0.6, 0.2 + h * 0.06));
-    this.rig.flash(1, 0.3, 0.2);
-    if (this.hp <= 0) { this.die(); return; }
+    const floor = Math.ceil(this.maxHp * FALL_FLOOR);
+    const dmg = Math.max(0, Math.min(Math.round(this.maxHp * Math.min(0.7, 0.12 + (h - SAFE_FALL) * 0.16)), Math.floor(this.hp - floor)));
+    g.audio.play(dmg ? 'bigHit' : 'step', 0.8); g.fx.addShake?.(Math.min(0.6, 0.2 + h * 0.06));
+    if (dmg) { this.hp -= dmg; g.statusPopup(this, `-${dmg}`, '#ff5a4a'); this.rig.flash(1, 0.3, 0.2); }
     this.setState('prone');
   }
 
