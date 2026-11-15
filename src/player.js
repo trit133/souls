@@ -10,7 +10,7 @@ import { gaitPose, hasClips } from './clips.js';
 import { Trail } from './fx.js';
 import { knightArc } from './fx3d.js';
 import { EMOTES } from './pings.js';
-import { WEAPON_SETS, GREAT_GUARD, GREAT_GUARD_HIT, DASH, VEIL, SIGIL } from './weaponmoves.js';
+import { WEAPON_SETS, QUAKE, DASH, VEIL, SIGIL } from './weaponmoves.js';
 import { COMBOS } from './combos.js';
 import { bazaarPerks } from './traders.js';
 import { runeLoadout } from './runes.js';
@@ -374,10 +374,10 @@ export class Player extends Actor {
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0) + BZ.flasks;
     this.potionMul = 1 + pct('potion');
     this.maxMana = this.mana = c.caster ? 100 + (T.mana || 0) : 0;
-    this.evo = L.evo || null; // (one evolution, its weapon's own: 'aegisRam', 'redRiposte', 'twinPlasma', 'berserk', 'ghostVeil', 'stormSigil')
+    this.evo = L.evo || null; // (one evolution, its weapon's own: 'aegisRam', 'redRiposte', 'twinPlasma', 'berserk' (Pyresunder; the id is older than the name), 'ghostVeil', 'stormSigil')
     this.evolved = !!this.evo;
     this.ripRate = 1;
-    this.dashCd = 0; this.veilT = 0; this.rageT = 0; this.rageCd = 0;
+    this.dashCd = 0; this.veilT = 0; this.quakeCd = 0;
     if (this.evo === 'aegisRam') this.buildSpectralShield();
     this.fatigueT = 0;
     this.setState('move');
@@ -411,6 +411,7 @@ export class Player extends Actor {
     if (!(this.game.time < this.lowT)) { this.lowT = this.game.time + 0.8; this.game.statusPopup(this, 'LOW STAMINA', '#d98a2a'); }
     return false;
   }
+
   iframe() {
     if (this.state === 'roll') return this.inWindow([this.c.roll.iframes[0], this.c.roll.iframes[1] + (this.tree?.iframe || 0)], this.t);
     if (this.state === 'backstep') return this.t >= 0.02 && this.t <= 0.22;
@@ -468,9 +469,7 @@ export class Player extends Actor {
       if (this.ripLift) { this.y = 0; this.ripLift = false; }
     }
     this.parryCd = Math.max(0, (this.parryCd || 0) - dt);
-    this.dashCd = Math.max(0, this.dashCd - dt); this.rageCd = Math.max(0, this.rageCd - dt); this.sigilCd = Math.max(0, (this.sigilCd || 0) - dt);
-    if (this.rageT > 0 && (this.rageT -= dt) <= 0) this.game.ui.toastSmall?.('The beast sleeps');
-    if (this.rageT > 0 && Math.random() < dt * 30) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.8, y: 0.3 + Math.random() * 1.6, z: this.pos.z + (Math.random() - 0.5) * 0.8, vy: 1.5, life: 0.5, size: 0.18, size1: 0.02, r: 1, g: 0.15, b: 0.08, alpha: 0.9 });
+    this.dashCd = Math.max(0, this.dashCd - dt); this.quakeCd = Math.max(0, this.quakeCd - dt); this.sigilCd = Math.max(0, (this.sigilCd || 0) - dt);
     this.updateVeil(dt);
     this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
@@ -493,13 +492,13 @@ export class Player extends Actor {
     switch (this.state) {
       case 'move': {
         if (this.tryAct(dir, mag)) break;
-        this.blocking = (this.c.special === 'block' || this.c.special === 'guard') && input.held.special;
+        this.blocking = this.c.special === 'block' && input.held.special;
         const wantSprint = input.sprintHeld() && mag > 0.3 && !this.blocking && this.st > 0.5 && !this.sprintLock;
         if (this.st <= 0.5) this.sprintLock = true;
         if (this.sprintLock && this.st > 10) this.sprintLock = false;
         this.sprinting = wantSprint;
         let sp = (this.sprinting ? this.c.sprint : this.c.walk) * mag;
-        if (this.blocking) sp *= this.c.special === 'guard' ? 0.22 : 0.5; // (the slab is a wall: you can barely move behind it)
+        if (this.blocking) sp *= 0.5;
         sp *= (1 - 0.1 * this.fatigue) * this.moveMul * this.status.slow();
         if (this.sprinting) { this.st -= 14 * dt; this.stDelay = 0.4; }
         const tv = dir.clone().normalize().multiplyScalar(mag > 0.01 ? sp : 0);
@@ -519,10 +518,10 @@ export class Player extends Actor {
           const side = angDiff(this.yaw, Math.atan2(this.vel.x, this.vel.z));
           if (Math.abs(side) > 0.8 && Math.abs(side) < 2.3) { pose.hips = [0, -Math.sign(side) * 0.5, 0]; pose.torso[1] = Math.sign(side) * 0.5; }
         }
-        if (this.blocking) Object.assign(pose, this.c.special === 'guard' ? (this.blockHitT > 0 ? GREAT_GUARD_HIT : GREAT_GUARD) : this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
+        if (this.blocking) Object.assign(pose, this.blockHitT > 0 ? P.blockHit : P.block, this.speed > 0.3 ? { legL: pose.legL, legR: pose.legR, shinL: pose.shinL, shinR: pose.shinR } : {});
         if (this.speed > 1 && (this.stepT -= dt) <= 0) { this.stepT = this.sprinting ? 0.28 : 0.38; if (this.sprinting) this.game.fx.dust(this.pos, 1, 0.3); }
         // holding the shield up drains stamina; regen resumes shortly after lowering it
-        if (this.blocking) { this.st = Math.max(0, this.st - (this.c.special === 'guard' ? 13 : 10) * (1 - (this.tree.blockDrain || 0) / 100) * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
+        if (this.blocking) { this.st = Math.max(0, this.st - 10 * (1 - (this.tree.blockDrain || 0) / 100) * dt); this.stDelay = Math.max(this.stDelay, 0.4); }
         else this.regen(dt, 48);
         break;
       }
@@ -773,10 +772,6 @@ export class Player extends Actor {
       this.buf = null;
       if (!this.affords(a === 'heavy' ? 'heavy' : this.c.light)) return false; // (LOW STAMINA: the press is spent)
       if (a === 'attack' && this.tryRiposte(dir, mag)) return true;
-      if (a === 'heavy' && this.evo === 'berserk' && this.blocking) {
-        if (this.rageCd > 0) this.game.ui.toastSmall?.(`The beast stirs in ${Math.ceil(this.rageCd)}s`);
-        else { this.startRage(); return true; }
-      }
       if (a === 'heavy' && this.c.special === 'block' && this.game.time - (this.lastBlockT ?? -9) < 0.9) {
         this.lastBlockT = -9;
         this.doAttack('guardCounter', dir, mag);
@@ -805,6 +800,16 @@ export class Player extends Actor {
     }
     if (a === 'special' && this.c.special === 'fire') { this.buf = null; return this.castFire(dir, mag); }
     if (a === 'special' && this.c.special === 'sigil') { this.buf = null; return this.castSigil(dir, mag); }
+    // the Penitent Slab: Earthsunder (Pyresunder evolved), the blade driven into the ground (QUAKE.cd between them: the HUD counts it down)
+    if (a === 'special' && this.c.special === 'quake') {
+      if (this.quakeCd > 0) { this.buf = null; return false; }
+      if (!this.canSpend()) return false;
+      this.buf = null;
+      this.quakeCd = this.evo === 'berserk' ? QUAKE.fire.cd : QUAKE.cd;
+      if (this.lock) this.yaw = this.yawTo(this.lock.pos);
+      this.doAttack('quake', dir, mag);
+      return true;
+    }
     if (a === 'special' && this.c.special === 'dash') {
       if (this.dashCd > 0) { this.buf = null; return false; }
       if (!this.canSpend()) return false;
@@ -1058,15 +1063,6 @@ export class Player extends Actor {
     if (this.veilT > 0) { this.veilT -= dt; if (this.veilT <= 0) this.endVeil(); }
   }
 
-  // ---------- the Penitent Slab: Beast Within ----------
-  startRage() {
-    this.rageT = 8; this.rageCd = 25;
-    this.game.ui.toast('THE BEAST WITHIN', 1.6);
-    this.game.audio.play('roar', 0.5);
-    this.game.fx.burst({ x: this.pos.x, y: 1, z: this.pos.z }, 40, [1, 0.15, 0.08], 5, 0.8, 0.3);
-    this.game.fx.addShake(0.4);
-  }
-
   castFire(dir, mag) {
     return this.startCast(MANA_FIRE - (this.tree.fireCost || 0), 0.95, 0.45, () => {
       if (this.evo === 'twinPlasma') { this.game.spawnSpell(this, 'fire', -0.16); this.game.spawnSpell(this, 'fire', 0.16); }
@@ -1095,7 +1091,6 @@ export class Player extends Actor {
       const tg = this.findTarget(3.6, def.comboMove ? Math.PI : 1.0, aim); // a combo move turns to an enemy behind you too (after a roll)
       this.yaw = tg ? this.yawTo(tg.pos) : aim;
     }
-    if (this.rageT > 0) this.atkRate *= 1.25; // (Beast Within)
     this.veilStrike = this.veilT > 0; // (Ghost Veil: the first strike out of hiding can be a backstab)
     if (this.veilStrike) this.endVeil();
     this.startAttack(def);
@@ -1141,7 +1136,7 @@ export class Player extends Actor {
     const mit = mitigate(info.parts || enemyParts(info.dmg, info.elems), this.tree, info.buildMul ?? 1);
     // keystones that cost you: Ember Oath and Fleeting take 15% more, Pyromania 15% more from fire
     const extra = (this.tree.emberOath ? 1.15 : 1) * (this.tree.fleeting ? 1.15 : 1);
-    info = { ...info, dmg: (mit.total + (this.tree.pyromania ? (mit.taken.fire || 0) * 0.15 : 0)) * extra * (this.rageT > 0 ? 1.2 : 1) }; // (Beast Within: 20% more)
+    info = { ...info, dmg: (mit.total + (this.tree.pyromania ? (mit.taken.fire || 0) * 0.15 : 0)) * extra };
     if (this.veilT > 0) this.endVeil(); // (struck: the veil tears)
     const src = info.srcPos;
     const toSrc = Math.atan2(src.x - this.pos.x, src.z - this.pos.z);
@@ -1149,12 +1144,11 @@ export class Player extends Actor {
     const A = info.attacker;
     if (this.state === 'parry' && A?.parryMark && A.parryMark.h === info.hit && (A.puppet || A.parryMark.atk === A.atk)) { A.parryMark = null; return 'parry'; }
     if (this.blocking && facing && !info.unblockable) {
-      const guard = this.c.special === 'guard'; // (the slab: a hit costs more stamina, but you hardly budge)
-      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15) * (guard ? 1.3 : 1); // stamina isn't scaled
+      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15); // stamina isn't scaled
       this.st -= cost; this.stDelay = 0.6;
       this.lastBlockT = this.game.time;
       this.blockHitT = 0.25;
-      this.kb.set(this.pos.x - src.x, 0, this.pos.z - src.z).normalize().multiplyScalar((info.knock === 'heavy' ? 7 : 3.5) * (guard ? 0.4 : 1));
+      this.kb.set(this.pos.x - src.x, 0, this.pos.z - src.z).normalize().multiplyScalar(info.knock === 'heavy' ? 7 : 3.5);
       if (this.st < 0) {
         this.st = 0;
         this.hp -= info.dmg * 0.35;
@@ -1172,7 +1166,7 @@ export class Player extends Actor {
     if (this.hp <= 0) { this.die(); return 'hit'; }
     for (const [k, v] of Object.entries(mit.build)) if (v > 0) this.status.add(k, v, this.game);
     const away = new THREE.Vector3(this.pos.x - src.x, 0, this.pos.z - src.z).normalize();
-    if (this.tree.immovable || this.chargeArmored() || this.rageT > 0) {
+    if (this.tree.immovable || this.chargeArmored()) {
       // Immovable (Knight keystone), or mid Shield Charge: hits hurt but never stagger or knock you down
     } else if (info.knock === 'heavy' && !this.comboArmored() && !(this.hyperArmor() && info.dmg < 30 * NUM)) {
       this.kb.copy(away).multiplyScalar(11);

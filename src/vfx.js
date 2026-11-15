@@ -23,6 +23,31 @@ export const VFX = {
     g.pfx.play('bigCrit', head); g.pfx.play('hurt', head, { dir }); g.fx3d?.impact(v3(head), v3(dir), { heavy: true, color: 0xffd0a0 });
     g.fx.addShake(own ? 1.1 : 0.5); g.audio[own ? 'play' : 'remote']('bigHit', 1);
   },
+  // the Penitent Slab's special: the point going into the ground, then the ground breaking outward in a ring
+  // (Earthsunder), or in fire (Pyresunder)
+  quakePlant(g, at, own) {
+    g.fx.dust(at, 8, 0.7); g.fx.sparks(v3(at).clone().setY(0.2), null, 8, [1, 0.85, 0.6]);
+    g.audio[own ? 'play' : 'remote']('clang', 0.7);
+  },
+  quake(g, at, r, fire, own) {
+    const P = v3(at);
+    g.fx3d?.slam(P, r, { color: fire ? 0xff7a2a : 0xd8c8a0 });
+    g.pfx.play(fire ? 'fireRing' : 'groundSlam', P, { size: fire ? r / 4 : r / 3 });
+    // Pyresunder: the rim goes up in fire as the wave reaches it (small flame bursts all round, so the ring of fire
+    // lies on the ground as the camera sees it; the pixel effect itself is drawn side on)
+    if (fire) setTimeout(() => {
+      for (let i = 0; i < 14; i++) {
+        const a = (i + Math.random() * 0.3) / 14 * Math.PI * 2;
+        g.pfx.play('fireRing', new THREE.Vector3(P.x + Math.cos(a) * r * 0.9, 0.05, P.z + Math.sin(a) * r * 0.9), { size: 0.45 });
+      }
+    }, 150);
+    g.fx.shockwave(P.x, P.z, r, fire ? 0xff6a1a : 0xd8c8a0, 0.5);
+    g.fx.shockwave(P.x, P.z, r * 0.6, fire ? 0xffc040 : 0xb0a088, 0.35);
+    g.fx.dust(P, fire ? 12 : 22, r * 0.9);
+    g.fx.addShake(own ? (fire ? 1.0 : 0.75) : 0.4);
+    g.audio[own ? 'play' : 'remote']('slam', 1);
+    if (fire) g.audio[own ? 'play' : 'remote']('fire', 1);
+  },
   chargeStart(g, pos, own) {
     g.fx.dust(pos, 6, 0.9);
     if (!own) { g.audio.remote('roll', 1); g.audio.remote('clang', 0.4); }

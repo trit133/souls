@@ -34,6 +34,12 @@ const GS_PLUNGE = { armR: [-1.45, -0.14, 0.28], foreR: [-0.1, 0, 0], handR: [0.8
 const DEEP_LUNGE = { legL: [-1.25, 0, 0.05], shinL: [1.15, 0, 0], legR: [0.95, 0, -0.05], shinR: [0.25, 0, 0], by: -0.44 };
 const GS_OVERHEAD = { armR: [-1.95, 0.08, 0.38], foreR: [-0.83, 0, 0], handR: [0.61, 0, 0.85] };    // raised over the head, the point back
 const GS_CHOP_DOWN = { armR: [-0.11, 0.54, 1.07], foreR: [-2.11, 0, 0], handR: [1.52, 0, -0.61] };  // down the middle, the point to the floor
+// Earthsunder (solved): the hands chest high before him, the blade driven steeply down and a little ahead, about half
+// of it in the ground; the arms hold it there while the body wrenches round one way and back (the blade turns with
+// him where it stands); then hauled out
+const GS_PLANT = { armR: [-0.26, 1.17, -1.07], foreR: [-1.71, 0, 0], handR: [3.02, 0.45, -0.73] };
+const GS_PULL = { armR: [0.88, 0.05, 2.26], foreR: [-1.77, 0, 0], handR: [2.16, 0.5, -0.24] };
+const PLANT_LEGS = { legL: [-0.6, 0, 0], legR: [0.45, 0, 0], shinL: [0.4, 0, 0], shinR: [0.4, 0, 0], by: -0.22 };
 export const GREAT_ATTACKS = {
   // the overhead chop: both hands lift it straight up and back over his head, then bring it down the middle in front of him
   g1: {
@@ -89,10 +95,30 @@ export const GREAT_ATTACKS = {
     onTime: [{ t: 0.64, fn: (p, g) => { const f = front(p, 2.4); g.fx.shockwave(f.x, f.z, 3.2); g.fx.addShake(0.5); g.fx.dust(f, 14, 1.4); } }],
     onHitShake: 0.6, heavyHit: true,
   },
+  // the special (Earthsunder): hauled up over the head and driven point first into the ground at his feet, he
+  // twists it one way and back, and the ground breaks outward in a ring (game.groundQuake; Pyresunder: of fire)
+  quake: {
+    dur: 1.0, cost: 28, cancel: 0.8, track: 0.15, hand: 'R', armor: [0.15, 0.7],
+    keys: [
+      [0.14, { torso: [-0.35, 0, 0], head: [-0.15, 0, 0], ...GS_OVERHEAD, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.06 }],
+      [0.3, { torso: [0.4, 0, 0], head: [0.2, 0, 0], ...GS_PLANT, ...PLANT_LEGS, by: -0.3 }], // (the point goes in)
+      [0.36, { torso: [0.4, 0, 0], head: [0.2, 0, 0], ...GS_PLANT, ...PLANT_LEGS }],
+      [0.46, { torso: [0.4, 0.22, 0], head: [0.2, -0.15, 0], ...GS_PLANT, ...PLANT_LEGS }], // (wrenched one way...)
+      [0.56, { torso: [0.45, -0.22, 0], head: [0.25, 0.15, 0], ...GS_PLANT, ...PLANT_LEGS, by: -0.26 }], // (...and back)
+      [0.68, { torso: [0.45, -0.18, 0], head: [0.25, 0.1, 0], ...GS_PLANT, ...PLANT_LEGS }],
+      [0.88, { torso: [0.2, 0, 0], ...GS_PULL, legL: [-0.35, 0, 0], legR: [0.3, 0, 0], shinR: [0.2, 0, 0], by: -0.1 }], // (hauled out)
+    ],
+    onTime: [
+      { t: 0.3, fn: (p, g) => g.vfx('quakePlant', p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0.05)) },
+      { t: 0.56, fn: (p, g) => g.groundQuake(p, p.evo === 'berserk') },
+    ],
+  },
 };
-// the blade raised as a wall (Blade Guard)
-export const GREAT_GUARD = { guard: 1, grip: 1, torso: [0.1, 0.2, 0], armR: [-1.45, 0, 0.55], foreR: [-1.35, 0, 0], handR: [0.1, 0, 0], armL: [-1.4, 0, -0.35], foreL: [-1.3, 0, 0], handL: [0.2, 0, 0], legL: [-0.4, 0, 0], legR: [0.35, 0, 0], shinL: [0.3, 0, 0], shinR: [0.4, 0, 0], by: -0.14 };
-export const GREAT_GUARD_HIT = { ...GREAT_GUARD, torso: [-0.15, 0.25, 0], head: [-0.2, 0, 0], by: -0.2 };
+// Earthsunder: the ring's reach (m), damage (as a weapon hit's), poise, and how hard it throws regular enemies,
+// brutes and bosses back (a push of n slides one about n / 8 m: knockback fades at 8/s); the cooldown (s).
+// Pyresunder (the evolution) is wider, hits harder, and its damage is fire
+export const QUAKE = { r: 3.5, dmg: 30, poise: 25, push: 45, heavy: 22, boss: 5, cd: 8,
+  fire: { r: 5.5, dmg: 100, poise: 45, push: 55, heavy: 27, boss: 7, cd: 10 } };
 
 function greatCombos(G) {
   return {
@@ -371,7 +397,7 @@ export const SIGIL = { mana: 35, dur: 6, r: 5.5, slow: 0.5, zapEvery: 0.6, cd: 1
 
 // a region weapon's class overrides (player.js weaponChar adds the combos)
 export const WEAPON_SETS = {
-  greatsword: { style: 'slab', attacks: GREAT_ATTACKS, extra: greatCombos, light: 'g1', combos: GREAT_COMBOS, special: 'guard', dual: false, trail: 0xcfd4dc, model: { weapon: 'greatsword', shield: false } },
+  greatsword: { style: 'slab', attacks: GREAT_ATTACKS, extra: greatCombos, light: 'g1', combos: GREAT_COMBOS, special: 'quake', dual: false, trail: 0xcfd4dc, model: { weapon: 'greatsword', shield: false } },
   wristblade: { style: 'wrist', attacks: WRIST_ATTACKS, extra: wristCombos, light: 'w1', combos: WRIST_COMBOS, special: 'dash', dual: true, trail: 0xff7a5a, model: { weapon: 'wristblade' } },
   psystaff: { style: 'staff', attacks: STAFF_ATTACKS, extra: staffCombos, light: 't1', combos: STAFF_COMBOS, special: 'sigil', dual: false, boltHeavy: false, trail: 0xc890ff, model: { weapon: 'psystaff' } },
 };

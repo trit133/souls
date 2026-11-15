@@ -173,7 +173,7 @@ export class Actor {
 
   // a guest's hit on a puppet: the host applies the real damage
   puppetHit(info) {
-    this.game.mp.send({ t: 'hit', id: this.netId, dmg: info.dmg, poise: info.poise || 0, c: info.combo ? 1 : 0 });
+    this.game.mp.send({ t: 'hit', id: this.netId, dmg: info.dmg, poise: info.poise || 0, c: info.combo ? 1 : 0, kb: info.kb }); // (kb: a push the host applies)
     this.hp = Math.max(1, this.hp - info.dmg);
     this.hitAt = performance.now();
     this.hpShow = 4;

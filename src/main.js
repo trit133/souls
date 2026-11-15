@@ -19,7 +19,7 @@ import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
 import * as ItemsLib from './items.js';
 import { loadout, BASE_WEAPON } from './weapons.js';
 import * as WeaponsLib from './weapons.js';
-import { SIGIL, VEIL } from './weaponmoves.js';
+import { SIGIL, VEIL, QUAKE } from './weaponmoves.js';
 import { pickLayout } from './modules.js';
 import { Seals } from './seals.js';
 import { Chests } from './chests.js';
@@ -1702,6 +1702,33 @@ class Game {
     this.hitstop(0.05);
   }
 
+  // the Penitent Slab's special, Earthsunder: the blade driven into the ground and twisted, the ground breaking in a
+  // ring that throws everyone in it back (brutes less, bosses only a little) and hurts a little. Pyresunder (fire,
+  // the evolution) reaches wider, hits far harder and builds burn. Walls shelter what's behind them
+  groundQuake(p, fire) {
+    const Q = fire ? QUAKE.fire : QUAKE;
+    this.vfx('quake', new THREE.Vector3(p.pos.x, 0.05, p.pos.z), Q.r, !!fire);
+    this.chests.drumsAt(p.pos.x, p.pos.z, Q.r);
+    for (const e of this.enemiesAll()) {
+      if (!e.alive || e.y > 1.5) continue;
+      const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+      if (d > Q.r + e.radius || !this.world.lineClear(p.pos.x, p.pos.z, e.pos.x, e.pos.z)) continue;
+      const dir = d > 0.05 ? new THREE.Vector3(dx / d, 0, dz / d) : p.fwd().clone();
+      const push = (e.isBoss ? Q.boss : e.heavy ? Q.heavy : Q.push) * (1 - 0.3 * Math.min(1, d / Q.r)); // (a little less at the rim)
+      const kb = [dir.x * push, dir.z * push];
+      if (fire) { if (this.spellDamage({ dmg: Q.dmg * NUM, poise: Q.poise, pos: p.pos.clone(), kind: 'fire', noKnock: true, kb }, e) === 'none') continue; }
+      else {
+        const dmg = Q.dmg * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100), hp0 = e.hp;
+        if (e.receive({ dmg, poise: Q.poise, srcPos: p.pos, attacker: p, noKnock: true, kb }) === 'none') continue;
+        const dealt = e.puppet ? dmg : hp0 - e.hp;
+        this.dmgPops(e, { phys: dealt }, 'me');
+        this.mp.event({ k: 'hit', id: e.netId, d: { phys: Math.round(dealt) } });
+      }
+      if (!e.puppet && e.alive) e.kb.set(kb[0], 0, kb[1]); // (a teammate's game moves its own enemies: the push goes with the hit)
+    }
+    this.hitstop(fire ? 0.08 : 0.05);
+  }
+
   hitstop(t) { this.freeze = Math.max(this.freeze, t); }
 
   // a named effect, here and on every teammate's screen (see vfx.js)
@@ -1899,8 +1926,8 @@ class Game {
     const cm = critRoll(T.critChance, T.critPower); // (a spell can crit too)
     const raw = q.dmg * mul * cm * this.player.dmgMul * (1 + (T.spellDmg || 0) / 100);
     const hp0 = e.hp, sd = raw * (1 - res);
-    const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo });
-    if (r === 'none') return;
+    const r = e.receive({ dmg: sd, poise: q.poise, srcPos: q.pos, attacker: this.player, noKnock: q.noKnock, combo: !!q.combo, kb: q.kb });
+    if (r === 'none') return r;
     // the bolt is frost, the fireball fire
     const el = q.kind === 'fire' ? 'fire' : 'frost', dealt = e.puppet ? sd : hp0 - e.hp;
     this.dmgPops(e, { [el]: dealt }, cm > 1 ? 'critical' : q.kind === 'fire' ? 'heavy' : 'me');
@@ -1910,6 +1937,7 @@ class Game {
     this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', d: { [el]: Math.round(dealt) } });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
     if (e.alive) this.applyStatus(e, { [el]: raw * enemyBuildMul(res) }, SPELL_BUILD);
+    return r;
   }
 
   // Blue bolts and fireballs fly straight; a fireball bursts on contact or at range.

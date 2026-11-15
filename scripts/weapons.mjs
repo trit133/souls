@@ -1,5 +1,5 @@
-// Weapons (weapons.js, weaponmoves.js): every weapon fights with its own moves and combos; the new specials (Blade
-// Guard, the Wrist Blade's dash, the Psy-Staff's sigil) and evolutions (Beast Within, Ghost Veil, Storm Sigil) work;
+// Weapons (weapons.js, weaponmoves.js): every weapon fights with its own moves and combos; the new specials (the
+// Slab's Earthsunder, the Wrist Blade's dash, the Psy-Staff's sigil) and evolutions (Pyresunder, Ghost Veil, Storm Sigil) work;
 // with an account the workbench crafts a weapon and its evolution from the stash, the equipment stand equips it and
 // switches the evolution, the wardrobe shows its skin slot, and an old tree evolution comes back built.
 // node scripts/weapons.mjs [url with ?server=]
@@ -31,15 +31,20 @@ const mech = await page.evaluate(() => {
     res[w] = { moves: [...seen], finisher: fin, model: !!p.rig.wpnR, offhand: !!p.rig.wpnL, combos: p.c.comboList.map((c) => c.name) };
   }
 
-  // Blade Guard and Beast Within
-  { const p = begin('knight', 'greatsword', 'berserk'); place(p); const e = foe(p);
-    p.yaw = 0; g.input.held.special = true; run(10);
-    const hp0 = p.hp; const r = p.receive({ dmg: 100, srcPos: e.pos, attacker: e, hit: {}, knock: 'heavy' }); const lost = hp0 - p.hp;
-    g.input.pressed.add('heavy'); run(4);
-    const rage = { t: +p.rageT.toFixed(1), cd: p.rageCd };
-    g.input.held.special = false; run(5); p.st = 500;
-    const s0 = p.state; p.receive({ dmg: 100, srcPos: e.pos, attacker: e, hit: {}, knock: 'heavy' });
-    res.guard = { blocked: r, lostOf100: Math.round(lost), rage, staggeredInRage: p.state !== s0 && p.state !== 'move' };
+  // Earthsunder and Pyresunder: the ring throws a grunt far, a brute less, a boss only a little (the push each is
+  // given: the test holds them still); Pyresunder reaches a grunt 4.6 m out, hits harder and burns; then the cooldown
+  res.quake = {};
+  for (const evo of [null, 'berserk']) {
+    const p = begin('knight', 'greatsword', evo); place(p);
+    const set = (e, dx, dz) => { if (!e) return null; e.update = () => {}; e.pos.set(p.pos.x + dx, 0, p.pos.z + dz); e.hp = e.maxHp = 1e6; e.kb.set(0, 0, 0); return e; };
+    const grunt = set(foe(p, 2), 0, 2);
+    const brute = set(g.enemies.find((x) => x.alive && x.heavy), 2, 0);
+    const boss = set(g.bosses.find((b) => b.alive), -2, 0); if (boss) { boss.state = 'neutral'; g.encounters.find((n) => n.boss === boss).active = true; } // (a boss counts in its fight)
+    const edge = set(g.enemies.find((x) => x.alive && !x.heavy && x !== grunt), 0, -4.6);
+    g.input.pressed.add('special'); run(3); const inMove = p.atkKey === 'quake';
+    run(40); const kb = (e) => (e ? +e.kb.length().toFixed(1) : null);
+    res.quake[evo || 'plain'] = { inMove, cd: +p.quakeCd.toFixed(1), grunt: kb(grunt), brute: kb(brute), boss: kb(boss), dmg: Math.round(1e6 - grunt.hp), burn: Math.round(grunt.status?.meter.fire || 0), edgeHit: edge.hp < 1e6 };
+    run(30); g.input.pressed.add('special'); run(3); res.quake[evo || 'plain'].again = p.atkKey === 'quake' && p.atk?.t < 0.1;
   }
   // the dash and Ghost Veil
   { const p = begin('rogue', 'wristblade', 'ghostVeil'); place(p); const x0 = p.pos.clone();
@@ -95,7 +100,7 @@ await page.screenshot({ path: '/tmp/wpn-workbench.png' });
 await page.click('#wk-detail .wk-go'); await page.waitForTimeout(200); // forge the slab (still the one shown)
 const crafted = await page.evaluate(() => ({ owned: !!game.accounts.data.weapons.owned.greatsword, iron: game.accounts.data.items.scrap_iron, menu: [...document.querySelectorAll('#wk-grid .wk-tile .wk-n')].map((x) => x.textContent) }));
 await page.click('.wk-tabs [data-wt=evos]'); await page.waitForTimeout(100);
-await page.click('#wk-grid .wk-tile:nth-child(2)'); await page.click('#wk-detail .wk-go'); await page.waitForTimeout(200); // build Beast Within
+await page.click('#wk-grid .wk-tile:nth-child(2)'); await page.click('#wk-detail .wk-go'); await page.waitForTimeout(200); // build Pyresunder
 await page.screenshot({ path: '/tmp/wpn-workbench-evos.png' });
 const built = await page.evaluate(() => ({ berserk: !!game.accounts.data.weapons.evos.berserk }));
 await page.evaluate(() => game.hermitage.setEquip(true)); await page.waitForTimeout(200);
@@ -103,14 +108,15 @@ await page.screenshot({ path: '/tmp/wpn-equip.png' });
 // equip the slab (the card that isn't equipped)
 await page.click('#hm-equip-body .wb-card:not(.on) > .wb-go'); await page.waitForTimeout(300);
 const equipped = await page.evaluate(() => ({ load: game.loadoutFor('knight'), rigHasShield: !!game.hermitage.rig?.shield }));
-await page.click('#hm-equip-body .wb-card.on .wb-evo .wb-go'); await page.waitForTimeout(150); // switch Beast Within off
+await page.click('#hm-equip-body .wb-card.on .wb-evo .wb-go'); await page.waitForTimeout(150); // switch Pyresunder off
 const evoOff = await page.evaluate(() => game.loadoutFor('knight'));
 const wardrobe = await page.evaluate(() => { game.hermitage.setEquip(false); return game.skinMenu.slots('knight').map((s) => s.id); });
 await b.close();
 const out = { ...mech, bench, detail, crafted, built, equipped, evoOff, wardrobe };
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(10), JSON.stringify(v));
 const ok = ['greatsword', 'wristblade', 'psystaff'].every((w) => out[w].moves.length >= 3 && out[w].finisher && out[w].model)
-  && out.guard.blocked === 'block' && out.guard.lostOf100 <= 30 && out.guard.rage.t > 7 && !out.guard.staggeredInRage
+  && ((q, f) => q.inMove && f.inMove && q.cd > 7 && f.cd > 9 && !q.again && !f.again && q.grunt > 35 && q.dmg > 0 && !q.edgeHit && f.edgeHit
+    && f.dmg > 2 * q.dmg && f.burn > 0 && q.burn === 0 && (q.brute == null || q.brute < q.grunt) && (q.boss == null || (q.boss > 0 && q.boss < q.grunt / 5)))(out.quake.plain, out.quake.berserk)
   && out.dash.inDash && out.dash.untouchable && out.dash.moved > 2.5 && out.dash.cd > 2 && !out.dash.again && out.dash.veil.shade && out.dash.veil.hunterGivesUp && out.dash.backstabX >= 2.9
   && out.sigil.placed && out.sigil.storm && out.sigil.slow === 0.5 && out.sigil.shotBroke && out.sigil.zapped && out.sigil.gone
   && out.bench.migrated.aegis && out.bench.menu.some((m) => m.includes('[?]')) && out.bench.menu.some((m) => m.includes('[can forge]'))

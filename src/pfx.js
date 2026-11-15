@@ -22,6 +22,7 @@ import * as iceLance from './pixelfx/fx/ice/ice-lance.js';
 import * as iceShatter from './pixelfx/fx/ice/ice-shatter.js';
 import * as frostNova from './pixelfx/fx/ice/frost-nova.js';
 import * as fireballFx from './pixelfx/fx/fire/fireball.js';
+import * as fireRing from './pixelfx/fx/fire/fire-ring.js';
 
 const ICE = ['#10203a', '#1c3a6a', '#2c5ca8', '#4a8ae0', '#6ab4ff', '#9fd8ff', '#d4f0ff', '#ffffff'];
 const BLOOD = ['#2a0808', '#5a1010', '#8a1a14', '#c42a1e', '#ff5a3a', '#ffb08a', '#ffffff'];
@@ -48,6 +49,7 @@ export const PRESETS = {
   block: { mod: hitSpark, scale: 0.5, aim: true, opts: { palette: STEEL } },
   crit: { mod: critHit, scale: 0.55 },
   groundSlam: { mod: groundSlam, scale: 0.42, cut: 1.5 },
+  fireRing: { mod: fireRing, scale: 0.42, cut: 2.4 }, // (Pyresunder: flames racing out along the floor in a ring)
   bigCrit: { mod: critHit, scale: 0.8 },
   redCrit: { mod: critHit, scale: 0.6, opts: { palette: RED } },
   redSlash: { mod: swordSlash, scale: 0.75, aim: true, opts: { palette: RED } },

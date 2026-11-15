@@ -47,10 +47,10 @@ export class UI {
     this.st.set(p.st / p.maxSt, dt);
     this.st.fill.parentElement.classList.toggle('tired', p.fatigue > 0.45);
     this.flaskEl.textContent = p.flasks;
-    // rogue parry / evolved knight shield charge cooldowns
+    // the specials' cooldowns (and the evolved knight's shield charge)
     const sp = p.c?.special;
-    const cd = sp === 'parry' ? ['Parry', p.parryCd] : sp === 'dash' ? ['Dash', p.dashCd] : sp === 'sigil' ? ['Sigil', p.sigilCd || 0] : p.evo === 'aegisRam' ? ['Charge', p.chargeCd]
-      : p.evo === 'berserk' ? (p.rageT > 0 ? ['Beast', -p.rageT] : ['Beast', p.rageCd]) : null;
+    const cd = sp === 'parry' ? ['Parry', p.parryCd] : sp === 'dash' ? ['Dash', p.dashCd] : sp === 'sigil' ? ['Sigil', p.sigilCd || 0]
+      : sp === 'quake' ? [p.evo === 'berserk' ? 'Pyresunder' : 'Earthsunder', p.quakeCd] : p.evo === 'aegisRam' ? ['Charge', p.chargeCd] : null;
     const txt = cd ? (cd[1] < 0 ? `${cd[0]} ${Math.ceil(-cd[1])}s left` : cd[1] > 0 ? `${cd[0]} ${Math.ceil(cd[1])}s` : `${cd[0]} ready`) : '';
     if (txt !== this.abTxt) {
       this.abTxt = txt;
