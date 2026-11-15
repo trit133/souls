@@ -1,16 +1,19 @@
 // Combo tempo: every combo played with each press made as soon as its window opens; prints when each move first
 // hits the dummy (s from the start) and the gaps. The first two moves keep their pace; the rest follow quickly.
-// node scripts/combo-tempo.mjs [url]
+// node scripts/combo-tempo.mjs [url] [region weapon id: its combos instead, e.g. wristblade]
 import { chromium } from 'playwright';
 import { COMBOS } from '../src/combos.js';
-const url = process.argv[2] || 'http://localhost:4173/?chain';
+import { WEAPON_SETS } from '../src/weaponmoves.js';
+import { WEAPONS } from '../src/weapons.js';
+const url = process.argv[2] || 'http://localhost:4173/?chain', weapon = process.argv[3] || null;
+const SETS = weapon ? { [WEAPONS[weapon].kind]: WEAPON_SETS[weapon].combos } : COMBOS;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 480, height: 270 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(url); await page.waitForTimeout(700);
-for (const [kind, list] of Object.entries(COMBOS)) for (const C of list) {
-  const r = await page.evaluate(({ kind, steps, id }) => {
-    const g = game; g.loop = () => {}; g.start(kind); g.audio.play = () => {};
+for (const [kind, list] of Object.entries(SETS)) for (const C of list) {
+  const r = await page.evaluate(({ kind, steps, id, weapon }) => {
+    const g = game; g.loop = () => {}; if (weapon) g.loadoutFor = () => ({ weapon, evo: null }); g.start(kind); g.audio.play = () => {};
     g.buildRun(['ruins', 'camp', 'mini:hask', 'bridge', 'village', 'mini:vael', 'crypt', 'bog', 'mini:gorrath', 'gate', 'boss'], 7);
     const p = g.player; p.mana = p.maxMana = 200; p.st = p.maxSt = 999;
     const e = g.enemies.find((x) => x.type === 'grunt');
@@ -28,7 +31,7 @@ for (const [kind, list] of Object.entries(COMBOS)) for (const C of list) {
     }
     for (let i = 0; i < 90; i++) step();
     return first;
-  }, { kind, steps: C.steps, id: C.id });
+  }, { kind, steps: C.steps, id: C.id, weapon });
   const ts = C.steps.map((_, i) => r[i + 1]);
   const gaps = ts.slice(1).map((x, i) => (x != null && ts[i] != null ? +(x - ts[i]).toFixed(2) : '-'));
   console.log(kind.padEnd(7), C.id.padEnd(11), 'hits at', JSON.stringify(ts), ' gaps', JSON.stringify(gaps));

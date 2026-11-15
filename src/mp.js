@@ -5,7 +5,7 @@ import { locomotion, P } from './anims.js';
 import { gaitPose, hasClips, CARRIAGE } from './clips.js';
 import { Trail } from './fx.js';
 import { knightArc, knightHitColor } from './fx3d.js';
-import { CHARS, RIPOSTE, CRITS, weaponChar } from './player.js';
+import { CHARS, RIPOSTE, CRITS, weaponChar, hangY } from './player.js';
 import { outfitModel } from './playerkits.js';
 import { packOutfit, unpackOutfit } from './outfits.js';
 import { SERVER } from './account.js';
@@ -77,7 +77,7 @@ class RemotePlayer extends Actor {
     }
     // the move's own body language: jump height, vanishing in the shroud, a reverse-grip dagger
     const D = this.play?.def, t = this.play?.t ?? 0;
-    this.y = D?.jump && t > D.jump[0] && t < D.jump[1] ? D.jump[2] * Math.sin(Math.PI * (t - D.jump[0]) / (D.jump[1] - D.jump[0])) : 0;
+    this.y = D?.hang ? hangY(D.hang, t, this.play.h || 0) : D?.jump && t > D.jump[0] && t < D.jump[1] ? D.jump[2] * Math.sin(Math.PI * (t - D.jump[0]) / (D.jump[1] - D.jump[0])) : 0;
     this.rig.root.visible = !(D?.vanish && t >= D.vanish[0] && t < D.vanish[1]);
     this.rig.reverse = !!(D?.reverse && t >= D.reverse[0] && t < D.reverse[1]);
     if (this.rig.wpnR && !this.rig.fx && !this.rig.noReverse) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
@@ -238,7 +238,7 @@ export class Multiplayer {
 
   onEvent(from, d) {
     const g = this.game, p = this.peers.get(from);
-    if (d.k === 'swing') { const def = p?.c.attacks[d.a]; if (def) p.startPlay(def, d.r); } else if (d.k === 'riposte') p?.startPlay(CRITS[d.c] || RIPOSTE, d.r);
+    if (d.k === 'swing') { const def = p?.c.attacks[d.a]; if (def) p.startPlay(def, d.r); } else if (d.k === 'riposte') { p?.startPlay(CRITS[d.c] || RIPOSTE, d.r); if (p?.play) p.play.h = d.h || 0; }
     else if (d.k === 'sfx') g.audio.remote(d.s, d.v ?? 1);
     else if (d.k === 'ping' || d.k === 'emote' || d.k === 'alert') g.pings.onNet(from, d);
     else if (d.k === 'fx') g.playVfx(d.n, d.a || []);

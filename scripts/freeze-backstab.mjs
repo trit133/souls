@@ -1,7 +1,7 @@
 // The Psy-Staff's sigil (radius 5.5, 10 s between casts) freezes the enemies inside it when laid for 5 s (a boss or
 // mini boss isn't frozen: it's chilled for 4 s, moving and swinging at 30%),
 // held in place in a block of ice, hurt by hits but not knocked out of it, and thawing back into the fight; a party
-// guest sees the same. The Ghost Veil's first strike is always the backstab (the Wrist Blades' rip: triple damage,
+// guest sees the same. The Ghost Veil's first strike is always the backstab (the Wrist Blade's knife in the neck: triple damage,
 // facing or not). The Penitent Slab's second swing is slower and hits harder; the staff's heavy fires a laser.
 // node scripts/freeze-backstab.mjs [url with ?server=]
 import { chromium } from 'playwright';
@@ -51,17 +51,17 @@ Object.assign(res, await A.evaluate(() => {
   let beams = 0; for (let i = 0; i < 30; i++) { g.step(1 / 60, 1 / 60); beams = Math.max(beams, g.beams?.length || 0); }
   out.laser = beams;
 
-  // 3. the Ghost Veil's strike: always the rip, always triple, facing or not
+  // 3. the Ghost Veil's strike: always the knife in the neck (a held critical), always triple, facing or not
   const dmgOf = (veil) => {
     const q = begin('rogue', 'wristblade', 'ghostVeil');
     const e = g.enemies.find((x) => x.alive && x.type === 'grunt' && !x.reserve);
     for (const x of g.enemies) if (x !== e) x.update = () => {};
-    e.update = () => {}; e.pos.set(q.pos.x, 0, q.pos.z + 1.4); e.yaw = Math.PI; // facing him
+    e.update = () => {}; e.pos.set(q.pos.x, 0, q.pos.z + 1.4); e.yaw = Math.PI; e.hp = e.maxHp = 1e5; // facing him
     q.yaw = 0; q.setState('move'); if (veil) q.veilT = 3;
-    let dmg = 0, backstab = false; const rec = e.receive.bind(e); e.receive = (info) => { dmg += info.dmg; backstab ||= !!info.backstab; return rec(info); };
+    const hp0 = e.hp;
     q.doAttack('w1', q.pos.clone().set(0, 0, 1), 0);
-    const key = q.atkKey; run(0.9);
-    return { key, dmg: Math.round(dmg), backstab };
+    const key = q.state === 'riposte' ? q.crit.name : q.atkKey, backstab = q.state === 'riposte'; run(1.4);
+    return { key, dmg: Math.round(hp0 - e.hp), backstab };
   };
   const plain = dmgOf(false), veiled = dmgOf(true);
   out.veil = { plain, veiled, ratio: +(veiled.dmg / plain.dmg).toFixed(2) };
@@ -73,6 +73,7 @@ Object.assign(res, await A.evaluate(() => {
 }));
 
 // ---- a party: the host's sigil freezes, the guest sees the ice
+
 const H = await device('H'), Gst = await device('G');
 const auth = async (p, u) => { await p.click('#btn-herm'); await p.fill('#acct-user', u); await p.fill('#acct-pass', 'secret123'); await p.click('#acct-signup'); await p.waitForTimeout(600); };
 const u = 'fz' + Date.now() % 100000;
@@ -103,7 +104,7 @@ const s = res.sigil, ok = s.states[0] === 'frozen' && s.states[1] === 'frozen' &
   && res.hitFrozen.hpLost > 0 && res.hitFrozen.state === 'frozen' && res.heldStill < 0.05 && !res.thawed.states.includes('frozen') && !res.thawed.ice.includes(true)
   && res.cooldown.again === false && Math.abs(res.cooldown.left - 9.6) < 0.2 && /Sigil \d+s/.test(res.cooldown.hud) && res.cdOver === true
   && res.boss?.state !== 'frozen' && Math.abs(res.boss.chillLeft - 3.8) < 0.2 && res.boss.speed === 0.3 && res.boss.frost && res.laser === 1
-  && res.veil.plain.key === 'w1' && res.veil.veiled.key === 'wRip' && res.veil.veiled.backstab && !res.veil.plain.backstab && res.veil.ratio > 2.6 && res.veil.ratio < 3.4
+  && res.veil.plain.key === 'w1' && res.veil.veiled.key === 'neck' && res.veil.veiled.backstab && !res.veil.plain.backstab && res.veil.ratio > 2.6 && res.veil.ratio < 3.4
   && res.slab.g2[0] === 1.25 && res.slab.g2[2] === 54 && res.slab.gc2 === 58 && res.slab.gLunge[0] === 0.95 && res.slab.gLunge[1] === 0.32
   && res.party[0][0] === 'frozen' && res.party[0][1] && res.party[1][0] === 'frozen' && res.party[1][1] && res.party[1][2] === 1;
 console.log(ok ? 'freeze and backstab work' : 'FREEZE/BACKSTAB PROBLEM');

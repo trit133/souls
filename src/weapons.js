@@ -33,10 +33,10 @@ export const WEAPONS = {
     evo: { id: 'berserk', name: 'Pyresunder', desc: 'Earthsunder breaks the ground in fire: a wider ring that hits far harder and burns. Ready again after 10 s.',
       recipe: { scrap_iron: 8, ash_rag: 6, promethium_residue: 4, purity_seal: 3, augury_shard: 1 } } },
   wristblade: { kind: 'rogue', region: 'r1', name: 'Wrist Blade', short: 'Wrist Blade', icon: 'w_wristblade', slots: ['wristblade'],
-    desc: 'A blade along each forearm, running out past the fist. You fight like a boxer and every punch is a stab; its heavy drives both in at once.',
+    desc: 'One short knife held point-down in the right fist, the blade lying back along the forearm. Quick raking cuts and a hammering stab; its heavy spins round in a backhand slash.',
     recipe: { ash_rag: 14, spent_casings: 8, scrap_iron: 6, copper_coil: 4, cracked_lens: 3, purity_seal: 2, augury_shard: 2, oracle_core: 1 },
     special: { name: 'Blink Dash', desc: 'A short, very fast dash you can\'t be hit during. Ready again after 3 s.' },
-    evo: { id: 'ghostVeil', name: 'Ghost Veil', desc: 'After a dash you fade from sight for 5 s and enemies lose you. Your first strike out of it is always a backstab: your arm shoved in and ripped out, a critical hit for triple damage. Attacking or reviving a teammate ends it.',
+    evo: { id: 'ghostVeil', name: 'Ghost Veil', desc: 'After a dash you fade from sight for 5 s and enemies lose you. Your first strike out of it is always a backstab: you slip behind them and sink the knife into the neck (the eye, if there is no neck), hold it and rip it out, a critical hit for triple damage. On anything big, tall or above you, you leap up onto its back and hang on before ripping it free. Attacking or reviving a teammate ends it.',
       recipe: { ash_rag: 8, spent_casings: 6, cracked_lens: 4, purity_seal: 3, augury_shard: 1 } } },
   psystaff: { kind: 'mage', region: 'r1', name: 'Psy-Staff', short: 'Staff', icon: 'w_psystaff', slots: ['staff'],
     desc: 'A long staff with a psychic focus at its head, fought with like a quarterstaff. Its strikes charge your mana; its heavy fires a violet laser down its length.',
@@ -94,9 +94,10 @@ export const WEAPON_ICONS = {
   w_greatsword: { pal: { o: O, i: '#5a5a62', I: '#8a8a92', d: '#2a2a30', g: '#8a6a34', h: '#3a2616', r: '#ff7a2a' }, rows: [
     '.......oooo.....', '......oIiIdo....', '......oIiIdo....', '......oIiIdo....', '......oIiIdo....', '......oIiIdo....', '......oIiIdo....',
     '......oIiIdo....', '......oIiIdo....', '......oIiIdo....', '....oogggggoo...', '....oggrgrggo...', '.......ohho.....', '.......ohho.....', '.......oggo.....', '........oo......'] },
+  // a short knife, point down, as he holds it
   w_wristblade: { pal: { o: O, s: '#d0d4dc', S: '#8a8e96', l: '#4a3626', L: '#6a5038', b: '#b89a4a' }, rows: [
-    '...........oo...', '..........osso..', '.........osso...', '........osso....', '.......osso.....', '......osso......', '..ooooosoo......',
-    '.oLLLLLbo.......', 'olLlLlLbo.......', 'oLLLLLLbo.......', 'olLlLlLbo.......', '.oLLLLLbo.......', '..ooooooo.......', '................', '................', '................'] },
+    '..........obbo..', '.........ob..bo.', '..........obbo..', '..........oLLo..', '.........oLlLo..', '.........oLLo...', '........oLlLo...',
+    '.......obbbbo...', '.......ossSo....', '......ossSo.....', '......osSSo.....', '.....ossSo......', '.....osSo.......', '....ossSo.......', '....osoo........', '....oo..........'] },
   w_psystaff: { pal: { o: O, w: '#4a3a2a', W: '#6a5038', g: '#b89a4a', c: '#c890ff', C: '#f0e0ff' }, rows: [
     '...........oo...', '..........occo..', '.........ocCco..', '.........occco..', '........ogooo...', '.......owgo.....', '......owWo......',
     '.....owWo.......', '....owWo........', '...owWo.........', '..ogWo..........', '.owWo...........', 'owWo............', 'ogo.............', 'oo..............', '................'] },

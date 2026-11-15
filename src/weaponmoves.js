@@ -196,106 +196,94 @@ const GREAT_COMBOS = [
   { id: 'struggler', name: 'Struggler', desc: 'A sweep, a roll in, a quick thrust that dashes you back onto them, then a deep plunge that runs the whole blade through. Plays faster.', steps: [[A, 'g1', 0.5], [R, 'roll', 0.42], [A, 'gLunge', 0.42], [H, 'gThrust']] },
 ];
 
-// ================= THE WRIST BLADES (Shrike) =================
-// a blade along each forearm, out past the fist (playerkits.js): he fights like a boxer, and every punch is a stab.
-// Poses: the forearm's line is the blade's, so a straight arm drives the point straight out
-const WB_GUARD_L = { armL: [-0.55, 0, 0.2], foreL: [-1.15, 0, 0], handL: [0.2, 0, 0] };   // lead hand up, blade forward
-const WB_GUARD_R = { armR: [-0.25, 0, -0.25], foreR: [-1.35, 0, 0], handR: [0.2, 0, 0] }; // rear hand by the ribs
-const WB_CHAMBER_R = { armR: [0.15, 0, -0.3], foreR: [-1.75, 0, 0], handR: [0.3, 0, 0] }; // fist pulled back to the hip
-const WB_CHAMBER_L = { armL: [0.15, 0, 0.3], foreL: [-1.75, 0, 0], handL: [0.3, 0, 0] };
-const WB_JAB_R = { armR: [-1.55, 0, 0.12], foreR: [-0.05, 0, 0], handR: [0.1, 0, 0] };     // arm straight out: the point in
-const WB_JAB_L = { armL: [-1.55, 0, -0.12], foreL: [-0.05, 0, 0], handL: [0.1, 0, 0] };
+// ================= THE WRIST BLADE (Shrike) =================
+// one short knife held point-down in the right fist (playerkits.js), the blade lying back along the forearm: it cuts
+// as the fist goes by, so his slashes are punches and hooks that rake the edge across, and his stab is a hammer-fist
+// driven down. The left hand is empty: it guards, grabs and shoves. Each hit says how it cuts (`cut`: 'slash' can
+// take a piece off, 'stab' never does; gore.js)
+const RK_GUARD = { armR: [-0.55, 0, -0.25], foreR: [-1.75, 0, 0], handR: [0.15, 0, 0], armL: [-0.75, 0, 0.3], foreL: [-1.0, 0, 0], handL: [0.4, 0, 0] }; // fist by the cheek, the left hand open before him
+const RK_LEFT = { armL: [-0.75, 0, 0.3], foreL: [-1.0, 0, 0], handL: [0.4, 0, 0] };
+const RK_WIND_R = { armR: [-1.2, 0, -1.15], foreR: [-1.1, 0, 0], handR: [0.2, 0, 0] };  // drawn back out to the right, high
+const RK_ACROSS = { armR: [-1.35, 0, 0.75], foreR: [-0.55, 0, 0], handR: [0.1, 0, 0] }; // carried across to the left
+const RK_WIND_L = { armR: [-1.25, 0, 0.85], foreR: [-1.4, 0, 0], handR: [0.2, 0, 0] };  // fist by the left shoulder
+const RK_OUT_R = { armR: [-1.3, 0, -1.05], foreR: [-0.25, 0, 0], handR: [0.1, 0, 0] };  // flung out to the right
+const RK_HIGH = { armR: [-2.75, 0, -0.15], foreR: [-0.9, 0, 0], handR: [0.2, 0, 0] };   // raised over the head, point down
+const RK_DOWN = { armR: [-0.95, 0, 0.1], foreR: [-0.25, 0, 0], handR: [0.1, 0, 0] };    // hammered down in front
 export const WRIST_ATTACKS = {
-  // a right straight from the hip
+  // a forehand rake: the fist hooks across from the right, the edge trailing behind it
   w1: {
-    dur: 0.42, cost: 10, next: 'w2', combo: [0.16, 0.42], cancel: 0.22, track: 0.08, trail: [0.08, 0.16], sfx: [0.08, 'swing'], hand: 'R',
-    keys: [[0.07, { torso: [0.1, -0.4, 0], ...WB_CHAMBER_R, ...WB_GUARD_L, legL: [-0.3, 0, 0], legR: [0.25, 0, 0], by: -0.06 }],
-      [0.14, { torso: [0.25, 0.55, 0], ...WB_JAB_R, ...WB_GUARD_L, ...lunge(1.1) }],
-      [0.3, { torso: [0.2, 0.35, 0], armR: [-1.25, 0, 0], foreR: [-0.55, 0, 0], ...WB_GUARD_L, ...lunge(0.8) }]],
-    hits: [{ t0: 0.1, t1: 0.17, range: 1.8, arc: 1.3, dmg: 12, poise: 6 }], move: [[0.05, 0.16, 0.55]],
+    dur: 0.42, cost: 10, next: 'w2', combo: [0.16, 0.42], cancel: 0.22, track: 0.08, trail: [0.08, 0.17], sfx: [0.08, 'swing'], hand: 'R',
+    keys: [[0.07, { torso: [0.1, -0.45, 0], ...RK_WIND_R, ...RK_LEFT, legL: [-0.3, 0, 0], legR: [0.25, 0, 0], by: -0.06 }],
+      [0.15, { torso: [0.25, 0.55, 0], ...RK_ACROSS, ...RK_LEFT, ...lunge(1.1) }],
+      [0.3, { torso: [0.2, 0.4, 0], ...RK_ACROSS, foreR: [-0.9, 0, 0], ...RK_LEFT, ...lunge(0.8) }]],
+    hits: [{ t0: 0.1, t1: 0.17, range: 1.8, arc: 1.8, dmg: 12, poise: 6, cut: 'slash' }], move: [[0.05, 0.16, 0.55]],
   },
-  // a left hook: the arm swings round flat, the blade raking across
+  // a backhand: back the other way, the elbow leading and the blade raking out to the right
   w2: {
-    dur: 0.46, cost: 11, next: 'w3', combo: [0.18, 0.46], cancel: 0.24, track: 0.08, trail: [0.09, 0.18], sfx: [0.09, 'swing'], hand: 'L',
-    keys: [[0.08, { torso: [0.1, 0.5, 0], armL: [-0.7, 0, 1.05], foreL: [-1.25, 0, 0], handL: [0.2, 0, 0], ...WB_GUARD_R, legL: [0.25, 0, 0], legR: [-0.2, 0, 0] }],
-      [0.16, { torso: [0.25, -0.6, 0], armL: [-1.5, 0, -0.3], foreL: [-0.55, 0, 0], handL: [0.2, 0, 0], ...WB_GUARD_R, legL: [0.35, 0, 0], legR: [-0.45, 0, 0], shinL: [0.35, 0, 0], by: -0.1 }],
-      [0.34, { torso: [0.2, -0.45, 0], armL: [-1.35, 0, -0.45], foreL: [-0.7, 0, 0], ...WB_GUARD_R, legL: [0.25, 0, 0], legR: [-0.35, 0, 0], by: -0.08 }]],
-    hits: [{ t0: 0.11, t1: 0.19, range: 1.8, arc: 2.0, dmg: 13, poise: 7 }], move: [[0.05, 0.18, 0.5]],
+    dur: 0.46, cost: 11, next: 'w3', combo: [0.18, 0.46], cancel: 0.24, track: 0.08, trail: [0.09, 0.19], sfx: [0.09, 'swing'], hand: 'R',
+    keys: [[0.08, { torso: [0.1, 0.55, 0], ...RK_WIND_L, ...RK_LEFT, legL: [0.25, 0, 0], legR: [-0.2, 0, 0] }],
+      [0.16, { torso: [0.25, -0.6, 0], ...RK_OUT_R, ...RK_LEFT, legL: [0.35, 0, 0], legR: [-0.45, 0, 0], shinL: [0.35, 0, 0], by: -0.1 }],
+      [0.34, { torso: [0.2, -0.45, 0], ...RK_OUT_R, foreR: [-0.6, 0, 0], ...RK_LEFT, legL: [0.25, 0, 0], legR: [-0.35, 0, 0], by: -0.08 }]],
+    hits: [{ t0: 0.11, t1: 0.19, range: 1.8, arc: 2.0, dmg: 13, poise: 7, cut: 'slash' }], move: [[0.05, 0.18, 0.5]],
   },
-  // down low, then up under the ribs: a rising right stab
+  // the hammer: the fist raised high and driven straight down, the point first
   w3: {
     dur: 0.55, cost: 13, next: 'w1', combo: [0.22, 0.55], cancel: 0.3, track: 0.1, trail: [0.12, 0.22], sfx: [0.12, 'swing'], hand: 'R',
-    keys: [[0.1, { torso: [0.4, -0.25, 0], armR: [0.25, 0, -0.2], foreR: [-1.2, 0, 0], ...WB_GUARD_L, ...crouch(0.9) }],
-      [0.2, { torso: [-0.2, 0.3, 0], armR: [-2.05, 0, 0.05], foreR: [-0.25, 0, 0], handR: [0.3, 0, 0], ...WB_GUARD_L, ...lunge(1.1) }],
-      [0.4, { torso: [-0.12, 0.2, 0], armR: [-1.85, 0, 0.05], foreR: [-0.45, 0, 0], ...WB_GUARD_L, ...lunge(0.8) }]],
-    hits: [{ t0: 0.14, t1: 0.22, range: 1.9, arc: 1.2, dmg: 16, poise: 10 }], move: [[0.08, 0.2, 0.6]],
+    keys: [[0.1, { torso: [-0.2, -0.2, 0], ...RK_HIGH, armL: [-1.3, 0, 0.2], foreL: [-0.4, 0, 0], legL: [-0.3, 0, 0], legR: [0.3, 0, 0] }],
+      [0.2, { torso: [0.6, 0.15, 0], ...RK_DOWN, armL: [-0.4, 0, 0.5], foreL: [-0.8, 0, 0], ...crouch(0.9) }],
+      [0.4, { torso: [0.5, 0.1, 0], ...RK_DOWN, armL: [-0.4, 0, 0.5], foreL: [-0.8, 0, 0], ...crouch(0.7) }]],
+    hits: [{ t0: 0.14, t1: 0.22, range: 1.9, arc: 1.2, dmg: 16, poise: 10, cut: 'stab' }], move: [[0.08, 0.2, 0.6]],
   },
-  // heavy: both fists back to the hips, then both blades driven in together
+  // heavy: a spinning backhand, all the way round, the blade flung out at the end of the arm
   heavy: {
-    dur: 0.5, cost: 14, next: 'w2', combo: [0.22, 0.5], cancel: 0.28, track: 0.1, trail: [0.12, 0.2], sfx: [0.12, 'heavySwing'], hand: 'B',
-    keys: [[0.1, { torso: [-0.1, 0, 0], ...WB_CHAMBER_R, ...WB_CHAMBER_L, legL: [0.2, 0, 0], legR: [-0.2, 0, 0], by: -0.1 }],
-      [0.16, { torso: [0.4, 0, 0], armR: [-1.45, 0, 0.2], foreR: [0, 0, 0], armL: [-1.45, 0, -0.2], foreL: [0, 0, 0], ...lunge(1.4) }],
-      [0.36, { torso: [0.32, 0, 0], armR: [-1.35, 0, 0.2], foreR: [-0.2, 0, 0], armL: [-1.35, 0, -0.2], foreL: [-0.2, 0, 0], ...lunge(1.1) }]],
-    hits: [{ t0: 0.13, t1: 0.2, range: 2.0, arc: 0.8, dmg: 27, poise: 20 }], move: [[0.1, 0.18, 0.9]], onHitShake: 0.2,
-  },
-  // out of the Ghost Veil: the arm shoved in to the elbow, held, and ripped out (always a backstab: player.js, main.js)
-  wRip: {
-    dur: 0.9, cost: 10, next: 'w2', combo: [0.62, 0.9], cancel: 0.64, track: 0.12, trail: [0.2, 0.3], sfx: [0.2, 'heavySwing'], hand: 'R',
-    keys: [[0.16, { torso: [0.15, -0.6, 0], head: [0.1, 0.4, 0], armR: [0.4, 0, -0.35], foreR: [-1.6, 0, 0], armL: [-1.3, 0, 0.35], foreL: [-0.5, 0, 0], handL: [0.6, 0, 0], legL: [-0.4, 0, 0], legR: [0.35, 0, 0], shinR: [0.4, 0, 0], by: -0.12 }],
-      [0.28, { torso: [0.55, 0.45, 0], head: [-0.2, -0.3, 0], armR: [-1.4, 0, 0.25], foreR: [0, 0, 0], armL: [-1.45, 0, -0.1], foreL: [-0.9, 0, 0], ...lunge(1.4), by: -0.2 }],
-      [0.44, { torso: [0.6, 0.5, -0.1], head: [-0.2, -0.3, 0], armR: [-1.35, 0.4, 0.3], foreR: [-0.1, 0, 0], armL: [-1.45, 0, -0.1], foreL: [-0.9, 0, 0], ...lunge(1.4), by: -0.22 }],
-      [0.58, { torso: [-0.2, -0.75, 0.1], head: [0.1, 0.3, 0], armR: [-0.4, 0, -1.2], foreR: [-1.0, 0, 0], armL: [-1.1, 0, 0.5], foreL: [-0.6, 0, 0], legL: [0.2, 0, 0], legR: [-0.3, 0, 0], by: -0.08 }],
-      [0.78, { torso: [0.12, -0.3, 0], ...WB_GUARD_R, ...WB_GUARD_L }]],
-    hits: [{ t0: 0.24, t1: 0.32, range: 1.9, arc: 1.4, dmg: 12, poise: 30 }], move: [[0.04, 0.24, 0.9]], onHitShake: 0.4,
-    onTime: [
-      { t: 0.28, fn: (p, g) => g.vfx('redCrit', front(p, 0.9, 1.15)) },
-      // the rip: blood thrown back the way the arm comes out
-      { t: 0.52, fn: (p, g) => g.vfx('xSlash', front(p, 0.9, 1.15), p.fwd().clone().negate(), true) },
-    ],
+    dur: 0.5, cost: 14, next: 'w2', combo: [0.22, 0.5], cancel: 0.28, track: 0.1, trail: [0.11, 0.21], sfx: [0.12, 'heavySwing'], hand: 'R',
+    keys: [[0.1, { torso: [0.15, 0.85, 0], ...RK_WIND_L, armL: [-0.3, 0, 0.6], foreL: [-0.6, 0, 0], legL: [0.3, 0, 0], legR: [-0.3, 0, 0], by: -0.12 }],
+      [0.17, { torso: [0.3, -0.9, 0], ...RK_OUT_R, foreR: [-0.1, 0, 0], armL: [-0.2, 0, 0.9], foreL: [-0.3, 0, 0], ...lunge(1.3) }],
+      [0.36, { torso: [0.25, -0.75, 0], ...RK_OUT_R, armL: [-0.3, 0, 0.7], foreL: [-0.5, 0, 0], ...lunge(1.0) }]],
+    hits: [{ t0: 0.13, t1: 0.21, range: 2.1, arc: 2.6, dmg: 27, poise: 20, cut: 'slash' }], move: [[0.1, 0.18, 0.9]], onHitShake: 0.2,
   },
 };
 function wristCombos(W) {
   return {
     wc2: withDmg(W.w2, [15], { cost: 12 }),
-    // Silent Count: (two stabs) a crouch, then an uppercut that drives the right blade up under the jaw
+    // Silent Count: (two cuts) a duck under, then up and across the throat, the edge drawn from ear to ear
     wThroat: {
-      dur: 0.62, cost: 18, comboMove: true, track: 0.12, trail: [0.18, 0.3], hand: 'R', sfx: [0.18, 'heavySwing'], cancel: 0.44,
-      keys: [[0.14, { torso: [0.55, -0.3, 0], armR: [0.35, 0, -0.25], foreR: [-1.1, 0, 0], ...WB_GUARD_L, ...crouch(1.2) }],
-        [0.26, { torso: [-0.4, 0.25, 0], head: [-0.25, 0, 0], armR: [-2.45, 0, 0.05], foreR: [-0.45, 0, 0], armL: [-1.0, 0, 0.5], foreL: [-1.3, 0, 0], ...lunge(1.4), by: 0.02 }],
-        [0.48, { torso: [-0.3, 0.2, 0], armR: [-2.3, 0, 0.05], foreR: [-0.55, 0, 0], armL: [-1.0, 0, 0.5], foreL: [-1.3, 0, 0], ...lunge(1.1) }]],
-      hits: [{ t0: 0.22, t1: 0.32, range: 2.0, arc: 1.0, dmg: 46, poise: 24 }], move: [[0.12, 0.28, 0.9]],
+      dur: 0.62, cost: 18, comboMove: true, track: 0.12, trail: [0.18, 0.31], hand: 'R', sfx: [0.18, 'heavySwing'], cancel: 0.44,
+      keys: [[0.14, { torso: [0.55, 0.45, 0], armR: [-0.6, 0, 0.7], foreR: [-1.5, 0, 0], handR: [0.2, 0, 0], ...RK_LEFT, ...crouch(1.2) }],
+        [0.26, { torso: [-0.3, -0.55, 0], head: [-0.2, 0, 0], armR: [-1.9, 0, -0.9], foreR: [-0.3, 0, 0], handR: [0.1, 0, 0], armL: [-1.4, 0, 0.1], foreL: [-0.3, 0, 0], ...lunge(1.4), by: 0.02 }],
+        [0.48, { torso: [-0.2, -0.45, 0], armR: [-1.8, 0, -1.0], foreR: [-0.5, 0, 0], armL: [-1.3, 0, 0.1], foreL: [-0.4, 0, 0], ...lunge(1.1) }]],
+      hits: [{ t0: 0.22, t1: 0.32, range: 2.0, arc: 1.4, dmg: 46, poise: 24, cut: 'slash', behead: 1 }], move: [[0.12, 0.28, 0.9]],
       onTime: [{ t: 0.28, fn: (p, g) => g.vfx('redCrit', front(p, 1.0, 1.4)) }],
       onHitShake: 0.35, finisher: 'Silent Count',
     },
-    // Shadow Hook: (a stab, a roll round) a long lunge, right arm and blade flat out, the left flung back
+    // Shadow Hook: (a cut, a roll round) a long lunge out of the roll that ends in a hook, the blade raked across
     wLunge: {
-      dur: 0.7, cost: 20, comboMove: true, track: 0.2, trail: [0.2, 0.34], hand: 'R', sfx: [0.2, 'heavySwing'], cancel: 0.5,
-      keys: [[0.16, { torso: [0.35, -0.6, 0], ...WB_CHAMBER_R, ...WB_GUARD_L, ...crouch(1.2) }],
-        [0.3, { torso: [0.75, 0.45, 0], ...WB_JAB_R, armL: [0.7, 0, 0.45], foreL: [-0.4, 0, 0], legL: [-1.05, 0, 0.05], legR: [0.85, 0, -0.05], shinL: [0.35, 0, 0], shinR: [0.55, 0, 0], by: -0.38 }],
-        [0.54, { torso: [0.65, 0.35, 0], ...WB_JAB_R, armL: [0.6, 0, 0.45], foreL: [-0.4, 0, 0], ...lunge(1.4) }]],
-      hits: [{ t0: 0.26, t1: 0.36, range: 2.2, arc: 0.9, dmg: 52, poise: 28 }], move: [[0.12, 0.34, 3.0]],
+      dur: 0.7, cost: 20, comboMove: true, track: 0.2, trail: [0.22, 0.36], hand: 'R', sfx: [0.2, 'heavySwing'], cancel: 0.5,
+      keys: [[0.16, { torso: [0.35, -0.6, 0], ...RK_WIND_R, ...RK_LEFT, ...crouch(1.2) }],
+        [0.3, { torso: [0.75, 0.6, 0], ...RK_ACROSS, armL: [0.7, 0, 0.45], foreL: [-0.4, 0, 0], legL: [-1.05, 0, 0.05], legR: [0.85, 0, -0.05], shinL: [0.35, 0, 0], shinR: [0.55, 0, 0], by: -0.38 }],
+        [0.54, { torso: [0.65, 0.5, 0], ...RK_ACROSS, foreR: [-0.9, 0, 0], armL: [0.6, 0, 0.45], foreL: [-0.4, 0, 0], ...lunge(1.4) }]],
+      hits: [{ t0: 0.26, t1: 0.36, range: 2.2, arc: 1.6, dmg: 52, poise: 28, cut: 'slash' }], move: [[0.12, 0.34, 3.0]],
       onTime: [{ t: 0.22, fn: (p, g) => g.vfx('shroud', p.pos.clone().setY(0.4 + (p.pos.y || 0))) }],
       onHitShake: 0.4, finisher: 'Shadow Hook',
     },
-    // Needle Rain: (a jab, two stabs) a pinning blow that drives the blade down through the collarbone
+    // Needle Rain: (a spin, two cuts) a leap, both hands on the knife over his head, driven down as he lands
     wc1: withDmg(W.w1, [13], { cost: 11 }),
     wc3: withDmg(W.w3, [17], { cost: 13 }),
     wPin: {
-      // a leap with both blades raised, driven down together as he lands
-      dur: 0.82, cost: 24, comboMove: true, track: 0.25, trail: [0.3, 0.44], hand: 'B', sfx: [0.3, 'heavySwing'], cancel: 0.6,
-      keys: [[0.14, { torso: [-0.3, 0, 0], armR: [-2.85, 0, -0.2], foreR: [-0.35, 0, 0], armL: [-2.85, 0, 0.2], foreL: [-0.35, 0, 0], legL: [-1.0, 0, 0], shinL: [1.4, 0, 0], legR: [-0.3, 0, 0], shinR: [1.2, 0, 0] }],
-        [0.38, { torso: [0.95, 0, 0], armR: [-0.75, 0, 0.15], foreR: [0, 0, 0], armL: [-0.75, 0, -0.15], foreL: [0, 0, 0], ...crouch(1.25) }],
-        [0.66, { torso: [0.8, 0, 0], armR: [-0.8, 0, 0.15], foreR: [-0.1, 0, 0], armL: [-0.8, 0, -0.15], foreL: [-0.1, 0, 0], ...crouch(1.0) }]],
-      hits: [{ t0: 0.34, t1: 0.46, range: 2.1, arc: 1.2, dmg: 66, poise: 35 }], move: [[0.05, 0.38, 2.0]], jump: [0.05, 0.38, 1.2],
+      dur: 0.82, cost: 24, comboMove: true, track: 0.25, trail: [0.3, 0.44], hand: 'R', sfx: [0.3, 'heavySwing'], cancel: 0.6,
+      keys: [[0.14, { torso: [-0.3, 0, 0], ...RK_HIGH, armL: [-2.75, 0, -0.1], foreL: [-1.0, 0, 0], handL: [0.4, 0, 0], legL: [-1.0, 0, 0], shinL: [1.4, 0, 0], legR: [-0.3, 0, 0], shinR: [1.2, 0, 0] }],
+        [0.38, { torso: [0.95, 0, 0], ...RK_DOWN, armL: [-0.95, 0, -0.2], foreL: [-0.45, 0, 0], ...crouch(1.25) }],
+        [0.66, { torso: [0.8, 0, 0], ...RK_DOWN, armL: [-0.95, 0, -0.2], foreL: [-0.45, 0, 0], ...crouch(1.0) }]],
+      hits: [{ t0: 0.34, t1: 0.46, range: 2.1, arc: 1.2, dmg: 66, poise: 35, cut: 'stab' }], move: [[0.05, 0.38, 2.0]], jump: [0.05, 0.38, 1.2],
       onTime: [{ t: 0.4, fn: (p, g) => g.vfx('redCrit', front(p, 1.0, 0.8)) }],
       onHitShake: 0.55, heavyHit: true, finisher: 'Needle Rain',
     },
   };
 }
 const WRIST_COMBOS = [
-  { id: 'count', name: 'Silent Count', desc: 'Two stabs, then one up under the jaw.', steps: [[A, 'w1', 0.17], [A, 'wc2', 0.19], [A, 'wThroat']] },
-  { id: 'hook', name: 'Shadow Hook', desc: 'A stab, a roll round, then a long lunging stab out of the roll.', steps: [[A, 'w1', 0.17], [R, 'roll', 0.32], [H, 'wLunge']] },
-  { id: 'needle', name: 'Needle Rain', desc: 'A jab, two stabs, then a leap that drives the blade down. Plays faster.', steps: [[H, 'heavy', 0.22], [A, 'wc1', 0.17], [A, 'wc3', 0.22], [H, 'wPin']] },
+  { id: 'count', name: 'Silent Count', desc: 'Two cuts, then a duck under and the blade drawn across the throat.', steps: [[A, 'w1', 0.17], [A, 'wc2', 0.19], [A, 'wThroat']] },
+  { id: 'hook', name: 'Shadow Hook', desc: 'A cut, a roll round, then a long lunge that hooks the blade across.', steps: [[A, 'w1', 0.17], [R, 'roll', 0.32], [H, 'wLunge']] },
+  { id: 'needle', name: 'Needle Rain', desc: 'A spin, two cuts, then a leap that hammers the knife down. Plays faster.', steps: [[H, 'heavy', 0.22], [A, 'wc1', 0.17], [A, 'wc3', 0.22], [H, 'wPin']] },
 ];
 // the dash (the Wrist Blade's special): short, very fast, untouchable throughout
 export const DASH = { dur: 0.2, dist: 3.6, cd: 3, cost: 8 };
@@ -398,6 +386,6 @@ export const SIGIL = { mana: 35, dur: 6, r: 5.5, slow: 0.5, zapEvery: 0.6, cd: 1
 // a region weapon's class overrides (player.js weaponChar adds the combos)
 export const WEAPON_SETS = {
   greatsword: { style: 'slab', attacks: GREAT_ATTACKS, extra: greatCombos, light: 'g1', combos: GREAT_COMBOS, special: 'quake', dual: false, trail: 0xcfd4dc, model: { weapon: 'greatsword', shield: false } },
-  wristblade: { style: 'wrist', attacks: WRIST_ATTACKS, extra: wristCombos, light: 'w1', combos: WRIST_COMBOS, special: 'dash', dual: true, trail: 0xff7a5a, model: { weapon: 'wristblade' } },
+  wristblade: { style: 'rknife', attacks: WRIST_ATTACKS, extra: wristCombos, light: 'w1', combos: WRIST_COMBOS, special: 'dash', dual: false, trail: 0xff7a5a, model: { weapon: 'wristblade' } },
   psystaff: { style: 'staff', attacks: STAFF_ATTACKS, extra: staffCombos, light: 't1', combos: STAFF_COMBOS, special: 'sigil', dual: false, boltHeavy: false, trail: 0xc890ff, model: { weapon: 'psystaff' } },
 };

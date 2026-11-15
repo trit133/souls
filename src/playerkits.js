@@ -530,19 +530,15 @@ KITS.rogue = {
     const sh = S('shirt', 0x4a3a2c, 0x4a3626, 0x2a2420, 0xff3a24); r.chestGlow = sh.glowHex; // (the Sandevistan rune's afterimages: runes.js) (ROGUE.shirt[sh.piece] || ROGUE.shirt.jerkin)(r, sh, T);
     for (const [slot, j] of [['bandL', 'armL'], ['bandR', 'armR']]) { const M = S(slot, 0xa8977c, 0x4a3626, 0x2a2420, 0xff3a24); (ROGUE.band[M.piece] || ROGUE.band.cloth)(r, M, r.j[j]); }
     if (o.arm === 'wristblade') {
-      // the Wrist Blades: one on each forearm, lying along it under the arm and running out past the fist, so a
-      // punch drives the point home (weapons.js). They hang off the forearms, not the hands, and never flip.
+      // the Wrist Blade: one short knife in the right fist, held point-down (a reverse grip, always: the blade comes
+      // out under the little finger and lies back along the forearm). The left hand is empty (weapons.js)
       const wb = S('wristblade', 0xc4cad3, 0x4a3626, 0x2a1c14, 0xff4a3a), make = ROGUE.wristblade[wb.piece] || ROGUE.wristblade.hidden;
-      const mount = (fore, side) => {
-        const w = new THREE.Group(); w.position.set(side * 0.01, -r.dims.fore + 0.04, 0); fore.add(w);
-        const g = new THREE.Group(); g.rotation.x = Math.PI / 2; w.add(g); // (the blade's +z down the forearm, out past the fist)
-        const [tip, base] = make(r, wb, g);
-        const b0 = new THREE.Object3D(), t0 = new THREE.Object3D(); b0.position.set(0, -0.06, base); t0.position.set(0, -0.06, tip); g.add(b0, t0);
-        return [w, b0, t0, g];
-      };
-      const [wR, bR, tR, gR] = mount(r.j.foreR, -1), [wL, bL, tL, gL] = mount(r.j.foreL, 1);
-      r.edges = [{ g: gR, tip: tR }, { g: gL, tip: tL }];
-      r.wpnR = wR; r.base = bR; r.tip = tR; r.wpnL = wL; r.baseL = bL; r.tipL = tL;
+      const w = new THREE.Group(); r.j.handR.add(w);
+      const g = new THREE.Group(); g.rotation.x = Math.PI; w.add(g); // (turned over: the reverse grip)
+      const [tip, base] = make(r, wb, g);
+      const b0 = new THREE.Object3D(), t0 = new THREE.Object3D(); b0.position.set(0, 0, base); t0.position.set(0, 0, tip); g.add(b0, t0);
+      r.edges = [{ g, tip: t0 }];
+      r.wpnR = w; r.base = b0; r.tip = t0;
       r.noReverse = true;
     } else {
     const kn = S('knives', 0xc4cad3, 0x2a1c14, 0x1e1e22, 0xff4a3a);

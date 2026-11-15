@@ -714,33 +714,38 @@ KNIGHT_ARMORY.greatsword = {
     return [2.4, 0.35];
   },
 };
+// the Wrist Blade: one short knife held point-down in the right fist, the blade lying back along the forearm (built
+// along +z from the grip; playerkits.js turns it over into the reverse grip)
 ROGUE_ARMORY.wristblade = {
-  // Hidden Blade: a plain bracer on the forearm and a thin blade that springs out under the fist
+  // Gutting Knife: a plain clip-point blade, a wrapped grip and a ring pommel to hook a finger through
   hidden(r, M, g) {
-    B(g, 0.11, 0.1, 0.3, M.trim, 0, -0.01, -0.2); for (const z of [-0.3, -0.2, -0.1]) B(g, 0.115, 0.105, 0.02, M.detail, 0, -0.01, z);
-    B(g, 0.05, 0.04, 0.12, M.detail, 0, -0.06, 0.0);
-    B(g, 0.018, 0.05, 0.5, M.main, 0, -0.06, 0.3); K(g, 0.025, 0.08, M.main, 0, -0.06, 0.58, PI / 2, 0, 0);
-    B(g, 0.02, 0.012, 0.44, M.glow, 0, -0.085, 0.3);
-    return [0.62, 0.05];
+    B(g, 0.04, 0.045, 0.14, M.trim, 0, 0, 0); for (const z of [-0.045, -0.005, 0.035]) B(g, 0.046, 0.05, 0.012, M.detail, 0, 0, z);
+    ring(g, 0.035, 0.01, M.detail, 0, 0, -0.1, PI / 2, 0, 8); B(g, 0.07, 0.055, 0.025, M.detail, 0, 0, 0.08);
+    B(g, 0.018, 0.06, 0.22, M.main, 0, 0.004, 0.2); B(g, 0.018, 0.045, 0.07, M.main, 0, 0.012, 0.34, -0.5);
+    B(g, 0.02, 0.012, 0.26, M.glow, 0, -0.026, 0.21);
+    return [0.38, 0.1];
   },
-  // Twin Prong: two blades side by side and a heavier, riveted bracer
+  // Twin Prong: a forked blade, two narrow tines off one riveted grip
   twin(r, M, g) {
-    B(g, 0.13, 0.12, 0.32, M.trim, 0, -0.01, -0.2); for (const z of [-0.32, -0.08]) B(g, 0.03, 0.03, 0.03, M.detail, 0.07, 0.04, z);
-    for (const s of [1, -1]) { B(g, 0.016, 0.045, 0.46, M.main, s * 0.03, -0.06, 0.28); K(g, 0.022, 0.07, M.main, s * 0.03, -0.06, 0.55, PI / 2, 0, 0); }
-    return [0.6, 0.05];
+    B(g, 0.045, 0.05, 0.15, M.trim, 0, 0, 0); for (const z of [-0.04, 0.03]) B(g, 0.05, 0.02, 0.02, M.detail, 0, 0.03, z);
+    B(g, 0.09, 0.06, 0.03, M.detail, 0, 0, 0.085);
+    for (const s of [1, -1]) { B(g, 0.016, 0.03, 0.24, M.main, 0, s * 0.02, 0.21); K(g, 0.016, 0.06, M.main, 0, s * 0.02, 0.36, PI / 2, 0, 0); }
+    return [0.38, 0.1];
   },
-  // Phase Blade: a bracer of humming coils and a blade of hard light
+  // Phase Knife: a short emitter hilt and a blade of hard light
   phase(r, M, g) {
-    B(g, 0.11, 0.11, 0.3, M.detail, 0, -0.01, -0.2); for (const z of [-0.28, -0.18, -0.08]) C(g, 0.065, 0.065, 0.03, M.trim, 0, -0.01, z, PI / 2);
-    B(g, 0.03, 0.06, 0.56, M.glow, 0, -0.06, 0.32); B(g, 0.05, 0.08, 0.04, M.trim, 0, -0.06, 0.03);
-    return [0.64, 0.05];
+    B(g, 0.045, 0.045, 0.15, M.detail, 0, 0, 0); for (const z of [-0.04, 0.02]) C(g, 0.03, 0.03, 0.02, M.trim, 0, 0, z, PI / 2);
+    B(g, 0.06, 0.07, 0.04, M.trim, 0, 0, 0.09);
+    B(g, 0.022, 0.065, 0.28, M.glow, 0, 0, 0.24); K(g, 0.03, 0.06, M.glow, 0, 0, 0.41, PI / 2, PI / 4, 0);
+    return [0.42, 0.1];
   },
-  // Bone Fang: a hooked blade of serrated bone lashed to a leather bracer
+  // Bone Fang: a hooked blade of serrated bone lashed to a leather grip
   fang(r, M, g) {
-    B(g, 0.11, 0.1, 0.3, M.detail, 0, -0.01, -0.2); for (const z of [-0.26, -0.14]) B(g, 0.12, 0.02, 0.03, M.trim, 0, 0.04, z);
-    for (let i = 0; i < 4; i++) B(g, 0.02, 0.06, 0.13, M.main, 0, -0.06 - i * 0.012, 0.08 + i * 0.12, -0.12 * i);
-    for (let i = 0; i < 4; i++) K(g, 0.015, 0.04, M.main, 0, -0.1 - i * 0.015, 0.1 + i * 0.12, PI, 0, 0);
-    return [0.58, 0.05];
+    B(g, 0.045, 0.05, 0.15, M.detail, 0, 0, 0); for (const z of [-0.04, 0.0, 0.04]) B(g, 0.05, 0.054, 0.01, M.trim, 0, 0, z);
+    for (let i = 0; i < 3; i++) B(g, 0.02, 0.06 - i * 0.008, 0.1, M.main, 0, 0.004 - i * 0.012, 0.12 + i * 0.09, -0.15 * i);
+    for (let i = 0; i < 3; i++) K(g, 0.014, 0.035, M.main, 0, -0.035 - i * 0.012, 0.12 + i * 0.09, PI, 0, 0);
+    K(g, 0.02, 0.07, M.main, 0, -0.03, 0.38, PI / 2 + 0.5, 0, 0);
+    return [0.4, 0.1];
   },
 };
 MAGE_ARMORY.staff = {

@@ -236,6 +236,16 @@ export function weaponChar(kind, weaponId) {
 // damage lands, `events` fire once at their time, `vanish` hides the body, `reverse` holds the right weapon in a
 // reverse grip, `jump` lifts the body [t0, t1, height], `at` is where to stand relative to the victim.
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+// (the Wrist Blade's knife hand: its guard by the cheek, raised high point-down; weaponmoves.js has the same)
+const RK = { guard: { armR: [-0.55, 0, -0.25], foreR: [-1.75, 0, 0], handR: [0.15, 0, 0], armL: [-0.75, 0, 0.3], foreL: [-1.0, 0, 0], handL: [0.4, 0, 0] }, high: { armR: [-2.75, 0, -0.15], foreR: [-0.9, 0, 0], handR: [0.2, 0, 0] } };
+const CROUCH = (l = 1) => ({ legL: [-0.75 * l, 0, 0], legR: [0.55 * l, 0, 0], shinL: [0.45 * l, 0, 0], shinR: [0.5 * l, 0, 0], by: -0.28 * l });
+// a hang's height at crit time rt: [up, on, let go, down]: a leap up to h, held there (a little bob as he braces), a drop
+export function hangY(H, rt, h) {
+  if (rt <= H[0] || rt >= H[3]) return 0;
+  if (rt < H[1]) { const u = (rt - H[0]) / (H[1] - H[0]); return h * (1 - (1 - u) * (1 - u)) + Math.sin(u * Math.PI) * 0.25; }
+  if (rt < H[2]) return h + Math.sin((rt - H[1]) * 9) * 0.03;
+  const u = (rt - H[2]) / (H[3] - H[2]); return h * (1 - u * u) + Math.sin(u * Math.PI) * 0.2;
+}
 export const CRITS = {
   // Knight: a flying knee into a downed enemy (least damage: he knocks enemies down the most)
   knee: {
@@ -299,6 +309,48 @@ export const CRITS = {
   },
 };
 CRITS.backstab.keys = CRITS.stab.keys;
+
+// The Wrist Blade's backstab out of the Ghost Veil (player.js neckStab): he slips round behind the victim (`behind`:
+// how close to its back), and the victim is held (`holdTo`) until the knife comes out. The knife goes into the neck
+// (the eye on anything without one: gore.js), is held there, and ripped out in a spray of blood (oil from a machine,
+// straw from the dummy). Triple a cut's damage, always a critical.
+const NECK_FX = {
+  stab: (p, tg, g) => { const n = neckPoint(tg); g.gore.spray(n, p.fwd().clone(), 12, tg, 0.7); g.vfx('redCrit', n); g.hitstop(0.1); },
+  pulse: (p, tg, g) => { const n = neckPoint(tg); g.gore.spray(n, p.fwd().clone().multiplyScalar(0.3), 5, tg, 0.4); },
+  rip: (p, tg, g) => {
+    const n = neckPoint(tg), out = p.fwd().clone().negate().add(V3(-p.fwd().z, 0, p.fwd().x).multiplyScalar(-0.8)).normalize(); // (back and out to his right, the way the arm comes)
+    g.gore.spray(n, out, 40, tg, 1.4); g.gore.spray(n, p.fwd().clone(), 14, tg, 0.6); g.audio.play('riposte', 0.5); g.fx.addShake(0.35);
+    g.gore.bleed?.(tg, 1.6); // (it keeps pouring a moment)
+  },
+};
+// where the knife goes in: the side of the neck, or the eye (gore.js neckOf)
+export const neckPoint = (tg) => tg.game.gore.neckOf(tg);
+CRITS.neck = {
+  dur: 1.3, hitAt: 0.3, holdTo: 0.9, dmg: 36, flatHits: 3, behind: 0.32, glide: 0.24, trail: [0.24, 0.32],
+  keys: [
+    [0.12, { torso: [0.25, 0.3, 0], head: [-0.1, -0.2, 0], ...RK.high, armL: [-2.0, 0, -0.25], foreL: [-0.55, 0, 0], handL: [0.3, 0, 0], legL: [-0.45, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.06 }],
+    [0.3, { torso: [0.4, 0.1, 0], head: [0.1, 0, 0], armR: [-1.75, 0, 0.35], foreR: [-0.9, 0, 0], handR: [0.1, 0, 0], armL: [-2.05, 0, -0.3], foreL: [-0.7, 0, 0], ...lunge(1.1) }],
+    [0.6, { torso: [0.45, 0.2, 0], head: [0.15, 0, 0], armR: [-1.7, 0.15, 0.4], foreR: [-0.95, 0, 0], handR: [0.1, 0, 0], armL: [-2.05, 0, -0.3], foreL: [-0.7, 0, 0], ...lunge(1.2) }],
+    [0.9, { torso: [0.1, -0.7, 0], head: [-0.1, 0.3, 0], armR: [-0.7, 0, -1.25], foreR: [-1.1, 0, 0], handR: [0.2, 0, 0], armL: [-1.6, 0, -0.1], foreL: [-0.4, 0, 0], legL: [0.2, 0, 0], legR: [-0.3, 0, 0], by: -0.08 }],
+    [1.15, { torso: [0.12, 0.15, 0], ...RK.guard }],
+  ],
+  events: [{ t: 0.3, fn: (p, tg, g) => NECK_FX.stab(p, tg, g) }, { t: 0.6, fn: (p, tg, g) => NECK_FX.pulse(p, tg, g) }, { t: 0.9, fn: (p, tg, g) => NECK_FX.rip(p, tg, g) }],
+};
+// on something big or tall or up above him: a leap onto its back, hanging on (`hang`: [up, on, let go, down]) with his
+// legs locked round it, the knife hammered in, held a long second, then ripped out as he kicks off
+CRITS.neckLeap = {
+  dur: 1.95, hitAt: 0.46, holdTo: 1.42, dmg: 36, flatHits: 3, behind: -0.25, glide: 0.18, hang: [0.1, 0.3, 1.45, 1.75], trail: [0.4, 0.48],
+  keys: [
+    [0.1, { torso: [0.5, 0, 0], ...RK.guard, armL: [0.4, 0, 0.4], foreL: [-0.4, 0, 0], ...CROUCH(1.2) }],
+    [0.3, { torso: [0.35, 0, 0], head: [-0.2, 0, 0], ...RK.high, armL: [-2.5, 0, -0.35], foreL: [-1.2, 0, 0], legL: [-1.45, 0, 0.35], shinL: [1.7, 0, 0], legR: [-1.45, 0, -0.35], shinR: [1.7, 0, 0], by: 0 }],
+    [0.46, { torso: [0.6, 0.1, 0], head: [0.1, 0, 0], armR: [-1.35, 0, 0.25], foreR: [-0.5, 0, 0], handR: [0.1, 0, 0], armL: [-2.5, 0, -0.35], foreL: [-1.2, 0, 0], legL: [-1.45, 0, 0.35], shinL: [1.7, 0, 0], legR: [-1.45, 0, -0.35], shinR: [1.7, 0, 0], by: 0 }],
+    [1.0, { torso: [0.65, 0.25, 0], head: [0.15, 0, 0], armR: [-1.3, 0.2, 0.3], foreR: [-0.55, 0, 0], handR: [0.1, 0, 0], armL: [-2.5, 0, -0.35], foreL: [-1.2, 0, 0], legL: [-1.4, 0, 0.35], shinL: [1.65, 0, 0], legR: [-1.5, 0, -0.35], shinR: [1.75, 0, 0], by: 0 }],
+    [1.42, { torso: [-0.45, -0.6, 0], head: [-0.2, 0.3, 0], armR: [-0.6, 0, -1.3], foreR: [-1.1, 0, 0], handR: [0.2, 0, 0], armL: [-1.2, 0, 0.6], foreL: [-0.4, 0, 0], legL: [-0.5, 0, 0], shinL: [0.4, 0, 0], legR: [0.2, 0, 0], shinR: [0.3, 0, 0], by: 0 }],
+    [1.75, { torso: [0.45, 0, 0], ...RK.guard, ...CROUCH(1.1) }],
+    [1.95, { torso: [0.12, 0.15, 0], ...RK.guard }],
+  ],
+  events: [{ t: 0.46, fn: (p, tg, g) => NECK_FX.stab(p, tg, g) }, { t: 0.8, fn: (p, tg, g) => NECK_FX.pulse(p, tg, g) }, { t: 1.12, fn: (p, tg, g) => NECK_FX.pulse(p, tg, g) }, { t: 1.42, fn: (p, tg, g) => NECK_FX.rip(p, tg, g) }],
+};
 for (const [k, c] of Object.entries(CRITS)) c.name = k;
 export const RIPOSTE = CRITS.stab; // the shape teammates' puppets fall back to
 
@@ -679,7 +731,13 @@ export class Player extends Actor {
       case 'riposte': {
         const tg = this.riposteTarget, C = this.crit;
         const rt = this.t * this.ripRate; // the evolved rogue's critical plays much faster
-        if (tg && rt < Math.min(0.3, C.hitAt) && !C.blink && !(C.through && rt >= C.through)) {
+        if (tg && C.behind != null) {
+          // round behind it, quick (unseen out of the veil), then pressed to its back while the knife's in
+          const b = this.behindOf(tg, C.behind), k = rt < C.glide ? Math.min(1, dt * 16) : 1;
+          if (rt < C.glide || C.hang) this.move((b.x - this.pos.x) * k, (b.z - this.pos.z) * k);
+          if (C.hang && (rt < C.hang[0] || rt > C.hang[2])) { /* (on the ground) */ }
+          this.yaw = this.yawTo(tg.pos);
+        } else if (tg && rt < Math.min(0.3, C.hitAt) && !C.blink && !(C.through && rt >= C.through)) {
           // glide into position at the victim
           this.turnToward(this.yawTo(tg.pos), 20, dt);
           const d = this.distTo(tg) - tg.radius - C.at;
@@ -699,6 +757,7 @@ export class Player extends Actor {
         this.trailOn = this.inWindow(C.trail, rt);
         this.rig.reverse = !!(C.reverse && rt >= C.reverse[0] && rt < C.reverse[1]);
         if (C.vanish) { this.ripHidden = rt >= C.vanish[0] && rt < C.vanish[1]; this.rig.root.visible = !this.ripHidden; }
+        if (C.hang) { this.ripLift = true; this.y = hangY(C.hang, rt, this.ripHangH); }
         if (C.jump) { this.ripLift = true; this.y = rt > C.jump[0] && rt < C.jump[1] ? C.jump[2] * Math.sin(Math.PI * (rt - C.jump[0]) / (C.jump[1] - C.jump[0])) : 0; }
         if (tg && C.events) for (const ev of C.events) {
           if (this.ripEv.has(ev) || rt < ev.t) continue;
@@ -903,13 +962,28 @@ export class Player extends Actor {
   }
 
   startRiposte(tg, rate = 1, crit = critFor(this.kind, tg, false)) {
-    this.riposteTarget = tg; this.ripHit = false; this.ripRate = rate;
+    this.riposteTarget = tg; this.ripHit = false; this.ripRate = rate; this.ripNeck = false;
     this.crit = crit; this.ripEv = new Set(); this.ripThrough = false; this.ripDir = null;
-    tg.beginRiposted?.(this, crit.hitAt / rate);
+    // (a hang: how high up its back he goes, his chest at its neck)
+    this.ripHangH = crit.hang ? Math.max(0.35, neckPoint(tg).y - (this.pos.y || 0) - 1.3 * this.rig.root.scale.y) : 0;
+    tg.beginRiposted?.(this, (crit.holdTo ?? crit.hitAt) / rate); // (held until the knife comes out)
     this.atk = { def: crit, t: 0, hit: new Set() };
     this.setState('riposte');
-    this.game.mp.event({ k: 'riposte', r: rate, c: crit.name });
+    this.game.mp.event({ k: 'riposte', r: rate, c: crit.name, h: Math.round(this.ripHangH * 100) / 100 });
   }
+
+  // ---------- the Wrist Blade's backstab out of the Ghost Veil: into the neck, or up onto the back of a big one ----------
+  neckStab(tg) {
+    const big = tg.isBoss || tg.heavy || tg.rig.root.scale.y >= 1.3 || (tg.pos.y || 0) - (this.pos.y || 0) > 0.5;
+    this.endVeil();
+    this.spend(10);
+    this.lock = this.lock || tg;
+    this.startRiposte(tg, 1, big ? CRITS.neckLeap : CRITS.neck);
+    this.ripNeck = true;
+    return true;
+  }
+  // the spot behind its back he slips to (or presses against, hanging on)
+  behindOf(tg, d) { const f = tg.fwd(); return { x: tg.pos.x - f.x * (tg.radius + d), z: tg.pos.z - f.z * (tg.radius + d) }; }
 
   // ---------- evolved knight: shield charge ----------
   startCharge(dir, mag) {
@@ -926,7 +1000,7 @@ export class Player extends Actor {
   }
 
   endCrit() {
-    this.rig.reverse = false;
+    this.rig.reverse = false; this.ripNeck = false;
     if (this.ripHidden) { this.rig.root.visible = true; this.ripHidden = false; }
     if (this.ripLift) { this.y = 0; this.ripLift = false; }
     this.setState('move');
@@ -1116,8 +1190,12 @@ export class Player extends Actor {
   }
 
   doAttack(name, dir, mag) {
-    // out of the Ghost Veil the Wrist Blades' first blow is the backstab: the arm shoved in and ripped out
-    if (this.veilT > 0 && this.c.attacks.wRip && !this.c.attacks[name]?.comboMove) name = 'wRip';
+    // out of the Ghost Veil the Wrist Blade's first blow is the backstab: round behind the nearest and into its neck
+    if (this.veilT > 0 && this.c.weapon === 'wristblade' && !this.c.attacks[name]?.comboMove) {
+      const aim = mag > 0.2 ? Math.atan2(dir.x, dir.z) : this.yaw;
+      const tg = this.lock?.alive && this.distTo(this.lock) < 4 + this.lock.radius ? this.lock : this.findTarget(3.6, 1.6, aim, (e) => e.alive && e.type !== 'chime');
+      if (tg) return this.neckStab(tg);
+    }
     const def = this.c.attacks[name];
     this.atkKey = name;
     // repeated attacks cost more and push stamina regen further out (combo moves cost a fixed, larger amount)

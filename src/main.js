@@ -51,6 +51,7 @@ import { Hermitage } from './hermitage.js';
 import { Bazaar } from './bazaar.js';
 import { noteKill, restockAll, relicsWanted } from './traders.js';
 import { Ragdolls } from './ragdoll.js';
+import { Gore } from './gore.js';
 import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
@@ -443,6 +444,7 @@ class Game {
     this.bazaar = new Bazaar(this);
     this.runes = new RuneRuntime(this);
     this.ragdolls = new Ragdolls(this); // (the dead go limp: ragdoll.js)
+    this.gore = new Gore(this); // (blood, oil, the neck: gore.js)
     this.worldMap = new WorldMap(this);
     this.partyTab = new PartyTab(this);
     this.pings = new Pings(this);
@@ -1513,7 +1515,7 @@ class Game {
     };
     if (att !== this.player) { info.dmg *= att.dmgScale || 1; info.elems = att.elems; info.buildMul = att.elemBuild ?? 1; }
     // Ghost Veil: the first strike out of hiding is always a backstab, a critical hit for triple damage (with the
-    // Wrist Blades it's the arm shoved in and ripped out: weaponmoves.js wRip)
+    // Wrist Blade it's the knife in the neck: player.js neckStab)
     if (att === this.player && att.veilStrike) {
       info.dmg *= VEIL.backstab; info.backstab = true;
       this.statusPopup(tg, 'BACKSTAB', '#ff4a3a'); this.vfx('redCrit', tg.pos.clone().setY(1.2 + (tg.pos.y || 0)));
@@ -1678,17 +1680,18 @@ class Game {
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
     const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y + (tg.pos.y || 0), tg.pos.z);
     tg.lastHitBy = p;
-    tg.hp -= dmg;
+    if (tg.T?.still) tg.receive({ dmg, poise: 0, attacker: p }); // (the training dummy: it takes it its own way, and never breaks)
+    else tg.hp -= dmg;
     tg.rig.flash(1, 0.3, 0.2);
     if (tg.hp <= 0) tg.hp = 0;
     if (tg.hpShow !== undefined) tg.hpShow = 4;
     this.audio.play('riposte');
-    this.fx.blood(hp, p.fwd().clone(), 30);
+    if (!p.ripNeck) this.gore.spray(hp, p.fwd().clone(), 30, tg); // (the neck stab makes its own: player.js NECK_FX)
     this.fx.burst(hp, 20, [1, 0.3, 0.2], 5, 0.6, 0.25);
     this.pfx.play('crit', hp);
     this.hitstop(0.16);
     this.fx.addShake(0.7);
-    tg.kb.copy(p.fwd()).multiplyScalar(5);
+    if (!p.ripNeck) tg.kb.copy(p.fwd()).multiplyScalar(5); // (held on the knife, not shoved off it)
   }
 
   // evolved knight's shield charge meeting an enemy: a little damage and a hard shove
@@ -2270,6 +2273,7 @@ class Game {
         this.basements.update();
         this.mp.tick(dt);
         this.ragdolls.update(dt);
+        this.gore.update(dt);
         this.stepRevive(dt);
       } else {
         // keep buffered inputs during hitstop
@@ -2435,6 +2439,7 @@ class Game {
       const a = all[i], b = all[j];
       if (!a.alive && a !== this.player) continue;
       if (a === this.player && (a.state === 'dead')) continue;
+      if (a === this.player && a.ripNeck && b === a.riposteTarget) continue; // (on its back with the knife in: no shoving apart)
       const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, d = Math.hypot(dx, dz), m = a.radius + b.radius;
       if (d < m && d > 1e-4) {
         const push = (m - d);

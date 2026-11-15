@@ -599,6 +599,7 @@ export class Enemy extends Actor {
 
   // hitAt: seconds until the crit lands (each character's crit has its own timing)
   beginRiposted(p, hitAt = 0.32) {
+    if (this.T.still) return; // (an idol or the dummy just takes it, standing)
     if (this.puppet) this.game.mp.send({ t: 'riposted', id: this.netId, at: hitAt });
     this.setState('riposted'); this.atk = null; this.ripAt = Math.max(0.55, hitAt + 0.2);
   }
