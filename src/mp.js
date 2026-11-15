@@ -242,6 +242,7 @@ export class Multiplayer {
     else if (d.k === 'sfx') g.audio.remote(d.s, d.v ?? 1);
     else if (d.k === 'ping' || d.k === 'emote' || d.k === 'alert') g.pings.onNet(from, d);
     else if (d.k === 'fx') g.playVfx(d.n, d.a || []);
+    else if (d.k === 'maim') { const e = this.entity(d.id); if (e) g.gore.maim(e, d.p, new THREE.Vector3(d.dx || 0, 0, d.dz || 1)); } // (a teammate took a piece off: gore.js)
     else if (d.k === 'hit' || d.k === 'rip') {
       // a teammate striking an enemy
       const e = this.entity(d.id);
@@ -250,7 +251,7 @@ export class Multiplayer {
         e.rig.flash(1, 0.9, 0.8);
         const c = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y + (e.pos.y || 0), e.pos.z);
         const dir = p ? new THREE.Vector3(e.pos.x - p.pos.x, 0, e.pos.z - p.pos.z).normalize() : null;
-        g.fx.blood(c, dir, d.k === 'rip' ? 30 : d.heavy ? 16 : 9); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]);
+        g.gore.spray(c, dir, d.k === 'rip' ? 30 : d.b ? (d.heavy ? 22 : 16) : d.heavy ? 8 : 5, e, d.b || d.k === 'rip' ? 1 : 0.6); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]); // (gore.js)
         if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
         else if (p?.kind === 'knight') g.fx3d.impact(c, dir, { heavy: d.heavy || p.c.style === 'slab', color: knightHitColor(p.c.style) }); // (a Templar's blow: fx3d.js)
         else g.pfx.play(d.heavy ? 'heavyHit' : 'hit', c, { dir });

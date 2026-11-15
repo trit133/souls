@@ -26,6 +26,52 @@ const BACK_STRIKE = { torso: [0.22, -0.65, 0], armR: [-1.45, 0, -1.25], foreR: [
 const OVER_WIND = { torso: [-0.25, -0.1, 0], armR: [-3.0, 0, -0.2], foreR: [-0.6, 0, 0], handR: [1.0, 0, 0], armL: [-2.4, 0, 0.3], legL: [-0.3, 0, 0], legR: [0.3, 0, 0], shinL: [0.5, 0, 0], shinR: [0.6, 0, 0], by: -0.2 };
 const OVER_STRIKE = { torso: [0.6, 0, 0], armR: [-0.95, 0, 0.05], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.0, 0, 0.1], legL: [-0.75, 0, 0], legR: [0.55, 0, 0], shinL: [0.45, 0, 0], shinR: [0.5, 0, 0], by: -0.28 };
 
+// ---------- a maimed enemy's moves (gore.js maim; applyMaim) ----------
+// without its weapon arm: a left jab and a shove; without either arm, a kick; a crawler (a leg gone) grabs and claws at
+// your feet with what arms it has left
+const MAIM_MOVES = {
+  punch: {
+    dur: 0.95, range: 1.6, track: [0.3, 5], sfx: [0.36, 'swing'], recover: 0.35,
+    keys: [[0.3, { torso: [0.1, 0.55, 0], armL: [-1.0, 0, 0.6], foreL: [-1.9, 0, 0], legL: [-0.2, 0, 0], legR: [0.2, 0, 0] }],
+      [0.42, { torso: [0.25, -0.45, 0], armL: [-1.6, 0, -0.1], foreL: [-0.1, 0, 0], legL: [-0.5, 0, 0], legR: [0.4, 0, 0], shinR: [0.4, 0, 0], by: -0.08 }],
+      [0.7, { torso: [0.2, -0.3, 0], armL: [-1.5, 0, -0.05], foreL: [-0.3, 0, 0], legL: [-0.4, 0, 0], legR: [0.3, 0, 0] }]],
+    hits: [{ t0: 0.38, t1: 0.47, range: 1.7, arc: 1.4, dmg: 9, poise: 8 }], move: [[0.3, 0.42, 0.5]],
+  },
+  shove: {
+    dur: 1.1, range: 1.5, track: [0.35, 5], sfx: [0.45, 'swing'], recover: 0.4,
+    keys: [[0.38, { torso: [-0.1, 0.3, 0], armL: [-1.2, 0, 0.4], foreL: [-1.5, 0, 0], legL: [0.2, 0, 0], legR: [-0.2, 0, 0] }],
+      [0.52, { torso: [0.45, 0, 0], armL: [-1.55, 0, 0], foreL: [0, 0, 0], handL: [-1.2, 0, 0], legL: [-0.7, 0, 0], legR: [0.55, 0, 0], shinR: [0.5, 0, 0], by: -0.15 }],
+      [0.8, { torso: [0.35, 0, 0], armL: [-1.4, 0, 0], foreL: [-0.2, 0, 0], legL: [-0.5, 0, 0], legR: [0.4, 0, 0] }]],
+    hits: [{ t0: 0.46, t1: 0.56, range: 1.6, arc: 1.2, dmg: 5, poise: 25, knockback: 7 }], move: [[0.4, 0.52, 0.7]],
+  },
+  kick: {
+    dur: 1.0, range: 1.7, track: [0.3, 5], sfx: [0.4, 'swing'], recover: 0.4,
+    keys: [[0.32, { torso: [-0.2, 0, 0], legR: [-1.2, 0, 0], shinR: [1.6, 0, 0], legL: [0.1, 0, 0], shinL: [0.2, 0, 0] }],
+      [0.45, { torso: [-0.35, 0, 0], legR: [-1.55, 0, 0], shinR: [0.05, 0, 0], legL: [0.15, 0, 0], shinL: [0.3, 0, 0], by: -0.05 }],
+      [0.75, { torso: [-0.1, 0, 0], legR: [-0.4, 0, 0], shinR: [0.5, 0, 0] }]],
+    hits: [{ t0: 0.41, t1: 0.5, range: 1.8, arc: 1.2, dmg: 10, poise: 15, knockback: 4 }], move: [[0.3, 0.45, 0.4]],
+  },
+  grab: {
+    dur: 1.15, range: 1.6, track: [0.4, 4], sfx: [0.5, 'swing'], recover: 0.5,
+    keys: [[0.4, { armL: [-3.1, 0, 0.5], foreL: [-0.2, 0, 0], armR: [-3.1, 0, -0.5], foreR: [-0.2, 0, 0], head: [-0.9, 0, 0] }],
+      [0.55, { armL: [-2.2, 0, 0.15], foreL: [-1.2, 0, 0], armR: [-2.2, 0, -0.15], foreR: [-1.2, 0, 0], head: [-0.5, 0, 0] }],
+      [0.85, { armL: [-2.4, 0, 0.3], foreL: [-0.8, 0, 0], armR: [-2.4, 0, -0.3], foreR: [-0.8, 0, 0] }]],
+    hits: [{ t0: 0.5, t1: 0.6, range: 1.7, arc: 1.3, dmg: 8, poise: 12 }],
+  },
+};
+// lying on its belly (anims.js prone), the arms hauling it along in turn
+const CRAWL_BODY = { hips: P.prone.hips, torso: P.prone.torso, head: P.prone.head, legL: P.prone.legL, shinL: P.prone.shinL, legR: P.prone.legR, shinR: P.prone.shinR, by: P.prone.by };
+export function crawlPose(e, pose, moving) {
+  const out = { ...pose, ...CRAWL_BODY };
+  if (moving) {
+    const s = Math.sin(e.phase * 0.7);
+    out.armL = [-2.5 + s * 0.6, 0, 0.35]; out.foreL = [-0.3 - Math.max(0, s) * 0.9, 0, 0];
+    out.armR = [-2.5 - s * 0.6, 0, -0.35]; out.foreR = [-0.3 - Math.max(0, -s) * 0.9, 0, 0];
+    out.torso = [CRAWL_BODY.torso[0], s * 0.12, 0];
+  }
+  return out;
+}
+
 const GRUNT_MOVES = {
   slash: {
     parry: true, dur: 1.25, range: 2.0, track: [0.5, 5], sfx: [0.55, 'swing'], trail: [0.54, 0.7], recover: 0.35,
@@ -307,10 +353,32 @@ export class Enemy extends Actor {
     return this.pathDir;
   }
 
+  // a piece taken off (gore.js maim): it fights on as it can. A leg gone: it crawls on its belly, slow, and grabs at
+  // your feet; its weapon arm gone (the weapon with it): punches and shoves (a kick, with no arms at all); its other
+  // arm gone: it swings its weapon wildly (barely aimed, a little faster). Its head: dead. The same on every device
+  // (a puppet takes the same moves and pose)
+  applyMaim(part) {
+    const m = this.maimed || (this.maimed = new Set()); m.add(part);
+    if (part === 'head') { if (!this.puppet && this.alive) { this.hp = 0; this.die(); } return; }
+    const R = m.has('armR') || m.has('foreR'), L = m.has('armL') || m.has('foreL');
+    this.legless = ['legL', 'legR', 'shinL', 'shinR'].some((k) => m.has(k));
+    this.unarmed = R; this.wild = L && !R;
+    const T0 = this.T0 || (this.T0 = this.T), T = { ...T0 };
+    let moves = null;
+    if (this.legless) { moves = R && L ? {} : { grab: MAIM_MOVES.grab }; T.run = T0.run * 0.28; T.walk = T0.walk * 0.32; T.prefer = 1.1; T.backoff = 0; T.ranged = false; T.turn = T0.turn * 0.6; }
+    else if (R) { moves = L ? { kick: MAIM_MOVES.kick } : { punch: MAIM_MOVES.punch, shove: MAIM_MOVES.shove }; T.prefer = 1.3; T.backoff = 0; T.ranged = false; }
+    if (moves) { this.moves = { ...this.moves, ...moves }; T.moves = this.moves; T.weights = Object.fromEntries(Object.keys(moves).map((k) => [k, k === 'shove' ? 1 : 2])); }
+    this.T = T;
+    if (this.state === 'attack' && moves) { this.atk = null; if (!this.puppet) this.setState('chase'); }
+    if (R) this.trailOn = false;
+  }
+  crawlPose(pose) { return crawlPose(this, pose, this.state !== 'attack' && (this.puppetSpeed || 0) > 0.1); }
+
   // walking, running, strafing round you, backing off: the baked gait (clips.js), as the players move
   // (only near enough to be seen: it costs more than the old stride, and a dungeon can have fifty awake)
   gait(dt) {
     const c = this.game.player?.pos;
+    if (this.legless) return null; // (it crawls: crawlPose)
     if (!hasClips() || (c && (Math.abs(this.pos.x - c.x) > 22 || Math.abs(this.pos.z - c.z) > 22))) return null;
     return gaitFor(this, this.T.style, dt, { posture: CARRIAGE[this.type] });
   }
@@ -384,6 +452,7 @@ export class Enemy extends Actor {
             this.urgent = false;
             this.lastMove = m;
             this.trackMul = this.atkSpeed;
+            if (this.wild) { this.trackMul = 0.25; this.atkSpeed *= 1.15; this.yaw += (Math.random() - 0.5) * 1.1; } // (one-armed: flailing, barely aimed)
             this.startAttack(T.moves[m]);
             break;
           }
@@ -495,7 +564,8 @@ export class Enemy extends Actor {
         break;
       }
     }
-    if (this.state !== 'attack') this.trailOn = false;
+    if (this.state !== 'attack' || this.unarmed) this.trailOn = false;
+    if (this.legless && pose && this.state !== 'dead') pose = crawlPose(this, pose, ['chase', 'idle', 'return', 'recover', 'alert'].includes(this.state));
     if (this.armorT > 0) {
       this.armorT -= dt;
       if (Math.random() < dt * 25) this.game.fx.ember({ x: this.pos.x, y: 0.3 + Math.random() * 1.6 * this.T.scale + (this.pos.y || 0), z: this.pos.z }, 0.8, 1.2);

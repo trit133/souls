@@ -51,7 +51,7 @@ import { Hermitage } from './hermitage.js';
 import { Bazaar } from './bazaar.js';
 import { noteKill, restockAll, relicsWanted } from './traders.js';
 import { Ragdolls } from './ragdoll.js';
-import { Gore } from './gore.js';
+import { Gore, BLADES } from './gore.js';
 import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
@@ -283,7 +283,7 @@ class Game {
   }
 
   buildLevel(layout, seed, players) {
-    this.ragdolls?.clear(); // (the last level's dead)
+    this.ragdolls?.clear(); this.gore?.clear(); // (the last level's dead, its severed pieces and its pools)
     for (const e of [...this.enemies, ...this.reserves]) e.remove();
     for (const b of this.bosses) b.remove();
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
@@ -1599,8 +1599,13 @@ class Game {
     if (att === this.player && att.c.caster) att.mana = Math.min(att.maxMana, att.mana + MANA_PER_HIT + (att.tree?.manaHit || 0)); // knife hits only
     if (att === this.player && tg.alive) this.applyStatus(tg, info.buildParts || info.parts, BUILD_PER_DMG);
     this.audio.play(heavy ? 'bigHit' : 'hit', 0.9);
-    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, d: packParts(shown) });
-    this.fx.blood(hp, dir, heavy ? 16 : 9);
+    // a blade squirts it out of them (gore.js: blood, a machine's oil, the dummy's straw), more the harder it bit; a
+    // blunt blow or an enemy's only a little
+    const blade = !!(att.c?.weapon && BLADES.has(att.c.weapon) && tg.maxHp);
+    this.mp.event({ k: 'hit', id: tg.netId, heavy: !!heavy, d: packParts(shown), b: blade ? 1 : 0 });
+    this.gore.spray(hp, dir, blade ? Math.round(10 + Math.min(24, 60 * dealt / tg.maxHp) + (heavy ? 6 : 0)) : heavy ? 8 : 5, tg, blade ? 1 : 0.6);
+    // the last blow of a slashing combo can take a piece off (gore.js)
+    if (att === this.player && def.finisher && h === def.hits[def.hits.length - 1]) this.gore.tryMaim(att, tg, def, h, dealt, dir);
     // the Templar's blows: a flash, streaking sparks, a shock ring (fx3d.js); everyone else's: the pixel spark
     if (att === this.player && att.kind === 'knight') this.fx3d.impact(hp, dir, { heavy: heavy || att.c.style === 'slab', color: knightHitColor(att.c.style) });
     else { this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]); this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir }); }

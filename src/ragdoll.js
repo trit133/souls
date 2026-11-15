@@ -11,7 +11,7 @@ import * as THREE from 'three';
 
 const GRAVITY = -16;
 // how long a body is simulated at most, and how many at once (the oldest freeze first; fewer on a phone)
-const LIFE = 5, MAX_LIVE = 10, MAX_LIVE_PHONE = 5;
+const LIFE = 5, MAX_LIVE = 10, MAX_LIVE_PHONE = 5, MAX_PIECES = 30;
 // the segments: the rig joint, its parent segment, the box (half sizes, as fractions of rig.dims or plain metres) and
 // its centre from the joint, its mass, and how it hangs from its parent (cone: angle; hinge: about the joint's x)
 const SEGS = [
@@ -45,6 +45,7 @@ export class Ragdolls {
     ground.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     this.world.addBody(ground);
     this.list = []; // { who, rig, bodies: {k: Body}, cons, floor, t, live }
+    this.pieces = []; // severed limbs and heads (gore.js): { obj, body, c, floor, t, live, prev }
   }
 
   // called where a dead actor would take its dead pose: true once it's a ragdoll (the caller poses nothing). A body
@@ -122,17 +123,52 @@ export class Ragdolls {
     rig.shadow && (rig.shadow.visible = true);
   }
 
+  // a piece cut off (gore.js maim): one box (half sizes, its centre `c` from the object's origin, already scaled)
+  // thrown with velocity v; it tumbles, lands and stays (frozen like the bodies; the oldest go past MAX_PIECES)
+  piece(obj, half, c, floor, v) {
+    const o = new THREE.Vector3(...c).applyQuaternion(obj.quaternion);
+    const body = new CANNON.Body({
+      mass: 1, shape: new CANNON.Box(v3(...half)), position: v3(obj.position.x + o.x, obj.position.y + o.y - floor, obj.position.z + o.z),
+      quaternion: new CANNON.Quaternion(obj.quaternion.x, obj.quaternion.y, obj.quaternion.z, obj.quaternion.w),
+      collisionFilterGroup: 2, collisionFilterMask: 1, linearDamping: 0.1, angularDamping: 0.3, allowSleep: true, sleepSpeedLimit: 0.15, sleepTimeLimit: 0.5,
+    });
+    body.velocity.set(v.x, v.y, v.z);
+    body.angularVelocity.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+    this.world.addBody(body);
+    const P = { obj, body, c: new THREE.Vector3(...c), floor, t: 0, live: true, prev: { x: body.position.x, z: body.position.z } };
+    this.pieces.push(P);
+    if (this.pieces.length > MAX_PIECES) this.dropPiece(this.pieces[0]);
+    return P;
+  }
+  dropPiece(P) {
+    if (P.live) this.world.removeBody(P.body);
+    P.live = false;
+    P.obj.parent?.remove(P.obj);
+    this.pieces = this.pieces.filter((x) => x !== P);
+  }
+
   // a new level (or leaving one): every body goes
-  clear() { for (const R of [...this.list]) this.release(R); this.list = []; }
+  clear() { for (const R of [...this.list]) this.release(R); this.list = []; for (const P of [...this.pieces]) this.dropPiece(P); }
 
   update(dt) {
-    if (!this.list.length) return;
+    if (!this.list.length && !this.pieces.some((P) => P.live)) return;
     // up again, or gone with its level
     for (const R of [...this.list]) if (R.who.alive || !R.rig.root.parent) this.release(R);
-    if (this.list.some((r) => r.live)) {
+    if (this.list.some((r) => r.live) || this.pieces.some((P) => P.live)) {
       for (const R of this.list) if (R.live) for (const [k, b] of Object.entries(R.bodies)) (R.prev[k] ||= { x: 0, z: 0 }).x = b.position.x, R.prev[k].z = b.position.z;
+      for (const P of this.pieces) if (P.live) { P.prev.x = P.body.position.x; P.prev.z = P.body.position.z; }
       this.world.step(1 / 60, dt, 3);
       const W = this.game.world;
+      for (const P of this.pieces) {
+        if (!P.live) continue;
+        P.t += dt;
+        const b = P.body;
+        if (!W.walkable(b.position.x, b.position.z, 0, null, true)) { b.position.x = P.prev.x; b.position.z = P.prev.z; b.velocity.x = 0; b.velocity.z = 0; }
+        P.obj.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+        const o = _v.copy(P.c).applyQuaternion(P.obj.quaternion);
+        P.obj.position.set(b.position.x - o.x, b.position.y + P.floor - o.y, b.position.z - o.z);
+        if (P.t > LIFE || b.sleepState === CANNON.Body.SLEEPING) { P.live = false; this.world.removeBody(b); }
+      }
       for (const R of this.list) {
         if (!R.live) continue;
         R.t += dt;

@@ -4,7 +4,8 @@
 // One rune of each type at a time in a tree; support runes (they strengthen one type) can go in as many sockets as
 // you like. Runes are forged at the workbench (hermitage.js) from the stash's materials and kept in the stash, shared
 // by every character, never used up; Varek's five unique runes, one of each type, are his reward (main.js).
-// The Shattered March: 10 runes (2 a type), 10 supports (2 a type), Varek's 5. Kept tame; the unique ones less so.
+// The Shattered March: 10 runes (2 a type), 11 supports (2 a type, and Butcher's Mark for maiming: gore.js), Varek's
+// 5. Kept tame; the unique ones less so.
 //
 // In a raid (RuneRuntime): the roll's distance and its embers / Sandevistan afterimages, the aura's ring with its
 // slow and burn, the summons (a servo-skull, a scrap hound, Varek's echo) with their own simple AI, the buffs, Second
@@ -73,6 +74,8 @@ export const RUNES = {
     recipe: { purity_seal: 2, augury_shard: 1 }, glyph: G('.......//.#..#../.#..#../.#..#../.#..#../.......') },
   iron_blood: { type: 'util', kind: 'support', name: 'Iron Blood', desc: 'Support · Utility: +100 health.', fx: { hp: 100 },
     recipe: { scrap_iron: 5, ash_rag: 3 }, glyph: G('...#.../..###../.#####./.#####./..###../.......//') },
+  butchers_mark: { type: 'util', kind: 'support', name: "Butcher's Mark", desc: 'Support · Utility: the last blow of a slashing combo is 40% more likely to take a limb off (or a head, where the combo can).', fx: { maim: 0.4 },
+    recipe: { scrap_iron: 8, spent_casings: 6, purity_seal: 2, augury_shard: 1 }, glyph: G('......./.####../.#####./.####../...#.../...#.../..###..') },
   deep_breath: { type: 'util', kind: 'support', name: 'Deep Breath', desc: 'Support · Utility: +8 stamina.', fx: { st: 8 },
     recipe: { copper_coil: 2, spent_casings: 4 }, glyph: G('.......//.#...#./#.#.#.#/#..#..#/#.....#/.#####.') },
 
@@ -141,7 +144,7 @@ export function setSocket(d, kind, node, id) {
 
 // ---------- what a character's socketed runes add up to (only sockets in nodes they own count) ----------
 export function runeLoadout(d, kind) {
-  const L = { roll: { dist: 1, ember: 0, sande: false }, aura: null, summon: null, buff: null, util: { hp: 0, st: 0, winds: 0 }, ids: [] };
+  const L = { roll: { dist: 1, ember: 0, sande: false }, aura: null, summon: null, buff: null, util: { hp: 0, st: 0, winds: 0, maim: 0 }, ids: [] };
   if (!d) return L;
   const have = owned(d, kind), list = Object.entries(socketed(d, kind)).filter(([n, id]) => have.has(n) && RUNES[id] && ownsRune(d, id)).map(([, id]) => id);
   L.ids = list;
@@ -149,7 +152,7 @@ export function runeLoadout(d, kind) {
   let roll = null;
   for (const id of list) {
     const R = RUNES[id], f = R.fx;
-    if (R.kind === 'support') { for (const k in sup) sup[k] += f[k] || 0; L.util.hp += f.hp || 0; L.util.st += f.st || 0; continue; }
+    if (R.kind === 'support') { for (const k in sup) sup[k] += f[k] || 0; L.util.hp += f.hp || 0; L.util.st += f.st || 0; L.util.maim += f.maim || 0; continue; }
     if (R.type === 'roll') roll = R;
     else if (R.type === 'aura') L.aura = { id, r: f.r, slow: f.slow || 0, burn: f.burn || 0, hex: R.kind === 'unique' ? 0xff5a2a : f.slow && !f.burn ? 0x6ab4ff : 0xff8a3a };
     else if (R.type === 'summon') L.summon = { id, pet: f.pet, dur: f.dur, cd: f.cd, n: 1 };
