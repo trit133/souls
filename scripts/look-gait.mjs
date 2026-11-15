@@ -1,6 +1,6 @@
 // The baked gait (clips.js) on a character, as the game draws it: walking, jogging, sprinting, and locked on to an
-// enemy strafing left and right and backing away, six frames each, from a camera on the character's right side and
-// from the game's own camera. /tmp/look/gait-<kind>.png (one row a movement)
+// enemy strafing left and right and backing away, six frames each, from a camera on the character's right side
+// (side steps from in front). /tmp/look/gait-<kind>.png (one row a movement)
 // node scripts/look-gait.mjs [kind] [url]
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'fs';
@@ -28,7 +28,7 @@ for (const [name, mx, mz, sprint, lock] of MOVES) {
       g.step(1 / 60, 1 / 60);
       if (lock) foe.pos.set(p.pos.x, 0, p.pos.z - 9), foe.rig.root.position.copy(foe.pos);
       if (f >= 42 && (f - 42) % 8 === 0) {
-        const c = g.camera; g.camLock = true; c.position.set(p.pos.x + 4.2, 1.5, p.pos.z + 0.4); c.lookAt(p.pos.x, 0.95, p.pos.z);
+        const c = g.camera; g.camLock = true; if (lock && mz === 0) c.position.set(p.pos.x + 0.6, 1.6, p.pos.z - 4.2); else c.position.set(p.pos.x + 4.2, 1.5, p.pos.z + 0.4); c.lookAt(p.pos.x, 0.95, p.pos.z); // (side steps from the front)
         g.pixel.render(g.scene, c);
         out.push(g.pixel.renderer?.domElement?.toDataURL?.() || document.querySelector('canvas').toDataURL());
         g.camLock = false;

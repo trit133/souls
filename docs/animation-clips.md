@@ -15,10 +15,10 @@ skeleton are **baked** into our rig's poses (`src/anim-data/clips.json`) and pla
      check sheet per clip at `/tmp/look/bake-<name>.png`: the source skeleton in grey, our rig in red.
 
 ## How it's used
-- `gaitPose(actor, style, dt, { speed, dir, turn, sprint, time, scale })` gives the pose for a moving body:
+- `gaitPose(actor, style, dt, { speed, dir, turn, sprint, time, scale })` gives the pose for a moving body, split into a lower body (an 8-way directional blend) and an upper body (its own layer, facing the target, shoulders moving with the steps):
   - idle, walk, jog and sprint, blended by real ground speed, kept in step, and played at their stride's rate,
   - backwards plays the gait reversed,
-  - sideways turns the hips toward the way it's going while the chest keeps facing (locked-on strafing),
+  - sideways is a side step made from the forward gait (lead foot out, trail foot closing), with a little hip warp on diagonals,
   - turning leans into the turn.
 - The weapon's hold (`anims.js` `styleArms`) goes on top.
 - Today only the Templar moves on it (`player.js` move state, and his copy on teammates' screens in `mp.js`). Any
