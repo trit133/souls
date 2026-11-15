@@ -30,14 +30,14 @@ const GS_FLAT_RIGHT = { armR: [-0.2, -0.31, 0.89], foreR: [-1.32, 0, 0], handR: 
 const GS_OVERHEAD = { armR: [-1.95, 0.08, 0.38], foreR: [-0.83, 0, 0], handR: [0.61, 0, 0.85] };    // raised over the head, the point back
 const GS_CHOP_DOWN = { armR: [-0.11, 0.54, 1.07], foreR: [-2.11, 0, 0], handR: [1.52, 0, -0.61] };  // down the middle, the point to the floor
 export const GREAT_ATTACKS = {
-  // an angled chop: up over the right shoulder, then down and in across the body to the middle, the point low
+  // the overhead chop: both hands lift it straight up and back over his head, then bring it down the middle in front of him
   g1: {
     dur: 0.95, cost: 22, next: 'g2', combo: [0.42, 0.95], cancel: 0.56, track: 0.22, trail: [0.32, 0.5], sfx: [0.32, 'heavySwing'], hand: 'R',
     keys: [
-      [0.12, { torso: [-0.05, -0.35, 0], ...GS_SHOULDER, legL: [-0.2, 0, 0], legR: [0.25, 0, 0], by: -0.06 }],
-      [0.27, { torso: [-0.3, -0.6, 0], head: [-0.1, 0.35, 0], ...GS_HI_RIGHT, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.06 }],
-      [0.42, { torso: [0.85, 0.35, 0], head: [0.15, -0.2, 0], ...GS_LOW_MID, ...crouch(1.15), by: -0.3 }],
-      [0.78, { torso: [0.75, 0.3, 0], ...GS_LOW_MID, ...crouch(1.0), by: -0.26 }],
+      [0.12, { torso: [-0.15, 0, 0], armR: [-1.3, 0.05, 0.25], foreR: [-1.4, 0, 0], handR: [0.8, 0, 0.6], legL: [-0.2, 0, 0], legR: [0.25, 0, 0], by: -0.06 }], // (both hands lifting it straight up the middle)
+      [0.27, { torso: [-0.4, 0, 0], head: [-0.15, 0, 0], ...GS_OVERHEAD, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.06 }], // (right back over his head)
+      [0.42, { torso: [0.85, 0, 0], head: [0.2, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.15), by: -0.3 }], // (straight down in front of him)
+      [0.78, { torso: [0.75, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.0), by: -0.26 }],
     ],
     hits: [{ t0: 0.34, t1: 0.5, range: 3.2, arc: 3.4, dmg: 36, poise: 30 }],
     move: [[0.22, 0.48, 1.0]], onHitShake: 0.25,
@@ -47,7 +47,7 @@ export const GREAT_ATTACKS = {
   g2: {
     dur: 1.25, cost: 24, next: 'g3', combo: [0.68, 1.25], cancel: 0.82, track: 0.4, trail: [0.54, 0.74], sfx: [0.54, 'heavySwing'], hand: 'R',
     keys: [
-      [0.04, { torso: [0.85, 0.35, 0], ...GS_LOW_MID, ...crouch(1.15), by: -0.3 }], // (where the chop left it)
+      [0.04, { torso: [0.85, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.15), by: -0.3 }], // (where the chop left it)
       [0.2, { torso: [0.9, 0.4, 0], head: [0.1, -0.2, 0], ...GS_LOW_MID, ...crouch(1.3), by: -0.38 }],
       [0.38, { torso: [0.5, 0.75, 0], head: [0, -0.45, 0], ...GS_LOW_LEFT, legL: [0.45, 0, 0.1], legR: [-0.6, 0, -0.1], shinL: [0.55, 0, 0], shinR: [0.6, 0, 0], by: -0.35 }],
       [0.54, { torso: [0.3, 0, 0], ...GS_FLAT_FRONT, ...lunge(1.2), by: -0.22 }],

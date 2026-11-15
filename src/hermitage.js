@@ -685,7 +685,9 @@ export class Hermitage {
     if (this.rig) { this.scene.remove(this.rig.root); forgetRig(this.rig.root); }
     const rig = buildHumanoid({ ...outfitModel((weaponChar(kind, this.game.loadoutFor(kind).weapon) || CHARS[kind]).model, kind, this.game.equippedOutfit(kind)), scale: 1 }); // (holding the weapon you've equipped)
     rig.idle = true; rig.root.position.set(SCENES[kind].seatX || 0, 0.0, 0.05); rig.root.rotation.y = this.seatYaw;
-    rig.apply(P.rest, 1, 60);
+    // a greatsword rests back over his right shoulder, one hand on the grip in front of his chest
+    this.seatArms = this.game.loadoutFor(kind).weapon === 'greatsword' ? { armR: [-0.1, 0.25, -0.72], foreR: [-2.19, 0, 0], handR: [-0.46, -0.32, 2.61] } : null;
+    rig.apply({ ...P.rest, ...this.seatArms }, 1, 60);
     this.scene.add(rig.root);
     this.rig = rig;
     const item = { id: 'char', group: rig.root, label: NAMES[kind], sub: 'Rites of augmentation (skill tree)' };
@@ -1087,7 +1089,7 @@ export class Hermitage {
     }
     if (this.rig) {
       const breathe = Math.sin(t * 1.6) * 0.03;
-      this.rig.apply({ ...P.rest, torso: [0.35 + breathe, 0, 0], head: [0.4 + Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.3) * 0.15, 0] }, dt, 6);
+      this.rig.apply({ ...P.rest, ...this.seatArms, torso: [0.35 + breathe, 0, 0], head: [0.4 + Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.3) * 0.15, 0] }, dt, 6);
     }
     tickOutfitColors(t);
     // the label sits over the hovered thing
