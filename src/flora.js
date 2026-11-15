@@ -137,15 +137,19 @@ export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
   for (const B of [grass, weeds, ivy, leaves, bush, pebble]) B.done(m.group);
 }
 
-// a puddle: still black water with a pale rim of wet grit
+// a puddle: still water holding a little of the sky's grey, a darker rim of wet grit, a glint or two across it
 function puddle(w, x, y, z, r) {
   const seg = 11, pts = [];
   for (let i = 0; i < seg; i++) { const a = (i / seg) * Math.PI * 2, rr = r * (0.7 + vh(x + i, z, 1) * 0.5); pts.push(new THREE.Vector2(Math.cos(a) * rr, Math.sin(a) * rr)); }
   const sh = new THREE.Shape(pts);
   const rim = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshLambertMaterial({ color: 0x2c2a26, flatShading: true }));
   rim.rotation.x = -Math.PI / 2; rim.position.set(x, y + 0.015, z); rim.scale.setScalar(1.12); w.add(rim);
-  const water = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshPhongMaterial({ color: 0x141a1c, specular: 0x8a9aa0, shininess: 60, flatShading: true }));
+  const water = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshPhongMaterial({ color: 0x3a4448, emissive: 0x161c20, specular: 0xb0c0c8, shininess: 80, transparent: true, opacity: 0.82, flatShading: true }));
   water.rotation.x = -Math.PI / 2; water.position.set(x, y + 0.025, z); water.userData.noMerge = true; w.add(water);
+  for (let k = 0; k < 2; k++) { // (glints: thin pale streaks where the light catches it)
+    const gl = new THREE.Mesh(new THREE.PlaneGeometry(r * (0.5 - k * 0.2), 0.05), new THREE.MeshBasicMaterial({ color: 0x8a9aa4, transparent: true, opacity: 0.45 }));
+    gl.rotation.set(-Math.PI / 2, 0, 0.4); gl.position.set(x + (k - 0.5) * r * 0.4, y + 0.03, z + (k - 0.3) * r * 0.35); gl.userData.noMerge = true; w.add(gl);
+  }
 }
 // a tree that's still alive, barely: a crooked trunk, a few limbs, clumps of sickly leaves (or bare, dead)
 function tree(w, x, y, z, s, dead) {
