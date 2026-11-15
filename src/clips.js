@@ -6,8 +6,8 @@
 //     Every clip starts on the same footfall and the cycle runs as far as the ground covered, so they blend foot for
 //     foot without sliding. Turning on the spot steps the feet round (Mixamo's turn, the spin taken out)
 //   the upper body: facing where the body faces (locked on), standing tall (a posture pass: the clips are made for a
-//     lean mannequin; on a broad knight their stoop reads as an ape), the shoulders swinging and dipping with the
-//     steps; turning leans into the turn; the weapon's hold on top (anims.js styleArms)
+//     lean mannequin; on a broad knight their stoop reads as an ape), steady (no rocking side to side), the shoulders
+//     turning a little with the steps; turning leans into the turn; the weapon's hold on top (anims.js styleArms)
 // Visual only: nothing here moves anyone.
 import { Quaternion, Euler, Vector3 } from 'three';
 import DATA from './anim-data/clips.json';
@@ -32,7 +32,9 @@ const WALK_SPEED = DATA[SET.f.walk].speed, RUN_SPEED = Math.min(4, DATA[SET.f.jo
 const POSTURE = { lean: 0.3, armOut: 0.3, crouch: 0.5, headLevel: 0.06 };
 // the shoulders while moving: swing (turning against the hips each step), dip (toward the planted foot), sway (the
 // weight going foot to foot on a side step)
-const SHOULDERS = MIX ? { swing: 0.07, dip: 0.03, sway: 0.03 } : { swing: 0.13, dip: 0.05, sway: 0.09 }; // (Mixamo's clips move the shoulders already)
+const SHOULDERS = { swing: 0.07, dip: 0, sway: 0 }; // (no rocking side to side: only the shoulders turning a little with each step)
+// how much of the hips' side-to-side roll the clips have is kept (the legs need a little; the body above doesn't)
+const HIP_ROLL = 0.25;
 // a side step covers this much of a forward stride's ground
 const SIDE_STEP = 0.6;
 
@@ -146,12 +148,17 @@ export function gaitPose(who, style, dt, o) {
   // ---- the upper body, worked out in the world: the chest squared to where the body faces (whatever the hips do:
   // Mixamo's strafes turn them most of the way to the line of travel), standing tall, the shoulders moving ----
   const s = Math.min(1, sp / 4), ph = G.u * Math.PI * 2, side = G.d.l + G.d.r;
-  const hipsQ = axis(Y, G.twist).multiply(axis(Z, G.lean * 0.6)).multiply(qOf(p.hips)); // (the warp toward a diagonal, the turn's lean)
-  let chest = unyaw(qOf(p.hips).multiply(qOf(p.torso)));
-  _v.set(0, 1, 0).applyQuaternion(chest); const pitch = Math.atan2(_v.z, _v.y); // (its forward lean)
-  chest = axis(X, -pitch * (1 - POSTURE.lean)).multiply(chest);
-  // the shoulders: swinging against the hips each step, dipping toward the planted foot, swaying on a strafe; the lean
-  chest = axis(Y, Math.cos(ph) * SHOULDERS.swing * s * moving).multiply(axis(Z, Math.sin(ph) * (SHOULDERS.dip * s + SHOULDERS.sway * side) * moving + G.lean)).multiply(chest);
+  // the hips: their heading (smoothed, so the twist each step doesn't rock everything above; a strafe's big steady turn
+  // stays), their forward tilt, and only a little of their roll side to side
+  const hq = qOf(p.hips), hy = yawOf(hq), rest = unyaw(hq);
+  G.hy = (G.hy ?? hy) + wrap(hy - (G.hy ?? hy)) * (1 - Math.exp(-dt * 5));
+  _v.set(0, 1, 0).applyQuaternion(rest); const hPitch = Math.atan2(_v.z, _v.y), hRoll = Math.atan2(-_v.x, _v.y);
+  const hipsQ = axis(Y, G.hy + G.twist).multiply(axis(Z, G.lean * 0.3 + hRoll * HIP_ROLL)).multiply(axis(X, hPitch)); // (the warp toward a diagonal, the turn's lean)
+  // the chest keeps only its forward lean (a part of it): no roll side to side, no turn
+  const c0 = unyaw(hq.clone().multiply(qOf(p.torso))); _v.set(0, 1, 0).applyQuaternion(c0); const pitch = Math.atan2(_v.z, _v.y);
+  let chest = axis(X, pitch * POSTURE.lean);
+  // the shoulders turning a little against the hips each step (no dip or sway: SHOULDERS); the turn.s lean, halved
+  chest = axis(Z, Math.sin(ph) * (SHOULDERS.dip * s + SHOULDERS.sway * side) * moving + G.lean * 0.5).multiply(chest).multiply(axis(Y, Math.cos(ph) * SHOULDERS.swing * s * moving)); // (the twist about the spine itself, so it never tips the chest sideways)
   p.hips = eOf(hipsQ);
   p.torso = eOf(hipsQ.clone().invert().multiply(chest));
   // the head level and looking where the body faces, steady over the moving shoulders
