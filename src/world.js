@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MODULES, MINI_ARENAS, BOSS_ARENA, FINAL_MODULES, TRAINING_ARENA } from './modules.js';
 import { Terrain, STEP } from './terrain.js';
+import { groundMaterial, paintAt } from './ground.js';
+import { growFlora, FLORA_TIME } from './flora.js';
 
 // The level is either a chain of modules laid out along -Z (the approach to Varek, and the old layouts the tests
 // use) or a dungeon (dungeon.js: chambers on a grid, built in world coordinates). Each module / chamber adds
@@ -22,6 +24,9 @@ const GROUND = {
   bog: { walk: [0x3e4a40, 0x323c34], out: [0x1c2620, 0x2a3a30] },
   chasm: { walk: [0x58585a, 0x48484c], out: [0x0a0a0c, 0x121214], void: true, grid: 2, seam: 0.7 },
   arena: { walk: [0x5a5a5e, 0x48484e], out: [0x262628, 0x3e3e44], grid: 2.5, seam: 0.7 },
+  // textured (ground.js): `tex` gives the surfaces' base weights [flag, dirt, grass, cobble] on and off the walkable
+  // ground and their brightness; a map paints the rest (world.paint). The training ring
+  proving: { walk: [0x8a8a8a, 0x787878], out: [0x404040, 0x585858], tex: { walk: [0, 1, 0, 0], out: [0, 0.55, 0.45, 0] } },
   // a raid's ruined city (city.js): cracked ferrocrete streets (interiors and pavements are tinted by the city)
   city: { walk: [0x4c4a46, 0x3e3c39], out: [0x24221f, 0x36332f], grid: 4, seam: 0.86, sub: 2 },
   // cellars, sewers and bunkers under it: wet walls stepping up round the rooms
@@ -124,6 +129,7 @@ export class World {
       this.cur = m;
       if (m === this.mods[0]) this.terrain.build(this); // (its faces, steps and ladders)
       this.buildGround(m);
+      if (GROUND[m.ground]?.tex) growFlora(this, m, GROUND[m.ground]); // (grass, weeds, ivy and the rest: flora.js)
       this.scatterBorders(m);
       this.mergeStatic(m.group);
     }
@@ -152,6 +158,8 @@ export class World {
     this.hash = null; this.hashN = -1; this.shash = null; this.shashN = -1;
     this.start = { x: 0, z: -3 };
     this.terrain = new Terrain(); // (walkable height: terrain.js; flat until a map lays some)
+    this.paints = []; // (where each surface of a textured ground goes: ground.js)
+    this.flora = []; // (bushes, trees, leaves, puddles a map asks for: flora.js)
   }
 
   // ---------- shape lookup ----------
@@ -297,6 +305,10 @@ export class World {
     for (const f of this.fires || []) if (f.x != null) { const h = this.terrain.floorAt(f.x, f.z); if (h) f.y = (f.y || 0) + h; }
   }
 
+  // a surface on a textured ground (ground.js): 'flag' | 'dirt' | 'grass' | 'cobble' over a rect { x0, x1, z0, z1 } or
+  // a circle { cx, cz, r } (world coords), with a ragged edge (o.edge metres) and o.amount 0..1
+  paint(shape, surface, o = {}) { this.paints.push({ ...shape, surface, ...o }); }
+
   // the height of the ground you stand on (terrain.js; 0 on flat maps)
   floorAt(x, z) { return this.terrain.floorAt(x, z); }
 
@@ -344,12 +356,14 @@ export class World {
     g.rotateX(-Math.PI / 2);
     g.translate(cx, 0, cz);
     const pos = g.attributes.position;
-    const col = new Float32Array(pos.count * 3);
+    const col = new Float32Array(pos.count * 3), TX = st.tex, splat = TX ? new Float32Array(pos.count * 4) : null;
     const w0 = new THREE.Color(st.walk[0]), w1 = new THREE.Color(st.walk[1]), o0 = new THREE.Color(st.out[0]), o1 = new THREE.Color(st.out[1]), c = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
       const n = Math.sin(x * 0.7) * Math.cos(z * 0.6) * 0.5 + Math.sin(x * 2.3 + z * 1.7) * 0.25 + (this.rand() - 0.5) * 0.4;
-      const fy = terr ? this.terrain.floorAt(x, z) : 0; // (the ground follows the terrain)
+      // (the ground follows the terrain; at an edge it takes the lower side, so the step between sits inside the
+      // retaining wall rather than showing in front of it)
+      const T = this.terrain, fy = terr ? Math.min(T.floorAt(x, z), T.floorAt(x - 0.13, z - 0.13), T.floorAt(x + 0.13, z - 0.13), T.floorAt(x - 0.13, z + 0.13), T.floorAt(x + 0.13, z + 0.13)) : 0;
       if (this.area(x, z, -0.6)) {
         if (fy) pos.setY(i, fy);
         c.copy(w0).lerp(w1, 0.5 + n * (st.grid ? 0.25 : 0.5));
@@ -370,11 +384,18 @@ export class World {
         pos.setY(i, fy + h * (st.wall ? 1.1 : 0.55) + n * 0.1 * h);
         c.copy(o0).lerp(o1, Math.max(0, 0.6 - h * 0.15) + n * 0.15);
       }
+      if (TX) {
+        // textured: the surfaces' weights here, and a plain brightness for the colour (the textures carry the hues)
+        const inside = this.area(x, z, -0.6);
+        splat.set(paintAt(this.paints, x, z, inside ? TX.walk : TX.out), i * 4);
+        c.copy(inside ? w0 : o0).lerp(inside ? w1 : o1, 0.5 + n * 0.5);
+      }
       col.set([c.r, c.g, c.b], i * 3);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (TX) g.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
     g.computeVertexNormals();
-    const mesh = new THREE.Mesh(g, this.mats.ground);
+    const mesh = new THREE.Mesh(g, TX ? groundMaterial() : this.mats.ground);
     mesh.userData.noMerge = true;
     return mesh;
   }
@@ -672,6 +693,7 @@ export class World {
   // ---------- per-frame ----------
   update(dt, time, fx, focus) {
     this.fogMat.uniforms.uT.value = time;
+    FLORA_TIME.value = time; // (the grass's wind)
     updateAmbient(this, dt, time, fx, focus);
     const near = (o) => !focus || (Math.abs(o.z - focus.z) < 40 && Math.abs(o.x - focus.x) < 40);
     for (const f of this.fires) {

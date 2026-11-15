@@ -325,7 +325,7 @@ export const BOSS_ARENA = {
 // never fights back and never breaks (foes.js 'dummy'). Nothing to win: no gold, no loot, no enemies. You arrive at
 // its south edge; the pause menu takes you home
 export const TRAINING_ARENA = {
-  name: 'The Proving Ring', len: 26, ground: 'arena',
+  name: 'The Proving Ring', len: 26, ground: 'proving',
   build(w, Z, mod) {
     const M = w.mats;
     w.circle(0, 13, 12);
@@ -351,6 +351,22 @@ export const TRAINING_ARENA = {
     T.slope(5, 9, Z(9), Z(3.5), 3.6, 0, 'z', { look: 'earth' });
     T.ladder(4.58, Z(15), Math.PI / 2, 0, 3.6, { raised: true });
     T.hill(-6.5, Z(3.5), 3, 0.7);
+    // the ground (ground.js): flagstones round the dummy in a ring of cobbles, packed dirt beyond, and the grass
+    // creeping back in at the edges, over the terraces and up the ramp's sides; what grows and lies about (flora.js)
+    w.paint({ cx: 0, cz: Z(13), r: 8.6 }, 'cobble', { edge: 0.8 });
+    w.paint({ cx: 0, cz: Z(13), r: 6.4 }, 'flag', { edge: 0.6 });
+    for (const [x, d, r] of [[-9.5, 3, 3.2], [9.5, 2.5, 2.6], [-2, 24, 2.4], [4.5, 25, 2], [-10.5, 15, 2.6]]) w.paint({ cx: x, cz: Z(d), r }, 'grass', { edge: 1.8 });
+    w.paint({ x0: -12, x1: -5, z0: Z(22), z1: Z(8) }, 'grass', { edge: 2.5, amount: 0.75 });
+    w.paint({ x0: 5, x1: 12, z0: Z(21), z1: Z(9) }, 'grass', { edge: 2.2, amount: 0.8 });
+    w.paint({ cx: 8.5, cz: Z(15), r: 2.2 }, 'flag', { edge: 0.6 });
+    w.paint({ x0: 5.6, x1: 8.4, z0: Z(9), z1: Z(3.5) }, 'dirt', { edge: 0.5 });
+    w.flora.push(
+      { kind: 'tree', x: 10, z: Z(18.5), s: 0.9 }, { kind: 'leaves', x: 10, z: Z(18.5), r: 3, n: 90 },
+      { kind: 'tree', x: -10.5, z: Z(20), s: 0.8, dead: true },
+      { kind: 'bush', x: -10.8, z: Z(9.5), n: 5 }, { kind: 'bush', x: 11, z: Z(4), n: 4 }, { kind: 'bush', x: -3.5, z: Z(24.5), n: 3 }, { kind: 'bush', x: 6.4, z: Z(11), n: 3, s: 0.8 },
+      { kind: 'leaves', x: -4, z: Z(6), r: 2.5, n: 40 },
+      { kind: 'puddle', x: 3.2, z: Z(5.5), r: 0.9 }, { kind: 'puddle', x: -2.6, z: Z(20.5), r: 0.7 }, { kind: 'puddle', x: 5.2, z: Z(2.6), r: 0.5 },
+    );
   },
 };
 

@@ -106,8 +106,10 @@ export class Terrain {
   build(w) {
     if (!this.grid) this.bake();
     const M = w.mats, add = (m) => { w.add(m); return m; };
-    const look = (o) => (o.look === 'brick' ? M.rust : o.look === 'earth' ? M.rockDark : M.stone);
+    const brick = (this.brickMat ||= new THREE.MeshLambertMaterial({ color: 0x4e3c34, flatShading: true }));
+    const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : M.stone);
     const capMat = M.stoneDark;
+    this.faces = []; // (each piece of face, for what grows on it: flora.js ivy)
     // the faces: along every edge of a terrace or slope, where the ground outside is more than STEP lower, a wall
     // down to it (in 0.5 m pieces, so a slope's side steps down with it), set just inside the edge
     for (const p of this.parts) {
@@ -129,6 +131,8 @@ export class Terrain {
           const hgt = top - low + 0.04, [cx, cz] = E.ax === 'x' ? [a, E.mid] : [E.mid, a];
           const [sw, sd] = E.ax === 'x' ? [step + 0.01, T] : [T, step + 0.01];
           const m = new THREE.Mesh(new THREE.BoxGeometry(sw, hgt, sd), mat); m.position.set(cx, low + hgt / 2 - 0.02, cz); add(m);
+          const ec = (E.at + E.inn) / 2, nrm = Math.sign(E.at - E.inn);
+          this.faces.push({ x: E.ax === 'x' ? a : ec + nrm * 0.0, z: E.ax === 'x' ? ec : a, ax: E.ax, nx: E.ax === 'z' ? nrm : 0, nz: E.ax === 'x' ? nrm : 0, low, top, w: step, ivy: p.o.ivy });
           // a coping course along the top, a little proud of the face, and the odd stone out
           if (p.o.cap !== false) { const c = new THREE.Mesh(new THREE.BoxGeometry(sw + (E.ax === 'x' ? 0 : 0.08), 0.12, sd + (E.ax === 'x' ? 0.08 : 0)), capMat); c.position.set(cx, top + 0.0, cz); add(c); }
           if (vh(cx, cz, 3) < 0.3 && hgt > 0.8) { const s = new THREE.Mesh(new THREE.BoxGeometry(E.ax === 'x' ? 0.28 : 0.36, 0.2, E.ax === 'x' ? 0.36 : 0.28), M.stoneDark); s.position.set(cx + (E.ax === 'x' ? 0 : (E.at < E.inn ? -0.05 : 0.05)), low + 0.25 + vh(cx, cz, 4) * (hgt - 0.6), cz + (E.ax === 'x' ? (E.at < E.inn ? -0.05 : 0.05) : 0)); add(s); }

@@ -34,3 +34,17 @@ step bigger than `STEP` stays a sharp edge. Props a module adds are lifted onto 
 ## Trying it
 The training arena has a trial patch: a 1.6 m terrace (stairs, a ladder) and a 3.6 m one (a ramp, a pulled-up
 ladder). `node scripts/terrain.mjs` plays it all and saves shots to `/tmp/look/terrain-*.png`.
+
+## Ground textures and plants
+- `src/ground.js`: four tiling pixel-art textures drawn in code: flagstones, packed dirt, grass sod and cobbles,
+  64 px over 4 m. They're blended over the ground by per-vertex weights. Where two meet, each texture's own height
+  (a stone stands proud of its mortar) decides which shows, so the seams stay crisp and ragged. A ground style turns
+  it on with `tex: { walk, out }` (the base weights on and off the walkable ground; the training ring's `proving`).
+  A map paints the rest: `w.paint({ x0, x1, z0, z1 } | { cx, cz, r }, 'flag' | 'dirt' | 'grass' | 'cobble', { edge, amount })`.
+- `src/flora.js`, all instanced and visual only:
+  - grass tufts wherever the ground is grass, swaying in the wind;
+  - a weed in the odd crack of flagstones and cobbles;
+  - pebbles on dirt;
+  - ivy strands down terrace faces (`o.ivy`: how much, default 0.32);
+  - what a map asks for in `w.flora`: `{ kind: 'bush' | 'tree' | 'leaves' | 'puddle', x, z, ... }`. Only a tree's
+    trunk blocks.
