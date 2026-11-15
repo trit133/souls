@@ -1,6 +1,6 @@
 // Bakes humanoid animation clips into our box rig's poses (scripts/bake/clips.js does the work in the browser):
 // Quaternius' Universal Animation Library (CC0; the downloaded GLBs live in assets-src/ual, not in git) and any Mixamo
-// FBX put in assets-src/mixamo. Writes src/anim-data/clips.json (only our own pose numbers, never the source files)
+// FBX in assets-src/mixamo (its Locomotion Pack. folder). Writes src/anim-data/clips.json (only our own pose numbers, never the source files)
 // and a check sheet, /tmp/look/bake-<clip>.png: the source skeleton (grey) and our rig posed from the bake (red),
 // side on and from the front, across the clip.
 // node scripts/bake-anims.mjs [url]   (the dev server)
@@ -17,8 +17,21 @@ const JOBS = [
   ['/assets-src/ual/UAL1_Standard.glb', 'Sword_Idle', 'swordIdle', { loop: true }],
   ['/assets-src/ual/UAL2_Standard.glb', 'Idle_Shield_Loop', 'shieldIdle', { loop: true }],
 ];
-// Mixamo clips dropped in assets-src/mixamo (FBX, "without skin"): baked under their file name
-if (existsSync('assets-src/mixamo')) for (const f of readdirSync('assets-src/mixamo').filter((f) => /\.fbx$/i.test(f))) JOBS.push([`/assets-src/mixamo/${f}`, null, f.replace(/\.fbx$/i, '').replace(/\W+/g, '_'), { loop: true, gait: /walk|run|jog|strafe|back/i.test(f) }]);
+// Mixamo's Locomotion Pack (assets-src/mixamo/Locomotion Pack./, FBX, no character, 30 fps; with root motion)
+const LP = '/assets-src/mixamo/' + encodeURIComponent('Locomotion Pack.') + '/', lp = (f) => LP + encodeURIComponent(f + '.fbx');
+if (existsSync('assets-src/mixamo/Locomotion Pack.')) JOBS.push(
+  [lp('idle'), null, 'mIdle', { loop: true }],
+  [lp('walking'), null, 'mWalk', { loop: true, gait: true }],
+  [lp('running'), null, 'mRun', { loop: true, gait: true }],
+  [lp('left strafe walking'), null, 'strafeWalkL', { loop: true, gait: true }],
+  [lp('right strafe walking'), null, 'strafeWalkR', { loop: true, gait: true }],
+  [lp('left strafe'), null, 'strafeRunL', { loop: true, gait: true }],
+  [lp('right strafe'), null, 'strafeRunR', { loop: true, gait: true }],
+  [lp('left turn 90'), null, 'turnL', { loop: true, unyaw: true }],
+  [lp('right turn 90'), null, 'turnR', { loop: true, unyaw: true }],
+);
+// any other Mixamo clip dropped straight in assets-src/mixamo: baked under its file name
+if (existsSync('assets-src/mixamo')) for (const f of readdirSync('assets-src/mixamo').filter((f) => /\.fbx$/i.test(f))) JOBS.push([`/assets-src/mixamo/${encodeURIComponent(f)}`, null, f.replace(/\.fbx$/i, '').replace(/\W+/g, '_'), { loop: true, gait: /walk|run|jog|strafe|back/i.test(f) }]);
 
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1200, height: 520 } })).newPage();

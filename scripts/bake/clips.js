@@ -61,6 +61,7 @@ export function bake(gltf, clipName, o = {}) {
     rest[j] = wq(B);
     let dir;
     if (toward && bone(toward)) dir = wp(bone(toward)).sub(wp(B)).normalize();
+    else if (j.startsWith('hand')) dir = wp(B).sub(wp(bone(j === 'handL' ? 'lowerarm_l' : 'lowerarm_r'))).normalize(); // (no finger bone: on along the forearm)
     else dir = UP.clone(); // (the head: straight up from the neck)
     C[j] = new THREE.Quaternion().setFromUnitVectors(ours, dir);
   }
@@ -71,11 +72,19 @@ export function bake(gltf, clipName, o = {}) {
   const n = Math.max(2, Math.round(clip.duration * fps)), out = { name: o.as || clipName, src: clipName, dur: +clip.duration.toFixed(4), fps, f: {}, by: [] };
   for (const [j] of MAP) out.f[j] = [];
   const footZ = [], footY = [];
-  const world = {}, tmp = new THREE.Quaternion(), e = new THREE.Euler();
+  const world = {}, tmp = new THREE.Quaternion(), e = new THREE.Euler(), unyaw = new THREE.Quaternion(), fv = new THREE.Vector3();
+  const hipsXZ = [];
   for (let i = 0; i < n; i++) {
     mixer.setTime(i / n * clip.duration); root.updateMatrixWorld(true);
+    // a turn on the spot: the body's spin taken out (the game turns the body), so what's left is the feet stepping
+    // round under it
+    if (o.unyaw) {
+      fv.set(0, 0, 1).applyQuaternion(wq(pelvis).multiply(rest.hips.clone().invert())); fv.y = 0;
+      unyaw.setFromAxisAngle(UP, -Math.atan2(fv.x, fv.z));
+    } else unyaw.identity();
+    hipsXZ.push(wp(pelvis));
     for (const [j, b, , , parent] of MAP) {
-      const delta = wq(bone(b)).multiply(rest[j].clone().invert());
+      const delta = unyaw.clone().multiply(wq(bone(b))).multiply(rest[j].clone().invert());
       world[j] = delta.multiply(C[j]);
       const local = parent ? tmp.copy(world[parent]).invert().multiply(world[j]) : tmp.copy(world[j]);
       e.setFromQuaternion(local, 'XYZ');
@@ -86,16 +95,22 @@ export function bake(gltf, clipName, o = {}) {
     footZ.push([fl.z - pz, fr.z - pz]); footY.push([fl.y, fr.y]);
   }
   mixer.stopAllAction();
-  // a gait's ground speed: while a foot is the lower one (planted), how fast it moves back under the body
+  // a gait's ground speed (in our units: m/s for our rig's leg length): a clip that travels (Mixamo's, with root
+  // motion) by how far its hips go; one made in place by how fast the planted foot moves back under the body
   if (o.gait) {
-    let dist = 0, time = 0;
-    for (let i = 0; i < n; i++) {
-      const a = footZ[i], b = footZ[(i + 1) % n], low = footY[i][0] < footY[i][1] ? 0 : 1;
-      const d = a[low] - b[low]; if (d > 0) { dist += d; time += clip.duration / n; }
+    const first = hipsXZ[0], last = hipsXZ[n - 1], travel = Math.hypot(last.x - first.x, last.z - first.z) * n / (n - 1);
+    if (travel > (restY * 0.3)) out.speed = +(travel / clip.duration * size).toFixed(3);
+    else {
+      let dist = 0, time = 0;
+      for (let i = 0; i < n; i++) {
+        const a = footZ[i], b = footZ[(i + 1) % n], low = footY[i][0] < footY[i][1] ? 0 : 1;
+        const d = a[low] - b[low]; if (d > 0) { dist += d; time += clip.duration / n; }
+      }
+      out.speed = +(time ? dist / time * size : 0).toFixed(3);
     }
-    out.speed = +(time ? dist / time * size : 0).toFixed(3); // (in our units: m/s for our rig's leg length)
-    // in step: the frame the left foot is furthest forward
-    let best = 0; for (let i = 1; i < n; i++) if (footZ[i][0] > footZ[best][0]) best = i;
+    // in step: the moment the left foot is planted and the right one highest (every gait clip starts there, so
+    // walks, runs and strafes blend foot for foot)
+    let best = 0; for (let i = 1; i < n; i++) if (footY[i][0] - footY[i][1] < footY[best][0] - footY[best][1]) best = i;
     out.sync = +(best / n).toFixed(4);
   }
   out.loop = !!o.loop;
