@@ -2,6 +2,7 @@ import { decorate, updateAmbient } from './decor.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MODULES, MINI_ARENAS, BOSS_ARENA, FINAL_MODULES, TRAINING_ARENA } from './modules.js';
+import { Terrain, STEP } from './terrain.js';
 
 // The level is either a chain of modules laid out along -Z (the approach to Varek, and the old layouts the tests
 // use) or a dungeon (dungeon.js: chambers on a grid, built in world coordinates). Each module / chamber adds
@@ -117,8 +118,11 @@ export class World {
       z0 -= def.len;
     });
     // terrain + borders need every module's walkable space, so they go second
+    this.terrain.bake();
+    if (this.terrain.parts.length) this.settle(); // (everything laid so far stands on the terrain)
     for (const m of this.mods) {
       this.cur = m;
+      if (m === this.mods[0]) this.terrain.build(this); // (its faces, steps and ladders)
       this.buildGround(m);
       this.scatterBorders(m);
       this.mergeStatic(m.group);
@@ -147,6 +151,7 @@ export class World {
     this.dungeon = null; this.cutaway = false; this.seals = []; this.chests = []; this.drums = [];
     this.hash = null; this.hashN = -1; this.shash = null; this.shashN = -1;
     this.start = { x: 0, z: -3 };
+    this.terrain = new Terrain(); // (walkable height: terrain.js; flat until a map lays some)
   }
 
   // ---------- shape lookup ----------
@@ -285,11 +290,25 @@ export class World {
     return f;
   }
 
-  // Move from `from` toward `to` (Vector3s, y ignored), sliding along walls. Mutates `to`.
-  resolve(from, to, r, mod = null) {
-    if (!this.walkable(to.x, to.z, r, mod)) {
-      if (this.walkable(to.x, from.z, r, mod)) to.z = from.z;
-      else if (this.walkable(from.x, to.z, r, mod)) to.x = from.x;
+  // props stand on the terrain: everything a map added (and its lights) lifted to the ground under it
+  settle() {
+    for (const m of this.mods) for (const o of m.group.children) { const h = this.terrain.floorAt(o.position.x, o.position.z); if (h) o.position.y += h; }
+    for (const L of this.lights) { const h = this.terrain.floorAt(L.x, L.z); if (h) L.y += h; }
+    for (const f of this.fires || []) if (f.x != null) { const h = this.terrain.floorAt(f.x, f.z); if (h) f.y = (f.y || 0) + h; }
+  }
+
+  // the height of the ground you stand on (terrain.js; 0 on flat maps)
+  floorAt(x, z) { return this.terrain.floorAt(x, z); }
+
+  // Move from `from` toward `to` (Vector3s, y ignored), sliding along walls. Mutates `to`. With gy (the body's
+  // height) the terrain counts too: a rise of more than STEP is a wall, and so is a drop unless the body can fall
+  // (the player: `drop`)
+  resolve(from, to, r, mod = null, gy = null, drop = false) {
+    const T = gy != null && !this.terrain.grid?.none ? this.terrain : null;
+    const ok = (x, z) => { if (!this.walkable(x, z, r, mod)) return false; if (!T) return true; const h = T.floorAt(x, z); return h - gy <= STEP && (drop || gy - h <= STEP); };
+    if (!ok(to.x, to.z)) {
+      if (ok(to.x, from.z)) to.z = from.z;
+      else if (ok(from.x, to.z)) to.x = from.x;
       else { to.x = from.x; to.z = from.z; }
     }
     for (const o of this.obstacles) {
@@ -319,7 +338,8 @@ export class World {
   // a patch of terrain centred on (cx, cz), w × l metres
   groundMesh(cx, cz, W, L, ground) {
     const st = GROUND[ground] || GROUND.dirt;
-    const sub = st.sub ?? (st.grid ? 3 : 1); // (plated floors get a finer mesh so the seams read as lines)
+    const terr = this.terrain.parts.length > 0;
+    const sub = Math.max(st.sub ?? (st.grid ? 3 : 1), terr ? 4 : 1); // (plated floors get a finer mesh so the seams read as lines; terrain, so its edges stay sharp)
     const g = new THREE.PlaneGeometry(W, L, W * sub, Math.round(L) * sub);
     g.rotateX(-Math.PI / 2);
     g.translate(cx, 0, cz);
@@ -329,7 +349,9 @@ export class World {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
       const n = Math.sin(x * 0.7) * Math.cos(z * 0.6) * 0.5 + Math.sin(x * 2.3 + z * 1.7) * 0.25 + (this.rand() - 0.5) * 0.4;
+      const fy = terr ? this.terrain.floorAt(x, z) : 0; // (the ground follows the terrain)
       if (this.area(x, z, -0.6)) {
+        if (fy) pos.setY(i, fy);
         c.copy(w0).lerp(w1, 0.5 + n * (st.grid ? 0.25 : 0.5));
         this.dungeon?.groundTint?.(x, z, c, n); // (a city: pavements, interiors, rubble)
         // deck plating: darker seams on a grid, the odd plate a shade off
@@ -345,7 +367,7 @@ export class World {
         c.copy(edge ? o1 : o0);
       } else {
         const h = this.heightAt(x, z, st) / (st.wall ? 1.1 : 0.55);
-        pos.setY(i, h * (st.wall ? 1.1 : 0.55) + n * 0.1 * h);
+        pos.setY(i, fy + h * (st.wall ? 1.1 : 0.55) + n * 0.1 * h);
         c.copy(o0).lerp(o1, Math.max(0, 0.6 - h * 0.15) + n * 0.15);
       }
       col.set([c.r, c.g, c.b], i * 3);

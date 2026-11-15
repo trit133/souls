@@ -273,7 +273,7 @@ export class Pings {
       b.t += dt;
       const a = b.actor;
       if (b.t > 3 || !a.rig?.root.parent) { b.el.remove(); this.bubbles.splice(this.bubbles.indexOf(b), 1); continue; }
-      v.set(a.pos.x, 2.5 * a.rig.root.scale.y + (a.y || 0), a.pos.z).project(g.camera);
+      v.set(a.pos.x, 2.5 * a.rig.root.scale.y + (a.y || 0) + (a.pos.y || 0), a.pos.z).project(g.camera);
       b.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * w}px, ${(-v.y * 0.5 + 0.5) * h}px) translate(-50%, -100%)`;
       b.el.style.opacity = v.z > 1 ? 0 : Math.min(1, (3 - b.t) / 0.4);
     }

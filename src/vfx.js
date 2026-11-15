@@ -26,7 +26,7 @@ export const VFX = {
   // the Penitent Slab's special: the point going into the ground, then the ground breaking outward in a ring
   // (Earthsunder), or in fire (Pyresunder)
   quakePlant(g, at, own) {
-    g.fx.dust(at, 8, 0.7); g.fx.sparks(v3(at).clone().setY(0.2), null, 8, [1, 0.85, 0.6]);
+    g.fx.dust(at, 8, 0.7); g.fx.sparks(v3(at).clone().setY((at.y || 0) + 0.2), null, 8, [1, 0.85, 0.6]);
     g.audio[own ? 'play' : 'remote']('clang', 0.7);
   },
   quake(g, at, r, fire, own) {
@@ -75,7 +75,7 @@ export const VFX = {
   chill(g, ref, dur) {
     const e = g.entityRef(ref); if (!e) return;
     e.chillFxUntil = g.time + dur;
-    const s = e.rig.root.scale.y || 1; g.pfx.play('freezeHit', e.pos.clone().setY(1.2 * s), { size: 1.4 }); g.statusPopup?.(e, 'CHILLED', '#9fdcff');
+    const s = e.rig.root.scale.y || 1; g.pfx.play('freezeHit', e.pos.clone().setY(1.2 * s + (e.pos.y || 0)), { size: 1.4 }); g.statusPopup?.(e, 'CHILLED', '#9fdcff');
   },
   psyCharge(g, who, life) {
     const p = g.playerRef(who); if (!p) return;
@@ -86,7 +86,7 @@ export const VFX = {
   // the Wrist Blade's Ghost Veil: a puff of smoke, then the body a thin shade (or back)
   veil(g, ref, on) {
     const p = g.playerRef(ref); if (!p) return;
-    g.pfx.play('shroud', p.pos.clone().setY(0.6));
+    g.pfx.play('shroud', p.pos.clone().setY(0.6 + (p.pos.y || 0)));
     g.setVeiled(p, on);
   },
   // ---------- spellsword ----------
@@ -102,7 +102,7 @@ export const VFX = {
     const follow = { get pos() { from.getWorldPosition(hand.pos); return hand.pos; } };
     const e = g.pfx.play(staff ? 'psyCharge' : big ? 'plasmaCharge' : 'chargeIce', follow.pos.clone(), { follow, life });
     if (p === g.player && p.castDef) p.castDef.charge = e;
-    if (big) g.pfx.play('circle', p.pos.clone().setY(0.02));
+    if (big) g.pfx.play('circle', p.pos.clone().setY(0.02 + (p.pos.y || 0)));
   },
   explosion(g, at, size) { g.pfx.play('explosion', at, { size }); },
   boltHit(g, at) { g.pfx.play('boltHit', at); },
@@ -115,7 +115,7 @@ export const VFX = {
   statusProc(g, ref, kind) {
     const a = ref?.p != null ? g.playerRef(ref) : g.entityRef(ref);
     if (!a) return;
-    const chest = { x: a.pos.x, y: 1.2 * a.rig.root.scale.y + (a.y || 0), z: a.pos.z };
+    const chest = { x: a.pos.x, y: 1.2 * a.rig.root.scale.y + (a.y || 0) + (a.pos.y || 0), z: a.pos.z };
     if (kind === 'bleed') { g.fx.blood(chest, null, 40); g.fx.burst(chest, 30, STATUS.bleed.rgb, 6, 0.7, 0.3); }
     else if (kind === 'frost') g.fx.burst(chest, 36, STATUS.frost.rgb, 5, 0.9, 0.3);
     else g.fx.burst(chest, 22, STATUS[kind].rgb, 3.5, 0.8, 0.28);

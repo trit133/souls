@@ -476,7 +476,7 @@ export class Enemy extends Actor {
       }
       case 'dead': {
         pose = P.dead; rate = 8;
-        if (this.t > 2.5) this.rig.root.position.y = -(this.t - 2.5) * 0.6;
+        if (this.t > 2.5) this.rig.root.position.y = (this.gy || 0) - (this.t - 2.5) * 0.6;
         if (this.t > 4.5) this.rig.root.visible = false;
         break;
       }
@@ -497,7 +497,7 @@ export class Enemy extends Actor {
     if (this.state !== 'attack') this.trailOn = false;
     if (this.armorT > 0) {
       this.armorT -= dt;
-      if (Math.random() < dt * 25) this.game.fx.ember({ x: this.pos.x, y: 0.3 + Math.random() * 1.6 * this.T.scale, z: this.pos.z }, 0.8, 1.2);
+      if (Math.random() < dt * 25) this.game.fx.ember({ x: this.pos.x, y: 0.3 + Math.random() * 1.6 * this.T.scale + (this.pos.y || 0), z: this.pos.z }, 0.8, 1.2);
     }
     if (this.state !== 'dead') this.regenPoise(dt);
     this.applyKnockback(dt);
@@ -511,7 +511,7 @@ export class Enemy extends Actor {
     this.t += dt; this.hpShow -= dt;
     if (!this.puppet) this.status.update(dt, this.game);
     if (this.state === 'dead') {
-      if (this.t > 1.2) this.rig.root.position.y = -(this.t - 1.2) * 0.8;
+      if (this.t > 1.2) this.rig.root.position.y = (this.gy || 0) - (this.t - 1.2) * 0.8;
       if (this.t > 3) this.rig.root.visible = false;
       this.rig.apply(P.dead, dt, 6);
       return;
@@ -532,7 +532,7 @@ export class Enemy extends Actor {
     if (this.T.onReceive) info = this.T.onReceive(this, info); // (a Castellan's shield)
     if (this.T.still) {
       this.hp -= info.dmg; this.hpShow = 4; this.rig.flash(1, 0.4, 0.3);
-      if (this.hp <= 0) { this.die(); this.game.pfx?.play('poof', this.pos.clone().setY(0.6), { size: 1.4 }); return 'kill'; }
+      if (this.hp <= 0) { this.die(); this.game.pfx?.play('poof', this.pos.clone().setY(0.6 + (this.pos.y || 0)), { size: 1.4 }); return 'kill'; }
       return 'hit';
     }
     if (info.attacker?.uid) this.lastHitBy[info.attacker.uid] = this.game.time; // hitting a watcher makes it your fight
@@ -553,7 +553,7 @@ export class Enemy extends Actor {
       this.poise = this.maxPoise;
       if (!(this.armorT > 0)) {
         this.armorT = 1.6;
-        this.game.fx.burst({ x: this.pos.x, y: 1.2 * this.T.scale, z: this.pos.z }, 18, [1, 0.5, 0.15], 4, 0.5, 0.3);
+        this.game.fx.burst({ x: this.pos.x, y: 1.2 * this.T.scale + (this.pos.y || 0), z: this.pos.z }, 18, [1, 0.5, 0.15], 4, 0.5, 0.3);
         this.game.audio.play('clang', 0.5);
       }
       if (this.state !== 'attack') { if (this.state === 'hurt') this.setState('chase'); this.counter(0); }
@@ -604,7 +604,7 @@ export class Enemy extends Actor {
 
   // the dust poof where an enemy falls; plays on every screen (puppets call it from the host's snapshot)
   deathFx(sound = true) {
-    this.game.pfx?.play('poof', this.pos.clone().setY(0.2), { size: this.T.scale || 1 });
+    this.game.pfx?.play('poof', this.pos.clone().setY(0.2 + (this.pos.y || 0)), { size: this.T.scale || 1 });
     this.game.fx.dust(this.pos, 8, 0.9);
     if (sound) this.game.audio.remote('enemyDie');
   }
@@ -626,7 +626,7 @@ export class Enemy extends Actor {
     this.alive = true; this.hp = this.maxHp; this.poise = this.maxPoise;
     this.pos.set(this.home.x, 0, this.home.z); this.yaw = this.home.yaw;
     this.kb.set(0, 0, 0); this.atk = null; this.token = false; this.cd = 0.5; this.hpShow = 0;
-    this.rig.root.visible = true; this.rig.root.position.y = 0;
+    this.rig.root.visible = true; this.rig.root.position.y = this.gy || 0;
     this.alertDelay = undefined; this.patrolIdx = false;
     this.flinches = []; this.armorT = 0; this.urgent = false; this.atkSpeed = 1;
     this.engaged = false; this.engagedTo = null; this.watchCd = this.watchGap(); this.lastHitBy = {};

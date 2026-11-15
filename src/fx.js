@@ -163,7 +163,7 @@ export class FX {
   dust(p, n = 6, spread = 0.6, color = [0.45, 0.4, 0.33]) {
     for (let i = 0; i < n; i++) {
       this.norm.spawn({
-        x: p.x + (Math.random() - 0.5) * spread, y: 0.1, z: p.z + (Math.random() - 0.5) * spread,
+        x: p.x + (Math.random() - 0.5) * spread, y: (p.y || 0) + 0.1, z: p.z + (Math.random() - 0.5) * spread,
         vx: (Math.random() - 0.5) * 2, vy: 0.4 + Math.random() * 0.8, vz: (Math.random() - 0.5) * 2,
         life: 0.5 + Math.random() * 0.4, size: 0.4, size1: 1.0, r: color[0], g: color[1], b: color[2], drag: 3, alpha: 0.35,
       });
@@ -210,7 +210,7 @@ export class FX {
     const fill = new THREE.Mesh(new THREE.CircleGeometry(radius, 40),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false }));
     ring.rotation.x = fill.rotation.x = -Math.PI / 2;
-    g.add(ring, fill); g.position.set(x, 0.04, z);
+    g.add(ring, fill); g.position.set(x, 0.04 + (this.floorAt?.(x, z) || 0), z);
     this.scene.add(g);
     const d = { obj: g, t: 0, dur, kind: 'tele', fill, ring };
     this.decals.push(d);
@@ -219,14 +219,14 @@ export class FX {
   shockwave(x, z, radius, color = 0xffa040, dur = 0.45) {
     const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.06, z);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.06 + (this.floorAt?.(x, z) || 0), z);
     this.scene.add(m);
     this.decals.push({ obj: m, t: 0, dur, kind: 'wave', radius });
   }
   scorch(x, z, r) {
     const m = new THREE.Mesh(new THREE.CircleGeometry(r, 20),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.03, z);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.03 + (this.floorAt?.(x, z) || 0), z);
     this.scene.add(m);
     this.decals.push({ obj: m, t: 0, dur: 4, kind: 'scorch' });
   }

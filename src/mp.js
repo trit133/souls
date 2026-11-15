@@ -55,6 +55,9 @@ class RemotePlayer extends Actor {
     if (Math.hypot(this.net.x - ox, this.net.z - oz) > 2.5) { this.pos.x = this.net.x; this.pos.z = this.net.z; }
     else { this.pos.x += (this.net.x - ox) * k; this.pos.z += (this.net.z - oz) * k; }
     this.yaw += angDiff(this.yaw, this.net.yaw) * k;
+    // the height he stands at (a terrace, a ladder, falling): as his own screen has it (terrain.js)
+    this.canFall = true; const gy = this.net.gy ?? this.game.world.floorAt(this.pos.x, this.pos.z);
+    this.gy = Math.abs(gy - this.gy) > 3 ? gy : this.gy + (gy - this.gy) * k;
     const sp = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-3);
     this.phase += dt * (2.5 + sp * 1.6);
     // (on the baked gait, as on its own screen: clips.js)
@@ -97,6 +100,10 @@ class RemotePlayer extends Actor {
     else if (st === 'backstep') pose = { ...base, ...P.backstep };
     else if (st === 'hurt') pose = { ...base, ...P.hurt };
     else if (st === 'knockdown') pose = P.knockdown;
+    else if (st === 'fall') pose = { ...base, ...P.fall(tt) };
+    else if (st === 'land') pose = tt < 0.16 ? { ...base, ...P.land } : base;
+    else if (st === 'prone') pose = tt < 0.85 ? P.prone : tt < 1.3 ? P.proneRise : base;
+    else if (st === 'climb') pose = { ...base, ...P.climb(this.pos.y * 0.78) }; // (the hands going with the height)
     else if (st === 'dead') pose = P.dead;
     else if (st === 'rest') pose = P.rest;
     else if (st === 'heal') pose = { ...base, ...P.heal };
@@ -239,7 +246,7 @@ export class Multiplayer {
       g.audio.remote(d.k === 'rip' ? 'riposte' : d.heavy ? 'bigHit' : 'hit', 0.9);
       if (e) {
         e.rig.flash(1, 0.9, 0.8);
-        const c = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
+        const c = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y + (e.pos.y || 0), e.pos.z);
         const dir = p ? new THREE.Vector3(e.pos.x - p.pos.x, 0, e.pos.z - p.pos.z).normalize() : null;
         g.fx.blood(c, dir, d.k === 'rip' ? 30 : d.heavy ? 16 : 9); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]);
         if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
@@ -250,15 +257,15 @@ export class Multiplayer {
     } else if (p && d.k === 'hurt') {
       // a teammate taking a hit
       p.rig.flash(1, 0.3, 0.2);
-      const c = new THREE.Vector3(p.pos.x, 1.1, p.pos.z);
+      const c = new THREE.Vector3(p.pos.x, 1.1 + (p.pos.y || 0), p.pos.z);
       g.fx.blood(c, null, 12); g.pfx.play('hurt', c, { dir: p.fwd().clone().negate() });
       g.audio.remote(d.heavy ? 'bigHit' : 'hurt');
     } else if (p && d.k === 'block') {
-      const c = new THREE.Vector3(p.pos.x, 1.1, p.pos.z).addScaledVector(p.fwd(), 0.5);
+      const c = new THREE.Vector3(p.pos.x, 1.1 + (p.pos.y || 0), p.pos.z).addScaledVector(p.fwd(), 0.5);
       g.fx.sparks(c, null, 12); g.pfx.play('block', c, { dir: p.fwd().clone() });
       g.audio.remote('clang');
     } else if (p && d.k === 'parry') {
-      const c = new THREE.Vector3(p.pos.x, 1.2, p.pos.z).addScaledVector(p.fwd(), 0.6);
+      const c = new THREE.Vector3(p.pos.x, 1.2 + (p.pos.y || 0), p.pos.z).addScaledVector(p.fwd(), 0.6);
       g.fx.sparks(c, null, 22, [1, 0.95, 0.7]); g.pfx.play('parry', c);
       g.audio.remote('parry');
     }
@@ -307,6 +314,7 @@ export class Multiplayer {
       case 'ready': this.ready.add(from); this.afterReady(); break;
       case 'picking': this.game.hostPicking?.(!d.off); break;
       case 'p': this.peers.get(from)?.apply(d); break;
+      case 'ladder': this.game.world.terrain.lower(this.game.world.terrain.ladders[d.i]); break; // (a teammate lowered it)
       case 'snap': {
         // the host's clock onto ours: the smallest gap seen (the least-delayed snapshot), let creep up slowly so a
         // slower link is followed. Snapshots then keep their true spacing however bunched up they arrive.
@@ -379,7 +387,7 @@ export class Multiplayer {
     this.clock += dt; this.netT = (this.netT || 0) + dt; // (netT: the host's world clock, stamped on its snapshots)
     if (this.clock < 1 / 30) return;
     this.clock = 0;
-    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '', ...g.runes?.snapshot() });
+    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), gy: r2(p.gy || 0), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '', ...g.runes?.snapshot() });
     if (this.isHost) {
       const ps = g.allPlayers().map((x) => x.pos);
       const near = (o) => ps.some((v) => Math.abs(v.z - o.z) < 46 && Math.abs(v.x - o.x) < 46);

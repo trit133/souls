@@ -239,7 +239,7 @@ export class RuneRuntime {
       for (const old of this.pets) g.scene.remove(old.g);
       this.pets = [];
       for (let i = 0; i < L.summon.n; i++) this.spawnPet(L.summon.pet, L.summon.dur, i);
-      g.audio.play('fog', 0.6); g.fx.burst({ x: p.pos.x, y: 0.8, z: p.pos.z }, 24, [0.4, 1, 0.6], 4, 0.6, 0.2);
+      g.audio.play('fog', 0.6); g.fx.burst({ x: p.pos.x, y: 0.8 + (p.pos.y || 0), z: p.pos.z }, 24, [0.4, 1, 0.6], 4, 0.6, 0.2);
       g.ui.toastSmall?.(`${L.summon.n > 1 ? L.summon.n + ' × ' : ''}${RUNES[L.summon.id].name}`);
     } else if (a === 'runebuff') {
       if (!L.buff) return;
@@ -267,7 +267,7 @@ export class RuneRuntime {
     if (p.winds > 0) {
       p.winds--; p.hp = Math.round(p.maxHp * 0.3);
       g.ui.toast('SECOND WIND', 2.2); g.audio.play('heal', 1);
-      g.fx.burst({ x: p.pos.x, y: 1, z: p.pos.z }, 40, [1, 0.85, 0.4], 6, 0.8, 0.3); g.fx.shockwave?.(p.pos.x, p.pos.z, 2.5, 0xffd36a, 0.5);
+      g.fx.burst({ x: p.pos.x, y: 1 + (p.pos.y || 0), z: p.pos.z }, 40, [1, 0.85, 0.4], 6, 0.8, 0.3); g.fx.shockwave?.(p.pos.x, p.pos.z, 2.5, 0xffd36a, 0.5);
       return true;
     }
     return false;
@@ -279,7 +279,7 @@ export class RuneRuntime {
     if (!L) return;
     if (L.roll.ember && (this.emberT -= dt) <= 0) {
       this.emberT = 0.07;
-      const m = new THREE.Mesh(new THREE.CircleGeometry(0.45, 8), glow(0xff6a1a, 0.45)); m.rotation.x = -Math.PI / 2; m.position.set(p.pos.x, 0.05, p.pos.z); g.scene.add(m);
+      const m = new THREE.Mesh(new THREE.CircleGeometry(0.45, 8), glow(0xff6a1a, 0.45)); m.rotation.x = -Math.PI / 2; m.position.set(p.pos.x, 0.05 + (p.pos.y || 0), p.pos.z); g.scene.add(m);
       this.embers.push({ x: p.pos.x, z: p.pos.z, t: 2.5, m });
     }
     if (L.roll.sande) {
@@ -354,7 +354,7 @@ export class RuneRuntime {
       if (tgt) P.yaw = Math.atan2(tgt.pos.x - pos.x, tgt.pos.z - pos.z);
       if (tgt && P.cd <= 0) {
         P.cd = 1.2;
-        const from = new THREE.Vector3(pos.x, 1.7, pos.z), to = new THREE.Vector3(tgt.pos.x, 1.1 * tgt.rig.root.scale.y, tgt.pos.z);
+        const from = new THREE.Vector3(pos.x, 1.7, pos.z), to = new THREE.Vector3(tgt.pos.x, 1.1 * tgt.rig.root.scale.y + (tgt.pos.y || 0), tgt.pos.z);
         this.tracer(from, to, 0x9affb0);
         this.damage(tgt, 6, 'phys');
         g.audio.play('bow', 0.35);
@@ -411,7 +411,7 @@ export class RuneRuntime {
     if (p.buffKind && Math.random() < dt * 25) { const c = { fury: [1, 0.3, 0.2], iron: [0.6, 0.7, 0.9], stand: [1, 0.85, 0.3] }[p.buffKind]; g.fx.add.spawn({ x: p.pos.x + (Math.random() - 0.5) * 0.7, y: 0.3 + Math.random() * 1.6, z: p.pos.z + (Math.random() - 0.5) * 0.7, vy: 1.2, life: 0.6, size: 0.14, size1: 0.02, r: c[0], g: c[1], b: c[2] }); }
     // the aura: its ring follows you; it burns every half second
     if (this.ring) {
-      this.ring.position.set(p.pos.x, 0.06, p.pos.z); this.ring.rotation.y += dt * 0.5; this.ring.visible = p.alive;
+      this.ring.position.set(p.pos.x, 0.06 + (p.pos.y || 0), p.pos.z); this.ring.rotation.y += dt * 0.5; this.ring.visible = p.alive;
       this.ring.userData.m.opacity = 0.28 + Math.sin(g.time * 3) * 0.08;
       if (L.aura.burn && p.alive && (this.burnT -= dt) <= 0) {
         this.burnT = 0.5;
@@ -436,7 +436,7 @@ export class RuneRuntime {
     this.ghosts = this.ghosts.filter((A) => { if (A.t > 0) return true; g.scene.remove(A.g); return false; });
     // summons
     for (const P of this.pets) this.updatePet(P, dt);
-    this.pets = this.pets.filter((P) => { if (P.t > 0 && p.alive !== false) return true; g.scene.remove(P.g); g.fx.burst({ x: P.pos.x, y: 0.8, z: P.pos.z }, 12, [0.6, 0.9, 0.6], 2.5, 0.5, 0.15); return false; });
+    this.pets = this.pets.filter((P) => { if (P.t > 0 && p.alive !== false) return true; g.scene.remove(P.g); g.fx.burst({ x: P.pos.x, y: 0.8 + (P.pos.y || 0), z: P.pos.z }, 12, [0.6, 0.9, 0.6], 2.5, 0.5, 0.15); return false; });
     this.updateRemote(dt);
     this.hud();
   }
@@ -470,7 +470,7 @@ export class RuneRuntime {
       // the aura ring
       const key = s.ra ? s.ra.join() : '';
       if (key !== R.ringKey) { if (R.ring) g.scene.remove(R.ring); R.ring = s.ra ? this.auraRing({ r: s.ra[0], hex: s.ra[2] }) : null; R.ringKey = key; }
-      if (R.ring) { R.ring.position.set(r.pos.x, 0.06, r.pos.z); R.ring.rotation.y += dt * 0.5; R.ring.visible = r.alive; }
+      if (R.ring) { R.ring.position.set(r.pos.x, 0.06 + (r.pos.y || 0), r.pos.z); R.ring.rotation.y += dt * 0.5; R.ring.visible = r.alive; }
       // summons
       const sm = s.sm || [];
       while (R.pets.length > sm.length) g.scene.remove(R.pets.pop().g);

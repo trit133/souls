@@ -14,6 +14,7 @@
 // inside it; a building standing between you and the camera fades to glass with its inside blacked out, and behind a
 // lane wall main.js shows your outline through it.
 import * as THREE from 'three';
+import { STEP } from './terrain.js';
 import { rng } from './world.js';
 import { mix, ELITES } from './dungeon.js';
 import { arenaFurnish, stoneRing } from './modules.js';
@@ -691,6 +692,11 @@ export class City {
   navLayer(w, L) {
     L.ok = new Uint8Array(L.W * L.H);
     for (let j = 0; j < L.H; j++) for (let i = 0; i < L.W; i++) if (w.walkable(L.x0 + i + 0.5, L.z0 + j + 0.5, 0.45, null, true)) L.ok[j * L.W + i] = 1;
+    // the ground's height in each cell (terrain.js): two cells join only if a body can step between them (a terrace's
+    // face parts them; stairs and slopes join them); enemies never use ladders
+    L.fh = new Float32Array(L.W * L.H);
+    for (let j = 0; j < L.H; j++) for (let i = 0; i < L.W; i++) L.fh[j * L.W + i] = w.floorAt(L.x0 + i + 0.5, L.z0 + j + 0.5);
+    L.link = (a, b) => Math.abs(L.fh[a] - L.fh[b]) <= STEP;
     // reachable from where you come in
     const from = L.u ? L.u.arrive : this.startAt, seen = new Uint8Array(L.W * L.H), q = [];
     const s = this.cell(L, from.x, from.z);
@@ -699,7 +705,7 @@ export class City {
       const k = q.pop(), i = k % L.W, j = (k - i) / L.W;
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const ii = i + a, jj = j + b, kk = jj * L.W + ii;
-        if (ii < 0 || jj < 0 || ii >= L.W || jj >= L.H || seen[kk] || !L.ok[kk]) continue;
+        if (ii < 0 || jj < 0 || ii >= L.W || jj >= L.H || seen[kk] || !L.ok[kk] || !L.link(k, kk)) continue;
         seen[kk] = 1; q.push(kk);
       }
     }
@@ -716,7 +722,8 @@ export class City {
     // a clear straight line: go straight
     const dx = tx - e.pos.x, dz = tz - e.pos.z, d = Math.hypot(dx, dz), n = Math.ceil(d / 0.5);
     let clear = true;
-    for (let s = 1; s < n && clear; s++) { const k = this.cell(L, e.pos.x + dx * s / n, e.pos.z + dz * s / n); if (k < 0 || !L.ok[k]) clear = false; }
+    let pk = this.cell(L, e.pos.x, e.pos.z);
+    for (let s = 1; s < n && clear; s++) { const k = this.cell(L, e.pos.x + dx * s / n, e.pos.z + dz * s / n); if (k < 0 || !L.ok[k] || (pk >= 0 && !L.link(pk, k))) clear = false; pk = k; }
     if (clear) return null;
     const F = this.flow(L, tx, tz), R = F.R, S = 2 * R + 1;
     const ci = Math.floor(e.pos.x - L.x0) - F.i0, cj = Math.floor(e.pos.z - L.z0) - F.j0;
@@ -728,6 +735,8 @@ export class City {
       const ii = ci + a, jj = cj + b;
       if (ii < 0 || jj < 0 || ii >= S || jj >= S) continue;
       if (a && b && (F.d[cj * S + ii] < 0 || F.d[jj * S + ci] < 0)) continue; // (no cutting corners)
+      const gk = (F.j0 + cj) * L.W + F.i0 + ci, nk = (F.j0 + jj) * L.W + F.i0 + ii;
+      if (gk >= 0 && nk >= 0 && gk < L.fh.length && nk < L.fh.length && !L.link(gk, nk)) continue; // (not up or down a face)
       const v = F.d[jj * S + ii];
       if (v >= 0 && v < best) { best = v; bx = a; bz = b; }
     }
@@ -749,7 +758,7 @@ export class City {
       const k = q[h], i = k % S, j = (k - i) / S;
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const ii = i + a, jj = j + b;
-        if (ii < 0 || jj < 0 || ii >= S || jj >= S || d[jj * S + ii] >= 0 || !okAt(ii, jj)) continue;
+        if (ii < 0 || jj < 0 || ii >= S || jj >= S || d[jj * S + ii] >= 0 || !okAt(ii, jj) || !L.link((j0 + j) * L.W + i0 + i, (j0 + jj) * L.W + i0 + ii)) continue;
         d[jj * S + ii] = d[k] + 1; q.push(jj * S + ii);
       }
     }

@@ -137,6 +137,43 @@ export function styleArms(style, p, s, sw, sprint) { STYLE[style]?.(p, s, sw, sp
 
 // ---------- shared poses ----------
 export const P = {
+  // off an edge (player.js 'fall'): arms thrown up and out, flailing a little, legs drawn up under him
+  fall(t) {
+    const f = Math.sin(t * 13) * 0.25;
+    return {
+      torso: [-0.15, 0, 0], head: [-0.25, 0, 0],
+      armL: [-2.3 + f, 0, 0.75], foreL: [-0.5, 0, 0], armR: [-2.3 - f, 0, -0.75], foreR: [-0.5, 0, 0],
+      legL: [-0.75, 0, 0.08], shinL: [1.05, 0, 0], legR: [-0.2 + f * 0.5, 0, -0.08], shinR: [0.75, 0, 0], by: 0.05,
+    };
+  },
+  // a short fall: down on the feet, knees bent deep to break it, arms out for balance
+  land: {
+    torso: [0.55, 0, 0], head: [-0.3, 0, 0],
+    armL: [-0.75, 0, 0.6], foreL: [-0.4, 0, 0], armR: [-0.75, 0, -0.6], foreR: [-0.4, 0, 0],
+    legL: [-1.2, 0, 0.12], shinL: [1.75, 0, 0], legR: [-0.8, 0, -0.12], shinR: [1.6, 0, 0], by: -0.5,
+  },
+  // a hard fall: flat on his stomach, face lifted off the ground, arms out where they hit
+  prone: {
+    hips: [1.45, 0, 0], torso: [-0.25, 0, 0], head: [-0.65, 0, 0],
+    armL: [-0.6, 0, 1.0], foreL: [-1.0, 0, 0], armR: [-0.6, 0, -1.0], foreR: [-1.0, 0, 0],
+    legL: [0.1, 0, 0.15], shinL: [0.25, 0, 0], legR: [-0.05, 0, -0.12], shinR: [0.5, 0, 0], by: -0.8,
+  },
+  // pushing up off the ground on his hands, one knee under him
+  proneRise: {
+    hips: [0.9, 0, 0], torso: [-0.2, 0, 0], head: [-0.5, 0, 0],
+    armL: [-1.2, 0, 0.3], foreL: [-0.2, 0, 0], armR: [-1.2, 0, -0.3], foreR: [-0.2, 0, 0],
+    legL: [-1.5, 0, 0.1], shinL: [2.0, 0, 0], legR: [0.3, 0, -0.1], shinR: [1.4, 0, 0], by: -0.55,
+  },
+  // up or down a ladder, facing it: hands reaching up rung over rung, knees climbing against them (ph: 0..1 a cycle)
+  climb(ph) {
+    const s = Math.sin(ph * Math.PI * 2);
+    return {
+      torso: [0.12, 0, 0], head: [-0.35, 0, 0],
+      armL: [-2.55 - 0.35 * s, 0, 0.22], foreL: [-0.55 + 0.35 * s, 0, 0], handL: [0.3, 0, 0],
+      armR: [-2.55 + 0.35 * s, 0, -0.22], foreR: [-0.55 - 0.35 * s, 0, 0], handR: [0.3, 0, 0],
+      legL: [-0.85 + 0.55 * s, 0, 0.1], shinL: [1.25 - 0.45 * s, 0, 0], legR: [-0.85 - 0.55 * s, 0, -0.1], shinR: [1.25 + 0.45 * s, 0, 0], by: -0.05,
+    };
+  },
   // forward roll; `e` 0..1 eased progress
   roll(e) {
     const k = Math.sin(Math.PI * Math.min(1, e * 1.15));

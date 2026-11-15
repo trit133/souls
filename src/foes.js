@@ -17,7 +17,7 @@ import { box, cyl, cone, rbox, pivot } from './mesh.js';
 
 // ---------- shared bits ----------
 const V = new THREE.Vector3();
-const tipPos = (e) => (e.rig.tip ? e.rig.tip.getWorldPosition(new THREE.Vector3()) : e.pos.clone().setY(1.2));
+const tipPos = (e) => (e.rig.tip ? e.rig.tip.getWorldPosition(new THREE.Vector3()) : e.pos.clone().setY(1.2 + (e.pos.y || 0)));
 const turnTo = (k) => (e) => { if (e.target) e.yaw += angDiff(e.yaw, e.yawTo(e.target.pos)) * k; };
 const glint = (rgb, sound) => (e, g) => {
   g.fx.burst(tipPos(e), 12, rgb, 2.5, 0.4, 0.45);
@@ -73,7 +73,7 @@ const SWELL = { torso: [-0.35, 0, 0], head: [-0.55, 0, 0], armR: [-0.3, 0, -0.9]
 const RETCH = { torso: [0.65, 0, 0], head: [0.3, 0, 0], armR: [-0.2, 0, -0.6], foreR: [-0.3, 0, 0], armL: [-0.2, 0, 0.6], foreL: [-0.3, 0, 0], legL: [-0.5, 0, 0], legR: [0.4, 0, 0], shinR: [0.4, 0, 0], by: -0.18 };
 const bile = [0.55, 0.9, 0.2];
 const bileFrom = (e, g) => { // (from the mouth, not the claws)
-  const f = e.fwd(V).clone(), s = e.rig.root.scale.y || 1, from = e.pos.clone().addScaledVector(f, 0.35 * s).setY(1.25 * s), side = new THREE.Vector3(f.z, 0, -f.x);
+  const f = e.fwd(V).clone(), s = e.rig.root.scale.y || 1, from = e.pos.clone().addScaledVector(f, 0.35 * s).setY(1.25 * s + (e.pos.y || 0)), side = new THREE.Vector3(f.z, 0, -f.x);
   for (let i = 0; i < 7; i++) {
     const sp = 5 + Math.random() * 3, w = (Math.random() - 0.5) * 0.8;
     g.fx.norm.spawn({ x: from.x, y: from.y, z: from.z, vx: (f.x + side.x * w) * sp, vy: -0.5 - Math.random() * 1.5, vz: (f.z + side.z * w) * sp, life: 0.45, size: 0.16, size1: 0.5, r: bile[0], g: bile[1], b: bile[2], grav: 6, drag: 1.5, alpha: 0.85 });
@@ -100,7 +100,7 @@ const WRETCH_MOVES = {
     hits: [0, 1, 2].map((i) => ({ t0: 0.72 + i * 0.14, t1: 0.8 + i * 0.14, range: 3.3, arc: 1.0, dmg: 8, poise: 6 })),
     onTime: [
       { t: 0.15, fn: (e, g) => { e.rig.flash(0.5, 1, 0.3); g.audio.play('hurt', 0.25); } },
-      ...every(0.25, 0.65, 0.08, (e, g) => g.fx.add.spawn({ x: e.pos.x, y: 1.3 * (e.rig.root.scale.y || 1), z: e.pos.z, vy: 0.5, life: 0.3, size: 0.3, size1: 0.05, r: bile[0], g: bile[1], b: bile[2], alpha: 0.6 })),
+      ...every(0.25, 0.65, 0.08, (e, g) => g.fx.add.spawn({ x: e.pos.x, y: 1.3 * (e.rig.root.scale.y || 1) + (e.pos.y || 0), z: e.pos.z, vy: 0.5, life: 0.3, size: 0.3, size1: 0.05, r: bile[0], g: bile[1], b: bile[2], alpha: 0.6 })),
       ...every(0.7, 1.12, 0.05, bileFrom),
     ],
   },
@@ -233,7 +233,7 @@ const FLAG_MOVES = {
     dur: 1.6, range: 2.4, track: [0.3, 5], sfx: [0.55, 'swing'], trail: [0.55, 1.0], recover: 0.4,
     keys: [[0.35, WHIRL(-0.6)], [0.55, WHIRL(0.6)], [0.75, WHIRL(3.1)], [0.95, WHIRL(6.28)], [1.25, { ...WHIRL(6.28), armR: [-0.5, 0, -0.5], armL: [-0.5, 0, 0.5] }]],
     hits: [{ t0: 0.62, t1: 0.96, shape: 'circle', offset: 0, radius: 2.6, dmg: 17, poise: 18, parry: false }],
-    onTime: [{ t: 0.1, fn: glint([1, 0.2, 0.15]) }, ...every(0.6, 0.95, 0.07, (e, g) => g.fx.blood(e.pos.clone().setY(1.2), null, 2))],
+    onTime: [{ t: 0.1, fn: glint([1, 0.2, 0.15]) }, ...every(0.6, 0.95, 0.07, (e, g) => g.fx.blood(e.pos.clone().setY(1.2 + (e.pos.y || 0)), null, 2))],
   },
   lunge: {
     parry: true, dur: 1.65, range: 5.2, minRange: 2.6, track: [0.6, 4], sfx: [0.66, 'heavySwing'], trail: [0.72, 0.95], recover: 0.5,
@@ -335,7 +335,7 @@ const AUGUR_MOVES = {
       { t: 0.9, fn: (e, g) => {
         // a slow seeing-orb: dodge it sideways
         const p = e.target; if (!p) return;
-        const from = new THREE.Vector3(e.pos.x, 1.4 * (e.rig.root.scale.y || 1), e.pos.z).addScaledVector(e.fwd(), 0.7);
+        const from = new THREE.Vector3(e.pos.x, 1.4 * (e.rig.root.scale.y || 1) + (e.pos.y || 0), e.pos.z).addScaledVector(e.fwd(), 0.7);
         const dir = new THREE.Vector3(p.pos.x - from.x, 0, p.pos.z - from.z).normalize();
         if (Math.abs(angDiff(Math.atan2(dir.x, dir.z), e.yaw)) > 0.3) dir.copy(e.fwd());
         const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshBasicMaterial({ color: 0xd0a0ff }));
@@ -445,7 +445,7 @@ const NEW_TYPES = {
     cd: [0.3, 1.0], moves: FLAG_MOVES, weights: { flurry: 3, whirl: 1.5, lunge: 1.5 }, elems: { bleed: 0.3 },
     // bleeding, it gets faster: a third quicker under half health, a mist of blood off it
     rate: (e) => (e.hp < e.maxHp * 0.5 ? 1.3 : 1),
-    think: (e, dt) => { if (e.hp < e.maxHp * 0.5 && Math.random() < dt * 10) e.game.fx.blood(e.pos.clone().setY(1.0 + Math.random() * 0.6), null, 1); return false; },
+    think: (e, dt) => { if (e.hp < e.maxHp * 0.5 && Math.random() < dt * 10) e.game.fx.blood(e.pos.clone().setY(1.0 + Math.random() * 0.6 + (e.pos.y || 0)), null, 1); return false; },
     model: { cloth: 0x3a2a22, armor: 0x4a3a32, skin: 0x9a8070, head: 'bare', weapon: 'daggers', eyes: 0xff3a24, kit: 'flagellant' },
   },
   castellan: {

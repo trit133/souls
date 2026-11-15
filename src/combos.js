@@ -23,7 +23,7 @@ const mirrorPose = (pose) => Object.fromEntries(Object.entries(pose).map(([k, v]
 const mirror = (def) => ({ ...def, keys: def.keys.map(([t, p]) => [t, mirrorPose(p)]), hand: def.hand === 'R' ? 'L' : def.hand === 'L' ? 'R' : def.hand });
 const withDmg = (def, dmgs, extra = {}) => ({ ...def, hits: def.hits.map((h, i) => ({ ...h, dmg: dmgs[i] ?? h.dmg })), comboMove: true, ...extra });
 // a finisher's effect in front of the player, on every screen
-const front = (p, d = 1.2, y = 0) => p.pos.clone().addScaledVector(p.fwd(), d).setY(y);
+const front = (p, d = 1.2, y = 0) => p.pos.clone().addScaledVector(p.fwd(), d).setY(y + (p.pos.y || 0));
 
 // ---------- the moves ----------
 // `base`: the class's normal attacks, to build variants from
@@ -157,7 +157,7 @@ export function comboMoves(kind, base) {
         ],
         hits: [{ t0: 0.38, t1: 0.48, range: 2.2, arc: 1.4, dmg: 66, poise: 25 }],
         move: [[0.06, 0.4, 2.6]], jump: [0.05, 0.4, 1.5],
-        onTime: [{ t: 0.06, fn: (p, g) => g.vfx('shroud', p.pos.clone().setY(0.4)) }, { t: 0.42, fn: (p, g) => g.vfx('redCrit', front(p, 1.0, 0.9)) }],
+        onTime: [{ t: 0.06, fn: (p, g) => g.vfx('shroud', p.pos.clone().setY(0.4 + (p.pos.y || 0))) }, { t: 0.42, fn: (p, g) => g.vfx('redCrit', front(p, 1.0, 0.9)) }],
         onHitShake: 0.55, heavyHit: true, finisher: 'Shadow Reel',
       },
     };
@@ -189,7 +189,7 @@ export function comboMoves(kind, base) {
         [0.34, { torso: [0.3, 0, 0], armR: [-0.4, 0, -1.4], foreR: [0, 0, 0], armL: [-0.4, 0, 1.4], foreL: [0, 0, 0], ...crouch(1.1) }],
         [0.6, { torso: [0.2, 0, 0], armR: [-0.5, 0, -1.1], armL: [-0.5, 0, 1.1], ...crouch(0.8) }],
       ],
-      onTime: [{ t: 0.32, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1)); g.comboBlast(p, 3.2, 34 * NUM, 18, 'frost'); } }],
+      onTime: [{ t: 0.32, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1 + (p.pos.y || 0))); g.comboBlast(p, 3.2, 34 * NUM, 18, 'frost'); } }],
       finisher: 'Arc Step',
     },
     // Glacial Lance: (bolt, a cut) a fan of three ice lances

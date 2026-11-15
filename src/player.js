@@ -15,6 +15,7 @@ import { COMBOS } from './combos.js';
 import { bazaarPerks } from './traders.js';
 import { runeLoadout } from './runes.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
+import { STEP, SAFE_FALL } from './terrain.js';
 
 // ---------- move sets ----------
 // Attack def fields: dur, keys [[t,pose]], hits [{t0,t1,range,arc,dmg,poise}], move [[t0,t1,dist]],
@@ -79,7 +80,7 @@ const KNIGHT_ATTACKS = {
     jump: [0.04, 0.43, 1.6],
     onTime: [{ t: 0.43, fn: (p, g) => {
       // ground pound: cracks and a dust wave, a ring along the floor (on every screen)
-      g.vfx('groundPound', p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0));
+      g.vfx('groundPound', p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0 + (p.pos.y || 0)));
       g.hitstop(0.06);
     } }],
     onHitShake: 0.5, heavyHit: true,
@@ -248,7 +249,7 @@ export const CRITS = {
     ],
     events: [{ t: 0.4, fn: (p, tg, g, hp, dir) => {
       // the knee connects with the head: blood sprays up off it, a hit star and sparks
-      const head = new THREE.Vector3(tg.pos.x, 1.75 * tg.rig.root.scale.y + (tg.y || 0), tg.pos.z);
+      const head = new THREE.Vector3(tg.pos.x, 1.75 * tg.rig.root.scale.y + (tg.y || 0) + (tg.pos.y || 0), tg.pos.z);
       g.vfx('kneeImpact', head, dir.clone());
       g.hitstop(0.09);
     } }],
@@ -280,7 +281,7 @@ export const CRITS = {
       [1.2, { torso: [0.12, 0, 0], armR: [-0.3, 0, -0.3], foreR: [-1.0, 0, 0], armL: [-0.3, 0, 0.3], foreL: [-1.0, 0, 0] }],
     ],
     events: [
-      { t: 0.1, fn: (p, tg, g) => g.vfx('shroud', p.pos.clone().setY(0.1)) },
+      { t: 0.1, fn: (p, tg, g) => g.vfx('shroud', p.pos.clone().setY(0.1 + (p.pos.y || 0))) },
       { t: 0.5, fn: (p, tg, g, hp, dir) => g.vfx('redSlash', hp, dir.clone()) },
       { t: 0.56, fn: (p, tg, g, hp) => g.vfx('redCrit', hp) },
     ],
@@ -294,7 +295,7 @@ export const CRITS = {
       [0.85, { torso: [0.8, 0, 0], head: [0.25, 0, 0], armR: [-1.3, 0, -0.05], foreR: [-0.1, 0, 0], handR: [0.5, 0, 0], armL: [-1.1, 0, 0.1], foreL: [-0.2, 0, 0], legL: [-0.9, 0, 0], legR: [0.5, 0, 0], shinL: [1.2, 0, 0], shinR: [1.3, 0, 0], by: -0.4 }],
       [1.12, { torso: [0.1, 0, 0], armR: [-0.3, 0, -0.2], foreR: [-0.9, 0, 0], handR: [0.5, 0, 0] }],
     ],
-    events: [{ t: 0.48, fn: (p, tg, g, hp) => g.vfx('impale', tg.pos.clone().setY(0.02), hp) }],
+    events: [{ t: 0.48, fn: (p, tg, g, hp) => g.vfx('impale', tg.pos.clone().setY(0.02 + (tg.pos.y || 0)), hp) }],
   },
 };
 CRITS.backstab.keys = CRITS.stab.keys;
@@ -348,6 +349,7 @@ export class Player extends Actor {
     this.rollDir = new THREE.Vector3();
     this.trail = kind === 'knight' ? knightArc(game.scene, c.style) : new Trail(game.scene, c.trail); // (the Templar's swing: fx3d.js)
     this.swingHead = kind === 'knight'; // (his head moves with his swings: actor.js swingPose)
+    this.canFall = true; this.gy = game.world?.floorAt?.(x, z) || 0; // (off an edge he falls: groundStep)
     if (c.dual) this.trailL = new Trail(game.scene, c.trail);
     this.healDone = false;
     this.stepT = 0;
@@ -456,6 +458,7 @@ export class Player extends Actor {
   // ---------- main update ----------
   update(dt, input, presses) {
     this.t += dt;
+    const px = this.pos.x, pz = this.pos.z; // (where this frame started: the speed he leaves an edge at)
     // visual only: idle flourishes, rune glow
     this.rig.idle = this.state === 'move' && this.speed < 0.2;
     this.wfxKey = weaponElems(this.tree, this.statusLv); // elements showing on the weapon
@@ -561,7 +564,7 @@ export class Player extends Actor {
         if (this.t < D) this.move(this.dashDir.x * DASH.dist / D * dt, this.dashDir.z * DASH.dist / D * dt);
         pose = { ...locomotion(this.c.style, this.phase += dt * 30, 1, true, this.game.time), torso: [0.75, 0, 0], head: [-0.4, 0, 0], armR: [0.5, 0, -0.2], armL: [0.5, 0, 0.2], by: -0.2 };
         rate = 30;
-        if (Math.random() < 0.8) this.game.fx.add.spawn({ x: this.pos.x, y: 0.9, z: this.pos.z, life: 0.25, size: 0.5, size1: 0.1, r: 0.5, g: 0.5, b: 0.55, alpha: 0.4 });
+        if (Math.random() < 0.8) this.game.fx.add.spawn({ x: this.pos.x, y: 0.9 + (this.pos.y || 0), z: this.pos.z, life: 0.25, size: 0.5, size1: 0.1, r: 0.5, g: 0.5, b: 0.55, alpha: 0.4 });
         if (this.t >= D + 0.06) {
           this.setState('move');
           if (this.evo === 'ghostVeil') this.startVeil();
@@ -627,7 +630,7 @@ export class Player extends Actor {
           this.healDone = true;
           this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.48 * this.potionMul);
           this.game.audio.play('heal');
-          this.game.fx.burst({ x: this.pos.x, y: 1, z: this.pos.z }, 16, [1, 0.75, 0.35], 3, 0.8, 0.2);
+          this.game.fx.burst({ x: this.pos.x, y: 1 + (this.pos.y || 0), z: this.pos.z }, 16, [1, 0.75, 0.35], 3, 0.8, 0.2);
         }
         if (this.t > 0.9 && this.buf?.a === 'roll' && this.tryAct(dir, mag)) break;
         if (this.t >= dur) this.setState('move');
@@ -700,7 +703,7 @@ export class Player extends Actor {
         if (tg && C.events) for (const ev of C.events) {
           if (this.ripEv.has(ev) || rt < ev.t) continue;
           this.ripEv.add(ev);
-          const hp = V3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
+          const hp = V3(tg.pos.x, 1.1 * tg.rig.root.scale.y + (tg.pos.y || 0), tg.pos.z);
           ev.fn(this, tg, this.game, hp, this.ripDir || this.fwd().clone());
         }
         if (!this.ripHit && rt >= C.hitAt && tg) {
@@ -728,6 +731,46 @@ export class Player extends Actor {
         pose = P.dead; rate = 7;
         break;
       }
+      // ---------- terrain (terrain.js): off an edge, landing, a ladder ----------
+      case 'fall': {
+        const F = this.fall;
+        F.vy -= 26 * dt; this.gy += F.vy * dt;
+        const k = Math.exp(-0.8 * dt); F.vx *= k; F.vz *= k;
+        this.move(F.vx * dt, F.vz * dt);
+        pose = { ...locomotion(style, 0, 0, false, 0), ...P.fall(this.t) }; rate = 14;
+        const f = this.game.world.floorAt(this.pos.x, this.pos.z);
+        if (this.gy <= f) { this.gy = f; this.landFrom(F.from - f); }
+        break;
+      }
+      case 'land': { // a short fall: on the feet, knees bent, up again
+        pose = this.t < 0.16 ? { ...locomotion(style, 0, 0, false, 0), ...P.land } : locomotion(style, 0, 0, false, 0);
+        rate = this.t < 0.16 ? 30 : 12;
+        if (this.t > 0.2 && this.buf && this.tryAct(dir, mag)) break;
+        if (this.t > 0.3) this.setState('move');
+        break;
+      }
+      case 'prone': { // a hard fall: flat on the stomach, then pushing up
+        pose = this.t < 0.85 ? P.prone : this.t < 1.3 ? P.proneRise : locomotion(style, 0, 0, false, 0);
+        rate = this.t < 0.1 ? 30 : 9;
+        if (this.t > 1.0 && this.buf?.a === 'roll') { this.buf = null; this.startRoll(mag > 0.2 ? dir : this.fwd().clone()); break; }
+        if (this.t > 1.6) this.setState('move');
+        break;
+      }
+      case 'climb': {
+        const C = this.climbing, L = C.L, span = L.h1 - L.h0;
+        // moving the stick toward the wall goes up, away goes down; a ladder is climbed at 2.4 m/s
+        const toward = mag > 0.2 ? (dir.x * L.f.x + dir.z * L.f.z) / Math.max(mag, 1e-3) : 0;
+        const want = Math.abs(toward) > 0.3 ? Math.sign(toward) : 0;
+        C.u = clamp(C.u + want * 2.4 / span * dt, 0, 1);
+        C.ph += Math.abs(want) * 2.4 / 0.64 * dt; // (a cycle every two rungs)
+        this.gy = L.h0 + span * C.u;
+        this.pos.x = L.wall.x - L.f.x * 0.38; this.pos.z = L.wall.z - L.f.z * 0.38;
+        this.yaw = L.yaw;
+        pose = { ...locomotion(style, 0, 0, false, 0), ...P.climb(C.ph) }; rate = 18;
+        if (C.u >= 1 && want > 0) { this.pos.x = L.top.x; this.pos.z = L.top.z; this.gy = L.h1; this.setState('move'); }
+        else if (C.u <= 0 && want < 0) { this.pos.x = L.foot.x; this.pos.z = L.foot.z; this.gy = L.h0; this.setState('move'); }
+        break;
+      }
     }
     if (this.state !== 'attack' && this.state !== 'parry' && this.state !== 'riposte') this.trailOn = false;
     if (this.spectral) {
@@ -737,6 +780,7 @@ export class Player extends Actor {
 
     if (this.state !== 'move' && this.state !== 'heal') this.blocking = false;
     this.applyKnockback(dt);
+    this.groundStep(dt, px, pz, dir, mag);
     if (pose) this.syncRig(dt, pose, rate);
     const hand = this.atk?.def?.hand || (this.state === 'parry' ? 'L' : 'R');
     this.trail.update(dt, this.trailOn && hand !== 'L', this.rig.base, this.rig.tip);
@@ -889,7 +933,7 @@ export class Player extends Actor {
 
   // Evolved rogue: a parry instantly becomes a backstab: a red blink to behind the enemy
   instantRiposte(tg) {
-    this.game.vfx('redPoof', this.pos.clone().setY(0.2));
+    this.game.vfx('redPoof', this.pos.clone().setY(0.2 + (this.pos.y || 0)));
     const b = tg.fwd(), at = tg.radius + 0.85;
     const tx = tg.pos.x - b.x * at, tz = tg.pos.z - b.z * at;
     this.move(tx - this.pos.x, tz - this.pos.z);
@@ -988,7 +1032,7 @@ export class Player extends Actor {
       this.game.scene.add(this.mark);
     }
     this.mark.visible = on;
-    if (on) this.mark.position.set(this.pos.x, 2.35 + (this.y || 0) + Math.sin(this.game.time * 30) * 0.03, this.pos.z);
+    if (on) this.mark.position.set(this.pos.x, 2.35 + (this.y || 0) + Math.sin(this.game.time * 30) * 0.03 + (this.pos.y || 0), this.pos.z);
   }
 
   // the cue: a glint along the blade(s) that lasts the window
@@ -1032,7 +1076,7 @@ export class Player extends Actor {
   // ---------- the Psy-Staff: a warding sigil at your feet (main.js placeSigil does the rest) ----------
   castSigil(dir, mag) {
     if (this.sigilCd > 0) return false; // (SIGIL.cd between them: the HUD counts it down)
-    const ok = this.startCast(SIGIL.mana - (this.tree.fireCost || 0) * 0.4, 0.55, 0.28, () => this.game.vfx('sigil', this.pos.clone().setY(0.05), this.evo === 'stormSigil', this.game.myRef()), dir, mag);
+    const ok = this.startCast(SIGIL.mana - (this.tree.fireCost || 0) * 0.4, 0.55, 0.28, () => this.game.vfx('sigil', this.pos.clone().setY(0.05 + (this.pos.y || 0)), this.evo === 'stormSigil', this.game.myRef()), dir, mag);
     if (ok) this.sigilCd = SIGIL.cd;
     return ok;
   }
@@ -1191,6 +1235,42 @@ export class Player extends Actor {
     this.game.onPlayerDeath();
   }
 
+  // ---------- the ground under him (terrain.js) ----------
+  // standing on it (up a step or a slope, down one), onto a ladder, or off an edge: then he falls, carrying the speed
+  // he went off at (walking, running, rolling, a lunge)
+  groundStep(dt, px, pz, dir, mag) {
+    const st = this.state;
+    if (st === 'fall' || st === 'climb') return;
+    const w = this.game.world, f = w.floorAt(this.pos.x, this.pos.z);
+    if (st === 'dead' || st === 'rest' || st === 'riposte') { this.gy = this.gy > f ? Math.max(f, this.gy - 9 * dt) : f; return; }
+    if (this.gy - f > STEP) {
+      const vx = (this.pos.x - px) / Math.max(dt, 1e-3), vz = (this.pos.z - pz) / Math.max(dt, 1e-3), sp = Math.hypot(vx, vz), cap = Math.min(1, 7 / Math.max(sp, 1e-3));
+      this.fall = { from: this.gy, vy: 0, vx: vx * cap, vz: vz * cap };
+      this.atk = null; this.cmb = null; this.trailOn = false;
+      this.setState('fall');
+      return;
+    }
+    this.gy = f;
+    // a ladder: walking into its foot, or out over its top
+    if (st === 'move' && mag > 0.3) {
+      const hit = w.terrain.ladderFor(this.pos.x, this.pos.z, this.gy, dir.clone().normalize());
+      if (hit) { this.climbing = { L: hit.L, u: hit.up ? 0 : 1, ph: 0 }; this.lock = null; this.setState('climb'); }
+    }
+  }
+  // down from a fall of h metres: on the feet if it's short, flat on the stomach (and hurt) if not
+  landFrom(h) {
+    const g = this.game;
+    g.fx.dust?.(this.pos, h < SAFE_FALL ? 1 : 2, 0.4);
+    if (h < SAFE_FALL) { this.setState('land'); g.audio.play('step', 0.9); return; }
+    const dmg = Math.round(this.maxHp * Math.min(0.7, 0.12 + (h - SAFE_FALL) * 0.16));
+    this.hp -= dmg;
+    g.statusPopup(this, `-${dmg}`, '#ff5a4a');
+    g.audio.play('bigHit', 0.8); g.fx.addShake?.(Math.min(0.6, 0.2 + h * 0.06));
+    this.rig.flash(1, 0.3, 0.2);
+    if (this.hp <= 0) { this.die(); return; }
+    this.setState('prone');
+  }
+
   // party play: back on your feet after a teammate's revive
   revive(frac) {
     this.alive = true; this.hp = Math.max(1, Math.round(this.maxHp * frac)); this.st = this.maxSt;
@@ -1201,7 +1281,7 @@ export class Player extends Actor {
   respawn(x, z) {
     this.alive = true;
     this.hp = this.maxHp; this.st = this.maxSt; this.flasks = this.maxFlasks;
-    this.pos.set(x, 0, z); this.yaw = Math.PI; this.kb.set(0, 0, 0); this.vel.set(0, 0, 0);
+    this.pos.set(x, 0, z); this.yaw = Math.PI; this.kb.set(0, 0, 0); this.vel.set(0, 0, 0); this.gy = this.game.world.floorAt(x, z); this.fall = null;
     this.lock = null; this.buf = null; this.atk = null;
     this.fatigue = 0;
     this.setState('move');

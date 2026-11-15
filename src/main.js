@@ -102,6 +102,7 @@ class Game {
     document.documentElement.classList.toggle('phone', this.input.isPhone); // the phone layout (style.css html.phone)
     this.audio = new Audio();
     this.fx = new FX(this.scene);
+    this.fx.floorAt = (x, z) => this.world?.floorAt(x, z) || 0; // (ground decals sit on the terrain)
     this.pfx = new PFX(this);
     this.fx3d = new Fx3D(this.scene); // (the Templar's effects in 3D: fx3d.js)
     this.weaponFx = new WeaponFx(this);
@@ -230,7 +231,7 @@ class Game {
       const f = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
       L.cone.position.set(p.pos.x - f.x * 1.2, 3.4, p.pos.z - f.z * 1.2); // from above and behind: lights the ground ahead, not you
       L.cone.target.position.set(p.pos.x + f.x * 4, 0, p.pos.z + f.z * 4);
-      L.glow.position.set(p.pos.x, 1.4, p.pos.z);
+      L.glow.position.set(p.pos.x, 1.4 + (p.pos.y || 0), p.pos.z);
     });
   }
 
@@ -342,7 +343,7 @@ class Game {
     this.reserves = this.reserves.filter((r) => r !== e);
     this.enemies.push(e);
     e.pos.set(x, 0, z); e.home = { x, z, yaw: e.yaw }; e.rig.root.visible = true;
-    this.pfx?.play('poof', e.pos.clone().setY(0.4), { size: 1.3 });
+    this.pfx?.play('poof', e.pos.clone().setY(0.4 + (e.pos.y || 0)), { size: 1.3 });
     this.fx.burst({ x, y: 1, z }, 16, [0.6, 0.2, 0.8], 3, 0.6, 0.25);
     if (!this.isGuest) { e.alertDelay = 0.35; if (this.mp.active) this.mp.sendAll({ t: 'rsv', id: e.netId, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 }); }
   }
@@ -378,7 +379,7 @@ class Game {
     const p = this.player;
     p.pos.set(s.to.x, 0, s.to.z); p.vel.set(0, 0, 0); p.lock = null;
     this.lastGood = null;
-    this.camPos.set(p.pos.x, 14, p.pos.z + 12); this.camLook.set(p.pos.x, 0.8, p.pos.z);
+    this.camPos.set(p.pos.x, 14, p.pos.z + 12); this.camLook.set(p.pos.x, 0.8 + (p.pos.y || 0), p.pos.z);
     this.audio.play('roll', 0.6);
     this.ui.toastSmall(s.name.toUpperCase());
     if (s.u) this.basements.found(s.u.k); // (marked over the building on the surface for everyone)
@@ -873,7 +874,7 @@ class Game {
   }
   spawnHeart(x, z, id) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heartTex(), transparent: true, depthWrite: false }));
-    s.scale.set(0.55, 0.5, 1); s.position.set(x, 0.6, z); this.scene.add(s);
+    s.scale.set(0.55, 0.5, 1); s.position.set(x, 0.6 + this.world.floorAt(x, z), z); this.scene.add(s);
     this.hearts.push({ id, x, z, s, t: Math.random() * 6 });
   }
   takeHeart(id, net = false) {
@@ -955,7 +956,7 @@ class Game {
     for (const id of want) {
       if (!spots.length) break;
       const D = spots.splice(Math.floor(Math.random() * spots.length), 1)[0].def, a = Math.random() * Math.PI * 2, x = D.x + Math.cos(a) * 0.9, z = D.z + Math.sin(a) * 0.9;
-      const g = new THREE.Group(); g.position.set(x, 0, z);
+      const g = new THREE.Group(); g.position.set(x, this.world.floorAt(x, z), z);
       const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: 0xc890ff })); gem.position.y = 0.55; gem.scale.y = 1.4; g.add(gem);
       const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 3.2, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xb070ff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); pillar.position.y = 1.6; g.add(pillar);
       this.scene.add(g);
@@ -1260,7 +1261,7 @@ class Game {
     if (k === 'rest') {
       p.hp = p.maxHp; p.st = p.maxSt; p.flasks = p.maxFlasks;
       this.audio.play('bonfire');
-      this.fx.burst({ x: p.pos.x, y: 1, z: p.pos.z }, 30, [1, 0.75, 0.35], 3, 0.9, 0.22);
+      this.fx.burst({ x: p.pos.x, y: 1 + (p.pos.y || 0), z: p.pos.z }, 30, [1, 0.75, 0.35], 3, 0.9, 0.22);
     } else {
       BOONS[k].apply(p);
       const e = p.boonList.find((x) => x.key === k);
@@ -1268,7 +1269,7 @@ class Game {
       this.ui.setMaxHp(p.maxHp, p.maxSt);
       this.ui.setBoons(p.boonList.map((x) => ({ tag: BOONS[x.key].tag, color: BOONS[x.key].color, n: x.n })));
       this.audio.play('heal');
-      this.fx.burst({ x: p.pos.x, y: 1, z: p.pos.z }, 30, [1, 0.9, 0.6], 3, 0.9, 0.22);
+      this.fx.burst({ x: p.pos.x, y: 1 + (p.pos.y || 0), z: p.pos.z }, 30, [1, 0.9, 0.6], 3, 0.9, 0.22);
     }
     if (this.mp.active) {
       this.mode = 'wait';
@@ -1512,14 +1513,14 @@ class Game {
     // Wrist Blades it's the arm shoved in and ripped out: weaponmoves.js wRip)
     if (att === this.player && att.veilStrike) {
       info.dmg *= VEIL.backstab; info.backstab = true;
-      this.statusPopup(tg, 'BACKSTAB', '#ff4a3a'); this.vfx('redCrit', tg.pos.clone().setY(1.2));
+      this.statusPopup(tg, 'BACKSTAB', '#ff4a3a'); this.vfx('redCrit', tg.pos.clone().setY(1.2 + (tg.pos.y || 0)));
     }
     if (h.pctHp) { info.dmg = (tg.maxHp || 100) * h.pctHp; info.elems = null; } // a share of the target's health, pure force (the hold burst)
     // an enemy's critical hit (its rolled chance and bonus: defenses.js)
     else if (att !== this.player) { const cm = critRoll(att.def?.crit, att.def?.critDmg); if (cm > 1) { info.dmg *= cm; info.crit = true; } }
     if (att === this.player && def.comboMove) info.combo = true; // a combo hit: can hold a weak enemy (hold.js)
     if (tg.isRemote) { this.mp.send({ t: 'dmg', id: att.netId, k: att.atkKey, i: def.hits.indexOf(h), x: Math.round(att.pos.x * 100) / 100, z: Math.round(att.pos.z * 100) / 100, y: Math.round(att.yaw * 100) / 100 }, tg.pid); return; }
-    const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y, tg.pos.z);
+    const hp = new THREE.Vector3(tg.pos.x, 1.1 * tg.rig.root.scale.y + (tg.pos.y || 0), tg.pos.z);
     const dir = new THREE.Vector3(tg.pos.x - att.pos.x, 0, tg.pos.z - att.pos.z).normalize();
     if (tg === this.player) {
       const r = tg.receive(info);
@@ -1612,7 +1613,7 @@ class Game {
   dmgPops(e, parts, style = 'me') {
     if (!e?.rig || !parts) return;
     const list = TYPES.filter((k) => parts[k] > 0.5);
-    const v = new THREE.Vector3(e.pos.x, 2.2 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+    const v = new THREE.Vector3(e.pos.x, 2.2 * e.rig.root.scale.y + (e.y || 0) + (e.pos.y || 0), e.pos.z).project(this.camera);
     if (v.z > 1) return;
     const x = (v.x * 0.5 + 0.5) * innerWidth, y = (-v.y * 0.5 + 0.5) * innerHeight;
     list.forEach((k, i) => {
@@ -1631,7 +1632,7 @@ class Game {
       if ((e.dotT = (e.dotT ?? 0) - 1) > 0 && e.dotAcc < 40) return;
       e.dotT = 30; amount = e.dotAcc; e.dotAcc = 0;
     }
-    const v = new THREE.Vector3(e.pos.x, 2.2 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+    const v = new THREE.Vector3(e.pos.x, 2.2 * e.rig.root.scale.y + (e.y || 0) + (e.pos.y || 0), e.pos.z).project(this.camera);
     if (v.z > 1) return;
     const st = kind.split(':')[1];
     this.ui.dmgNumber((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight, Math.round(amount), kind.split(':')[0], st ? STATUS[st].color : null);
@@ -1647,7 +1648,7 @@ class Game {
   }
 
   statusPopup(a, text, color) {
-    const v = new THREE.Vector3(a.pos.x, 2.6 * a.rig.root.scale.y + a.y, a.pos.z).project(this.camera);
+    const v = new THREE.Vector3(a.pos.x, 2.6 * a.rig.root.scale.y + a.y + (a.pos.y || 0), a.pos.z).project(this.camera);
     if (v.z > 1) return;
     this.ui.popup((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight, text, color);
   }
@@ -1672,7 +1673,7 @@ class Game {
     this.mp.event({ k: 'rip', id: tg.netId, d: packParts(parts) });
     this.dmgPops(tg, parts, 'crit');
     if (tg.puppet) { this.mp.send({ t: 'rip', id: tg.netId, dmg }); tg.rig.flash(1, 0.3, 0.2); this.audio.play('riposte'); this.hitstop(0.16); this.fx.addShake(0.7); return; }
-    const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y, tg.pos.z);
+    const hp = new THREE.Vector3(tg.pos.x, 1.2 * tg.rig.root.scale.y + (tg.pos.y || 0), tg.pos.z);
     tg.lastHitBy = p;
     tg.hp -= dmg;
     tg.rig.flash(1, 0.3, 0.2);
@@ -1690,7 +1691,7 @@ class Game {
   // evolved knight's shield charge meeting an enemy: a little damage and a hard shove
   shieldBash(p, e, dir) {
     const push = (e.isBoss ? 4 : e.heavy ? 7 : 12) * (1 + (p.tree?.chargeKb || 0) / 100);
-    const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z);
+    const hp = new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y + (e.pos.y || 0), e.pos.z);
     if (e.puppet) {
       this.mp.send({ t: 'hit', id: e.netId, dmg: 10 * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100), poise: 12, kb: [dir.x * push, dir.z * push] });
       e.hp = Math.max(1, e.hp - 10 * NUM * p.dmgMul * (1 - (e.def?.armor || 0) / 100)); e.hpShow = 4;
@@ -1707,7 +1708,7 @@ class Game {
   // the evolution) reaches wider, hits far harder and builds burn. Walls shelter what's behind them
   groundQuake(p, fire) {
     const Q = fire ? QUAKE.fire : QUAKE;
-    this.vfx('quake', new THREE.Vector3(p.pos.x, 0.05, p.pos.z), Q.r, !!fire);
+    this.vfx('quake', new THREE.Vector3(p.pos.x, 0.05 + (p.pos.y || 0), p.pos.z), Q.r, !!fire);
     this.chests.drumsAt(p.pos.x, p.pos.z, Q.r);
     for (const e of this.enemiesAll()) {
       if (!e.alive || e.y > 1.5) continue;
@@ -1785,7 +1786,7 @@ class Game {
       s.visible = !!t;
       if (!t) return;
       const k = t.e.rig.root.scale.y;
-      s.position.set(t.e.pos.x, t.e.y + 1.35 * k, t.e.pos.z);
+      s.position.set(t.e.pos.x, t.e.y + 1.35 * k + (t.e.pos.y || 0), t.e.pos.z);
       s.scale.setScalar((0.6 + 0.2 * k) * pulse);
     });
   }
@@ -1802,10 +1803,10 @@ class Game {
 
   spawnArrow(e) {
     const p = this.targetOf(e);
-    const from = new THREE.Vector3(e.pos.x, 1.45, e.pos.z);
+    const from = new THREE.Vector3(e.pos.x, 1.45 + (e.pos.y || 0), e.pos.z);
     const f = e.fwd();
     from.addScaledVector(f, 0.6);
-    const to = new THREE.Vector3(p.pos.x, 1.1, p.pos.z);
+    const to = new THREE.Vector3(p.pos.x, 1.1 + (p.pos.y || 0), p.pos.z);
     const dir = to.sub(from).normalize();
     // archers aim where they are facing (tracking stops just before release) — sidesteps work
     const flat = new THREE.Vector3(dir.x, 0, dir.z).normalize();
@@ -1832,7 +1833,7 @@ class Game {
     const p = this.targetOf(b);
     const f = b.fwd();
     const from = new THREE.Vector3(b.pos.x + f.x * 1.2, 4.2, b.pos.z + f.z * 1.2);
-    const to = new THREE.Vector3(p.pos.x, 0.6, p.pos.z);
+    const to = new THREE.Vector3(p.pos.x, 0.6 + (p.pos.y || 0), p.pos.z);
     const dir = to.clone().sub(from).normalize();
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55, 0), this.world.mats.rockDark);
     mesh.position.copy(from); this.scene.add(mesh);
@@ -1878,7 +1879,7 @@ class Game {
     const src = new THREE.Vector3(q.src[0], 0, q.src[1]);
     const r = t.receive({ dmg: q.dmg, poise: 20, knock: q.knock || 'light', srcPos: src, parryable: false, elems: q.elems, buildMul: q.buildMul });
     if (t.isRemote) return r;
-    const chest = new THREE.Vector3(t.pos.x, 1.1, t.pos.z);
+    const chest = new THREE.Vector3(t.pos.x, 1.1 + (t.pos.y || 0), t.pos.z);
     if (r === 'hit') { this.audio.play('hurt'); this.mp.event({ k: 'hurt' }); this.fx.blood(chest, null, 8); this.pfx.play('hurt', chest, { dir: chest.clone().sub(src) }); this.hitstop(0.05); this.fx.addShake(0.3); if (q.crit) this.critTaken(t); }
     if (r === 'block') { this.audio.play('clang', 0.6); this.mp.event({ k: 'block' }); this.fx.sparks(chest, null, 8); }
     return r;
@@ -1887,7 +1888,10 @@ class Game {
   spawnSpell(p, kind, spread = 0, dmg = null) { // dmg: override (combo finishers' lances)
     const S = SPELLS[kind], big = kind === 'fire' && p.evo === 'twinPlasma' ? 1.45 : 1;
     const f = p.fwd().clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spread);
-    const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25, p.pos.z + f.z * 0.8);
+    const pos = new THREE.Vector3(p.pos.x + f.x * 0.8, 1.25 + (p.pos.y || 0), p.pos.z + f.z * 0.8);
+    // up or down to a locked target on another level (terrain.js): the shot climbs or drops to its chest
+    const L = p.lock?.alive ? p.lock : null, dh = L ? (L.pos.y || 0) + 1.1 - pos.y : 0, hd = L ? Math.max(1, Math.hypot(L.pos.x - pos.x, L.pos.z - pos.z)) : 1;
+    if (Math.abs(dh) > 0.4) f.y = dh / hd;
     // the sphere only carries the shot; what you see is the pixelfx bolt or fireball riding on it
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(S.size * big, 10, 8), new THREE.MeshBasicMaterial({ color: S.color }));
     mesh.position.copy(pos); mesh.visible = false; this.scene.add(mesh);
@@ -1932,7 +1936,7 @@ class Game {
     const el = q.kind === 'fire' ? 'fire' : 'frost', dealt = e.puppet ? sd : hp0 - e.hp;
     this.dmgPops(e, { [el]: dealt }, cm > 1 ? 'critical' : q.kind === 'fire' ? 'heavy' : 'me');
     if (cm > 1) this.fx.addShake(0.2);
-    this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y, e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
+    this.fx.sparks(new THREE.Vector3(e.pos.x, 1.1 * e.rig.root.scale.y + (e.pos.y || 0), e.pos.z), null, 8, q.kind === 'fire' ? [1, 0.6, 0.2] : [0.5, 0.75, 1]);
     this.audio.play(q.kind === 'fire' ? 'bigHit' : 'hit', 0.8);
     this.mp.event({ k: 'hit', id: e.netId, heavy: q.kind === 'fire', d: { [el]: Math.round(dealt) } });
     this.hitstop(q.kind === 'fire' ? 0.08 : 0.04);
@@ -1952,7 +1956,7 @@ class Game {
     let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || wall;
     let hit = null;
     if (!dead) for (const e of this.enemiesAll()) {
-      if (e.alive && e.y < 1.5 && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.r + e.radius) { hit = e; dead = true; break; }
+      if (e.alive && e.y < 1.5 && Math.abs(q.pos.y - (e.pos.y || 0) - 1) < 1.5 && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < q.r + e.radius) { hit = e; dead = true; break; } // (and at its height: terrain.js)
     }
     if (!dead) return false;
     if (q.pfx) this.pfx.kill(q.pfx);
@@ -2075,7 +2079,7 @@ class Game {
         S.zapT = SIGIL.zapEvery;
         const inside = this.enemiesAll().filter((e) => e.alive && Math.hypot(e.pos.x - S.x, e.pos.z - S.z) < SIGIL.r + e.radius);
         const e = inside[Math.floor(Math.random() * inside.length)];
-        if (e) { this.vfx('boltHit', e.pos.clone().setY(1.2)); this.fx.sparks(e.pos.clone().setY(2.5), new THREE.Vector3(0, -1, 0), 10, [0.7, 0.9, 1]); this.spellDamage({ dmg: 14 * NUM, poise: 6, pos: e.pos.clone(), kind: 'bolt' }, e); }
+        if (e) { this.vfx('boltHit', e.pos.clone().setY(1.2 + (e.pos.y || 0))); this.fx.sparks(e.pos.clone().setY(2.5 + (e.pos.y || 0)), new THREE.Vector3(0, -1, 0), 10, [0.7, 0.9, 1]); this.spellDamage({ dmg: 14 * NUM, poise: 6, pos: e.pos.clone(), kind: 'bolt' }, e); }
       }
     }
     this.sigils = this.sigils.filter((S) => { if (S.t > 0) return true; this.scene.remove(S.g); return false; });
@@ -2126,12 +2130,12 @@ class Game {
         if (Math.random() < dt * 20) this.fx.scorch(q.pos.x, q.pos.z, 0.7);
       }
       if (q.kind === 'rock') { q.mesh.rotation.x += dt * 8; q.mesh.rotation.z += dt * 5; }
-      let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < 0.25 || this.hitsWall(q, dt);
+      let dead = q.life <= 0 || !this.world.walkable(q.pos.x, q.pos.z, -0.5) || q.pos.y < this.world.floorAt(q.pos.x, q.pos.z) + 0.25 || this.hitsWall(q, dt); // (into the ground, or a terrace's face)
       if (dead && q.kind === 'rock') this.impact(q.pos.x, q.pos.z, 1.6, 0.35);
       // the evolved spectral shield stops shots at the wall, ahead of the knight
       if (!dead) for (const t of this.allPlayers()) {
         const wall = t.spectral?.visible ? 0.75 : 0;
-        if (!t.alive || Math.hypot(q.pos.x - t.pos.x, q.pos.z - t.pos.z) >= q.r + t.radius + wall) continue;
+        if (!t.alive || Math.hypot(q.pos.x - t.pos.x, q.pos.z - t.pos.z) >= q.r + t.radius + wall || Math.abs(q.pos.y - (t.pos.y || 0) - 1) > 1.5 + q.r) continue; // (and at its height: terrain.js)
         const b = q.pos.clone().addScaledVector(q.vel, -0.1);
         if (this.projectileHit(t, { dmg: q.dmg, knock: q.knock, src: [b.x, b.z], elems: q.elems, buildMul: q.buildMul }) !== 'dodge') { dead = true; break; }
       }
@@ -2275,6 +2279,7 @@ class Game {
       const stair = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.stairAt?.(p.pos.x, p.pos.z) : null;
       const chest = this.chests.promptFor(p, this.input.lastDevice === 'touch' ? 'Tap' : 'F');
       const exit = p.alive && p.state === 'move' && !this.bossActive ? this.world.dungeon?.exits?.find((e) => Math.hypot(p.pos.x - e.x, p.pos.z - e.z) < 1.8) : null;
+      const ladder = p.alive && p.state === 'move' ? this.world.terrain.raisedAt(p.pos.x, p.pos.z, p.gy) : null; // (a pulled-up ladder: lower it, opening the shortcut: terrain.js)
       if (down) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Revive ${down.name} (all lose 10% max health)`);
         if (presses.has('interact')) this.startRevive(down);
@@ -2287,6 +2292,9 @@ class Game {
       } else if (exit) {
         this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: ${exit.label} · keep all you carry${this.mp.active ? ' (takes the whole party)' : ''}`);
         if (presses.has('interact')) { if (this.mp.active) this.mp.sendAll({ t: 'extract' }); this.extract(); }
+      } else if (ladder) {
+        this.ui.prompt(`${this.input.lastDevice === 'touch' ? 'Tap' : 'F'}: Lower the ladder`);
+        if (presses.has('interact')) { this.world.terrain.lower(ladder); this.audio.play('clang', 0.6); if (this.mp.active) this.mp.sendAll({ t: 'ladder', i: ladder.i }); }
       } else if (chest) {
         this.ui.prompt(chest.line);
         if (presses.has('interact')) this.chests.tryOpen(chest.c);
@@ -2310,6 +2318,7 @@ class Game {
         if (m.i > this.seenMod) { this.seenMod = m.i; this.ui.toast(m.name.toUpperCase(), 3); this.ui.setProgress(m.i + 1, this.world.mods.length); }
       }
       this.minimap.update(rdt);
+      this.world.terrain.update(rdt);
       this.comboList.update();
       this.updateFoePanel(rdt);
 
@@ -2394,7 +2403,7 @@ class Game {
       if (d > 16) continue;
       let s;
       if (mouse) {
-        v.set(e.pos.x, 1.1 * e.rig.root.scale.y + (e.y || 0), e.pos.z).project(this.camera);
+        v.set(e.pos.x, 1.1 * e.rig.root.scale.y + (e.y || 0) + (e.pos.y || 0), e.pos.z).project(this.camera);
         if (v.z > 1) continue;
         s = Math.hypot((v.x * 0.5 + 0.5) * innerWidth - m.x, (-v.y * 0.5 + 0.5) * innerHeight - m.y);
       } else s = d + Math.abs(angDiff(aim, p.yawTo(e.pos))) * 4;
@@ -2439,7 +2448,7 @@ class Game {
     const w = window.innerWidth, h = window.innerHeight;
     for (const e of this.enemies) {
       if (!e.alive || e.T?.noBar || (e.hpShow <= 0 && this.player.lock !== e && !e.status.bars().length)) continue; // (a shrine's bell: no bar)
-      v.set(e.pos.x, 2.25 * e.rig.root.scale.y, e.pos.z).project(this.camera);
+      v.set(e.pos.x, 2.25 * e.rig.root.scale.y + (e.pos.y || 0), e.pos.z).project(this.camera);
       if (v.z > 1) continue;
       list.push({ x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, v: e.hp / e.maxHp, status: e.status.bars().map((b) => ({ k: b.k, flash: b.flash, color: STATUS[b.k].color })) });
     }
@@ -2465,7 +2474,7 @@ class Game {
     let dist = this.bossActive ? 1.22 : 1;
     if (aspect < 1.3) dist *= 1.35;
     const off = new THREE.Vector3(0, 10.5 * dist, 8.4 * dist);
-    const focus = new THREE.Vector3(p.pos.x, 0.8, p.pos.z);
+    const focus = new THREE.Vector3(p.pos.x, 0.8 + (p.pos.y || 0), p.pos.z);
     if (p.lock && p.lock.alive) {
       const t = p.lock.pos;
       const d = Math.min(8, p.distTo(p.lock));
@@ -2488,7 +2497,7 @@ class Game {
     // lock-on marker
     const L = p.lock;
     this.lockSprite.visible = !!(L && L.alive);
-    if (L && L.alive) this.lockSprite.position.set(L.pos.x, L.y + 1.25 * L.rig.root.scale.y, L.pos.z);
+    if (L && L.alive) this.lockSprite.position.set(L.pos.x, L.y + 1.25 * L.rig.root.scale.y + (L.pos.y || 0), L.pos.z);
   }
 }
 

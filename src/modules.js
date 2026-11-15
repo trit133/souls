@@ -340,6 +340,17 @@ export const TRAINING_ARENA = {
     w.crate(-10, Z(11)); w.barrel(10, Z(10)); w.barrel(10.6, Z(11.2));
     w.box(1.6, 0.5, 1.0, M.wood, 0, 0.25, Z(24)); // a bench by the racks
     w.spawn('dummy', 0, 13, 0, { effigy: true });
+    // the terrain to try (terrain.js): a terrace to the west (1.6 m: stairs up its east side, a ladder up its front;
+    // dropping off it lands on your feet), a higher one to the east (3.6 m: a long ramp up from the south, a ladder
+    // pulled up at the top to lower; a drop off it hurts), and a low hill by the way in
+    const T = w.terrain;
+    T.flat(-12, -5, Z(22), Z(8), 1.6);
+    T.stairs(-5, -3, Z(14.5), Z(11), 1.6, 0, 'x');
+    T.ladder(-8, Z(7.55), Math.PI, 0, 1.6);
+    T.flat(5, 12, Z(21), Z(9), 3.6, { look: 'brick' });
+    T.slope(5, 9, Z(9), Z(3.5), 3.6, 0, 'z', { look: 'earth' });
+    T.ladder(4.58, Z(15), Math.PI / 2, 0, 3.6, { raised: true });
+    T.hill(-6.5, Z(3.5), 3, 0.7);
   },
 };
 

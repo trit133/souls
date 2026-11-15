@@ -44,6 +44,7 @@ export class Actor {
     this.kb = new THREE.Vector3();
     this.atk = null;
     this.y = 0; // vertical offset (jumps)
+    this.gy = 0; // the ground under it (terrain.js; a player in the air carries his own: player.js 'fall')
     this.trail = null;
     game.scene.add(rig.root);
   }
@@ -85,7 +86,7 @@ export class Actor {
     const on = this.state === 'frozen' && this.alive;
     if (on === !!this.iceOn) return;
     this.iceOn = on;
-    const g = this.game, s = this.rig.root.scale.y || 1, chest = this.pos.clone().setY(1.1 * s);
+    const g = this.game, s = this.rig.root.scale.y || 1, chest = this.pos.clone().setY(1.1 * s + (this.pos.y || 0));
     if (on) {
       if (!this.ice) {
         const m = new THREE.MeshBasicMaterial({ color: 0x9fdcff, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -115,8 +116,9 @@ export class Actor {
     const slow = w.slowAt(this.pos.x, this.pos.z) * (this.team !== 'player' ? (this.game.sigilSlowAt?.(this.pos.x, this.pos.z) ?? 1) * this.chillMul() * (this.game.runes?.slowAt(this.pos.x, this.pos.z) ?? 1) : 1); // (a Psy-Staff's sigil slows enemies; a chilled boss crawls) // bog water
     const to = _to.set(this.pos.x + dx * slow, 0, this.pos.z + dz * slow);
     // enemies and bosses are confined to the module they spawned in (in a dungeon, that chamber and its neighbours)
-    w.resolve(this.pos, to, this.radius, this.roam ?? this.mod ?? null);
+    w.resolve(this.pos, to, this.radius, this.roam ?? this.mod ?? null, this.gy, !!this.canFall); // (only a player walks off an edge)
     this.pos.x = to.x; this.pos.z = to.z;
+    if (!this.canFall) this.gy = w.floorAt(to.x, to.z);
   }
 
   // ----- attacks -----
@@ -230,6 +232,7 @@ export class Actor {
   }
 
   hitTest(h, tg) {
+    if (Math.abs((tg.gy || 0) - (this.gy || 0)) > 1.6) return false; // (up on a terrace, out of reach below)
     const dx = tg.pos.x - this.pos.x, dz = tg.pos.z - this.pos.z;
     if (h.shape === 'circle') {
       const f = this.fwd();
@@ -284,7 +287,9 @@ export class Actor {
   inWindow(w, t = this.atk?.t) { return w && t >= w[0] && t <= w[1]; }
 
   syncRig(dt, pose, rate) {
-    this.rig.root.position.set(this.pos.x, this.y, this.pos.z);
+    if (!this.canFall && this.game.world) this.gy = this.game.world.floorAt(this.pos.x, this.pos.z); // (placed, or a puppet: on the ground)
+    this.pos.y = this.gy; // (its position carries the ground's height: effects placed at it follow)
+    this.rig.root.position.set(this.pos.x, this.gy + this.y, this.pos.z);
     this.rig.root.rotation.y = this.yaw;
     if (this.rig.shadow) {
       this.rig.shadow.position.y = 0.02 - this.y / this.rig.root.scale.y;

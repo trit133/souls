@@ -67,7 +67,7 @@ export class StatusState {
   proc(kind, game) {
     const a = this.a, boss = a.isBoss, f = FX[kind];
     if (a.isPlayer) return this.procPlayer(kind, game);
-    const chest = { x: a.pos.x, y: 1.2 * a.rig.root.scale.y + a.y, z: a.pos.z };
+    const chest = { x: a.pos.x, y: 1.2 * a.rig.root.scale.y + a.y + (a.pos.y || 0), z: a.pos.z };
     const pct = boss ? f.bossPct : f.pct;
     if (kind === 'bleed' || kind === 'frost') {
       const dmg = a.maxHp * pct + f.flat;

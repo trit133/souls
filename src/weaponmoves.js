@@ -6,7 +6,7 @@ import { NUM } from './scale.js';
 const lunge = (l = 1) => ({ legL: [-0.5 * l, 0, 0.05], legR: [0.4 * l, 0, -0.05], shinL: [0.2, 0, 0], shinR: [0.45 * l, 0, 0], by: -0.1 * l });
 const crouch = (l = 1) => ({ legL: [-0.75 * l, 0, 0], legR: [0.55 * l, 0, 0], shinL: [0.45 * l, 0, 0], shinR: [0.5 * l, 0, 0], by: -0.28 * l });
 const withDmg = (def, dmgs, extra = {}) => ({ ...def, hits: def.hits.map((h, i) => ({ ...h, dmg: dmgs[i] ?? h.dmg })), comboMove: true, ...extra });
-const front = (p, d = 1.2, y = 0) => p.pos.clone().addScaledVector(p.fwd(), d).setY(y);
+const front = (p, d = 1.2, y = 0) => p.pos.clone().addScaledVector(p.fwd(), d).setY(y + (p.pos.y || 0));
 const A = 'attack', H = 'heavy', R = 'roll';
 
 // ================= THE PENITENT SLAB (Templar) =================
@@ -109,7 +109,7 @@ export const GREAT_ATTACKS = {
       [0.88, { torso: [0.2, 0, 0], ...GS_PULL, legL: [-0.35, 0, 0], legR: [0.3, 0, 0], shinR: [0.2, 0, 0], by: -0.1 }], // (hauled out)
     ],
     onTime: [
-      { t: 0.3, fn: (p, g) => g.vfx('quakePlant', p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0.05)) },
+      { t: 0.3, fn: (p, g) => g.vfx('quakePlant', p.pos.clone().addScaledVector(p.fwd(), 0.9).setY(0.05 + (p.pos.y || 0))) },
       { t: 0.56, fn: (p, g) => g.groundQuake(p, p.evo === 'berserk') },
     ],
   },
@@ -158,7 +158,7 @@ function greatCombos(G) {
       ],
       hits: [{ t0: 0.5, t1: 0.62, range: 3.5, arc: 1.6, dmg: 90, poise: 60 }],
       move: [[0.1, 0.52, 2.0]], jump: [0.1, 0.52, 1.3],
-      onTime: [{ t: 0.56, fn: (p, g) => { const f = front(p, 2.4); g.vfx('impaleSteel', f.clone().setY(0.4)); g.comboBlast({ ...p, pos: f, cmbStag: p.cmbStag }, 3.4, 30 * NUM, 40, 'fire'); g.fx.shockwave(f.x, f.z, 4); g.fx.addShake(0.7); } }],
+      onTime: [{ t: 0.56, fn: (p, g) => { const f = front(p, 2.4); g.vfx('impaleSteel', f.clone().setY(f.y + 0.4)); g.comboBlast({ ...p, pos: f, cmbStag: p.cmbStag }, 3.4, 30 * NUM, 40, 'fire'); g.fx.shockwave(f.x, f.z, 4); g.fx.addShake(0.7); } }],
       onHitShake: 0.7, heavyHit: true, finisher: 'Anvil',
     },
     // Struggler: (a sweep, a roll in) a light thrust that closes the distance, then a deep plunge that runs the whole
@@ -274,7 +274,7 @@ function wristCombos(W) {
         [0.3, { torso: [0.75, 0.45, 0], ...WB_JAB_R, armL: [0.7, 0, 0.45], foreL: [-0.4, 0, 0], legL: [-1.05, 0, 0.05], legR: [0.85, 0, -0.05], shinL: [0.35, 0, 0], shinR: [0.55, 0, 0], by: -0.38 }],
         [0.54, { torso: [0.65, 0.35, 0], ...WB_JAB_R, armL: [0.6, 0, 0.45], foreL: [-0.4, 0, 0], ...lunge(1.4) }]],
       hits: [{ t0: 0.26, t1: 0.36, range: 2.2, arc: 0.9, dmg: 52, poise: 28 }], move: [[0.12, 0.34, 3.0]],
-      onTime: [{ t: 0.22, fn: (p, g) => g.vfx('shroud', p.pos.clone().setY(0.4)) }],
+      onTime: [{ t: 0.22, fn: (p, g) => g.vfx('shroud', p.pos.clone().setY(0.4 + (p.pos.y || 0))) }],
       onHitShake: 0.4, finisher: 'Shadow Hook',
     },
     // Needle Rain: (a jab, two stabs) a pinning blow that drives the blade down through the collarbone
@@ -350,8 +350,8 @@ export const STAFF_ATTACKS = {
       // at the attack's reach ahead (towards the locked enemy if it's further off)
       { t: 0.27, fn: (p, g) => {
         const tip = p.rig.tip.getWorldPosition(p.pos.clone()), L = p.lock?.alive ? p.lock : null, R = 4.2;
-        const to = L && p.distTo(L) <= R + (L.radius || 0) ? L.pos.clone().setY(1.1 * (L.rig?.root.scale.y || 1) + (L.y || 0))
-          : p.pos.clone().addScaledVector(L ? L.pos.clone().sub(p.pos).setY(0).normalize() : p.fwd(), R).setY(0.05);
+        const to = L && p.distTo(L) <= R + (L.radius || 0) ? L.pos.clone().setY(1.1 * (L.rig?.root.scale.y || 1) + (L.y || 0) + (L.pos.y || 0))
+          : p.pos.clone().addScaledVector(L ? L.pos.clone().sub(p.pos).setY(0).normalize() : p.fwd(), R).setY(0.05 + (p.pos.y || 0));
         g.vfx('psyLaser', tip, to);
       } },
     ],
@@ -381,7 +381,7 @@ function staffCombos(S) {
     tStorm: {
       dur: 0.82, cost: 20, mana: 14, comboMove: true, track: 0.1, sfx: [0.3, 'fire'], hand: 'R', cancel: 0.56,
       keys: [[0.24, { torso: [-0.3, 0, 0], armR: [-3.0, 0, -0.2], foreR: [-0.2, 0, 0], handR: [1.4, 0, 0], armL: [-2.9, 0, 0.2], foreL: [-0.2, 0, 0], handL: [1.4, 0, 0], ...lunge(0.4) }], [0.36, { torso: [0.4, 0, 0], armR: [-0.4, 0, -0.6], foreR: [0, 0, 0], handR: [1.5, 0, 0], armL: [-0.4, 0, 0.6], ...crouch(1.1) }], [0.62, { torso: [0.3, 0, 0], armR: [-0.5, 0, -0.5], armL: [-0.5, 0, 0.5], ...crouch(0.8) }]],
-      onTime: [{ t: 0.34, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1)); g.comboBlast(p, 3.6, 40 * NUM, 22, 'frost'); g.fx.addShake(0.4); } }],
+      onTime: [{ t: 0.34, fn: (p, g) => { g.vfx('frostNova', p.pos.clone().setY(0.1 + (p.pos.y || 0))); g.comboBlast(p, 3.6, 40 * NUM, 22, 'frost'); g.fx.addShake(0.4); } }],
       finisher: 'Thunderhead',
     },
   };

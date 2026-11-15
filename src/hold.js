@@ -17,7 +17,7 @@ export const HOLD_BURST = {
   keys: [[0.2, { torso: [-0.35, 0, 0], armL: [-2.6, 0, 0.6], armR: [-2.6, 0, -0.6], foreL: [-0.4, 0, 0], foreR: [-0.4, 0, 0], head: [-0.4, 0, 0] }],
     [0.32, { torso: [0.3, 0, 0], armL: [-0.6, 0, 1.4], armR: [-0.6, 0, -1.4], legL: [-0.5, 0, 0.2], legR: [0.4, 0, -0.2], by: -0.25 }], [0.8, { torso: [0.15, 0, 0] }]],
   hits: [{ t0: 0.3, t1: 0.36, shape: 'circle', offset: 0, radius: 5, pctHp: 0.08, poise: 60, knockback: 15 }],
-  onTime: [{ t: 0.3, fn: (e, g) => g.vfx('holdBurst', e.pos.clone().setY(0.2), 5) }],
+  onTime: [{ t: 0.3, fn: (e, g) => g.vfx('holdBurst', e.pos.clone().setY(0.2 + (e.pos.y || 0)), 5) }],
 };
 
 const now = (e) => e.game.time;

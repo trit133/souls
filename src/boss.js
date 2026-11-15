@@ -94,7 +94,7 @@ export const BOSS_MOVES = {
     hits: [{ t0: 1.45, t1: 1.55, shape: 'circle', offset: 0, radius: 5.2, dmg: 38, poise: 80, knock: 'heavy' }],
     onTime: [
       { t: 0.7, fn: (b, g) => { g.audio.play('slam', 0.6); b.tele = g.fx.telegraph(b.pos.x, b.pos.z, 5.2, 0.8, 0xff6a1a); } },
-      { t: 1.47, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 6, 1.0); g.audio.play('fire'); g.vfx('emberBlast', b.pos.clone().setY(0)); g.fx.scorch(b.pos.x, b.pos.z, 5); } },
+      { t: 1.47, fn: (b, g) => { g.impact(b.pos.x, b.pos.z, 6, 1.0); g.audio.play('fire'); g.vfx('emberBlast', b.pos.clone().setY(0 + (b.pos.y || 0))); g.fx.scorch(b.pos.x, b.pos.z, 5); } },
     ],
   },
   roar: {
@@ -158,7 +158,7 @@ export class Boss extends Actor {
     this.leapCd = 4; this.emberCd = 0; this.gap = 1; this.evadeCd = 0; this.seenAtk = null;
     this.status.reset(this.cfg.id === 'varek' ? 340 : 260); this.lastMove = null; this.phase = 0; this.speed = 0;
     this.atk = null; this.kb.set(0, 0, 0); this.strafe = 1; this.strafeT = 0;
-    this.rig.root.visible = true; this.rig.root.position.y = 0;
+    this.rig.root.visible = true; this.rig.root.position.y = this.gy || 0;
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0, 0, 0);
     this.rig.setGlow(0);
     this.trail.setColor(0xd8d8e8);
@@ -352,9 +352,9 @@ export class Boss extends Actor {
         pose = this.t < 1.2 ? { ...P.rest, head: [0.8, 0, 0], torso: [0.7, 0, 0] } : P.dead;
         rate = 4;
         if (this.t < 3.5 && Math.random() < dt * 60) {
-          this.game.fx.ember({ x: this.pos.x, y: 0.5 + Math.random() * 2.5, z: this.pos.z }, 2.5, 2.2, 1.5);
+          this.game.fx.ember({ x: this.pos.x, y: 0.5 + Math.random() * 2.5 + (this.pos.y || 0), z: this.pos.z }, 2.5, 2.2, 1.5);
         }
-        if (this.t > 2.5) this.rig.root.position.y = -(this.t - 2.5) * 0.4;
+        if (this.t > 2.5) this.rig.root.position.y = (this.gy || 0) - (this.t - 2.5) * 0.4;
         if (this.t > 6) this.rig.root.visible = false;
         break;
       }

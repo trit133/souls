@@ -121,11 +121,11 @@ export class Fx3D {
   // a blow into the ground at (point), radius r
   slam(point, r = 3, o = {}) {
     const col = new THREE.Color(o.color ?? 0xffd8a0);
-    this.flash(point.clone().setY(0.4), 1.6, col, 0.12);
+    this.flash(point.clone().setY(point.y + 0.4), 1.6, col, 0.12);
     this.dustRing(point, r);
     this.cracks(point, r * 0.8);
-    for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 4; this.chip(point.clone().setY(0.2), new THREE.Vector3(Math.cos(a) * s, 4 + Math.random() * 4, Math.sin(a) * s), 0x4a4440); }
-    for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7; this.spark(point.clone().setY(0.15), new THREE.Vector3(Math.cos(a) * s, 1 + Math.random() * 3, Math.sin(a) * s), [1, 0.75, 0.4], 0.3 + Math.random() * 0.3, 0.05); }
+    for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 4; this.chip(point.clone().setY(point.y + 0.2), new THREE.Vector3(Math.cos(a) * s, 4 + Math.random() * 4, Math.sin(a) * s), 0x4a4440); }
+    for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7; this.spark(point.clone().setY(point.y + 0.15), new THREE.Vector3(Math.cos(a) * s, 1 + Math.random() * 3, Math.sin(a) * s), [1, 0.75, 0.4], 0.3 + Math.random() * 0.3, 0.05); }
   }
   // a shield's bash: a fan of steel sparks out of the face, a flash
   bash(point, dir) {
@@ -148,11 +148,11 @@ export class Fx3D {
   }
   dustRing(at, r) {
     const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.28, 6, 28), new THREE.MeshBasicMaterial({ color: 0x5a5248, transparent: true, depthWrite: false }));
-    m.rotation.x = Math.PI / 2; m.position.set(at.x, 0.25, at.z); m.scale.setScalar(0.2); this.scene.add(m);
-    this.list.push({ m, t: 0, life: 0.7, upd: (e, k) => { const s = 0.2 + r * (1 - (1 - k) ** 3); e.m.scale.set(s, s, 1 + k * 2); e.m.position.y = 0.25 + k * 0.4; e.m.material.opacity = 0.7 * (1 - k); } });
+    const y0 = at.y || 0; m.rotation.x = Math.PI / 2; m.position.set(at.x, y0 + 0.25, at.z); m.scale.setScalar(0.2); this.scene.add(m);
+    this.list.push({ m, t: 0, life: 0.7, upd: (e, k) => { const s = 0.2 + r * (1 - (1 - k) ** 3); e.m.scale.set(s, s, 1 + k * 2); e.m.position.y = y0 + 0.25 + k * 0.4; e.m.material.opacity = 0.7 * (1 - k); } });
   }
   cracks(at, r) {
-    const g = new THREE.Group(); g.position.set(at.x, 0.03, at.z);
+    const g = new THREE.Group(); g.position.set(at.x, (at.y || 0) + 0.03, at.z);
     const mat = new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
     for (let k = 0; k < 7; k++) {
       let a = k / 7 * Math.PI * 2 + Math.random() * 0.4, x = 0, z = 0;

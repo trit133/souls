@@ -138,7 +138,7 @@ export class Seals {
       if (!e.alive || e.isBoss || e.mod !== d.mod) continue;
       try {
         e.vanished = true;
-        g.fx.burst(new THREE.Vector3(e.pos.x, 1, e.pos.z), 18, [0.7, 0.5, 1], 3, 0.7, 0.25);
+        g.fx.burst(new THREE.Vector3(e.pos.x, 1 + (e.pos.y || 0), e.pos.z), 18, [0.7, 0.5, 1], 3, 0.7, 0.25);
         e.die(true); e.rig.root.visible = false;
       } catch (err) { console.warn('circle clear', err); }
     }
@@ -252,7 +252,7 @@ export class Seals {
   ring(s, b, ok, step, net = false) {
     const g = this.game, d = s.def, e = d.chimes?.[b]?.enemy;
     s.step = step;
-    if (e) { e.swing = 1; g.fx.burst({ x: e.pos.x, y: 2.1, z: e.pos.z }, ok ? 22 : 14, ok ? [1, 0.85, 0.4] : [1, 0.25, 0.15], 4, 0.6, 0.25); g.fx.shockwave(e.pos.x, e.pos.z, ok ? 2.5 : 1.6, ok ? 0xffd070 : 0xff3a24, 0.4); e.flashT = 0.5; e.flashOk = ok; }
+    if (e) { e.swing = 1; g.fx.burst({ x: e.pos.x, y: 2.1 + (e.pos.y || 0), z: e.pos.z }, ok ? 22 : 14, ok ? [1, 0.85, 0.4] : [1, 0.25, 0.15], 4, 0.6, 0.25); g.fx.shockwave(e.pos.x, e.pos.z, ok ? 2.5 : 1.6, ok ? 0xffd070 : 0xff3a24, 0.4); e.flashT = 0.5; e.flashOk = ok; }
     g.audio.play('clang', ok ? 0.9 : 0.6); if (ok) g.audio.play('parry', 0.25);
     if (!ok) { g.ui.toastSmall?.('A WRONG NOTE · THE CHOIR ANSWERS'); s.playT = BELL_EVERY - 1.5; }
     else if (step < d.song.length) g.ui.toastSmall?.(`THE HYMN ${step}/${d.song.length}`);
@@ -269,7 +269,7 @@ export class Seals {
         if (n >= d.song.length) s.playT = 0;
         else {
           singing = d.song[n];
-          if (n !== s.sung) { s.sung = n; const e = d.chimes?.[singing]?.enemy; if (e) { e.swing = 0.6; g.audio.play('clang', 0.35); g.fx.burst({ x: e.pos.x, y: 2.3, z: e.pos.z }, 8, rgb(BELL_COLORS[singing]), 2, 0.6, 0.2); } }
+          if (n !== s.sung) { s.sung = n; const e = d.chimes?.[singing]?.enemy; if (e) { e.swing = 0.6; g.audio.play('clang', 0.35); g.fx.burst({ x: e.pos.x, y: 2.3 + (e.pos.y || 0), z: e.pos.z }, 8, rgb(BELL_COLORS[singing]), 2, 0.6, 0.2); } }
         }
       } else s.sung = -1;
     }
