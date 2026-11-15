@@ -25,6 +25,8 @@ step bigger than `STEP` stays a sharp edge. Props a module adds are lifted onto 
 - The player falls (`'fall'`, keeping the speed he left at). A fall under `SAFE_FALL` (2.6 m) lands on the feet
   (`'land'`, knees bent, no damage). A taller one hurts (12% of max health at 2.6 m, +16% per metre more, at most 70%)
   and lands him on his stomach (`'prone'`, then he pushes up; a roll gets out of it early).
+- Off a short drop in the middle of an attack, the attack plays out on the way down and he lands on his feet
+  without breaking it. If it ends while he's still in the air, he falls as usual. A tall drop cuts it short.
 - Ladders: walk into the foot to climb up, or walk out over the top to climb down (`'climb'`, 2.4 m/s). Players only.
 - Hits only connect within 1.6 m of height. Shots and spells fly up or down to a target on another level and stop
   at the ground or a terrace face.

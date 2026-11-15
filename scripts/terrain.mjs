@@ -42,6 +42,10 @@ await shot('climb', [-3.5, 1.2, 3.5]);
 r.climbUpEnd = await walk({ sx: 1, sy: 0, n: 120 });
 // down the west ladder from its top
 r.climbDown = await run(() => { const g = game, p = g.player, L = g.world.terrain.ladders[0]; p.pos.set(L.top.x, 0, L.top.z - 0.3); p.gy = g.world.floorAt(p.pos.x, p.pos.z); p.setState('move'); g.input.move = () => ({ x: 0, y: -1 }); const states = []; for (let i = 0; i < 160; i++) { g.step(1 / 60, 1 / 60); if (states[states.length - 1] !== p.state) states.push(p.state); } g.input.move = () => ({ x: 0, y: 0 }); return { states, gy: +p.gy.toFixed(2), z: +p.pos.z.toFixed(2) }; });
+// a swing off a short drop plays out on the way down (no fall); off a tall one it's cut short
+const swingOff = (o) => run(({ x, z, dx, dz }) => { const g = game, p = g.player; p.pos.set(x, 0, z); p.gy = g.world.floorAt(x, z); p.setState('move'); p.st = p.maxSt; p.hp = p.maxHp; p.yaw = Math.atan2(dx, dz); g.input.move = () => ({ x: 0, y: 0 }); p.doAttack('heavy', p.pos.clone().set(dx, 0, dz), 1); const states = [], ys = []; for (let i = 0; i < 90; i++) { g.step(1 / 60, 1 / 60); if (states[states.length - 1] !== p.state) states.push(p.state); if (i % 10 === 0) ys.push(+p.gy.toFixed(2)); } return { states, ys, hpLost: Math.round(p.maxHp - p.hp) }; }, o);
+r.swingOffLow = await swingOff({ x: -9.5, z: -8.6, dx: 0, dz: 1 });
+r.swingOffHigh = await swingOff({ x: 5.6, z: -19, dx: -1, dz: 0 });
 // the whole patch from above
 await run(() => { const g = game, c = g.camera; g.camLock = true; c.position.set(0, 20, 8); c.lookAt(0, 0, -13); g.pixel.render(g.scene, c); });
 await page.screenshot({ path: '/tmp/look/terrain-overview.png' });

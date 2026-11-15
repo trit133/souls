@@ -1241,11 +1241,21 @@ export class Player extends Actor {
   // he went off at (walking, running, rolling, a lunge)
   groundStep(dt, px, pz, dir, mag) {
     const st = this.state;
-    if (st === 'fall' || st === 'climb') return;
+    if (st === 'fall' || st === 'climb') { this.air = null; return; }
     const w = this.game.world, f = w.floorAt(this.pos.x, this.pos.z);
-    if (st === 'dead' || st === 'rest' || st === 'riposte') { this.gy = this.gy > f ? Math.max(f, this.gy - 9 * dt) : f; return; }
+    if (st === 'dead' || st === 'rest' || st === 'riposte') { this.air = null; this.gy = this.gy > f ? Math.max(f, this.gy - 9 * dt) : f; return; }
+    const vx = (this.pos.x - px) / Math.max(dt, 1e-3), vz = (this.pos.z - pz) / Math.max(dt, 1e-3), sp = Math.hypot(vx, vz), cap = Math.min(1, 7 / Math.max(sp, 1e-3));
+    // off a short drop in the middle of a swing: the swing plays out on the way down, and he comes down on his feet
+    // without breaking it (if it ends first, he falls as usual for the rest)
+    if (this.air) {
+      const A = this.air;
+      A.vy -= 26 * dt; this.gy += A.vy * dt;
+      if (this.gy <= f) { this.gy = f; this.air = null; this.game.fx.dust?.(this.pos, 1, 0.4); this.game.audio.play('step', 0.7); }
+      else if (st !== 'attack') { this.fall = { from: A.from, vy: A.vy, vx: vx * cap, vz: vz * cap }; this.air = null; this.setState('fall'); }
+      return;
+    }
     if (this.gy - f > STEP) {
-      const vx = (this.pos.x - px) / Math.max(dt, 1e-3), vz = (this.pos.z - pz) / Math.max(dt, 1e-3), sp = Math.hypot(vx, vz), cap = Math.min(1, 7 / Math.max(sp, 1e-3));
+      if (st === 'attack' && this.gy - f < SAFE_FALL) { this.air = { from: this.gy, vy: 0 }; return; }
       this.fall = { from: this.gy, vy: 0, vx: vx * cap, vz: vz * cap };
       this.atk = null; this.cmb = null; this.trailOn = false;
       this.setState('fall');
@@ -1282,7 +1292,7 @@ export class Player extends Actor {
   respawn(x, z) {
     this.alive = true;
     this.hp = this.maxHp; this.st = this.maxSt; this.flasks = this.maxFlasks;
-    this.pos.set(x, 0, z); this.yaw = Math.PI; this.kb.set(0, 0, 0); this.vel.set(0, 0, 0); this.gy = this.game.world.floorAt(x, z); this.fall = null;
+    this.pos.set(x, 0, z); this.yaw = Math.PI; this.kb.set(0, 0, 0); this.vel.set(0, 0, 0); this.gy = this.game.world.floorAt(x, z); this.fall = null; this.air = null;
     this.lock = null; this.buf = null; this.atk = null;
     this.fatigue = 0;
     this.setState('move');
