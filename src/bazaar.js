@@ -251,12 +251,15 @@ export class Bazaar {
       }
       const n = document.createElement('div'); n.className = 'bz-note'; n.textContent = 'Stock refills after every raid, and grows as this trader levels up.'; body.append(n);
     } else if (this.tab === 'sell') {
-      const ids = Object.keys(d.items || {}).filter((id) => d.items[id] > 0 && dealsIn(T, id)).sort((a, b) => RARITY_ORDER(b, a));
+      // (your stash's materials, and the gems you carry if he takes them: selling a spare is fine, selling your last
+      // closes the door it opens until you beat its boss again)
+      const have = { ...(d.items || {}), ...(d.gems || {}) };
+      const ids = Object.keys(have).filter((id) => have[id] > 0 && dealsIn(T, id)).sort((a, b) => RARITY_ORDER(b, a));
       for (const id of ids) {
-        const pay = buyPrice(T, id, lvl), n = d.items[id];
-        row(id, `<b>◆ ${pay}</b><span>you have ${n}</span>`, [
-          ['Sell', () => { const got = sell(d, T, id, 1); if (got) { this.game.audio.play('uiTick', 1); this.say(`Sold ${ITEMS[id].name} for ◆ ${got}.`); done(); } }, true],
-          [`All ×${n}`, () => { const got = sell(d, T, id, n); if (got) { this.game.audio.play('heal', 0.5); this.say(`Sold ${n} ${ITEMS[id].name} for ◆ ${got}.`); done(); } }, n > 1]]);
+        const pay = buyPrice(T, id, lvl), n = have[id], gem = ITEMS[id].kind === 'gem', many = gem ? n - 1 : n;
+        const btns = [['Sell', () => { const got = sell(d, T, id, 1); if (got) { this.game.audio.play('uiTick', 1); this.say(`Sold ${ITEMS[id].name} for ◆ ${got}.`); done(); } }, true]];
+        if (gem ? many >= 1 : true) btns.push([gem ? `Spares ×${many}` : `All ×${n}`, () => { const got = sell(d, T, id, many); if (got) { this.game.audio.play('heal', 0.5); this.say(`Sold ${many} ${ITEMS[id].name} for ◆ ${got}.`); done(); } }, gem || many > 1]);
+        row(id, `<b>◆ ${pay}</b><span>you have ${n}${gem && n === 1 ? ' · your last: its door closes' : ''}</span>`, btns);
       }
       if (!ids.length) { const e = document.createElement('div'); e.className = 'bz-note'; e.textContent = `Nothing in your stash this trader wants. ${T.name} deals in ${T.rarities.join(', ')} materials.`; body.append(e); }
     } else this.renderQuests(T, s, done);

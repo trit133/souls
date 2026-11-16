@@ -1042,8 +1042,8 @@ export class Hermitage {
       const worth = have.reduce((s2, [id, n]) => s2 + itemValue(id) * n, 0);
       $('hm-worth').textContent = have.length ? `Worth ◆ ${worth} in all` : 'Nothing yet: smash supply drums and open chests in a raid.';
     } else if (tab === 'gems') {
-      $('hm-stash-note').textContent = 'Each mini boss drops a gem in the shape of its head. Carry all of a region\'s to pass its gatekeeper.';
-      for (const id of Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem')) slot(id, 1, !!d.gems?.[id]);
+      $('hm-stash-note').textContent = 'Each mini boss drops a gem in the shape of its head, every time you beat it. Carry all of a region\'s to pass its gatekeeper (they\'re never used up); Brother Vesk buys the spares.';
+      for (const id of Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem')) slot(id, d.gems?.[id] || 0, (d.gems?.[id] || 0) > 0); // (how many you carry)
     } else {
       $('hm-stash-note').textContent = 'Runes, shared by all your characters. Forge them at the workbench; socket them in a skill tree.';
       const have = RUNE_ORDER.filter((id) => ownsRune(d, id));

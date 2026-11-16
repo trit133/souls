@@ -38,8 +38,8 @@ export const TRADERS = [
   {
     id: 'vesk', name: 'Brother Vesk', title: 'Reliquary dealer',
     blurb: 'Deals only in the rare and the holy, behind iron bars, at prices to match.',
-    unlocked: (d) => (d?.raids?.r1f || 0) > 0, lockText: 'Beat Archon Varek',
-    rarities: ['rare', 'epic', 'legendary'], markup: 2.5,
+    unlocked: (d) => (d?.raids?.r1f || 0) > 0 || !!d?.traderKeys?.vesk, lockText: 'Beat Archon Varek', // (traderKeys: opened by hand, joeandre)
+    rarities: ['rare', 'epic', 'legendary'], markup: 2.5, gems: true, // (and he buys the mini bosses' gems: you can carry more than one)
     stock: { rare: [2, 3, 3, 4, 5], epic: [1, 1, 2, 2, 3], legendary: [0, 0, 1, 1, 1] },
     perk: { flasks: 1, name: 'Vesk\'s Vial', desc: 'One more injector for every character' },
     quests: [
@@ -91,7 +91,9 @@ export function stockLimits(T, level) {
 }
 export const sellPrice = (T, id) => Math.round(itemValue(id) * T.markup);           // what he charges you
 export const buyPrice = (T, id, level) => Math.max(1, Math.round(itemValue(id) * BUY_RATE[level - 1])); // what he pays you
-export const dealsIn = (T, id) => ITEMS[id]?.kind === 'mat' && T.rarities.includes(ITEMS[id].rarity);
+export const dealsIn = (T, id) => (ITEMS[id]?.kind === 'mat' || (ITEMS[id]?.kind === 'gem' && T.gems)) && T.rarities.includes(ITEMS[id].rarity);
+// where an item is kept: a gem with the gems (d.gems: how many of each you carry), anything else in the stash
+export const bagOf = (d, id) => (ITEMS[id]?.kind === 'gem' ? (d.gems ||= {}) : (d.items ||= {}));
 
 // after every raid: each open trader's stock back to its limit
 export function restockAll(d) {
@@ -106,10 +108,10 @@ export function buy(d, T, id) {
 }
 export function sell(d, T, id, n = 1) {
   if (!dealsIn(T, id)) return 0;
-  const have = d.items?.[id] || 0; n = Math.min(n, have);
+  const bag = bagOf(d, id), have = bag[id] || 0; n = Math.min(n, have);
   if (n <= 0) return 0;
   const s = traderState(d, T.id), got = buyPrice(T, id, levelOf(s.xp)) * n;
-  d.items[id] -= n; d.gold += got;
+  bag[id] -= n; d.gold += got;
   return got;
 }
 

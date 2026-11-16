@@ -840,9 +840,12 @@ class Game {
         if (w.evo && !W.evos[w.evo.id]) { W.evos[w.evo.id] = 1; added = true; }
       }
       for (const id of Object.keys(RUNES)) if (!ownsRune(A.data, id)) { grantRune(A.data, id); added = true; }
-      // and the gems that open the Sump Lines and the Spire (asked for 2026-11-15: playing them)
+      // and every gem of the March, so every area and Varek's door are open (asked for 2026-11-15: playing them), and
+      // Brother Vesk's stall open without beating Varek (traders.js traderKeys)
       A.data.gems ||= {};
-      for (const g of ['gem_hask', 'gem_vael']) if (!A.data.gems[g]) { A.data.gems[g] = 1; added = true; }
+      for (const g of ['gem_hask', 'gem_vael', 'gem_gorrath']) if (!A.data.gems[g]) { A.data.gems[g] = 1; added = true; }
+      A.data.traderKeys ||= {};
+      if (!A.data.traderKeys.vesk) { A.data.traderKeys.vesk = 1; added = true; }
       if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
@@ -1416,8 +1419,8 @@ class Game {
     if (d) {
       d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1;
       d.gems = d.gems || {};
-      if (gem && !d.gems[gem]) { d.gems[gem] = 1; line = `${ITEMS[gem].name.toUpperCase()} TAKEN`; }
-      else { const n = 250; if (this.bankNow(n, 'gemgold' + enc.id)) line = `◆ +${n} (you already carry its gem)`; }
+      // its gem, every time: carry as many as you like (Brother Vesk buys the spares)
+      if (gem) { const had = d.gems[gem] || 0; d.gems[gem] = had + 1; line = had ? `ANOTHER ${ITEMS[gem].name.toUpperCase()} · YOU CARRY ${had + 1}` : `${ITEMS[gem].name.toUpperCase()} TAKEN`; }
       this.accounts.save();
     } else if (gem) line = `${ITEMS[gem].name.toUpperCase()} (guest: not saved)`;
     // a way out opens in the middle of the pit
