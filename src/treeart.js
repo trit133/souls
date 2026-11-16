@@ -13,6 +13,9 @@
 //     flame [x, y]: a candle's flame tip, flickering
 //     sparks [x, y, r, colour]: sparks drifting up round something
 import CROPS from './treeart.json';
+// the pieces painted by hand at their true pixel size (scripts/paint-tree-sides.py) bring their own fires, lights and
+// moving parts, in their own pixels, and replace the entries below
+import PAINTED from './treepainted.json';
 
 const FIRE = '#ffb050', CANDLE = '#ffc878', RED = '#ff3a3a', CYAN = '#5ae0ff', VIOLET = '#b070ff';
 export const TREE_ART = {
@@ -69,4 +72,4 @@ export const TREE_ART = {
   },
 };
 // each side's web image and its trim (the positions above are moved into it when drawn)
-export const artOf = (kind, side) => ({ src: `${import.meta.env?.BASE_URL || '/'}tree/web/${kind}-${side}.webp`, crop: CROPS[`${kind}-${side}`], ...TREE_ART[kind][side] });
+export const artOf = (kind, side) => ({ src: `${import.meta.env?.BASE_URL || '/'}tree/web/${kind}-${side}.webp`, crop: CROPS[`${kind}-${side}`], ...(PAINTED[`${kind}-${side}`] || TREE_ART[kind][side]) });

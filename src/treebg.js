@@ -555,7 +555,7 @@ export class TreeBackground {
     const at = (S, x, y) => [S.X0 + x * S.k, S.Y0 + y * S.k];
     this.fx = new FxLayer(this.fxc.getContext('2d'));
     // a fire's size against its bowl: the brazier fire is drawn for a bowl about 30 of its pixels wide
-    for (const S of [L, R]) for (const [x, y] of S.fires) { const [fx, fy] = at(S, x, y); this.fx.add(bowlFire, fx, fy, { height: Math.max(8, Math.round(85 * S.k * 0.9)), seed: (x * 7 + y) | 0 }); }
+    for (const S of [L, R]) for (const [x, y] of S.fires) { const [fx, fy] = at(S, x, y); this.fx.add(bowlFire, fx, fy, { height: S.native ? Math.max(6, Math.round(14 * S.k)) : Math.max(8, Math.round(85 * S.k * 0.9)), seed: (x * 7 + y) | 0 }); } // (a hand-painted piece's bowls are small)
     // the painting's moving parts (treeart.js anims), placed and sized onto the pixel grid
     this.anims = [];
     for (const S of [L, R]) for (const [type, ...a] of S.anims || []) {
