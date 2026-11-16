@@ -5,12 +5,33 @@
 // flames, spirit flames, a rune circle, moonbeams) play on a second canvas at twice the resolution, like the
 // game's own effects. Everything stops while the tree screen is closed.
 //   Knight: the Hall of Fallen Kings. Rogue: the Shadow Realm. Spellsword: the Library Beyond.
+// Now each character has painted art (Jonah's, treeart.js): a left and a right side, each drawn at the screen's height
+// and pinned to its own edge (an ultra-wide screen gets more open middle, never a stretched picture; a narrow one
+// slides them out past the edges so the middle stays clear for the tree). Over them, at the art's own pixel size:
+// pixel fires in its fire bowls and a glow on every lamp, candle, tube and crystal, flickering or breathing. The
+// painted-in-code scenes below show while the art loads (or if it can't).
 import { createFrame, clearFrame, createFx, composite } from './pixelfx/core/index.js';
 import * as brazier from './pixelfx/fx/fire/brazier.js';
 import * as spiritFlame from './pixelfx/fx/fire/spirit-flame.js';
 import * as shadowFlames from './pixelfx/fx/shadow/shadow-flames.js';
 import * as runeCircle from './pixelfx/fx/arcane/rune-circle.js';
 import * as godRays from './pixelfx/fx/weather/god-rays.js';
+import * as bowlFire from './pixelfx/fx/fire/bowl-fire.js';
+import { artOf } from './treeart.js';
+
+// the painted sides: loaded once a character (a promise of { left, right }, each its image and its treeart entry)
+const ART = new Map();
+function loadArt(kind) {
+  if (!ART.has(kind)) ART.set(kind, Promise.all(['left', 'right'].map((side) => {
+    const A = artOf(kind, side), img = new Image();
+    img.src = A.src;
+    return img.decode().then(() => ({ ...A, img }));
+  })).then(([left, right]) => ({ left, right })).catch(() => null));
+  return ART.get(kind);
+}
+// how much of the middle stays clear of the buildings (a share of the screen's width), and how big a pixel of the
+// effects is against the art (the paintings' own pixels are about four of theirs)
+const CLEAR = 0.36, ART_PX = 3.5, SHRINK = 0.7;
 
 const FPS = 20;
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
@@ -390,8 +411,16 @@ export class TreeBackground {
     this.kind = null; this.raf = 0; this.t = 0;
   }
 
-  // paint the scene for `kind` at the wrap's size (about 270 pixels tall)
+  // paint the scene for `kind` at the wrap's size: its painted art if it's loaded (else the coded scene meanwhile)
   setup(kind) {
+    const art = this.arts?.[kind];
+    if (art) return this.setupArt(kind, art);
+    if (!this.arts) this.arts = {};
+    if (!(kind in this.arts)) {
+      this.arts[kind] = undefined;
+      loadArt(kind).then((A) => { this.arts[kind] = A; if (A && this.kind === kind) { this.kind = null; this.setup(kind); } });
+    }
+    this.mode = 'code';
     const r = this.cv.getBoundingClientRect(); // a little bigger than the wrap, so it can drift (parallax)
     const S = Math.max(1, Math.round(r.height / 270)), W = Math.max(160, Math.round(r.width / S)), H = Math.max(120, Math.round(r.height / S));
     if (this.kind === kind && this.W === W && this.H === H) return;
@@ -416,6 +445,64 @@ export class TreeBackground {
       this.fx.add(runeCircle, I.book[0] * F, (I.book[1] + 30 * I.s) * F, { alpha: 0.7 });
       this.fx.add(spiritFlame, I.staff[0] * F, (I.staff[1] + 26 * I.s) * F, { alpha: 0.6, palette: ['#06040e', '#140a2a', '#24124a', '#3a1e72', '#5a2ea0', '#7a4ad0', '#a87af0', '#d8c0ff', '#ffffff'] });
     }
+  }
+
+  // the painted sides: drawn once at the screen's own pixels, the fires and lights on a coarse canvas over them
+  setupArt(kind, A) {
+    const r = this.cv.getBoundingClientRect(), Wc = Math.max(320, Math.round(r.width)), Hc = Math.max(200, Math.round(r.height));
+    if (this.kind === kind && this.mode === 'art' && this.W === Wc && this.H === Hc) return;
+    this.kind = kind; this.mode = 'art'; this.W = Wc; this.H = Hc;
+    this.cv.width = Wc; this.cv.height = Hc;
+    const c = this.cv.getContext('2d');
+    c.fillStyle = '#050407'; c.fillRect(0, 0, Wc, Hc);
+    // the part of the canvas the tree's window shows (the canvas is 112% of it, for the parallax drift)
+    const vis = { x: Wc * 0.06 / 1.12, y: Hc * 0.06 / 1.12, w: Wc / 1.12, h: Hc / 1.12 };
+    // each side the screen's height (its shape kept), standing on the floor at the bottom; where the screen's too narrow
+    // for its building to stay out of the middle it shrinks a little first (to SHRINK at most), then slides out past
+    // its edge
+    const room = vis.w * (0.5 - CLEAR / 2);
+    const place = (S, right) => {
+      const inner = right ? S.crop.W - S.edge : S.edge; // (how far the building reaches in from its own edge)
+      let k = vis.h / S.crop.H;
+      if (inner * k > room) k = Math.max(k * SHRINK, room / inner);
+      let X0 = right ? vis.x + vis.w - S.crop.W * k : vis.x;
+      const edge = X0 + S.edge * k;
+      if (!right && edge > vis.x + room) X0 -= edge - (vis.x + room);
+      if (right && edge < vis.x + vis.w - room) X0 += vis.x + vis.w - room - edge;
+      return { ...S, k, X0, Y0: vis.y + vis.h - S.crop.H * k };
+    };
+    const L = place(A.left, false), R = place(A.right, true);
+    for (const S of [L, R]) {
+      c.imageSmoothingEnabled = S.k < 1; c.imageSmoothingQuality = 'high'; // (shrunk smoothly; blown up crisp)
+      c.drawImage(S.img, S.X0 + S.crop.ox * S.k, S.Y0 + S.crop.oy * S.k, S.crop.w * S.k, S.crop.h * S.k);
+    }
+    // the coarse canvas: one of its pixels about one of the paintings' (ART_PX of the image's own)
+    const P = Math.max(1, ((L.k + R.k) / 2) * ART_PX);
+    this.fxc.width = Math.ceil(Wc / P); this.fxc.height = Math.ceil(Hc / P); this.P = P;
+    const at = (S, x, y) => [(S.X0 + x * S.k) / P, (S.Y0 + y * S.k) / P];
+    this.fx = new FxLayer(this.fxc.getContext('2d'));
+    for (const S of [L, R]) for (const [x, y] of S.fires) { const [fx, fy] = at(S, x, y); this.fx.add(bowlFire, fx, fy, { height: 26, seed: (x * 7 + y) | 0 }); }
+    this.lights = [];
+    for (const S of [L, R]) for (const [x, y, rad, col, flick] of S.lights) {
+      const [lx, ly] = at(S, x, y);
+      this.lights.push({ x: lx, y: ly, r: Math.max(2, (rad * S.k) / P), rgb: hexRgb(col), flick, ph: Math.random() * 6.3, n: 1 });
+    }
+  }
+
+  // a frame over the painted sides: the fires burn, each light flickers (a flame) or breathes (a machine)
+  artFrame(dt) {
+    this.fx.step(dt); // (clears the coarse canvas, then the fires)
+    const c = this.fxc.getContext('2d'), t = this.t;
+    c.globalCompositeOperation = 'lighter';
+    for (const L of this.lights) {
+      const f = L.flick;
+      if (f) L.n += ((0.72 + Math.random() * 0.5) - L.n) * Math.min(1, dt * 14 * f); // (a flame: restless)
+      const breathe = 0.85 + 0.15 * Math.sin(t * 1.3 + L.ph), a = (f ? 0.3 * L.n : 0.24 * breathe), [r, g, b] = L.rgb;
+      const gr = c.createRadialGradient(L.x, L.y, 0, L.x, L.y, L.r);
+      gr.addColorStop(0, `rgba(${r},${g},${b},${a.toFixed(3)})`); gr.addColorStop(0.45, `rgba(${r},${g},${b},${(a * 0.4).toFixed(3)})`); gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      c.fillStyle = gr; c.fillRect(L.x - L.r, L.y - L.r, L.r * 2, L.r * 2);
+    }
+    c.globalCompositeOperation = 'source-over';
   }
 
   start(kind) {
@@ -445,6 +532,7 @@ export class TreeBackground {
 
   frame(dt) {
     this.t += dt;
+    if (this.mode === 'art') return this.artFrame(dt);
     const { W, H, info: I, kind } = this, c = this.cv.getContext('2d'), p = new Pix(c, W, H), t = this.t, R = Math.random;
     c.drawImage(this.static, 0, 0);
     if (kind === 'knight') {
