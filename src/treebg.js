@@ -406,6 +406,79 @@ class FxLayer {
   }
 }
 
+// ---------- the paintings' moving parts (treeart.js anims), drawn in game pixels on the effects canvas ----------
+const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a.toFixed(3)})`;
+const dot = (c, x, y, col, s = 1) => { c.fillStyle = col; c.fillRect(Math.round(x - (s - 1) / 2), Math.round(y - (s - 1) / 2), s, s); };
+const glowAt = (c, x, y, r, rgb, a) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, rgba(rgb, a)); g.addColorStop(1, rgba(rgb, 0)); c.globalCompositeOperation = 'lighter'; c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); c.globalCompositeOperation = 'source-over'; };
+const lift = (rgb, f) => rgb.map((v) => Math.round(v + (255 - v) * f));
+const ANIM = {
+  // balls circling something on a tilted ring, a short tail behind each; on the far side smaller and dim
+  orbit(c, A, t) {
+    for (let i = 0; i < A.n; i++) {
+      const a0 = t * A.sp + (i / A.n) * Math.PI * 2;
+      for (let k = 4; k >= 0; k--) {
+        const a = a0 - Math.sign(A.sp) * k * 0.09, x = A.x + Math.cos(a) * A.rx, y = A.y + Math.sin(a) * A.ry, front = Math.sin(a) > 0;
+        const f = (1 - k / 5) * (front ? 1 : 0.4);
+        if (k === 0) glowAt(c, x, y, front ? 6 : 3.5, A.rgb, 0.6 * f);
+        dot(c, x, y, rgba(k ? A.rgb : lift(A.rgb, 0.75), Math.min(1, f * 1.2)), k === 0 ? (front ? 3 : 2) : k < 3 ? 2 : 1);
+      }
+    }
+  },
+  // a jewel spinning on its long axis: a six-sided double pyramid, each facet shaded by which way it faces, its
+  // edges lit; at its narrowest still wider and taller than the painted one, so it always covers it
+  crystal(c, A, t) {
+    const rot = t * 1.4, N = 6, top = [A.x, A.y - A.hh], bot = [A.x, A.y + A.hh], ring = [];
+    for (let j = 0; j < N; j++) { const th = rot + (j / N) * Math.PI * 2; ring.push({ x: A.x + Math.sin(th) * A.hw, d: Math.cos(th), th }); }
+    glowAt(c, A.x, A.y, A.hh * 1.6, [176, 96, 255], 0.35 + 0.1 * Math.sin(t * 2.3));
+    const PAL = ['#2a0e48', '#4a1a80', '#7a3ad0', '#a868f0', '#d8b0ff'];
+    for (let j = 0; j < N; j++) {
+      const p = ring[j], q = ring[(j + 1) % N], d = (p.d + q.d) / 2;
+      if (d <= 0) continue; // (the far side)
+      const lit = Math.max(0, Math.cos((p.th + q.th) / 2 - 0.6)), shade = PAL[Math.min(4, 1 + Math.round(lit * 3))];
+      for (const [tip, dark] of [[top, 0], [bot, 1]]) {
+        c.fillStyle = dark ? PAL[Math.max(0, PAL.indexOf(shade) - 1)] : shade;
+        c.beginPath(); c.moveTo(tip[0], tip[1]); c.lineTo(p.x, A.y); c.lineTo(q.x, A.y); c.closePath(); c.fill();
+      }
+    }
+    c.strokeStyle = '#f0dcff'; c.lineWidth = 0.6;
+    for (const p of ring) if (p.d > -0.2) { c.beginPath(); c.moveTo(top[0], top[1]); c.lineTo(p.x, A.y); c.lineTo(bot[0], bot[1]); c.stroke(); }
+    if (Math.sin(t * 3.1) > 0.92) dot(c, A.x - A.hw * 0.3, A.y - A.hh * 0.45, '#ffffff', 2); // (a glint)
+  },
+  // motes rising through a jar or a tube, wavering, fading as they near the top
+  bubbles(c, A, t, dt) {
+    A.acc += dt * (2 + (A.x1 - A.x0) * 0.15);
+    while (A.acc >= 1) { A.acc--; A.ps.push({ x: A.x0 + Math.random() * (A.x1 - A.x0), y: A.y1, v: 3 + Math.random() * 5, ph: Math.random() * 6 }); }
+    for (const p of A.ps) { p.y -= p.v * dt; const f = Math.max(0, (p.y - A.y0) / (A.y1 - A.y0)); dot(c, p.x + Math.sin(t * 3 + p.ph) * 0.7, p.y, rgba(lift(A.rgb, 0.5), 0.3 + 0.6 * f)); }
+    A.ps = A.ps.filter((p) => p.y > A.y0);
+  },
+  // an armillary's rings turning, each on its own axis
+  gimbal(c, A, t) {
+    c.strokeStyle = 'rgba(240,200,110,.85)'; c.lineWidth = 0.7;
+    for (const [rx, ry, rot] of [[Math.abs(Math.cos(t * 0.9)) * A.r, A.r, 0], [A.r, Math.abs(Math.sin(t * 0.7)) * A.r * 0.8 + 0.5, 0], [A.r * 0.75, A.r * 0.75 * Math.abs(Math.cos(t * 1.3 + 1)), t * 0.4]]) {
+      c.beginPath(); c.ellipse(A.x, A.y, Math.max(0.5, rx), Math.max(0.5, ry), rot, 0, Math.PI * 2); c.stroke();
+    }
+    dot(c, A.x, A.y, '#fff0c0');
+  },
+  // sand running from an hourglass's neck to the heap under it
+  sand(c, A, t) {
+    for (let y = A.y; y < A.y1; y += 1) if (((y - A.y) * 0.7 + t * 9) % 2 < 1.3) dot(c, A.x, y, A.col);
+    dot(c, A.x, A.y1, A.col, 2);
+  },
+  // a candle's flame tip: one or two bright pixels over a warmer one, flickering in height and swaying
+  flame(c, A, t, dt) {
+    if (Math.random() < dt * 12) { A.h = 1 + Math.round(Math.random() * 2); A.sw = Math.random() < 0.3 ? (Math.random() < 0.5 ? -1 : 1) : 0; }
+    glowAt(c, A.x + 0.5, A.y, 3, [255, 190, 90], 0.35);
+    for (let i = 0; i < A.h; i++) dot(c, A.x + (i === A.h - 1 ? A.sw : 0), A.y - i, i === 0 ? '#ffb040' : '#fff2b0');
+  },
+  // sparks drifting up round something, twinkling out
+  sparks(c, A, t, dt) {
+    A.acc += dt * 3;
+    while (A.acc >= 1) { A.acc--; const a = Math.random() * Math.PI * 2, r = Math.random() * A.r; A.ps.push({ x: A.x + Math.cos(a) * r, y: A.y + Math.sin(a) * r * 0.8, life: 1.5 + Math.random() * 1.5, age: 0 }); }
+    for (const p of A.ps) { p.age += dt; p.y -= dt * 4; const k = 1 - p.age / p.life; if (Math.sin(p.age * 18) > -0.3) dot(c, p.x, p.y, rgba(A.rgb, 0.9 * k)); }
+    A.ps = A.ps.filter((p) => p.age < p.life);
+  },
+};
+
 export class TreeBackground {
   constructor(wrap) {
     this.wrap = wrap;
@@ -480,6 +553,18 @@ export class TreeBackground {
     this.fx = new FxLayer(this.fxc.getContext('2d'));
     // a fire's size against its bowl: the brazier fire is drawn for a bowl about 30 of its pixels wide
     for (const S of [L, R]) for (const [x, y] of S.fires) { const [fx, fy] = at(S, x, y); this.fx.add(bowlFire, fx, fy, { height: Math.max(8, Math.round(85 * S.k * 0.9)), seed: (x * 7 + y) | 0 }); }
+    // the painting's moving parts (treeart.js anims), placed and sized onto the pixel grid
+    this.anims = [];
+    for (const S of [L, R]) for (const [type, ...a] of S.anims || []) {
+      const [x, y] = at(S, a[0], a[1]), k = S.k;
+      if (type === 'orbit') this.anims.push({ type, x, y, rx: a[2] * k, ry: a[3] * k, n: a[4], rgb: hexRgb(a[5]), sp: a[6] });
+      else if (type === 'crystal') this.anims.push({ type, x, y, hw: Math.max(3, a[2] * k), hh: Math.max(5, a[3] * k) });
+      else if (type === 'bubbles') { const [x1, y1] = at(S, a[2], a[3]); this.anims.push({ type, x0: x, y0: y, x1, y1, rgb: hexRgb(a[4]), ps: [], acc: 0 }); }
+      else if (type === 'gimbal') this.anims.push({ type, x, y, r: Math.max(3, a[2] * k) });
+      else if (type === 'sand') this.anims.push({ type, x, y, y1: S.Y0 + a[2] * k, col: a[3] || '#e0c0ff' });
+      else if (type === 'flame') this.anims.push({ type, x: Math.round(x), y: Math.round(y), h: 2, sw: 0 });
+      else if (type === 'sparks') this.anims.push({ type, x, y, r: a[2] * k, rgb: hexRgb(a[3]), ps: [], acc: 0 });
+    }
     this.lights = [];
     for (const S of [L, R]) for (const [x, y, rad, col, flick] of S.lights) {
       const [lx, ly] = at(S, x, y);
@@ -501,6 +586,7 @@ export class TreeBackground {
       c.fillStyle = gr; c.fillRect(L.x - L.r, L.y - L.r, L.r * 2, L.r * 2);
     }
     c.globalCompositeOperation = 'source-over';
+    for (const A of this.anims) ANIM[A.type](c, A, t, dt);
   }
 
   start(kind) {

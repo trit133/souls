@@ -26,6 +26,54 @@ const LIGHT = { knight: 22 * NUM, rogue: 16 * NUM, mage: 11 * NUM };
 const SHOWN = new Set(['hp', 'hpPct', 'st', 'stPct', 'flask', 'potion', 'move', 'aspd', 'armor', 'evolved', 'critChance', 'critPower',
   ...TYPES.flatMap((k) => [k + 'Dmg', k + 'Pct']), ...['fire', 'bleed', 'poison', 'frost'].map((k) => k + 'Res')]);
 
+// Each tree's emblem, drawn round it under the nodes and moving with it, faint and see-through, in the class's colour:
+// the Templar's tree inside a round bastion shield (a crenellated rim, rivets, a cross through it); the Shrike's inside
+// a spiral of curved blades; the Adept's inside a many-pointed star (twelve points, a star drawn through it, rings).
+// R: the radius of the tree's ten-sided ring (the emblem sits just outside it)
+function emblem(kind, R, col) {
+  const f = (v) => v.toFixed(1), pt = (r, a) => `${f(Math.cos(a) * r)},${f(Math.sin(a) * r)}`;
+  const line = `fill="none" stroke="${col}"`;
+  let s = '<g class="tree-emblem" pointer-events="none">';
+  if (kind === 'knight') {
+    const r0 = R * 1.04, r1 = R * 1.12;
+    s += `<circle r="${f(r1)}" fill="${col}" fill-opacity=".025"/>`;
+    s += `<circle r="${f(r1)}" ${line} stroke-opacity=".14" stroke-width="5"/><circle r="${f(r0)}" ${line} stroke-opacity=".11" stroke-width="2"/>`;
+    // the crenellated rim: merlons standing out round the edge
+    const n = 28;
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2, a1 = a0 + (Math.PI * 2 / n) * 0.55, r2 = r1 + R * 0.06;
+      s += `<path d="M${pt(r1, a0)} L${pt(r2, a0)} A${f(r2)} ${f(r2)} 0 0 1 ${pt(r2, a1)} L${pt(r1, a1)} Z" fill="${col}" fill-opacity=".07" stroke="${col}" stroke-opacity=".12" stroke-width="1"/>`;
+    }
+    for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2, rr = (r0 + r1) / 2; s += `<circle cx="${f(Math.cos(a) * rr)}" cy="${f(Math.sin(a) * rr)}" r="${f(R * 0.008 + 1)}" fill="${col}" fill-opacity=".22"/>`; }
+    // the cross through the shield, and its boss
+    const w = R * 0.07;
+    s += `<path d="M${f(-w)},${f(-r0)} H${f(w)} V${f(-w)} H${f(r0)} V${f(w)} H${f(w)} V${f(r0)} H${f(-w)} V${f(w)} H${f(-r0)} V${f(-w)} H${f(-w)} Z" fill="${col}" fill-opacity=".03" stroke="${col}" stroke-opacity=".08" stroke-width="1.5"/>`;
+    s += `<circle r="${f(R * 0.16)}" ${line} stroke-opacity=".12" stroke-width="3"/>`;
+  } else if (kind === 'rogue') {
+    // six curved blades spiralling out from the middle, each a crescent swept round and narrowing to a point
+    const n = 6, r0 = R * 0.28, r1 = R * 1.16, turn = 1.35;
+    for (let i = 0; i < n; i++) {
+      const base = (i / n) * Math.PI * 2, outer = [], inner = [];
+      for (let k = 0; k <= 24; k++) {
+        const u = k / 24, r = r0 + (r1 - r0) * u, a = base + turn * u, wd = R * 0.09 * Math.sin(Math.PI * Math.min(1, u * 1.15)) * (1 - u * 0.6);
+        outer.push(pt(r + wd, a)); inner.unshift(pt(Math.max(r0, r - wd * 0.4), a - wd / r * 1.6));
+      }
+      s += `<path d="M${outer.join(' L')} L${inner.join(' L')} Z" fill="${col}" fill-opacity=".05" stroke="${col}" stroke-opacity=".2" stroke-width="1.5" stroke-linejoin="round"/>`;
+    }
+    s += `<circle r="${f(R * 1.06)}" ${line} stroke-opacity=".1" stroke-width="1.5" stroke-dasharray="6 10"/><circle r="${f(r0)}" ${line} stroke-opacity=".14" stroke-width="2"/>`;
+  } else {
+    // a twelve-pointed star round the tree, a {12/5} star drawn through its points, and rings of runes
+    const n = 12, ro = R * 1.2, ri = R * 1.02, pts = [];
+    for (let i = 0; i < n * 2; i++) pts.push(pt(i % 2 ? ri : ro, (i / (n * 2)) * Math.PI * 2 - Math.PI / 2));
+    s += `<polygon points="${pts.join(' ')}" fill="${col}" fill-opacity=".03" stroke="${col}" stroke-opacity=".22" stroke-width="2" stroke-linejoin="miter"/>`;
+    const star = []; for (let i = 0; i <= n; i++) star.push(pt(ri * 0.98, ((i * 5) % n / n) * Math.PI * 2 - Math.PI / 2));
+    s += `<polyline points="${star.join(' ')}" ${line} stroke-opacity=".08" stroke-width="1.5"/>`;
+    s += `<circle r="${f(ri * 0.98)}" ${line} stroke-opacity=".14" stroke-width="1.5"/><circle r="${f(ri * 0.93)}" ${line} stroke-opacity=".08" stroke-width="1" stroke-dasharray="2 7"/>`;
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 - Math.PI / 2; s += `<circle cx="${f(Math.cos(a) * ro * 1.04)}" cy="${f(Math.sin(a) * ro * 1.04)}" r="${f(R * 0.012 + 1.5)}" fill="${col}" fill-opacity=".3"/>`; }
+  }
+  return s + '</g>';
+}
+
 export class TreeUI {
   constructor(game) {
     this.game = game;
@@ -235,6 +283,10 @@ export class TreeUI {
     const R = this.radius();
     let s = `<defs><radialGradient id="tg-bg"><stop offset="0" stop-color="${col}" stop-opacity=".14"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>`;
     s += `<circle cx="0" cy="0" r="${R}" fill="url(#tg-bg)"/>`;
+    // the class's emblem round the tree's ten-sided ring (its socket ring, the dashed outline), faint: it moves and
+    // zooms with the tree
+    let ringR = 0; for (const n of T.nodes.values()) if (n.socketRing) ringR = Math.max(ringR, Math.hypot(n.x, n.y));
+    s += emblem(this.kind, ringR || R * 0.5, col);
     for (let d = 1; d * RING < R; d++) s += `<circle cx="0" cy="0" r="${d * RING}" fill="none" stroke="#fff" stroke-opacity=".035" stroke-width=".3"/>`;
     // regions (the Knight's tree): each name the same distance out, turned 45° round the centre from its arm (so
     // the four sit on the corners of a square), level, under the nodes
