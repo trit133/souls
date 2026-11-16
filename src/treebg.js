@@ -33,7 +33,7 @@ function loadArt(kind) {
 }
 // how much of the middle stays clear of the buildings (a share of the screen's width), and how big a pixel of the
 // effects is against the art (the paintings' own pixels are about four of theirs)
-const CLEAR = 0.36;
+const CLEAR = 0.36, ZOOM = 1.3; // (how much bigger than the window's height the paintings are drawn)
 // the game's pixel size on this screen: its height over the Pixel size setting's pixels (as the 3D view)
 const gamePx = () => Math.max(1, innerHeight / (PIXEL_H[globalThis.game?.settings?.quality] || PIXEL_H.medium));
 
@@ -539,7 +539,7 @@ export class TreeBackground {
     // its building to stay out of the middle, it slides out past that edge
     const room = Wc * (0.5 - CLEAR / 2);
     const place = (S, right) => {
-      const k = Hc / S.crop.H;
+      const k = Hc * ZOOM / S.crop.H; // (bigger than the window: top at the top, the bottom running off below)
       let X0 = right ? Wc - S.crop.W * k : 0;
       const edge = X0 + S.edge * k;
       if (!right && edge > room) X0 -= edge - room;
