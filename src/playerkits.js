@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { box, cyl, cone, rbox, pivot } from './mesh.js';
 import { KITS, strip, plate, basic, add, easeOut, CLOTH, RIBBON } from './kits.js';
 import { colorMat, colorHex, colorById } from './outfits.js';
+import { armorTex, shade } from './armortex.js';
 import { KNIGHT_ARMORY, ROGUE_ARMORY, MAGE_ARMORY } from './armory.js';
 
 const lighten = (hex, f) => { const c = new THREE.Color(hex); c.lerp(new THREE.Color(0xffffff), f); return c.getHex(); };
@@ -14,10 +15,25 @@ const glowMat = (r, id, fallback) => (id && id !== 'default' && colorById(id)?.f
 
 // the colours of one slot: materials for main and trim, plus their hex values
 // (and detail and glow: the third and fourth channels; `dflt` gives a piece's own defaults for them)
+// the armour slots and the pattern each one's surfaces take (armortex.js): plate, cloth or leather for its main colour,
+// fine plate on its trim, leather on its detail. Weapons aren't textured
+const SLOT_PATTERN = { helmet: 'plate', pauldronL: 'plate', pauldronR: 'plate', chest: 'plate', legs: 'plate', mask: 'plate', cloak: 'cloth', shirt: 'cloth', bandL: 'leather', bandR: 'leather', shoulder: 'plate', pants: 'cloth' };
+export const ARMOR_SLOTS = new Set(Object.keys(SLOT_PATTERN));
+// a colour channel's material with its texture on: the surface colour and the outfit's two texture colours (Default:
+// a shade darker and lighter than the surface); a special colour (molten, frost, void, gilded) keeps its own look
+function texMat(r, id, fallback, pattern, f) {
+  const c = id && id !== 'default' ? colorById(id) : null;
+  if (c?.fx) return colorMat(r, id, fallback);
+  const base = colorHex(id, fallback);
+  const a = f.texA && f.texA !== 'default' ? colorHex(f.texA, 0) : shade(base, -0.3), b = f.texB && f.texB !== 'default' ? colorHex(f.texB, 0) : shade(base, 0.22);
+  const m = r.m(0xffffff); m.map = armorTex(pattern, base, a, b);
+  return m;
+}
 function slotMats(r, fit, slot, mainHex, trimHex, detailHex = 0x26262a, glowHex = 0x8ad8ff) {
-  const f = fit?.[slot] || {};
-  return { piece: f.piece, main: colorMat(r, f.main, mainHex), trim: colorMat(r, f.trim, trimHex), mainHex: colorHex(f.main, mainHex), trimHex: colorHex(f.trim, trimHex), mainId: f.main, trimId: f.trim,
-    detail: colorMat(r, f.detail, detailHex), detailHex: colorHex(f.detail, detailHex), detailId: f.detail,
+  const f = fit?.[slot] || {}, P = SLOT_PATTERN[slot];
+  const cm = P ? (id, hex, pat) => texMat(r, id, hex, pat, f) : (id, hex) => colorMat(r, id, hex);
+  return { piece: f.piece, main: cm(f.main, mainHex, P), trim: cm(f.trim, trimHex, 'trim'), mainHex: colorHex(f.main, mainHex), trimHex: colorHex(f.trim, trimHex), mainId: f.main, trimId: f.trim,
+    detail: cm(f.detail, detailHex, 'leather'), detailHex: colorHex(f.detail, detailHex), detailId: f.detail,
     glow: glowMat(r, f.glow, glowHex), glowHex: colorHex(f.glow, glowHex), glowId: f.glow };
 }
 

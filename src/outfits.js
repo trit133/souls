@@ -108,8 +108,9 @@ export const ownsColor = (data, id) => id === 'default' || !!data?.cosmetics?.co
 
 // the outfit a character wears: { slot: { piece, main, trim, detail, glow } } (colour ids; 'default' = the piece's
 // own colours). Four colour channels per piece: main (big surfaces), trim (edges, bands), detail (straps, hoses,
-// leather, under-layers) and glow (visors, lenses, cores, lit edges); old outfits stored only the first two
-export const CHANNELS = ['main', 'trim', 'detail', 'glow'];
+// leather, under-layers) and glow (visors, lenses, cores, lit edges); old outfits stored only the first two. Armour
+// pieces take two more: texA and texB, the texture's darker and lighter marks (armortex.js)
+export const CHANNELS = ['main', 'trim', 'detail', 'glow', 'texA', 'texB'];
 export function wornOutfit(data, kind) {
   const o = data?.outfits?.[kind], fit = o?.slots?.[o.active || 0] || blank(), out = {};
   for (const s of SLOTS[kind] || []) {
@@ -120,20 +121,22 @@ export function wornOutfit(data, kind) {
       trim: c[1] && ownsColor(data, c[1]) ? c[1] : 'default',
       detail: c[2] && ownsColor(data, c[2]) ? c[2] : 'default',
       glow: c[3] && ownsColor(data, c[3]) ? c[3] : 'default',
+      texA: c[4] && ownsColor(data, c[4]) ? c[4] : 'default',
+      texB: c[5] && ownsColor(data, c[5]) ? c[5] : 'default',
     };
   }
   return out;
 }
 // to and from the wire (a teammate's outfit rides in the room roster): "helmet=winged/gold/default,..."
-export const packOutfit = (fit) => Object.entries(fit || {}).map(([s, v]) => `${s}=${v.piece}/${v.main}/${v.trim}/${v.detail || 'default'}/${v.glow || 'default'}`).join(',');
+export const packOutfit = (fit) => Object.entries(fit || {}).map(([s, v]) => `${s}=${v.piece}/${v.main}/${v.trim}/${v.detail || 'default'}/${v.glow || 'default'}/${v.texA || 'default'}/${v.texB || 'default'}`).join(',');
 export function unpackOutfit(kind, str) {
   const out = {};
   for (const part of String(str || '').split(',')) {
     const [s, v] = part.split('='); if (!s || !v) continue;
-    const [piece, main, trim, detail, glow] = v.split('/');
+    const [piece, main, trim, detail, glow, texA, texB] = v.split('/');
     if (!SLOTS[kind]?.some((x) => x.id === s)) continue;
     const ok = (c) => (colorById(c) ? c : 'default');
-    out[s] = { piece: pieceById(kind, s, piece).id, main: ok(main), trim: ok(trim), detail: ok(detail), glow: ok(glow) };
+    out[s] = { piece: pieceById(kind, s, piece).id, main: ok(main), trim: ok(trim), detail: ok(detail), glow: ok(glow), texA: ok(texA), texB: ok(texB) };
   }
   return out;
 }

@@ -10,6 +10,7 @@ import { locomotion } from './anims.js';
 import { PixelPass } from './pixel.js';
 import { CHARS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
+import { ARMOR_SLOTS } from './playerkits.js';
 import { CHANNELS, slotsFor, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
 
 const $ = (id) => document.getElementById(id);
@@ -66,7 +67,7 @@ export class SkinMenu {
     if (!owned) { this.try = { type, id }; this.render(); return; }
     this.try = null;
     if (type === 'piece') fit.pieces[this.slot] = id;
-    else { const c = fit.colors[this.slot] || ['default', 'default', 'default', 'default']; while (c.length < 4) c.push('default'); c[CHANNELS.indexOf(type)] = id; fit.colors[this.slot] = c; }
+    else { const c = fit.colors[this.slot] || []; while (c.length < CHANNELS.length) c.push('default'); c[CHANNELS.indexOf(type)] = id; fit.colors[this.slot] = c; }
     this.save(); this.render();
   }
 
@@ -149,7 +150,9 @@ export class SkinMenu {
       }
       return wrap;
     };
-    $('cz-colors').replaceChildren(row('main', 'Main'), row('trim', 'Trim'), row('detail', 'Detail'), row('glow', 'Glow'));
+    const rows = [row('main', 'Main'), row('trim', 'Trim'), row('detail', 'Detail'), row('glow', 'Glow')];
+    if (ARMOR_SLOTS.has(this.slot)) rows.push(row('texA', 'Texture 1'), row('texB', 'Texture 2')); // (armour only: its texture's two colours)
+    $('cz-colors').replaceChildren(...rows);
     // the bar along the bottom: what you're trying on, Cancel and Buy (or the note when trying nothing)
     const t = this.try, price = this.priceOf(t), b = $('cz-buy');
     for (const id of ['cz-buy', 'cz-cancel']) $(id).classList.toggle('hidden', !t);

@@ -16,180 +16,275 @@ const K = (p, r, h, m, x, y, z, rx = 0, ry = 0, rz = 0, seg = 4) => { const k = 
 const ring = (p, R, t, m, x, y, z, rx = 0, ry = 0, seg = 14) => { const k = new THREE.Mesh(new THREE.TorusGeometry(R, t, 4, seg), m); k.position.set(x, y, z); k.rotation.set(rx, ry, 0); p.add(k); return k; };
 const fore = (r, L) => r.j[L ? 'foreL' : 'foreR'], hand = (r, L) => r.j[L ? 'handL' : 'handR'], shin = (r, L) => r.j[L ? 'shinL' : 'shinR'];
 
+// ---------- detail helpers (the Templar's pieces) ----------
+// a row of n rivets from x0 to x1 at height y, standing proud of a face at z
+const rivets = (p, x0, x1, y, z, n, m, s = 0.016) => { for (let i = 0; i < n; i++) B(p, s, s, s, m, x0 + ((x1 - x0) * i) / Math.max(1, n - 1), y, z); };
+// a raised frame round a front-facing panel w x h centred at (x, y), its face at z
+const frame = (p, w, h, x, y, z, m, t = 0.014, d = 0.012) => { B(p, w, t, d, m, x, y + h / 2 - t / 2, z); B(p, w, t, d, m, x, y - h / 2 + t / 2, z); B(p, t, h, d, m, x - w / 2 + t / 2, y, z); B(p, t, h, d, m, x + w / 2 - t / 2, y, z); };
+// a vertical column of rivets
+const rivetCol = (p, x, y0, y1, z, n, m, s = 0.016) => { for (let i = 0; i < n; i++) B(p, s, s, s, m, x, y0 + ((y1 - y0) * i) / Math.max(1, n - 1), z); };
+const DARK = basic(0x050405); // (the dark behind a visor's slits)
+
 // ======================= TEMPLAR =======================
 export const KNIGHT_ARMORY = {
   helmet: {
-    // Crusader Bascinet: a tall pointed skull, a pig-snout vox visor drilled with breathing holes, a burning eye
-    // slit, a brass brow band, a cabled gorget
+    // Crusader Bascinet: a tall pointed skull with a crest ridge, a pig-snout vox visor of stacked plates drilled with
+    // breathing holes, a burning eye slit in a recessed frame, riveted cheek plates, a brass brow band, a lamed neck
+    // guard, a two-ring gorget and cables
     great(r, M, H) {
       B(H, 0.13, 0.1, 0.13, M.detail, 0, 0.03, 0);
       B(H, 0.28, 0.32, 0.3, M.main, 0, 0.2, -0.005);
       K(H, 0.2, 0.22, M.main, 0, 0.46, -0.01, 0, PI / 4);
-      B(H, 0.3, 0.035, 0.31, M.trim, 0, 0.3, -0.005);
-      B(H, 0.18, 0.025, 0.02, M.glow, 0, 0.245, 0.152);
-      B(H, 0.19, 0.15, 0.13, M.main, 0, 0.14, 0.16, 0.25);
-      for (let i = 0; i < 3; i++) for (let k = 0; k < 3; k++) B(H, 0.025, 0.025, 0.02, M.detail, -0.05 + k * 0.05, 0.1 + i * 0.035, 0.225, 0.25);
-      B(H, 0.34, 0.07, 0.34, M.detail, 0, 0.06, 0); B(H, 0.35, 0.025, 0.35, M.trim, 0, 0.1, 0);
-      for (const s of [1, -1]) B(H, 0.035, 0.035, 0.24, M.detail, s * 0.12, 0.09, 0.02, 0.5, s * 0.3);
+      B(H, 0.025, 0.3, 0.34, M.trim, 0, 0.42, -0.01, 0, 0, 0); // (the crest ridge, front to back)
+      B(H, 0.3, 0.035, 0.31, M.trim, 0, 0.3, -0.005); rivets(H, -0.12, 0.12, 0.3, 0.158, 7, M.detail);
+      B(H, 0.22, 0.05, 0.03, DARK, 0, 0.245, 0.15); B(H, 0.18, 0.022, 0.02, M.glow, 0, 0.245, 0.158); frame(H, 0.24, 0.07, 0, 0.245, 0.162, M.trim, 0.012, 0.012);
+      for (let i = 0; i < 3; i++) B(H, 0.19 - i * 0.03, 0.055, 0.13 - i * 0.025, M.main, 0, 0.17 - i * 0.045, 0.165 + i * 0.025, 0.25); // (the snout, stacked)
+      for (let i = 0; i < 3; i++) for (let k = 0; k < 3; k++) B(H, 0.022, 0.022, 0.02, DARK, -0.045 + k * 0.045, 0.1 + i * 0.035, 0.232, 0.25);
+      B(H, 0.03, 0.15, 0.03, M.trim, 0, 0.14, 0.24, 0.25); // (a ridge down the snout)
+      for (const s of [1, -1]) { B(H, 0.03, 0.2, 0.18, M.main, s * 0.15, 0.15, 0.06); rivetCol(H, s * 0.167, 0.08, 0.22, 0.06, 4, M.detail); B(H, 0.035, 0.05, 0.05, M.trim, s * 0.158, 0.2, 0.0); }
+      for (let i = 0; i < 3; i++) B(H, 0.3 - i * 0.02, 0.04, 0.06, i % 2 ? M.trim : M.main, 0, 0.12 - i * 0.04, -0.16 - i * 0.02, -0.3); // (the neck guard's lames)
+      B(H, 0.34, 0.06, 0.34, M.detail, 0, 0.06, 0); B(H, 0.35, 0.022, 0.35, M.trim, 0, 0.095, 0); B(H, 0.33, 0.022, 0.33, M.trim, 0, 0.035, 0);
+      for (const s of [1, -1]) { B(H, 0.035, 0.035, 0.24, M.detail, s * 0.12, 0.09, 0.02, 0.5, s * 0.3); B(H, 0.045, 0.045, 0.04, M.trim, s * 0.13, 0.12, 0.12, 0.5, s * 0.3); }
     },
-    // Flat-top Sallet: a squat helm under a flat brim that sweeps out into a tail, a full-width lit visor band, a
-    // rebreather jaw with twin filter canisters
+    // Flat-top Sallet: a squat helm under a flat riveted brim that sweeps back into a lamed tail, a full-width lit visor
+    // band in a frame, a ribbed rebreather jaw with twin filter canisters, ear discs, a ridge over the crown
     barbute(r, M, H) {
       B(H, 0.13, 0.1, 0.13, M.detail, 0, 0.03, 0);
       B(H, 0.27, 0.25, 0.29, M.main, 0, 0.19, 0);
-      B(H, 0.34, 0.04, 0.42, M.trim, 0, 0.33, -0.04); B(H, 0.3, 0.06, 0.12, M.main, 0, 0.28, -0.2, -0.35);
-      B(H, 0.28, 0.08, 0.03, M.detail, 0, 0.22, 0.148); B(H, 0.25, 0.03, 0.02, M.glow, 0, 0.22, 0.16);
+      B(H, 0.34, 0.04, 0.42, M.trim, 0, 0.33, -0.04); rivets(H, -0.15, 0.15, 0.35, 0.16, 8, M.detail, 0.014);
+      B(H, 0.04, 0.05, 0.36, M.main, 0, 0.37, -0.04); // (a low ridge over the crown)
+      for (let i = 0; i < 3; i++) B(H, 0.3 - i * 0.03, 0.04, 0.09, i % 2 ? M.trim : M.main, 0, 0.3 - i * 0.035, -0.21 - i * 0.06, -0.35 - i * 0.12);
+      B(H, 0.28, 0.08, 0.03, DARK, 0, 0.22, 0.148); B(H, 0.25, 0.026, 0.02, M.glow, 0, 0.22, 0.16); frame(H, 0.29, 0.09, 0, 0.22, 0.163, M.trim, 0.013, 0.012);
       B(H, 0.2, 0.11, 0.1, M.detail, 0, 0.08, 0.13);
-      for (const s of [1, -1]) { C(H, 0.04, 0.04, 0.1, M.trim, s * 0.12, 0.07, 0.15, PI / 2); C(H, 0.03, 0.03, 0.02, M.glow, s * 0.12, 0.07, 0.2, PI / 2); }
-      for (const s of [1, -1]) B(H, 0.03, 0.09, 0.09, M.trim, s * 0.145, 0.19, 0);
+      for (let i = 0; i < 4; i++) B(H, 0.21, 0.012, 0.11, M.trim, 0, 0.04 + i * 0.026, 0.135); // (its ribs)
+      for (const s of [1, -1]) {
+        C(H, 0.042, 0.042, 0.1, M.trim, s * 0.12, 0.07, 0.15, PI / 2); C(H, 0.03, 0.03, 0.02, M.glow, s * 0.12, 0.07, 0.205, PI / 2);
+        for (const z of [0.12, 0.16]) ring(H, 0.045, 0.008, M.detail, s * 0.12, 0.07, z, 0, 0, 10);
+        C(H, 0.05, 0.05, 0.025, M.trim, s * 0.15, 0.19, 0.0, 0, 0, PI / 2); C(H, 0.025, 0.025, 0.03, M.glow, s * 0.158, 0.19, 0.0, 0, 0, PI / 2);
+      }
     },
-    // Seraph Helm: a smooth sculpted face-mask, three swept vanes either side with lit tips, a halo emitter ring
+    // Seraph Helm: a smooth sculpted face-mask with a brow ridge and cheek lines, three swept vanes either side each
+    // fletched with feathers and lit at the tip, a halo emitter ring with nodes, a fluted gorget
     winged(r, M, H) {
       B(H, 0.13, 0.1, 0.13, M.detail, 0, 0.03, 0);
       B(H, 0.25, 0.3, 0.28, M.main, 0, 0.19, -0.01);
-      B(H, 0.18, 0.22, 0.04, M.trim, 0, 0.18, 0.148); B(H, 0.07, 0.02, 0.02, M.glow, -0.04, 0.22, 0.172); B(H, 0.07, 0.02, 0.02, M.glow, 0.04, 0.22, 0.172);
-      B(H, 0.03, 0.12, 0.02, M.detail, 0, 0.12, 0.17);
+      B(H, 0.18, 0.22, 0.04, M.trim, 0, 0.18, 0.148); B(H, 0.2, 0.03, 0.04, M.trim, 0, 0.255, 0.16);
+      for (const s of [1, -1]) { B(H, 0.07, 0.02, 0.02, M.glow, s * 0.04, 0.22, 0.172); B(H, 0.012, 0.09, 0.012, M.main, s * 0.07, 0.14, 0.171, 0, 0, s * 0.2); }
+      B(H, 0.03, 0.12, 0.02, M.detail, 0, 0.12, 0.17); B(H, 0.06, 0.03, 0.02, M.main, 0, 0.07, 0.17);
       for (const s of [1, -1]) for (let i = 0; i < 3; i++) {
-        const v = pivot(H, s * 0.13, 0.26 - i * 0.05, 0.02, 0, -s * 0.2, -s * (0.9 + i * 0.25));
-        B(v, 0.025, 0.32 - i * 0.06, 0.1, M.trim, 0, (0.32 - i * 0.06) / 2, -0.06, -0.6);
-        B(v, 0.03, 0.05, 0.1, M.glow, 0, 0.3 - i * 0.06, -0.24 + i * 0.03, -0.6);
+        const v = pivot(H, s * 0.13, 0.26 - i * 0.05, 0.02, 0, -s * 0.2, -s * (0.9 + i * 0.25)), L = 0.32 - i * 0.06;
+        B(v, 0.025, L, 0.1, M.trim, 0, L / 2, -0.06, -0.6);
+        for (let f = 0; f < 3; f++) B(v, 0.018, L * 0.3, 0.06, M.main, 0, L * (0.3 + f * 0.22), -0.13 - f * 0.012, -0.9); // (feathers)
+        B(v, 0.03, 0.05, 0.1, M.glow, 0, L - 0.02, -0.24 + i * 0.03, -0.6);
       }
-      const hp = pivot(H, 0, 0.3, -0.2); ring(hp, 0.24, 0.02, M.glow, 0, 0, 0, 0, 0, 20);
-      for (let i = 0; i < 4; i++) { const a = (i / 4) * PI * 2; B(hp, 0.05, 0.05, 0.03, M.trim, Math.cos(a) * 0.24, Math.sin(a) * 0.24, 0); }
+      const hp = pivot(H, 0, 0.3, -0.2); ring(hp, 0.24, 0.02, M.glow, 0, 0, 0, 0, 0, 20); ring(hp, 0.2, 0.008, M.trim, 0, 0, 0, 0, 0, 20);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * PI * 2; B(hp, i % 2 ? 0.03 : 0.05, i % 2 ? 0.03 : 0.05, 0.03, M.trim, Math.cos(a) * 0.24, Math.sin(a) * 0.24, 0); }
       r.spinners.push({ obj: hp, axis: 'z', speed: 0.5 });
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * PI * 2; B(H, 0.04, 0.07, 0.03, M.trim, Math.sin(a) * 0.165, 0.065, Math.cos(a) * 0.165, 0, a, 0); }
     },
-    // Archon Crown-Helm: a skull-faced visor with burning sockets, a tall crown of eight blades on a ring, a mail
-    // aventail
+    // Crown of the Fallen Archon: a Spartan face: a solid faceplate cut through with tall slits, dark behind them but
+    // for two burning eyes; a brow band and a nasal bar; spikes radiating out of the helm all round its crown and down
+    // the back; riveted cheek guards; a mail aventail
     crowned(r, M, H) {
       B(H, 0.13, 0.1, 0.13, M.detail, 0, 0.03, 0);
-      B(H, 0.27, 0.3, 0.29, M.main, 0, 0.19, 0);
-      B(H, 0.2, 0.2, 0.04, M.trim, 0, 0.18, 0.15); B(H, 0.14, 0.05, 0.04, M.trim, 0, 0.07, 0.152);
-      for (const s of [1, -1]) { B(H, 0.06, 0.05, 0.02, M.detail, s * 0.05, 0.22, 0.172); B(H, 0.035, 0.03, 0.02, M.glow, s * 0.05, 0.22, 0.18); }
-      for (let i = 0; i < 3; i++) B(H, 0.02, 0.04, 0.02, M.detail, -0.03 + i * 0.03, 0.08, 0.175);
-      const cr = pivot(H, 0, 0.36, 0); ring(cr, 0.16, 0.025, M.trim, 0, 0, 0, PI / 2, 0, 16);
-      for (let k = 0; k < 8; k++) { const a = (k / 8) * PI * 2; K(cr, 0.03, k % 2 ? 0.14 : 0.24, M.trim, Math.cos(a) * 0.16, k % 2 ? 0.07 : 0.12, Math.sin(a) * 0.16, 0, 0, 0); }
-      B(cr, 0.05, 0.05, 0.04, M.glow, 0, 0.03, 0.17);
+      B(H, 0.28, 0.31, 0.29, M.main, 0, 0.195, -0.005);
+      B(H, 0.26, 0.06, 0.27, M.main, 0, 0.37, -0.01); // (the crown, rounded up)
+      // the face: dark behind, the eyes, then the plate with its slits
+      B(H, 0.23, 0.2, 0.03, DARK, 0, 0.17, 0.138);
+      for (const s of [1, -1]) {
+        B(H, 0.032, 0.026, 0.01, M.glow, s * 0.036, 0.215, 0.158); B(H, 0.016, 0.014, 0.012, basic(0xffffff), s * 0.036, 0.216, 0.161); // (an eye, its hot core)
+        const halo = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.06), new THREE.MeshBasicMaterial({ color: M.glowHex ?? 0xff5030, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }));
+        halo.position.set(s * 0.036, 0.215, 0.163); H.add(halo);
+      }
+      for (let i = 0; i < 6; i++) B(H, 0.016, 0.18, 0.02, M.main, -0.09 + i * 0.036, 0.17, 0.168); // (the bars between the slits: an eye looks out through each middle pair)
+      B(H, 0.26, 0.04, 0.035, M.trim, 0, 0.275, 0.165); rivets(H, -0.1, 0.1, 0.275, 0.185, 5, M.detail, 0.014); // (the brow band)
+      B(H, 0.24, 0.04, 0.03, M.main, 0, 0.065, 0.165); B(H, 0.025, 0.2, 0.03, M.trim, 0, 0.17, 0.18); // (the chin plate, the nasal bar)
+      for (const s of [1, -1]) { B(H, 0.035, 0.22, 0.17, M.main, s * 0.155, 0.16, 0.06); rivetCol(H, s * 0.174, 0.08, 0.24, 0.1, 4, M.detail); B(H, 0.04, 0.24, 0.02, M.trim, s * 0.155, 0.16, 0.148); }
+      // the spikes: a fan over the crown from ear to ear, a smaller row behind it, a few down the back
+      const SP = new THREE.Vector3(0, 0.22, -0.02);
+      const spike = (ax, ay, az, len, rad) => {
+        const d = new THREE.Vector3(ax, ay, az).normalize(), g = pivot(H, SP.x + d.x * 0.15, SP.y + d.y * 0.15, SP.z + d.z * 0.15);
+        g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+        K(g, rad, len, M.trim, 0, len / 2, 0, 0, 0, 0, 5); C(g, rad * 1.3, rad * 1.5, 0.03, M.detail, 0, 0.005, 0, 0, 0, 0, 6);
+      };
+      for (let i = 0; i < 11; i++) { const a = -PI * 0.55 + (i / 10) * PI * 1.1; spike(Math.sin(a), Math.cos(a), 0.05, i % 2 ? 0.17 : 0.26, 0.028); }
+      for (let i = 0; i < 7; i++) { const a = -PI * 0.42 + (i / 6) * PI * 0.84; spike(Math.sin(a) * 0.9, Math.cos(a) * 0.8, -0.6, 0.15, 0.022); }
+      for (let i = 0; i < 3; i++) spike(0, 0.4 - i * 0.35, -1, 0.14 - i * 0.02, 0.022);
       for (let k = 0; k < 6; k++) strip(r, H, -0.13 + k * 0.052, 0.06, -0.1, 0.05, [0.1, 0.06], M.detail, { lx: [-0.4, 0.6], th: 0.02 });
+      B(H, 0.32, 0.03, 0.32, M.trim, 0, 0.07, 0);
     },
   },
   pauldron: {
-    // Riot Slabs: three flat slabs stacked down the shoulder, each edged, a strap under them
+    // Riot Slabs: three flat edged slabs stacked down the shoulder, each riveted along its rim, a ridge over the top,
+    // a strap with a buckle under them, a lit stud
     segmented(r, M, T, s) {
       const { bulk: b, sw } = r.dims, pv = pivot(T, s * sw, 0.68, 0, 0, 0, -s * 0.32);
       B(pv, 0.26 * b, 0.07, 0.32 * b, M.main, s * 0.02, 0.02, 0); B(pv, 0.27 * b, 0.02, 0.33 * b, M.trim, s * 0.02, 0.06, 0);
-      for (let i = 0; i < 2; i++) plate(r, pv, s * (0.04 + i * 0.02), -0.03 - i * 0.07, 0, (0.25 - i * 0.02) * b, 0.07, (0.31 - i * 0.02) * b, M.main, { edge: M.trim });
-      B(pv, 0.04, 0.2, 0.06, M.detail, -s * 0.06, -0.06, 0.12);
+      B(pv, 0.03, 0.03, 0.34 * b, M.trim, s * 0.02, 0.075, 0); // (the ridge)
+      rivets(pv, -0.13 * b + s * 0.02, 0.13 * b + s * 0.02, 0.04, 0.165 * b, 6, M.detail, 0.015);
+      for (let i = 0; i < 2; i++) { plate(r, pv, s * (0.04 + i * 0.02), -0.03 - i * 0.07, 0, (0.25 - i * 0.02) * b, 0.07, (0.31 - i * 0.02) * b, M.main, { edge: M.trim }); rivets(pv, s * (0.04 + i * 0.02) - 0.1 * b, s * (0.04 + i * 0.02) + 0.1 * b, -0.03 - i * 0.07, (0.16 - i * 0.01) * b, 5, M.detail, 0.013); }
+      B(pv, 0.04, 0.2, 0.06, M.detail, -s * 0.06, -0.06, 0.12); B(pv, 0.055, 0.045, 0.07, M.trim, -s * 0.06, -0.1, 0.125); B(pv, 0.02, 0.03, 0.075, M.detail, -s * 0.06, -0.1, 0.13);
       B(pv, 0.05, 0.03, 0.02, M.glow, s * 0.1, 0.035, 0.165);
     },
-    // Hook Plates: an angular wedge with two hooked spikes curling up and back, rivet rows, a lit vent
+    // Hook Plates: an angular wedge over two layered under-plates, two hooked spikes curling up and back in three
+    // segments, rivet rows, a lit vent behind a grille
     spiked(r, M, T, s) {
       const { bulk: b, sw } = r.dims, pv = pivot(T, s * sw, 0.7, 0, 0, 0, -s * 0.2);
-      B(pv, 0.24 * b, 0.12, 0.3 * b, M.main, s * 0.02, 0, 0, 0, 0, s * 0.25);
-      B(pv, 0.2 * b, 0.05, 0.31 * b, M.main, s * 0.08, -0.08, 0, 0, 0, s * 0.5);
-      for (const z of [-0.07, 0.07]) { const h = pivot(pv, s * 0.06, 0.06, z, 0, 0, -s * 0.3); B(h, 0.04, 0.16, 0.04, M.trim, 0, 0.08, 0); B(h, 0.04, 0.08, 0.04, M.trim, -s * 0.03, 0.17, -0.02, -0.4, 0, s * 0.9); }
-      for (let i = 0; i < 4; i++) B(pv, 0.02, 0.02, 0.02, M.detail, s * 0.12, -0.02, -0.11 + i * 0.075);
-      B(pv, 0.06, 0.02, 0.1, M.glow, s * 0.13, 0.02, 0, 0, 0, s * 0.25);
+      B(pv, 0.24 * b, 0.12, 0.3 * b, M.main, s * 0.02, 0, 0, 0, 0, s * 0.25); B(pv, 0.25 * b, 0.02, 0.31 * b, M.trim, s * 0.03, 0.055, 0, 0, 0, s * 0.25);
+      B(pv, 0.2 * b, 0.05, 0.31 * b, M.main, s * 0.08, -0.08, 0, 0, 0, s * 0.5); B(pv, 0.18 * b, 0.04, 0.3 * b, M.trim, s * 0.1, -0.12, 0, 0, 0, s * 0.6);
+      for (const z of [-0.07, 0.07]) { const h = pivot(pv, s * 0.06, 0.06, z, 0, 0, -s * 0.3); C(h, 0.025, 0.03, 0.06, M.detail, 0, 0.01, 0); B(h, 0.04, 0.16, 0.04, M.trim, 0, 0.08, 0); B(h, 0.035, 0.08, 0.035, M.trim, -s * 0.03, 0.17, -0.02, -0.4, 0, s * 0.9); K(h, 0.016, 0.06, M.trim, -s * 0.08, 0.2, -0.04, 0, 0, s * 1.6, 4); }
+      for (let i = 0; i < 4; i++) { B(pv, 0.02, 0.02, 0.02, M.detail, s * 0.12, -0.02, -0.11 + i * 0.075); B(pv, 0.018, 0.018, 0.018, M.detail, s * 0.15, -0.1, -0.11 + i * 0.075); }
+      B(pv, 0.07, 0.03, 0.11, DARK, s * 0.13, 0.02, 0, 0, 0, s * 0.25); B(pv, 0.06, 0.02, 0.1, M.glow, s * 0.13, 0.025, 0, 0, 0, s * 0.25);
+      for (let i = 0; i < 4; i++) B(pv, 0.075, 0.01, 0.012, M.trim, s * 0.135, 0.035, -0.04 + i * 0.027, 0, 0, s * 0.25);
     },
-    // Lion-Skull: a lion's skull of iron with a jaw, burning eyes and a mane of cables that swings
+    // Lion-Skull: a lion's skull of iron with a heavy brow, a muzzle, fangs top and bottom, burning eyes, a nose, a
+    // mane of cables that swings, over a layered plate
     lion(r, M, T, s) {
       const { bulk: b, sw } = r.dims, pv = pivot(T, s * sw, 0.7, 0, 0, 0, -s * 0.25);
-      B(pv, 0.24 * b, 0.1, 0.3 * b, M.main, s * 0.02, 0, 0);
-      const sk = pivot(pv, s * 0.06, 0.06, 0.1); B(sk, 0.15, 0.13, 0.14, M.trim, 0, 0, 0); B(sk, 0.11, 0.05, 0.08, M.trim, 0, -0.05, 0.08);
-      for (const x of [-0.035, 0.035]) B(sk, 0.03, 0.025, 0.02, M.glow, x, 0.02, 0.075);
-      for (const x of [-0.04, 0.04]) K(sk, 0.012, 0.05, M.detail, x, -0.08, 0.1, PI, 0, 0, 3);
+      B(pv, 0.24 * b, 0.1, 0.3 * b, M.main, s * 0.02, 0, 0); B(pv, 0.22 * b, 0.05, 0.29 * b, M.trim, s * 0.05, -0.07, 0); rivets(pv, s * 0.02 - 0.1 * b, s * 0.02 + 0.1 * b, 0.0, 0.155 * b, 5, M.detail, 0.013);
+      const sk = pivot(pv, s * 0.06, 0.06, 0.1);
+      B(sk, 0.15, 0.13, 0.14, M.trim, 0, 0, 0); B(sk, 0.17, 0.035, 0.05, M.trim, 0, 0.05, 0.06); // (the skull, its brow)
+      B(sk, 0.11, 0.06, 0.09, M.trim, 0, -0.04, 0.08); B(sk, 0.04, 0.025, 0.03, M.detail, 0, -0.01, 0.13); // (the muzzle, the nose)
+      for (const x of [-0.035, 0.035]) { B(sk, 0.035, 0.03, 0.02, DARK, x, 0.02, 0.072); B(sk, 0.025, 0.02, 0.02, M.glow, x, 0.02, 0.078); }
+      for (const x of [-0.04, 0.04]) { K(sk, 0.012, 0.05, M.detail, x, -0.085, 0.11, PI, 0, 0, 3); K(sk, 0.01, 0.035, M.detail, x * 0.6, -0.06, 0.12, 0, 0, 0, 3); }
+      B(sk, 0.1, 0.02, 0.07, M.detail, 0, -0.08, 0.06); // (the jaw)
       for (const z of [-0.1, -0.03, 0.04]) strip(r, pv, s * 0.12, 0.06, z, 0.03, [0.14, 0.1], M.detail, { ry: s * 1.4, spring: { ...CLOTH, k: 110 }, lx: [-0.4, 0.4], th: 0.03, taper: 0.8 });
     },
-    // Reactor Drum: a finned drum laid along the shoulder, its end-face lit, pipes into the back
+    // Reactor Drum: a finned drum laid along the shoulder on a bracket, banded with rings, its end-face a lit core
+    // behind a spoked grille, coolant pipes with couplings into the back
     sunburst(r, M, T, s) {
       const { bulk: b, sw } = r.dims, pv = pivot(T, s * sw, 0.7, 0, 0, 0, -s * 0.2);
-      C(pv, 0.13 * b, 0.13 * b, 0.32 * b, M.main, s * 0.03, 0.02, 0, PI / 2, 0, 0, 10);
-      for (const z of [-0.1, -0.03, 0.04, 0.11]) ring(pv, 0.135 * b, 0.015, M.trim, s * 0.03, 0.02, z * b, 0, 0, 10);
-      C(pv, 0.09, 0.09, 0.02, M.glow, s * 0.03, 0.02, 0.17 * b, PI / 2);
-      C(pv, 0.03, 0.03, 0.2, M.detail, s * 0.03, 0.02, -0.25 * b, PI / 2);
+      C(pv, 0.13 * b, 0.13 * b, 0.32 * b, M.main, s * 0.03, 0.02, 0, PI / 2, 0, 0, 12);
+      for (const z of [-0.12, -0.06, 0, 0.06, 0.12]) ring(pv, 0.135 * b, 0.014, M.trim, s * 0.03, 0.02, z * b, 0, 0, 12);
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * PI * 2; B(pv, 0.015, 0.03, 0.28 * b, M.detail, s * 0.03 + Math.cos(a) * 0.14 * b, 0.02 + Math.sin(a) * 0.14 * b, 0); } // (fins)
+      C(pv, 0.1, 0.1, 0.02, M.glow, s * 0.03, 0.02, 0.17 * b, PI / 2, 0, 0, 12); ring(pv, 0.11, 0.015, M.trim, s * 0.03, 0.02, 0.175 * b, 0, 0, 12);
+      for (let k = 0; k < 4; k++) B(pv, 0.2, 0.012, 0.012, M.trim, s * 0.03, 0.02, 0.18 * b, 0, 0, (k / 4) * PI);
+      C(pv, 0.03, 0.03, 0.2, M.detail, s * 0.03, 0.02, -0.25 * b, PI / 2); C(pv, 0.04, 0.04, 0.03, M.trim, s * 0.03, 0.02, -0.18 * b, PI / 2); C(pv, 0.022, 0.022, 0.16, M.detail, s * 0.03, -0.05, -0.22 * b, PI / 2);
+      B(pv, 0.08, 0.1, 0.2 * b, M.detail, -s * 0.04, -0.07, 0); // (the bracket)
     },
   },
   chest: {
-    // Cuirass & Gorget: an angled two-plate cuirass with a central ridge, an armoured gorget, banded abdominal
-    // lames, a tabard hanging front and back; vambraces and gauntlets
+    // Cuirass & Gorget: an angled two-plate cuirass with a central ridge, raised rims and rivets, a back plate, an
+    // armoured two-ring gorget, banded abdominal lames, a belt with a buckle and pouches, a tabard front and back;
+    // ridged vambraces and knuckled gauntlets
     plate(r, M, T, hips) {
       const { bulk: b } = r.dims, f = 0.14 * b;
-      for (const s of [1, -1]) B(T, 0.24 * b, 0.34, 0.04, M.main, s * 0.11 * b, 0.48, f, 0, -s * 0.18);
+      for (const s of [1, -1]) { B(T, 0.24 * b, 0.34, 0.04, M.main, s * 0.11 * b, 0.48, f, 0, -s * 0.18); B(T, 0.016, 0.34, 0.03, M.trim, s * 0.22 * b, 0.48, f - 0.02, 0, -s * 0.18); rivetCol(T, s * 0.2 * b, 0.36, 0.6, f + 0.005, 4, M.detail); }
       B(T, 0.04, 0.34, 0.05, M.trim, 0, 0.48, f + 0.02);
-      B(T, 0.36, 0.12, 0.34, M.main, 0, 0.68, -0.01); B(T, 0.38, 0.03, 0.36, M.trim, 0, 0.74, -0.01);
-      for (let i = 0; i < 3; i++) B(T, (0.4 - i * 0.03) * b, 0.05, 0.27 * b, M.detail, 0, 0.27 - i * 0.06, 0);
-      B(T, 0.08, 0.06, 0.03, M.glow, 0, 0.58, f + 0.04);
+      B(T, 0.46 * b, 0.32, 0.04, M.main, 0, 0.48, -f); B(T, 0.04, 0.32, 0.03, M.trim, 0, 0.48, -f - 0.02); // (the back plate and its spine)
+      B(T, 0.36, 0.12, 0.34, M.main, 0, 0.68, -0.01); B(T, 0.38, 0.025, 0.36, M.trim, 0, 0.745, -0.01); B(T, 0.37, 0.022, 0.35, M.trim, 0, 0.66, -0.01);
+      rivets(T, -0.15, 0.15, 0.7, 0.165, 7, M.detail, 0.014);
+      for (let i = 0; i < 4; i++) { const w = (0.42 - i * 0.025) * b; B(T, w, 0.045, 0.28 * b, i % 2 ? M.trim : M.main, 0, 0.29 - i * 0.05, 0); rivets(T, -w / 2 + 0.02, w / 2 - 0.02, 0.29 - i * 0.05, 0.14 * b + 0.002, 2, M.detail, 0.012); }
+      B(T, 0.44 * b, 0.05, 0.3 * b, M.detail, 0, 0.09, 0); B(T, 0.07, 0.05, 0.02, M.trim, 0, 0.09, 0.15 * b + 0.01); B(T, 0.03, 0.025, 0.02, M.glow, 0, 0.09, 0.15 * b + 0.02);
+      for (const s of [1, -1]) { B(T, 0.07, 0.07, 0.05, M.detail, s * 0.15 * b, 0.07, 0.13 * b); B(T, 0.072, 0.018, 0.052, M.trim, s * 0.15 * b, 0.1, 0.13 * b); }
+      B(T, 0.08, 0.06, 0.03, M.glow, 0, 0.58, f + 0.04); frame(T, 0.11, 0.09, 0, 0.58, f + 0.05, M.trim, 0.014, 0.014);
       strip(r, T, 0, 0.12, f + 0.01, 0.26 * b, [0.32, 0.3], M.trim, { lx: [-1.0, 0.06] });
       strip(r, T, 0, 0.12, -f - 0.01, 0.28 * b, [0.3, 0.26], M.trim, { lx: [-0.06, 1.1] });
-      for (const L of [true, false]) { B(fore(r, L), 0.15 * b, 0.22, 0.17 * b, M.main, 0, -0.17, 0); B(fore(r, L), 0.16 * b, 0.03, 0.18 * b, M.trim, 0, -0.06, 0); B(hand(r, L), 0.13, 0.1, 0.13, M.detail, 0, 0.01, 0); }
+      for (const L of [true, false]) {
+        const fa = fore(r, L), hd = hand(r, L);
+        B(fa, 0.15 * b, 0.22, 0.17 * b, M.main, 0, -0.17, 0); B(fa, 0.16 * b, 0.03, 0.18 * b, M.trim, 0, -0.06, 0); B(fa, 0.16 * b, 0.025, 0.18 * b, M.trim, 0, -0.27, 0);
+        B(fa, 0.025, 0.2, 0.03, M.trim, 0, -0.17, 0.09 * b); rivetCol(fa, 0.05 * b, -0.1, -0.24, 0.09 * b, 3, M.detail, 0.013);
+        B(hd, 0.13, 0.1, 0.13, M.detail, 0, 0.01, 0); for (let k = 0; k < 4; k++) B(hd, 0.03, 0.03, 0.04, M.main, -0.045 + k * 0.03, -0.03, 0.055);
+        B(hd, 0.14, 0.04, 0.1, M.main, 0, 0.05, 0.02);
+      }
     },
-    // Coat of Plates: a long coat of rectangular plates riveted in rows down to the knees, a high collar, a belt
-    // with pouches and a lit buckle
+    // Coat of Plates: a long coat of rectangular plates riveted in rows down to the knees, a high collar with a lit
+    // clasp, a belt with pouches and a lit buckle, lamed vambraces
     mail(r, M, T, hips) {
       const { bulk: b } = r.dims, f = 0.14 * b;
-      for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) B(T, 0.1 * b, 0.075, 0.03, row % 2 ? M.main : M.trim, (-0.15 + k * 0.1) * b, 0.62 - row * 0.085, f);
-      B(T, 0.34, 0.16, 0.34, M.main, 0, 0.72, -0.02);
-      B(T, 0.42 * b, 0.07, 0.28 * b, M.detail, 0, 0.08, 0); B(T, 0.07, 0.06, 0.03, M.glow, 0, 0.08, f + 0.01);
-      for (const s of [1, -1]) B(T, 0.08, 0.1, 0.06, M.detail, s * 0.16, 0.05, 0.1);
+      B(T, 0.44 * b, 0.4, 0.26 * b, M.detail, 0, 0.46, 0);
+      for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) { const x = (-0.15 + k * 0.1) * b, y = 0.62 - row * 0.085; B(T, 0.095 * b, 0.075, 0.03, row % 2 ? M.main : M.trim, x, y, f); B(T, 0.012, 0.012, 0.012, M.detail, x - 0.035 * b, y + 0.025, f + 0.02); B(T, 0.012, 0.012, 0.012, M.detail, x + 0.035 * b, y + 0.025, f + 0.02); }
+      for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) B(T, 0.095 * b, 0.075, 0.03, row % 2 ? M.main : M.trim, (-0.15 + k * 0.1) * b, 0.62 - row * 0.085, -f);
+      B(T, 0.34, 0.16, 0.34, M.main, 0, 0.72, -0.02); B(T, 0.36, 0.025, 0.36, M.trim, 0, 0.8, -0.02); B(T, 0.06, 0.06, 0.02, M.glow, 0, 0.72, 0.155);
+      B(T, 0.42 * b, 0.07, 0.28 * b, M.detail, 0, 0.08, 0); B(T, 0.07, 0.06, 0.03, M.glow, 0, 0.08, f + 0.01); frame(T, 0.09, 0.075, 0, 0.08, f + 0.02, M.trim, 0.012, 0.012);
+      for (const s of [1, -1]) { B(T, 0.08, 0.1, 0.06, M.detail, s * 0.16, 0.05, 0.1); B(T, 0.082, 0.025, 0.062, M.trim, s * 0.16, 0.09, 0.1); }
       for (const x of [-0.12, -0.04, 0.04, 0.12]) strip(r, hips, x * b, -0.04, 0.13 * b, 0.075 * b, [0.2, 0.18, 0.14], M.main, { trim: M.trim, lx: [-0.9, 0.1], th: 0.03 });
       strip(r, hips, 0, -0.04, -0.13 * b, 0.32 * b, [0.22, 0.2, 0.14], M.main, { trim: M.trim, lx: [-0.1, 0.9], th: 0.03 });
-      for (const L of [true, false]) { for (let i = 0; i < 3; i++) B(fore(r, L), 0.14 * b, 0.05, 0.16 * b, i % 2 ? M.trim : M.main, 0, -0.06 - i * 0.08, 0); B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0); }
+      for (const L of [true, false]) { for (let i = 0; i < 4; i++) B(fore(r, L), 0.15 * b - i * 0.004, 0.045, 0.17 * b - i * 0.004, i % 2 ? M.trim : M.main, 0, -0.05 - i * 0.065, 0); B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0); B(hand(r, L), 0.13, 0.035, 0.09, M.main, 0, 0.05, 0.02); }
     },
-    // Martyr's Harness: cage ribs of metal over a padded chest, a chained reliquary with a lit window at the heart,
-    // a long cape in three panels
+    // Martyr's Harness: cage ribs of metal over a quilted chest, a chained reliquary with a lit window in a frame at
+    // the heart, buckled straps over the shoulders, a long cape in three panels
     radiant(r, M, T, hips) {
       const { bulk: b } = r.dims, f = 0.14 * b;
       B(T, 0.44 * b, 0.34, 0.26 * b, M.detail, 0, 0.48, 0);
-      for (let i = 0; i < 4; i++) { B(T, 0.46 * b, 0.03, 0.03, M.main, 0, 0.36 + i * 0.08, f + 0.01); }
+      for (let i = 0; i < 5; i++) B(T, 0.44 * b, 0.008, 0.008, M.trim, 0, 0.34 + i * 0.07, f + 0.002); // (quilting)
+      for (let i = 0; i < 4; i++) { B(T, 0.46 * b, 0.03, 0.03, M.main, 0, 0.36 + i * 0.08, f + 0.01); for (const s of [1, -1]) B(T, 0.02, 0.02, 0.02, M.detail, s * 0.2 * b, 0.36 + i * 0.08, f + 0.03); }
       B(T, 0.04, 0.34, 0.04, M.main, 0, 0.48, f + 0.02);
-      B(T, 0.13, 0.16, 0.06, M.trim, 0, 0.47, f + 0.05); B(T, 0.08, 0.1, 0.02, M.glow, 0, 0.47, f + 0.085);
-      for (const s of [1, -1]) B(T, 0.025, 0.28, 0.025, M.trim, s * 0.08, 0.6, f + 0.04, 0, 0, s * 0.5);
+      B(T, 0.13, 0.16, 0.06, M.trim, 0, 0.47, f + 0.05); B(T, 0.08, 0.1, 0.02, M.glow, 0, 0.47, f + 0.085); frame(T, 0.1, 0.12, 0, 0.47, f + 0.09, M.main, 0.012, 0.012);
+      K(T, 0.04, 0.05, M.trim, 0, 0.57, f + 0.05, 0, PI / 4, 0); // (the reliquary's peak)
+      for (const s of [1, -1]) { B(T, 0.025, 0.28, 0.025, M.trim, s * 0.08, 0.6, f + 0.04, 0, 0, s * 0.5); for (let i = 0; i < 4; i++) ring(T, 0.014, 0.004, M.trim, s * (0.1 + i * 0.03), 0.62 - i * 0.04, f + 0.05, 0, 0, 6); }
+      for (const s of [1, -1]) { B(T, 0.06, 0.04, 0.34, M.detail, s * 0.14 * b, 0.69, 0); B(T, 0.04, 0.03, 0.02, M.trim, s * 0.14 * b, 0.69, f + 0.02); }
       for (const x of [-0.16, 0, 0.16]) strip(r, T, x * b, 0.66, -0.16 * b, 0.18 * b, [0.42, 0.4, 0.26], M.trim, { trim: M.main, lx: [-0.1, 1.2], lx2: [-0.3, 0.7], taper: 0.92 });
-      for (const L of [true, false]) { B(fore(r, L), 0.14 * b, 0.2, 0.16 * b, M.main, 0, -0.16, 0); B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0); }
+      for (const L of [true, false]) { B(fore(r, L), 0.14 * b, 0.2, 0.16 * b, M.main, 0, -0.16, 0); for (const y of [-0.08, -0.24]) B(fore(r, L), 0.15 * b, 0.02, 0.17 * b, M.trim, 0, y, 0); B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0); }
     },
-    // Reactor Carapace: rounded horizontal carapace plates over the chest round a lit vent with a grille, coolant
-    // pipes over the shoulders
+    // Reactor Carapace: rounded carapace plates over the chest, rimmed and riveted, round a lit vent behind a grille in
+    // a frame, coolant pipes with couplings over the shoulders, a ribbed belly, finned vambraces
     dragonscale(r, M, T, hips) {
       const { bulk: b } = r.dims, f = 0.14 * b;
       for (let i = 0; i < 4; i++) { const y = 0.66 - i * 0.075, w = (0.5 - i * 0.03) * b;
-        B(T, w, 0.075, 0.3 * b, M.main, 0, y, 0.015, 0.28); B(T, w + 0.01, 0.02, 0.3 * b + 0.01, M.trim, 0, y - 0.035, 0.03, 0.28); B(T, w - 0.02, 0.02, 0.29 * b, M.detail, 0, y - 0.05, 0.01); }
+        B(T, w, 0.075, 0.3 * b, M.main, 0, y, 0.015, 0.28); B(T, w + 0.01, 0.02, 0.3 * b + 0.01, M.trim, 0, y - 0.035, 0.03, 0.28); B(T, w - 0.02, 0.02, 0.29 * b, M.detail, 0, y - 0.05, 0.01);
+        for (const s of [1, -1]) B(T, 0.016, 0.016, 0.016, M.detail, s * (w / 2 - 0.02), y, 0.17 * b + 0.01); }
       B(T, 0.14, 0.12, 0.03, M.glow, 0, 0.47, f + 0.025); for (let i = 0; i < 4; i++) B(T, 0.02, 0.13, 0.03, M.detail, -0.05 + i * 0.033, 0.47, f + 0.04);
-      for (const s of [1, -1]) B(T, 0.04, 0.04, 0.4, M.detail, s * 0.13, 0.7, 0, -0.4, 0, 0);
-      B(T, 0.4 * b, 0.07, 0.26 * b, M.detail, 0, 0.08, 0);
-      for (const L of [true, false]) { C(fore(r, L), 0.085 * b, 0.08 * b, 0.22, M.main, 0, -0.17, 0, 0, 0, 0, 8); B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0); }
+      frame(T, 0.17, 0.15, 0, 0.47, f + 0.05, M.trim, 0.016, 0.014);
+      for (const s of [1, -1]) { B(T, 0.04, 0.04, 0.4, M.detail, s * 0.13, 0.7, 0, -0.4, 0, 0); for (const z of [-0.08, 0.06]) B(T, 0.055, 0.055, 0.03, M.trim, s * 0.13, 0.7 + z * 0.4, z, -0.4, 0, 0); }
+      B(T, 0.4 * b, 0.07, 0.26 * b, M.detail, 0, 0.08, 0); for (let i = 0; i < 3; i++) B(T, 0.4 * b, 0.012, 0.27 * b, M.trim, 0, 0.18 + i * 0.04, 0);
+      for (const L of [true, false]) { C(fore(r, L), 0.085 * b, 0.08 * b, 0.22, M.main, 0, -0.17, 0, 0, 0, 0, 8); for (const y of [-0.09, -0.17, -0.25]) ring(fore(r, L), 0.088 * b, 0.01, M.trim, 0, y, 0, PI / 2, 0, 8); B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0); }
     },
   },
   legs: {
-    // Servo Legs: thigh plates, knee cops with a lit stud, shin plates, a piston up the back of each calf, armoured
-    // boots
+    // Servo Legs: rimmed thigh plates, knee cops with a fanned wing and a lit stud, ridged shin plates, a piston with
+    // couplings up the back of each calf, armoured boots with toe caps, ankle plates and heavy soles
     greaves(r, M, hips) {
       const { bulk: b } = r.dims;
-      for (const s of [1, -1]) plate(r, hips, s * 0.12, -0.04, 0.12 * b, 0.13, 0.22, 0.03, M.main, { edge: M.trim, spring: { lx: [-0.9, 0.1] } });
-      for (const L of [true, false]) { const sh = shin(r, L);
-        B(sh, 0.16 * b, 0.12, 0.08, M.trim, 0, -0.02, 0.07); B(sh, 0.04, 0.04, 0.02, M.glow, 0, -0.02, 0.115);
-        B(sh, 0.15 * b, 0.26, 0.05, M.main, 0, -0.22, 0.07);
-        C(sh, 0.025, 0.025, 0.3, M.detail, 0, -0.22, -0.09); C(sh, 0.035, 0.035, 0.08, M.trim, 0, -0.1, -0.09);
-        B(sh, 0.17 * b, 0.1, 0.28 * b, M.main, 0, -r.dims.shin + 0.04, 0.05); B(sh, 0.17 * b, 0.03, 0.08, M.trim, 0, -r.dims.shin + 0.06, 0.17); }
+      for (const s of [1, -1]) { plate(r, hips, s * 0.12, -0.04, 0.12 * b, 0.13, 0.22, 0.03, M.main, { edge: M.trim, spring: { lx: [-0.9, 0.1] } }); }
+      for (const L of [true, false]) { const sh = shin(r, L), o = L ? 1 : -1;
+        B(sh, 0.16 * b, 0.12, 0.08, M.trim, 0, -0.02, 0.07); B(sh, 0.06, 0.06, 0.03, DARK, 0, -0.02, 0.112); B(sh, 0.04, 0.04, 0.02, M.glow, 0, -0.02, 0.122);
+        B(sh, 0.03, 0.1, 0.07, M.main, o * 0.1 * b, -0.02, 0.05, 0, 0, o * 0.3); // (the cop's wing)
+        B(sh, 0.15 * b, 0.26, 0.05, M.main, 0, -0.22, 0.07); B(sh, 0.025, 0.26, 0.02, M.trim, 0, -0.22, 0.1); rivetCol(sh, 0.06 * b, -0.12, -0.32, 0.098, 3, M.detail, 0.013); rivetCol(sh, -0.06 * b, -0.12, -0.32, 0.098, 3, M.detail, 0.013);
+        C(sh, 0.025, 0.025, 0.3, M.detail, 0, -0.22, -0.09); C(sh, 0.035, 0.035, 0.08, M.trim, 0, -0.1, -0.09); C(sh, 0.032, 0.032, 0.03, M.trim, 0, -0.33, -0.09);
+        const ft = -r.dims.shin + 0.04;
+        B(sh, 0.17 * b, 0.1, 0.28 * b, M.main, 0, ft, 0.05); B(sh, 0.18 * b, 0.025, 0.3 * b, M.detail, 0, ft - 0.055, 0.05); // (the boot, its sole)
+        B(sh, 0.17 * b, 0.03, 0.08, M.trim, 0, ft + 0.02, 0.17); B(sh, 0.15 * b, 0.05, 0.06, M.main, 0, ft + 0.06, 0.14, -0.4); // (the toe cap, a plate over the instep)
+        for (const s of [1, -1]) B(sh, 0.02, 0.07, 0.08, M.trim, s * 0.09 * b, ft + 0.05, 0.0); }
     },
-    // Plate Skirt & Boots: a skirt of vertical plate strips all round, heavy boots with steel toe caps
+    // Plate Skirt & Boots: a skirt of vertical plate strips all round each rimmed, a studded belt with a lit buckle,
+    // heavy boots with steel toe caps, cuffs and buckled straps
     mailskirt(r, M, hips) {
       const { bulk: b } = r.dims;
       for (let k = 0; k < 6; k++) { const a = -PI * 0.42 + (k / 5) * PI * 0.84; strip(r, hips, Math.sin(a) * 0.18 * b, -0.02, Math.cos(a) * 0.13 * b, 0.07, [0.24, 0.12], M.main, { trim: M.trim, ry: a, lx: [-0.9, 0.2], th: 0.025 }); }
       strip(r, hips, 0, -0.02, -0.13 * b, 0.3 * b, [0.24, 0.14], M.main, { trim: M.trim, lx: [-0.2, 0.9], th: 0.025 });
-      B(hips, 0.42 * b, 0.07, 0.26 * b, M.detail, 0, 0.05, 0); B(hips, 0.06, 0.05, 0.03, M.glow, 0, 0.05, 0.14 * b);
-      for (const L of [true, false]) { const sh = shin(r, L); B(sh, 0.17 * b, 0.34, 0.19 * b, M.detail, 0, -0.29, 0.01); B(sh, 0.17 * b, 0.06, 0.12, M.trim, 0, -r.dims.shin + 0.04, 0.12); }
+      B(hips, 0.42 * b, 0.07, 0.26 * b, M.detail, 0, 0.05, 0); rivets(hips, -0.18 * b, 0.18 * b, 0.05, 0.135 * b, 8, M.trim, 0.015);
+      B(hips, 0.06, 0.05, 0.03, M.glow, 0, 0.05, 0.14 * b); frame(hips, 0.08, 0.07, 0, 0.05, 0.15 * b, M.trim, 0.012, 0.012);
+      for (const L of [true, false]) { const sh = shin(r, L), ft = -r.dims.shin + 0.04;
+        B(sh, 0.17 * b, 0.34, 0.19 * b, M.detail, 0, -0.29, 0.01); B(sh, 0.18 * b, 0.04, 0.2 * b, M.trim, 0, -0.13, 0.01);
+        for (const y of [-0.22, -0.32]) { B(sh, 0.18 * b, 0.02, 0.2 * b, M.main, 0, y, 0.01); B(sh, 0.025, 0.025, 0.02, M.trim, 0.06 * b, y, 0.11 * b); }
+        B(sh, 0.17 * b, 0.06, 0.12, M.trim, 0, ft, 0.12); B(sh, 0.18 * b, 0.025, 0.28 * b, M.detail, 0, ft - 0.04, 0.05); }
     },
-    // Oath Greaves: layered tassets each sealed with wax and an oath strip, engraved shin plates, a lit gem
+    // Oath Greaves: layered tassets each sealed with wax and an oath strip, engraved shin plates banded and riveted,
+    // knee guards with a lit gem, a carved boot with a heel spur
     kingsguard(r, M, hips) {
       const { bulk: b } = r.dims;
       for (const s of [1, -1]) for (let i = 0; i < 2; i++) plate(r, hips, s * 0.11, -0.04 - i * 0.1, 0.13 * b + i * 0.005, 0.14, 0.12, 0.03, i ? M.trim : M.main, { edge: M.trim, spring: { lx: [-0.9, 0.1] } });
       for (const s of [1, -1]) { B(hips, 0.06, 0.06, 0.03, M.detail, s * 0.11, -0.1, 0.16 * b); strip(r, hips, s * 0.11, -0.13, 0.165 * b, 0.035, [0.14, 0.08], M.glow, { lx: [-0.6, 0.2], th: 0.012 }); }
-      for (const L of [true, false]) { const sh = shin(r, L); B(sh, 0.15 * b, 0.36, 0.05, M.main, 0, -0.24, 0.07); for (let i = 0; i < 3; i++) B(sh, 0.12 * b, 0.015, 0.02, M.trim, 0, -0.12 - i * 0.09, 0.1); B(sh, 0.05, 0.05, 0.03, M.glow, 0, -0.04, 0.1); B(sh, 0.16 * b, 0.08, 0.26 * b, M.detail, 0, -r.dims.shin + 0.03, 0.05); }
+      B(hips, 0.42 * b, 0.05, 0.27 * b, M.detail, 0, 0.05, 0);
+      for (const L of [true, false]) { const sh = shin(r, L), ft = -r.dims.shin + 0.03;
+        B(sh, 0.15 * b, 0.36, 0.05, M.main, 0, -0.24, 0.07); for (let i = 0; i < 3; i++) B(sh, 0.12 * b, 0.015, 0.02, M.trim, 0, -0.12 - i * 0.09, 0.1);
+        for (let i = 0; i < 3; i++) for (const s of [1, -1]) B(sh, 0.012, 0.012, 0.012, M.detail, s * 0.055 * b, -0.165 - i * 0.09, 0.1);
+        B(sh, 0.16 * b, 0.1, 0.07, M.trim, 0, -0.03, 0.07); B(sh, 0.05, 0.05, 0.03, M.glow, 0, -0.04, 0.11); frame(sh, 0.07, 0.07, 0, -0.04, 0.115, M.main, 0.012, 0.01);
+        B(sh, 0.16 * b, 0.08, 0.26 * b, M.detail, 0, ft, 0.05); B(sh, 0.165 * b, 0.02, 0.27 * b, M.trim, 0, ft + 0.04, 0.05); K(sh, 0.015, 0.06, M.trim, 0, ft, -0.1, -PI / 2, 0, 0, 4); }
     },
-    // Furnace Greaves: chunky shin housings with vent slots bleeding heat, dark thigh guards, slab boots
+    // Furnace Greaves: chunky shin housings with vent slots bleeding heat behind grilles, riveted thigh guards, slab
+    // boots with ribbed soles and a coolant hose
     ember(r, M, hips) {
       const { bulk: b } = r.dims;
-      for (const s of [1, -1]) plate(r, hips, s * 0.12, -0.04, 0.12 * b, 0.14, 0.24, 0.035, M.detail, { edge: M.trim, spring: { lx: [-0.9, 0.1] } });
-      for (const L of [true, false]) { const sh = shin(r, L); B(sh, 0.18 * b, 0.36, 0.2 * b, M.main, 0, -0.22, 0.01); for (let i = 0; i < 4; i++) B(sh, 0.13 * b, 0.02, 0.02, M.glow, 0, -0.08 - i * 0.07, 0.115 * b); B(sh, 0.19 * b, 0.04, 0.21 * b, M.trim, 0, -0.04, 0.01); B(sh, 0.19 * b, 0.1, 0.3 * b, M.main, 0, -r.dims.shin + 0.04, 0.05); }
+      for (const s of [1, -1]) { plate(r, hips, s * 0.12, -0.04, 0.12 * b, 0.14, 0.24, 0.035, M.detail, { edge: M.trim, spring: { lx: [-0.9, 0.1] } }); }
+      for (const L of [true, false]) { const sh = shin(r, L), ft = -r.dims.shin + 0.04;
+        B(sh, 0.18 * b, 0.36, 0.2 * b, M.main, 0, -0.22, 0.01);
+        for (let i = 0; i < 4; i++) { B(sh, 0.14 * b, 0.025, 0.02, DARK, 0, -0.08 - i * 0.07, 0.112 * b); B(sh, 0.13 * b, 0.015, 0.02, M.glow, 0, -0.08 - i * 0.07, 0.115 * b); }
+        for (const s of [1, -1]) rivetCol(sh, s * 0.075 * b, -0.06, -0.34, 0.11 * b, 5, M.trim, 0.014);
+        B(sh, 0.19 * b, 0.04, 0.21 * b, M.trim, 0, -0.04, 0.01); B(sh, 0.19 * b, 0.03, 0.21 * b, M.trim, 0, -0.38, 0.01);
+        C(sh, 0.018, 0.018, 0.3, M.detail, 0.08 * b, -0.22, -0.1); for (const y of [-0.1, -0.34]) C(sh, 0.026, 0.026, 0.025, M.trim, 0.08 * b, y, -0.1);
+        B(sh, 0.19 * b, 0.1, 0.3 * b, M.main, 0, ft, 0.05); for (let i = 0; i < 3; i++) B(sh, 0.2 * b, 0.012, 0.31 * b, M.detail, 0, ft - 0.05 + i * 0.012, 0.05); B(sh, 0.19 * b, 0.04, 0.06, M.trim, 0, ft + 0.03, 0.19); }
     },
   },
   // swords: [length, base z] exactly as before
