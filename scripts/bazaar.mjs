@@ -30,14 +30,14 @@ out.hover = await page.evaluate(() => document.getElementById('bz-label').textCo
 await page.mouse.click(at.x, at.y); await page.waitForTimeout(400);
 out.panel = await vis('bz-panel');
 await page.screenshot({ path: '/tmp/bazaar-grist-buy.png' });
-// buy: scrap iron (worth 5) at 3x = 15
+// buy: scrap iron (worth 25) at 3x = 75
 out.buy = await page.evaluate(() => {
   const d = game.accounts.data, s = d.bazaar.grist, g0 = d.gold, st0 = s.stock.scrap_iron, it0 = d.items?.scrap_iron || 0;
   const row = [...document.querySelectorAll('#bz-body .bz-row')].find((r) => r.textContent.includes('Scrap Iron'));
   row.querySelector('.bz-btn').click();
   return { paid: g0 - d.gold, stock: [st0, s.stock.scrap_iron], got: (d.items.scrap_iron || 0) - it0, rows: document.querySelectorAll('#bz-body .bz-row').length, rareOffered: Object.keys(s.stock).some((id) => ['servo_motor', 'oracle_core'].includes(id)) };
 });
-// sell at level 1: 20% of worth (copper coil, worth 15 -> 3)
+// sell at level 1: 20% of worth (copper coil, worth 80 -> 16)
 await page.click('.bz-tabs [data-bt=sell]'); await page.waitForTimeout(150);
 out.sell = await page.evaluate(() => {
   const d = game.accounts.data; d.items.copper_coil = 4; d.items.oracle_core = 1; game.bazaar.renderPanel();
@@ -102,8 +102,8 @@ out.partyKill = await page.evaluate(() => { const d = game.accounts.data, s = d.
 await b.close();
 for (const [k, v] of Object.entries(out)) console.log(k.padEnd(12), JSON.stringify(v));
 const ok = !out.lockedButton && out.openButton && out.scene.active && out.scene.people.join() === 'grist' && out.scene.all === 10 && out.scene.stalls === 9 && out.scene.greyed && out.scene.lockedSub === 'Beat Archon Varek' && out.hover.includes('Mother Grist') && out.panel
-  && out.buy.paid === 15 && out.buy.stock[1] === out.buy.stock[0] - 1 && out.buy.got === 1 && !out.buy.rareOffered
-  && out.sell.got === 3 && out.sell.left === 3 && !out.sell.legendaryListed
+  && out.buy.paid === 75 && out.buy.stock[1] === out.buy.stock[0] - 1 && out.buy.got === 1 && !out.buy.rareOffered
+  && out.sell.got === 16 && out.sell.left === 3 && !out.sell.legendaryListed
   && !out.hunt.before.bang && out.hunt.after.bang && out.hunt.after.sanctumBang && out.hunt.gold === 720 && out.hunt.em === 2 && out.hunt.xp === 50 && out.hunt.q === 1 && out.hunt.bangGone
   && out.supply.scrapLeft === 2 && out.supply.q === 2 && out.recover.placed.n === 1 && out.recover.placed.id === 'grist_ledger' && out.recover.inStash === 1 && out.recover.left === 0
   && out.restock === 8 && out.claimRelic.q === 3 && out.claimRelic.ledger === 0 && out.perk.hpGain === 300 && out.perk.flaskGain === 0 && out.perk.sigil

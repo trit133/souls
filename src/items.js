@@ -7,11 +7,11 @@
 // for the pouch). Gold is banked the moment it's earned.
 
 export const RARITY = {
-  common: { name: 'Common', color: '#b8b0a0', value: 5 },
-  uncommon: { name: 'Uncommon', color: '#6ac85a', value: 15 },
-  rare: { name: 'Rare', color: '#4a9aff', value: 50 },
-  epic: { name: 'Epic', color: '#b05aff', value: 150 },
-  legendary: { name: 'Legendary', color: '#ffa82a', value: 500 },
+  common: { name: 'Common', color: '#b8b0a0', value: 25 },
+  uncommon: { name: 'Uncommon', color: '#6ac85a', value: 80 },
+  rare: { name: 'Rare', color: '#4a9aff', value: 400 },
+  epic: { name: 'Epic', color: '#b05aff', value: 1500 },
+  legendary: { name: 'Legendary', color: '#ffa82a', value: 6000 },
 };
 export const TIERS = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 export const REGION_WORTH = { r1: 1, r2: 2, r3: 4 }; // later regions' materials are worth more
@@ -354,7 +354,8 @@ export const ITEMS = {
   gem_gorrath: { kind: 'gem', region: 'r1', rarity: 'legendary', name: 'Slag Engine Gem', icon: 'gem_gorrath', boss: 'gorrath', desc: 'Gorrath\'s furnace head in cooled slag. Show it to the Shattered March\'s gatekeeper.' },
 };
 export const gemFor = (bossId) => Object.keys(ITEMS).find((k) => ITEMS[k].kind === 'gem' && ITEMS[k].boss === bossId);
-export const itemValue = (id) => { const it = ITEMS[id]; return it && it.kind !== 'relic' ? RARITY[it.rarity].value * (REGION_WORTH[it.region] || 1) : 0; }; // (a relic has no price)
+export const GEM_WORTH = 40000; // a mini boss's gem: worth far more than any material
+export const itemValue = (id) => { const it = ITEMS[id]; return it && it.kind !== 'relic' ? (it.kind === 'gem' ? GEM_WORTH : RARITY[it.rarity].value) * (REGION_WORTH[it.region] || 1) : 0; }; // (a relic has no price)
 const matsOf = (region, rarity) => Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'mat' && ITEMS[k].region === region && ITEMS[k].rarity === rarity);
 
 // ---------- rolling loot ----------
