@@ -878,3 +878,197 @@ MAGE_ARMORY.staff = {
     return [1.5, 0.3];
   },
 };
+
+// ======================= the Shrike's and the Adept's detail =======================
+// Each piece keeps its shape and gains its detail on top (the same pass the Templar's pieces had, written as an extra
+// layer so the silhouettes stay as they were): seams and stitching, buckles and rivets, straps, pockets, vents,
+// filters, scales, coils, embroidery. Called after the piece itself with the same arguments.
+const stitches = (p, x0, x1, y, z, n, m) => { for (let i = 0; i < n; i++) B(p, 0.012, 0.006, 0.008, m, x0 + ((x1 - x0) * i) / Math.max(1, n - 1), y, z); };
+const buckle = (p, x, y, z, M, rz = 0) => { B(p, 0.045, 0.04, 0.012, M.trim, x, y, z, 0, 0, rz); B(p, 0.022, 0.018, 0.016, M.detail, x, y, z + 0.002, 0, 0, rz); };
+const ROGUE_DETAIL = {
+  cloak: {
+    tattered(r, M, T, H) { // the hood's rim and seam, toggles and patches on the poncho, a rope belt, torn fringe
+      const { bulk: b } = r.dims;
+      frame(H, 0.24, 0.27, 0, 0.17, 0.162, M.trim, 0.016, 0.02);
+      stitches(H, -0.12, 0.12, 0.36, 0.1, 9, M.detail);
+      for (const y of [0.56, 0.47]) { B(T, 0.025, 0.05, 0.02, M.trim, -0.06, y, 0.2 * b + 0.01); B(T, 0.04, 0.008, 0.008, M.detail, -0.06, y, 0.2 * b + 0.02); }
+      for (const [x, y] of [[0.12, 0.5], [-0.15, 0.42]]) { B(T, 0.07, 0.06, 0.008, M.detail, x * b, y, 0.2 * b + 0.006); stitches(T, x * b - 0.03, x * b + 0.03, y + 0.03, 0.2 * b + 0.012, 4, M.trim); }
+      B(T, 0.6 * b, 0.025, 0.42 * b, M.detail, 0, 0.3, -0.005); for (const s of [1, -1]) strip(r, T, s * 0.06, 0.29, 0.21 * b, 0.015, [0.12], M.detail, { spring: RIBBON, lx: [-0.6, 0.3], th: 0.01 });
+    },
+    mantle(r, M, T, H) { // the cowl's wraps, a clasp chain, pouches on the chest strap, the cape's hem stitched
+      const { bulk: b } = r.dims;
+      for (let i = 0; i < 4; i++) B(H, 0.325 - i * 0.02, 0.008, 0.325 - i * 0.02, M.detail, 0, 0.02 + i * 0.045, 0.01, 0, 0, 0.08);
+      for (let i = 0; i < 4; i++) B(T, 0.015, 0.015, 0.02, M.trim, -0.06 + i * 0.04, 0.68, 0.2 * b);
+      for (const [x, y] of [[-0.08, 0.38], [0.06, 0.58]]) { B(T, 0.06, 0.07, 0.04, M.detail, x, y, 0.16 * b, 0, 0, 0.55); B(T, 0.062, 0.02, 0.042, M.trim, x, y + 0.03, 0.16 * b, 0, 0, 0.55); }
+      for (const s of [1, -1]) B(T, 0.025, 0.025, 0.025, M.trim, s * 0.25 * b, 0.7, 0.1);
+    },
+    wraith(r, M, T, H) { // vents and cables on the generator, emitters on the shoulders, seams down the hood
+      const { bulk: b } = r.dims;
+      for (const s of [1, -1]) { B(H, 0.012, 0.28, 0.012, M.detail, s * 0.08, 0.21, 0.13); C(T, 0.025, 0.03, 0.05, M.trim, s * 0.24 * b, 0.74, -0.04); C(T, 0.018, 0.018, 0.02, M.glow, s * 0.24 * b, 0.775, -0.04); }
+      for (let i = 0; i < 4; i++) B(T, 0.18, 0.008, 0.02, M.trim, 0, 0.42 + i * 0.03, -0.17 * b - 0.09);
+      for (const s of [1, -1]) B(T, 0.02, 0.02, 0.26, M.detail, s * 0.07, 0.64, -0.12 * b, -0.6, 0, 0);
+    },
+    raven(r, M, T, H) { // a vein down every quill, a skull clasp at the collar, rivets along the beak
+      const { bulk: b } = r.dims;
+      for (let k = 0; k < 11; k++) { const a = -PI * 0.8 + (k / 10) * PI * 1.6; B(T, 0.006, 0.12, 0.006, M.detail, Math.sin(a) * 0.23 * b, 0.8, Math.cos(a) * 0.17 * b, -Math.cos(a) * 0.5, 0, Math.sin(a) * 0.5); }
+      B(T, 0.06, 0.06, 0.03, colorMat(r, null, 0xd8d0bc), 0, 0.72, 0.2 * b); for (const s of [1, -1]) B(T, 0.014, 0.014, 0.01, M.glow, s * 0.014, 0.73, 0.2 * b + 0.016);
+      rivets(H, -0.04, 0.04, 0.37, 0.19, 3, M.detail, 0.012);
+    },
+  },
+  mask: {
+    wrap(r, M, H) { // rivets round the goggles, filter grille rings, hose couplings, cheek vents
+      for (const s of [1, -1]) { for (let k = 0; k < 6; k++) { const a = (k / 6) * PI * 2; B(H, 0.01, 0.01, 0.01, M.detail, s * 0.055 + Math.cos(a) * 0.05, 0.2 + Math.sin(a) * 0.05, 0.192); } for (let i = 0; i < 3; i++) B(H, 0.03, 0.006, 0.01, M.detail, s * 0.095, 0.12 + i * 0.015, 0.175); C(H, 0.022, 0.022, 0.02, M.trim, s * 0.07, 0.08, 0.17, 0.9, s * 0.3); }
+      for (let i = 0; i < 3; i++) ring(H, 0.045 - i * 0.012, 0.005, M.detail, 0, 0.078, 0.252, PI / 2 + 0.3, 0, 10);
+    },
+    iron(r, M, H) { // rivets round the frame, slatted vents in the cheeks, a ridged brow
+      rivets(H, -0.1, 0.1, 0.29, 0.188, 6, M.detail, 0.013); rivetCol(H, 0.12, 0.08, 0.27, 0.188, 4, M.detail, 0.013); rivetCol(H, -0.12, 0.08, 0.27, 0.188, 4, M.detail, 0.013);
+      for (const s of [1, -1]) for (let i = 0; i < 4; i++) B(H, 0.05, 0.007, 0.012, M.detail, s * 0.06, 0.1 + i * 0.018, 0.188, -0.1);
+      B(H, 0.22, 0.025, 0.03, M.trim, 0, 0.255, 0.188, -0.1);
+    },
+    bone(r, M, H) { // cracks, a heavy brow, cheekbones, a stitched jaw
+      const bone = colorMat(r, M.mainId, 0xd8d0bc);
+      B(H, 0.21, 0.03, 0.035, bone, 0, 0.25, 0.168); for (const s of [1, -1]) B(H, 0.05, 0.025, 0.03, bone, s * 0.07, 0.15, 0.172, 0, 0, s * 0.3);
+      for (const [x, y, rz] of [[0.06, 0.27, 0.8], [-0.07, 0.13, -0.6], [0.02, 0.07, 0.3]]) B(H, 0.006, 0.05, 0.034, M.detail, x, y, 0.17, 0, 0, rz);
+      for (let i = 0; i < 5; i++) B(H, 0.006, 0.02, 0.01, M.detail, -0.04 + i * 0.02, 0.075, 0.183);
+    },
+    kitsune(r, M, H) { // painted markings, whiskers, a jewel on the brow
+      for (const s of [1, -1]) { for (let i = 0; i < 3; i++) B(H, 0.05, 0.006, 0.01, M.trim, s * 0.07, 0.13 + i * 0.012, 0.21, 0, 0, s * (0.2 - i * 0.15)); B(H, 0.02, 0.05, 0.01, M.trim, s * 0.04, 0.25, 0.18, 0, 0, s * 0.5); }
+      oct(H, 0.015, M.glow, 0, 0.26, 0.18); B(H, 0.06, 0.02, 0.012, M.trim, 0, 0.165, 0.248, 0.15);
+    },
+  },
+  shirt: {
+    jerkin(r, M, T) { // flaps and buckles on the pouches, D-rings on the webbing, an antenna, a belt buckle
+      const { bulk: b } = r.dims, f = 0.14 * b;
+      for (const [x, y] of [[-0.1, 0.32], [0.1, 0.32], [-0.12, 0.5], [0.12, 0.5]]) { B(T, 0.084, 0.03, 0.045, M.detail, x * b, y + 0.035, f + 0.022); B(T, 0.015, 0.02, 0.012, M.trim, x * b, y + 0.02, f + 0.045); }
+      for (const s of [1, -1]) ring(T, 0.015, 0.004, M.trim, s * 0.08, 0.62, f + 0.02, 0, 0, 6);
+      B(T, 0.006, 0.18, 0.006, M.detail, 0.1, 0.72, f + 0.01, 0, 0, -0.2); B(T, 0.012, 0.012, 0.012, M.glow, 0.118, 0.81, f + 0.01);
+      buckle(T, 0, 0.07, 0.14 * b, M);
+    },
+    brigandine(r, M, T) { // rivets on every band, studs round the collar, pockets, side buckles
+      const { bulk: b } = r.dims, f = 0.15 * b;
+      for (let i = 0; i < 4; i++) rivets(T, -0.15 * b, 0.15 * b, 0.6 - i * 0.085, f + 0.017, 7, M.detail, 0.012);
+      rivets(T, -0.15, 0.15, 0.74, 0.17, 7, M.detail, 0.013);
+      for (const s of [1, -1]) { B(T, 0.07, 0.07, 0.03, M.trim, s * 0.13 * b, 0.22, f + 0.01); B(T, 0.072, 0.02, 0.032, M.detail, s * 0.13 * b, 0.25, f + 0.012); buckle(T, s * 0.255 * b, 0.45, 0.05, M, PI / 2); }
+    },
+    assassin(r, M, T) { // folds in the sash, knife hilts and guards, a buckle, gloves
+      const { bulk: b } = r.dims, f = 0.14 * b;
+      for (let i = 0; i < 4; i++) B(T, 0.1, 0.006, 0.01, M.detail, 0.12 - i * 0.08, 0.6 - i * 0.12, f + 0.012, 0, 0, -0.62);
+      for (let k = 0; k < 6; k++) { const x = -0.17 + k * 0.068, y = 0.64 - k * 0.075; B(T, 0.04, 0.012, 0.02, M.trim, x * b - 0.02, y + 0.03, f + 0.04, 0, 0, 0.62); }
+      buckle(T, 0, 0.1, 0.14 * b, M);
+      for (const L of [true, false]) B(hand(r, L), 0.12, 0.09, 0.12, M.detail, 0, 0.01, 0);
+    },
+    shadowweave(r, M, T) { // ribbing down the sides, studs on the collar, pads on the knees
+      const { bulk: b } = r.dims;
+      for (const s of [1, -1]) for (let i = 0; i < 6; i++) B(T, 0.01, 0.012, 0.2 * b, M.detail, s * 0.235 * b, 0.3 + i * 0.06, 0);
+      rivets(T, -0.12, 0.12, 0.72, 0.16, 5, M.glow, 0.012);
+      for (const L of [true, false]) { B(shin(r, L), 0.12 * b, 0.08, 0.04, M.trim, 0, -0.03, 0.08); B(shin(r, L), 0.02, 0.02, 0.01, M.glow, 0, -0.03, 0.1); }
+    },
+  },
+  band: {
+    cloth(r, M, arm) { // a knot where it's tied, stitching along the wraps
+      const { bulk: b } = r.dims;
+      for (let i = 0; i < 4; i++) stitches(arm, -0.05 * b, 0.05 * b, -0.08 - i * 0.05, 0.075 * b, 4, M.detail);
+      B(arm, 0.05, 0.03, 0.03, M.trim, 0.075 * b, -0.21, 0.03, 0, 0, 0.6);
+    },
+    bracer(r, M, arm) { // a bezel round the screen, rivets on the housing, couplings on the cable
+      const { bulk: b } = r.dims;
+      B(arm, 0.025, 0.1, 0.012, M.trim, 0.08 * b, -0.18, 0.055); B(arm, 0.025, 0.1, 0.012, M.trim, 0.08 * b, -0.18, -0.055);
+      for (const y of [-0.13, -0.23]) for (const z of [-0.06, 0.06]) B(arm, 0.012, 0.012, 0.012, M.detail, -0.075 * b, y, z);
+      for (const y of [-0.04, -0.1]) C(arm, 0.022, 0.022, 0.015, M.trim, 0, y, -0.075 * b);
+    },
+    serpent(r, M, arm) { // a ridge of scales down the coil, fangs
+      const { bulk: b } = r.dims;
+      for (let k = 0; k < 8; k++) { const a = k * 0.95; K(arm, 0.01, 0.025, M.trim, Math.cos(a) * 0.08 * b, -0.05 - k * 0.025, Math.sin(a) * 0.086 * b, 0, -a, 0, 3); }
+      const hd = r.j[arm === r.j.armL ? 'armL' : 'armR'];
+      for (const x of [-0.012, 0.012]) K(arm, 0.006, 0.025, colorMat(r, null, 0xf0eadc), 0.075 * b + x, -0.29, 0.07, PI, 0, 0, 3);
+    },
+    blade(r, M, arm) { // rivets on the housing, a piston behind the blade, teeth up its back
+      const { bulk: b } = r.dims;
+      rivetCol(arm, -0.08 * b, -0.16, -0.24, 0.0, 3, M.detail, 0.012);
+      C(arm, 0.012, 0.012, 0.14, M.detail, 0.085 * b, -0.12, -0.035);
+      for (let i = 0; i < 6; i++) K(arm, 0.008, 0.02, M.trim, 0.1 * b, -0.18 + i * 0.05, -0.028, -PI / 2, 0, 0, 3);
+    },
+  },
+};
+const MAGE_DETAIL = {
+  shoulder: {
+    mantle(r, M, T) { // a row of studs up the collar's spine, ribs across it, buckles on the caps
+      const { bulk: b, sw } = r.dims;
+      for (let i = 0; i < 5; i++) B(T, 0.28, 0.008, 0.055, M.trim, 0, 0.74 + i * 0.06, -0.165 - i * 0.01, -0.15);
+      for (const s of [1, -1]) { rivets(T, s * 0.12, s * 0.18, 0.85, 0.0, 3, M.detail, 0.013); B(T, 0.04, 0.03, 0.015, M.trim, s * sw, 0.66, 0.11 * b); }
+    },
+    pauldron(r, M, T) { // copper wire turns between the coils, a terminal on top, rivets on the cap
+      const { bulk: b, sw } = r.dims, pv = pivot(T, -sw, 0.68, 0, 0, 0, 0.3);
+      for (let i = 0; i < 7; i++) ring(pv, 0.162 * b, 0.006, M.detail, -0.02, -0.04 + i * 0.018, 0, PI / 2, 0, 12);
+      C(pv, 0.03, 0.03, 0.04, M.trim, -0.02, 0.13, 0); for (let k = 0; k < 4; k++) { const a = (k / 4) * PI * 2; B(pv, 0.014, 0.014, 0.014, M.detail, -0.02 + Math.cos(a) * 0.11 * b, 0.13, Math.sin(a) * 0.11 * b); }
+      const o = pivot(T, sw, 0.68, 0, 0, 0, -0.3); rivets(o, -0.08 * b, 0.1 * b, 0.0, 0.135 * b, 4, M.detail, 0.012);
+    },
+    crystal(r, M, T) { // emitter vanes on the caps, a riveted rim
+      const { bulk: b, sw } = r.dims;
+      for (const s of [1, -1]) { const pv = pivot(T, s * sw, 0.68, 0, 0, 0, -s * 0.3); for (let k = 0; k < 4; k++) { const a = (k / 4) * PI * 2 + PI / 4; B(pv, 0.012, 0.04, 0.035, M.trim, s * 0.02 + Math.cos(a) * 0.08, 0.05, Math.sin(a) * 0.08, 0, -a, 0); } rivets(pv, s * 0.02 - 0.08 * b, s * 0.02 + 0.08 * b, 0.0, 0.125 * b, 4, M.detail, 0.012); }
+    },
+    phoenix(r, M, T) { // feathered barbs on each vane, a mount plate with rivets
+      const { bulk: b, sw } = r.dims;
+      for (const s of [1, -1]) { const pv = pivot(T, s * (sw - 0.04), 0.7, -0.14 * b, -0.3, 0, -s * 0.2); rivets(pv, -0.06, 0.06, 0.045, 0.16, 3, M.trim, 0.014);
+        for (let i = 0; i < 3; i++) { const v = pivot(pv, s * 0.03 * i, 0.02, -0.02, -0.2 - i * 0.12, 0, -s * (0.25 + i * 0.35)); for (let f = 0; f < 3; f++) B(v, 0.012, 0.06, 0.05, M.trim, 0, 0.08 + f * 0.08 - i * 0.02, -0.05, -0.6); } }
+    },
+  },
+  shirt: {
+    runecoat(r, M, T) { // buttons down the front, stitched lapels, cuffs, a pocket
+      const { bulk: b } = r.dims, f = 0.142 * b;
+      for (let i = 0; i < 4; i++) for (const s of [1, -1]) B(T, 0.018, 0.018, 0.012, M.trim, s * 0.05, 0.62 - i * 0.08, f + 0.012);
+      for (const s of [1, -1]) stitches(T, s * 0.02, s * 0.1, 0.65, f + 0.028, 5, M.detail);
+      B(T, 0.07, 0.06, 0.012, M.detail, -0.12 * b, 0.36, f + 0.006); B(T, 0.072, 0.018, 0.014, M.trim, -0.12 * b, 0.385, f + 0.008);
+      for (const L of [true, false]) stitches(fore(r, L), -0.05 * b, 0.05 * b, -0.225, 0.08 * b, 4, M.detail);
+    },
+    robe(r, M, T) { // embroidery down the front band, tassels on the belt, a cowl seam
+      const { bulk: b } = r.dims;
+      for (let i = 0; i < 6; i++) { B(T, 0.03, 0.012, 0.01, M.glow, 0, 0.3 + i * 0.06, 0.152 * b + 0.012); B(T, 0.012, 0.03, 0.01, M.glow, 0, 0.3 + i * 0.06, 0.152 * b + 0.012); }
+      for (const x of [0.04, 0.1]) strip(r, T, x, 0.08, 0.14 * b + 0.01, 0.012, [0.06, 0.05], M.trim, { spring: RIBBON, lx: [-0.6, 0.3], th: 0.008 });
+      stitches(T, -0.14, 0.14, 0.73, -0.19 * b, 8, M.detail);
+    },
+    starcape(r, M, T) { // a clasp chain between the shoulders, quilting on the tunic
+      const { bulk: b } = r.dims, f = 0.142 * b;
+      for (let i = 0; i < 6; i++) ring(T, 0.012, 0.004, M.trim, -0.13 * b + i * 0.052 * b, 0.68, 0.07 + Math.sin((i / 5) * PI) * 0.03, 0, 0, 6);
+      for (let i = 0; i < 4; i++) for (const s of [1, -1]) B(T, 0.1, 0.006, 0.008, M.detail, s * 0.1 * b, 0.36 + i * 0.07, f + 0.004, 0, 0, s * 0.6);
+    },
+    archmage(r, M, T) { // cog teeth on the collar, cable sockets up the spine, a censer at the belt
+      const { bulk: b } = r.dims;
+      for (let k = 0; k < 10; k++) B(T, 0.025, 0.02, 0.025, M.trim, -0.16 + k * 0.035, 0.8, 0.13);
+      for (let i = 0; i < 5; i++) C(T, 0.016, 0.016, 0.02, M.glow, 0, 0.66 - i * 0.12, -0.16 * b - 0.03, PI / 2);
+      const ch = pivot(T, 0.12, 0.06, 0.15 * b); B(ch, 0.05, 0.06, 0.05, M.trim, 0, -0.03, 0); B(ch, 0.03, 0.03, 0.055, M.glow, 0, -0.03, 0); B(ch, 0.006, 0.05, 0.006, M.detail, 0, 0.02, 0);
+    },
+  },
+  pants: {
+    trousers(r, M) { // pocket flaps and buttons, laces up the boots, stitched knees
+      const { bulk: b } = r.dims;
+      for (const L of [true, false]) { const lg = leg(r, L), sh = shin(r, L), s = L ? 1 : -1;
+        B(lg, 0.012, 0.012, 0.012, M.trim, s * 0.1 * b, -0.21, 0.035); stitches(sh, -0.05 * b, 0.05 * b, 0.03, 0.1, 4, M.detail);
+        for (let i = 0; i < 4; i++) B(sh, 0.05, 0.006, 0.01, M.detail, 0, -0.29 - i * 0.03, 0.09 * b, 0, 0, i % 2 ? 0.4 : -0.4); }
+    },
+    greaves(r, M) { // a ridge down each greave, rivets, straps round the calves
+      const { bulk: b } = r.dims;
+      for (const L of [true, false]) { const sh = shin(r, L);
+        B(sh, 0.02, 0.3, 0.02, M.trim, 0, -0.24, 0.105); rivetCol(sh, 0.055 * b, -0.12, -0.36, 0.1, 4, M.detail, 0.012); rivetCol(sh, -0.055 * b, -0.12, -0.36, 0.1, 4, M.detail, 0.012);
+        for (const y of [-0.18, -0.3]) { B(sh, 0.155 * b, 0.02, 0.175 * b, M.detail, 0, y, 0); B(sh, 0.025, 0.025, 0.012, M.trim, 0.075 * b, y, 0.03); } }
+    },
+    runed(r, M) { // little nodes along the traces, seams up the backs
+      const { bulk: b } = r.dims;
+      for (const L of [true, false]) { const lg = leg(r, L), sh = shin(r, L), s = L ? 1 : -1;
+        for (const y of [-0.1, -0.25, -0.35]) B(lg, 0.02, 0.02, 0.02, M.glow, s * 0.07 * b, y, 0.025);
+        for (const y of [-0.12, -0.28]) B(sh, 0.02, 0.02, 0.02, M.glow, 0, y, 0.085 * b);
+        B(sh, 0.008, 0.3, 0.008, M.detail, 0, -0.22, -0.08 * b); }
+    },
+    astral(r, M) { // a star-chart band on each thigh, a clasp at the anklet
+      const { bulk: b } = r.dims;
+      for (const L of [true, false]) { const lg = leg(r, L), sh = shin(r, L);
+        B(lg, 0.15 * b, 0.03, 0.17 * b, M.detail, 0, -0.18, 0); for (let i = 0; i < 4; i++) B(lg, 0.012, 0.012, 0.012, M.glow, -0.05 * b + i * 0.033 * b, -0.18, 0.09 * b);
+        B(sh, 0.03, 0.03, 0.02, M.trim, 0, -0.4, 0.09 * b); }
+    },
+  },
+};
+// fold the detail into the pieces: each builder runs as before, then its detail on the same arguments
+for (const [ARM, DET] of [[ROGUE_ARMORY, ROGUE_DETAIL], [MAGE_ARMORY, MAGE_DETAIL]]) for (const [slot, pieces] of Object.entries(DET)) for (const [id, extra] of Object.entries(pieces)) {
+  const base = ARM[slot]?.[id]; if (!base) continue;
+  ARM[slot][id] = function (...a) { const ret = base.apply(this, a); extra.apply(this, a); return ret; };
+}
