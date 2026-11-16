@@ -1254,3 +1254,11 @@ html.phone .tile-big { width: 165px; } html.phone .tile-small, html.phone #btn-s
 .cl-arrow { font-style: normal; color: #8a6a4a; font-size: 12px; }
 .cl-desc { font: 11px/1.35 Georgia, serif; color: #a89a84; margin-top: 3px; }
 .cl-empty { font: 12px Georgia, serif; color: #a89a84; }
+
+/* the skill tree: no bar under it; Reset and Done float over the bottom of the tree (the node count gone) */
+#tree { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+#tree-foot { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4; }
+#tree-resetbar { position: absolute; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4; background: rgba(8,7,10,.8); padding: 4px 10px; border: 1px solid #3a3020; white-space: nowrap; }
+#tree-count { display: none; }
+html.phone #tree-foot { bottom: calc(10px + env(safe-area-inset-bottom)); }
+html.phone #tree-resetbar { bottom: calc(52px + env(safe-area-inset-bottom)); }

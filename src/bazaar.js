@@ -43,6 +43,7 @@ const SIGILS = {
 };
 const SPAL = { o: '#1a0c06', y: '#d8a040', Y: '#ffe890', r: '#a0141a', R: '#ff4a3a', g: '#2a8a4a', G: '#6aff9a', W: '#e8fff0' };
 
+const V0 = new THREE.Vector3(), V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), V3 = new THREE.Vector3();
 export class Bazaar {
   constructor(game) {
     this.game = game; this.active = false; this.time = 0;
@@ -294,7 +295,17 @@ export class Bazaar {
     this.sky?.(t);
     for (const l of this.lamps) { l.pl.intensity = l.base * (0.88 + Math.sin(t * 7 + l.ph) * 0.08 + Math.sin(t * 17 + l.ph) * 0.04); if (l.flame) l.flame.scale.y = 1 + Math.sin(t * 11 + l.ph) * 0.15; }
     // the camera drifts a little with the mouse
-    if (this.camBase) { this.camera.position.x += (this.camBase.x + this.mouseX * 0.6 - this.camera.position.x) * Math.min(1, dt * 3); this.camera.lookAt(this.camera.position.x * 0.4, 1.75, -2.0); }
+    // and leans in on a trader whose window is open (a little: about a third of the way), easing back out on close
+    if (this.camBase) {
+      const it = this.trader && this.items.find((x) => x.T === this.trader), k = 1 - Math.exp(-dt * 4);
+      this.zoomK = (this.zoomK || 0) + ((it ? 1 : 0) - (this.zoomK || 0)) * k;
+      if (it) this.zoomAt = it.head.getWorldPosition(this.zoomAt || new THREE.Vector3());
+      const z = this.zoomK, F = this.zoomAt || V0.set(0, 1.75, -2);
+      const off = this.game.input?.isPhone ? 0 : 1.1; // (the trader framed left of centre: his window covers the right)
+      const want = V1.set(this.camBase.x + this.mouseX * 0.6 * (1 - z), this.camBase.y, this.camBase.z).lerp(V2.set(F.x + off * 0.6, F.y + 0.7, F.z + 4.2), z * 0.45);
+      this.camera.position.lerp(want, Math.min(1, dt * 3));
+      this.camera.lookAt(V3.set(this.camera.position.x * 0.4, 1.75, -2.0).lerp(V2.set(F.x + off, F.y - 0.3, F.z), z * 0.7));
+    }
     const V = new THREE.Vector3();
     for (const p of this.people) {
       if (p.open) {
