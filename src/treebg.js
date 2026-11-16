@@ -470,6 +470,110 @@ const ANIM = {
     glowAt(c, A.x + 0.5, A.y, 3, [255, 190, 90], 0.35);
     for (let i = 0; i < A.h; i++) dot(c, A.x + (i === A.h - 1 ? A.sw : 0), A.y - i, i === 0 ? '#ffb040' : '#fff2b0');
   },
+  // a lantern hanging from a pivot, swinging gently: its chain, an iron cage round glowing glass, a flame inside;
+  // drawn bigger than the painted one so it covers it
+  lantern(c, A, t) {
+    const ang = Math.sin(t * 1.3 + A.ph) * 0.12, len = Math.hypot(A.x - A.px, A.y - A.py);
+    c.save(); c.translate(A.px, A.py); c.rotate(ang);
+    const w = A.w, h = A.h, y0 = len - h / 2, fl = 0.85 + 0.15 * Math.sin(t * 13) * Math.sin(t * 7.3);
+    c.fillStyle = '#26221e'; for (let y = 0; y < y0 - h * 0.2; y += 3) c.fillRect(-1, y, 2, 2); // (the chain, link by link)
+    glowAt(c, 0, len, w * 2, [255, 160, 70], 0.32 * fl);
+    // the glass: a warm gradient, brightest round the flame
+    const g = c.createRadialGradient(0, len, 1, 0, len, h * 0.5); g.addColorStop(0, `rgba(255,236,170,${fl})`); g.addColorStop(0.5, 'rgba(255,170,70,.95)'); g.addColorStop(1, 'rgba(150,60,20,.95)');
+    c.fillStyle = g; c.beginPath(); c.moveTo(-w * 0.42, y0 + h * 0.18); c.lineTo(w * 0.42, y0 + h * 0.18); c.lineTo(w * 0.36, y0 + h * 0.84); c.lineTo(-w * 0.36, y0 + h * 0.84); c.closePath(); c.fill();
+    // the flame
+    c.fillStyle = '#fffbe0'; c.beginPath(); c.ellipse(0, len + h * 0.04, w * 0.07, h * 0.13 * fl, 0, 0, Math.PI * 2); c.fill();
+    // the brass cage: bars, top and bottom rims, a peaked cap and its ring
+    c.fillStyle = '#6a4a22'; for (const fx of [-0.42, 0, 0.42]) c.fillRect(w * fx * (fx ? 0.95 : 1) - 0.5, y0 + h * 0.16, 1.2, h * 0.7);
+    c.fillStyle = '#8a6430'; c.fillRect(-w * 0.5, y0 + h * 0.1, w, h * 0.1); c.fillRect(-w * 0.44, y0 + h * 0.84, w * 0.88, h * 0.09);
+    c.fillStyle = '#b8862c'; c.fillRect(-w * 0.5, y0 + h * 0.1, w, 1); c.fillRect(-w * 0.44, y0 + h * 0.84, w * 0.88, 1);
+    c.fillStyle = '#5a3e1c'; c.beginPath(); c.moveTo(-w * 0.4, y0 + h * 0.1); c.lineTo(0, y0 - h * 0.08); c.lineTo(w * 0.4, y0 + h * 0.1); c.closePath(); c.fill();
+    c.strokeStyle = '#8a6430'; c.lineWidth = 1; c.beginPath(); c.arc(0, y0 - h * 0.12, Math.max(1.5, w * 0.08), 0, Math.PI * 2); c.stroke();
+    c.fillStyle = '#5a3e1c'; c.fillRect(-w * 0.1, y0 + h * 0.93, w * 0.2, h * 0.07);
+    c.restore();
+  },
+  // a radar dish turning on its mast (the painted one hidden behind a patch of night sky), a red light blinking
+  radar(c, A, t) {
+    c.fillStyle = '#060509'; c.beginPath(); c.arc(A.x, A.y, A.r * 1.12, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#2a2a32'; c.fillRect(A.x - 1, A.y, 2, A.mast);
+    const cs = Math.cos(t * 0.7), rx = Math.max(A.r * 0.15, A.r * Math.abs(cs));
+    c.fillStyle = cs > 0 ? '#4a4a54' : '#2a2a32'; c.beginPath(); c.ellipse(A.x, A.y, rx, A.r * 0.9, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#8a8a96'; c.lineWidth = 1; c.stroke();
+    c.strokeStyle = '#2a2a32'; c.beginPath(); c.moveTo(A.x, A.y); c.lineTo(A.x + cs * A.r * 0.9, A.y - A.r * 0.2); c.stroke();
+    if (Math.sin(t * 4) > 0) { glowAt(c, A.x + cs * A.r * 0.9, A.y - A.r * 0.2, 6, [255, 40, 30], 0.8); dot(c, A.x + cs * A.r * 0.9, A.y - A.r * 0.2, '#ff5040', 2); }
+  },
+  // a light strip: dark segments, a bright pulse running along it (up a vertical one, along a level one)
+  scan(c, A, t) {
+    const vert = A.y1 - A.y0 > A.x1 - A.x0, L = vert ? A.y1 - A.y0 : A.x1 - A.x0, n = Math.max(3, Math.round(L / 3));
+    c.fillStyle = '#100808'; c.fillRect(A.x0 - 1, A.y0 - 1, A.x1 - A.x0 + 2, A.y1 - A.y0 + 2);
+    const head = ((t * 0.8 + A.ph) % 1) * n;
+    for (let i = 0; i < n; i++) {
+      const d = (head - i + n) % n, f = Math.max(0.25, 1 - d / 4);
+      c.fillStyle = rgba(f > 0.9 ? lift(A.rgb, 0.5) : A.rgb, f);
+      if (vert) c.fillRect(A.x0, A.y1 - (i + 1) * L / n + 0.5, A.x1 - A.x0, L / n - 1); else c.fillRect(A.x0 + i * L / n + 0.5, A.y0, L / n - 1, A.y1 - A.y0);
+    }
+    glowAt(c, (A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2, L * 0.7, A.rgb, 0.18);
+  },
+  // coolant running along a pipe: a lit line with bright pulses travelling down it
+  flow(c, A, t) {
+    const L = Math.hypot(A.x1 - A.x0, A.y1 - A.y0), ux = (A.x1 - A.x0) / L, uy = (A.y1 - A.y0) / L;
+    c.strokeStyle = rgba(A.rgb, 0.3); c.lineWidth = A.w; c.beginPath(); c.moveTo(A.x0, A.y0); c.lineTo(A.x1, A.y1); c.stroke();
+    for (let d = (t * 10) % 14; d < L; d += 14) for (let k = 0; k < 3; k++) dot(c, A.x0 + ux * (d - k), A.y0 + uy * (d - k), rgba(lift(A.rgb, 0.6), 1 - k * 0.3), 1);
+  },
+  // smoke curling up from a muzzle or a chimney, puffs growing and fading
+  smoke(c, A, t, dt) {
+    A.acc += dt * 2.5;
+    while (A.acc >= 1) { A.acc--; A.ps.push({ x: A.x, y: A.y, r: 1, age: 0, life: 2.5 + Math.random() * 1.5, vx: A.vx * 4 + (Math.random() - 0.5) * 2 }); }
+    for (const p of A.ps) { p.age += dt; p.x += p.vx * dt; p.y -= dt * 5; p.r = 1 + p.age * 2.2 * A.s * 4; const k = 1 - p.age / p.life; c.fillStyle = `rgba(70,66,74,${(0.4 * k).toFixed(3)})`; c.beginPath(); c.arc(p.x, p.y, p.r, 0, Math.PI * 2); c.fill(); }
+    A.ps = A.ps.filter((p) => p.age < p.life);
+  },
+  // an indicator light pulsing on and off
+  blink(c, A, t) {
+    const on = 0.5 + 0.5 * Math.sin((t / A.per) * Math.PI * 2 + A.ph);
+    glowAt(c, A.x, A.y, A.r * 2.5, A.rgb, 0.55 * on);
+    c.fillStyle = rgba(lift(A.rgb, 0.4 * on), 0.3 + 0.7 * on); c.beginPath(); c.arc(A.x, A.y, A.r * 0.6, 0, Math.PI * 2); c.fill();
+  },
+  // lightning crackling inside a glowing tube now and then
+  arc(c, A, t, dt) {
+    A.next -= dt;
+    if (A.next <= 0) { A.next = 0.6 + Math.random() * 1.6; const pts = []; let x = A.x0 + (A.x1 - A.x0) * (0.3 + Math.random() * 0.4); for (let y = A.y0; y <= A.y1; y += 3) { x = Math.max(A.x0, Math.min(A.x1, x + (Math.random() - 0.5) * 4)); pts.push([x, y]); } A.bolt = { pts, life: 0.18 }; }
+    if (!A.bolt || (A.bolt.life -= dt) <= 0) return;
+    c.strokeStyle = rgba(lift(A.rgb, 0.7), 0.95); c.lineWidth = 1; c.beginPath(); A.bolt.pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke();
+    glowAt(c, (A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2, (A.y1 - A.y0) * 0.6, A.rgb, 0.3);
+  },
+  // a lantern's (or a lamp's) flame, bigger than the painted one: a flickering teardrop, white at its heart
+  bigflame(c, A, t, dt) {
+    if (Math.random() < dt * 14) A.n = 0.75 + Math.random() * 0.4;
+    const h = A.h * A.n, w = A.w, sway = Math.sin(t * 5) * w * 0.15;
+    glowAt(c, A.x, A.y - h * 0.5, h * 1.6, [255, 170, 80], 0.4);
+    for (const [f, col] of [[1, '#ff7a20'], [0.72, '#ffb040'], [0.45, '#fff0a8']]) {
+      c.fillStyle = col; c.beginPath(); c.moveTo(A.x - w / 2 * f, A.y); c.quadraticCurveTo(A.x - w / 2 * f, A.y - h * 0.5 * f, A.x + sway, A.y - h * f); c.quadraticCurveTo(A.x + w / 2 * f, A.y - h * 0.5 * f, A.x + w / 2 * f, A.y); c.closePath(); c.fill();
+    }
+  },
+  // a few bats flapping round a tower in the dark
+  bats(c, A, t) {
+    for (let i = 0; i < A.n; i++) {
+      const a = t * (0.35 + i * 0.07) + A.ph + i * 2.1, x = A.x + Math.cos(a) * A.rx * (0.7 + 0.3 * Math.sin(i)), y = A.y + Math.sin(a * 1.3) * A.ry, flap = Math.sin(t * 14 + i) > 0 ? -2 : 1;
+      c.fillStyle = '#2e2436'; c.fillRect(Math.round(x) - 1, Math.round(y), 3, 2);
+      c.fillRect(Math.round(x) - 4, Math.round(y + flap), 3, 1); c.fillRect(Math.round(x) + 2, Math.round(y + flap), 3, 1);
+      c.fillRect(Math.round(x) - 3, Math.round(y + flap / 2), 1, 1); c.fillRect(Math.round(x) + 3, Math.round(y + flap / 2), 1, 1);
+    }
+  },
+  // a pennant on a pole top, rippling in the wind
+  pennant(c, A, t) {
+    c.fillStyle = '#2a241c'; c.fillRect(Math.round(A.x) - 1, Math.round(A.y) - 1, 2, A.h * 2.2);
+    for (let i = 0; i < A.len; i++) {
+      const u = i / A.len, wave = Math.sin(t * 6 - u * 5) * A.h * 0.35 * u, hh = A.h * (1 - u);
+      c.fillStyle = rgba(i % 3 ? A.rgb : lift(A.rgb, 0.15), 1); c.fillRect(Math.round(A.x + i), Math.round(A.y + wave), 1, Math.max(1, Math.round(hh)));
+    }
+  },
+  // a hologram flickering: scan lines rolling down it, now and then a glitch
+  holo(c, A, t) {
+    const roll = (t * 18) % 4, glitch = Math.sin(t * 2.7 + A.ph) > 0.96;
+    for (let y = A.y0 + roll; y < A.y1; y += 4) { c.fillStyle = rgba(lift(A.rgb, 0.4), 0.22); c.fillRect(A.x0, Math.round(y), A.x1 - A.x0, 1); }
+    if (glitch) { const y = A.y0 + Math.random() * (A.y1 - A.y0); c.fillStyle = rgba(lift(A.rgb, 0.6), 0.6); c.fillRect(A.x0 - 2, Math.round(y), A.x1 - A.x0 + 4, 2); }
+    glowAt(c, (A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2, (A.y1 - A.y0) * 0.6, A.rgb, 0.12 + 0.05 * Math.sin(t * 3));
+  },
   // sparks drifting up round something, twinkling out
   sparks(c, A, t, dt) {
     A.acc += dt * 3;
@@ -567,6 +671,16 @@ export class TreeBackground {
       else if (type === 'sand') this.anims.push({ type, x, y, y1: S.Y0 + a[2] * k, col: a[3] || '#e0c0ff' });
       else if (type === 'flame') this.anims.push({ type, x: Math.round(x), y: Math.round(y), h: 2, sw: 0 });
       else if (type === 'sparks') this.anims.push({ type, x, y, r: a[2] * k, rgb: hexRgb(a[3]), ps: [], acc: 0 });
+      // (the rest: two corners, or a point and sizes, all in the painting's pixels)
+      else if (type === 'lantern') { const [px, py] = at(S, a[2], a[3]); this.anims.push({ type, x, y, px, py, w: a[4] * k, h: a[5] * k, ph: Math.random() * 6 }); }
+      else if (type === 'radar') this.anims.push({ type, x, y, r: a[2] * k, mast: a[3] * k });
+      else if (type === 'scan' || type === 'holo' || type === 'arc') { const [x1, y1] = at(S, a[2], a[3]); this.anims.push({ type, x0: x, y0: y, x1, y1, rgb: hexRgb(a[4]), ph: Math.random() * 6, bolt: null, next: 0 }); }
+      else if (type === 'flow') { const [x1, y1] = at(S, a[2], a[3]); this.anims.push({ type, x0: x, y0: y, x1, y1, rgb: hexRgb(a[4]), w: Math.max(1, (a[5] || 3) * k) }); }
+      else if (type === 'smoke') this.anims.push({ type, x, y, vx: a[2] || 0, ps: [], acc: 0, s: k });
+      else if (type === 'blink') this.anims.push({ type, x, y, r: Math.max(1.5, a[2] * k), rgb: hexRgb(a[3]), per: a[4] || 2, ph: Math.random() * 6 });
+      else if (type === 'bigflame') this.anims.push({ type, x, y, w: Math.max(2, a[2] * k), h: Math.max(3, a[3] * k), n: 1 });
+      else if (type === 'bats') this.anims.push({ type, x, y, rx: a[2] * k, ry: a[3] * k, n: a[4], ph: Math.random() * 6 });
+      else if (type === 'pennant') this.anims.push({ type, x, y, len: a[2] * k, h: a[3] * k, rgb: hexRgb(a[4]) });
     }
     this.lights = [];
     for (const S of [L, R]) for (const [x, y, rad, col, flick] of S.lights) {
