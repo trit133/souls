@@ -15,6 +15,12 @@ for (const [w, h, tag] of [[1280, 720, 'wide'], [2560, 720, 'ultra'], [844, 390,
     await page.waitForFunction((k) => game.treeUI.bg.mode === 'art' && game.treeUI.bg.kind === k, kind, { timeout: 15000 }).catch(() => errs.push(`${kind} ${tag}: art never showed`));
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `/tmp/look/treeart-${kind}-${tag}.png` });
+    if (kind === 'knight' && tag === 'wide') { // (dragged and zoomed: the paintings stay put)
+      const box = await page.locator('#tree-svg').boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 + 250, box.y + box.height / 2 + 200, { steps: 8 }); await page.mouse.up();
+      await page.mouse.wheel(0, -500); await page.waitForTimeout(600);
+      await page.screenshot({ path: `/tmp/look/treeart-${kind}-${tag}-dragged.png` });
+    }
   }
   await page.close();
 }

@@ -5,11 +5,12 @@
 // flames, spirit flames, a rune circle, moonbeams) play on a second canvas at twice the resolution, like the
 // game's own effects. Everything stops while the tree screen is closed.
 //   Knight: the Hall of Fallen Kings. Rogue: the Shadow Realm. Spellsword: the Library Beyond.
-// Now each character has painted art (Jonah's, treeart.js): a left and a right side, each drawn at the screen's height
-// and pinned to its own edge (an ultra-wide screen gets more open middle, never a stretched picture; a narrow one
-// slides them out past the edges so the middle stays clear for the tree). Over them, at the art's own pixel size:
-// pixel fires in its fire bowls and a glow on every lamp, candle, tube and crystal, flickering or breathing. The
-// painted-in-code scenes below show while the art loads (or if it can't).
+// Now each character has painted art (Jonah's, treeart.js): a left and a right side, each the tree screen's full height
+// (its top and bottom always in view: it doesn't drift with the tree) and pinned to its own edge (an ultra-wide screen
+// gets more open middle, never a stretched picture; a narrow one slides them out past the edges so the middle stays
+// clear for the tree). Everything behind the tree is drawn at the game's own pixel size (Settings' Pixel size, as the
+// 3D view: pixel.js PIXEL_H) and blown up crisp, so the paintings, the pixel fires in their fire bowls and the glow on
+// every lamp, candle, tube and crystal share one pixel grid. The painted-in-code scenes below show while the art loads.
 import { createFrame, clearFrame, createFx, composite } from './pixelfx/core/index.js';
 import * as brazier from './pixelfx/fx/fire/brazier.js';
 import * as spiritFlame from './pixelfx/fx/fire/spirit-flame.js';
@@ -18,6 +19,7 @@ import * as runeCircle from './pixelfx/fx/arcane/rune-circle.js';
 import * as godRays from './pixelfx/fx/weather/god-rays.js';
 import * as bowlFire from './pixelfx/fx/fire/bowl-fire.js';
 import { artOf } from './treeart.js';
+import { PIXEL_H } from './pixel.js';
 
 // the painted sides: loaded once a character (a promise of { left, right }, each its image and its treeart entry)
 const ART = new Map();
@@ -31,7 +33,9 @@ function loadArt(kind) {
 }
 // how much of the middle stays clear of the buildings (a share of the screen's width), and how big a pixel of the
 // effects is against the art (the paintings' own pixels are about four of theirs)
-const CLEAR = 0.36, ART_PX = 3.5, SHRINK = 0.7;
+const CLEAR = 0.36;
+// the game's pixel size on this screen: its height over the Pixel size setting's pixels (as the 3D view)
+const gamePx = () => Math.max(1, innerHeight / (PIXEL_H[globalThis.game?.settings?.quality] || PIXEL_H.medium));
 
 const FPS = 20;
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
@@ -421,6 +425,7 @@ export class TreeBackground {
       loadArt(kind).then((A) => { this.arts[kind] = A; if (A && this.kind === kind) { this.kind = null; this.setup(kind); } });
     }
     this.mode = 'code';
+    for (const c of [this.cv, this.fxc]) Object.assign(c.style, { left: '', top: '', width: '', height: '', transform: '' }); // (the drifting size)
     const r = this.cv.getBoundingClientRect(); // a little bigger than the wrap, so it can drift (parallax)
     const S = Math.max(1, Math.round(r.height / 270)), W = Math.max(160, Math.round(r.width / S)), H = Math.max(120, Math.round(r.height / S));
     if (this.kind === kind && this.W === W && this.H === H) return;
@@ -447,45 +452,38 @@ export class TreeBackground {
     }
   }
 
-  // the painted sides: drawn once at the screen's own pixels, the fires and lights on a coarse canvas over them
+  // the painted sides: the tree window's full size, still (no drift), drawn once at the game's pixel size; the fires and
+  // lights on a second canvas on the same pixel grid
   setupArt(kind, A) {
-    const r = this.cv.getBoundingClientRect(), Wc = Math.max(320, Math.round(r.width)), Hc = Math.max(200, Math.round(r.height));
+    for (const c of [this.cv, this.fxc]) Object.assign(c.style, { left: '0', top: '0', width: '100%', height: '100%', transform: 'none' });
+    const r = this.wrap.getBoundingClientRect(), P = gamePx(), Wc = Math.max(80, Math.round(r.width / P)), Hc = Math.max(60, Math.round(r.height / P));
     if (this.kind === kind && this.mode === 'art' && this.W === Wc && this.H === Hc) return;
     this.kind = kind; this.mode = 'art'; this.W = Wc; this.H = Hc;
-    this.cv.width = Wc; this.cv.height = Hc;
+    this.cv.width = Wc; this.cv.height = Hc; this.fxc.width = Wc; this.fxc.height = Hc;
     const c = this.cv.getContext('2d');
     c.fillStyle = '#050407'; c.fillRect(0, 0, Wc, Hc);
-    // the part of the canvas the tree's window shows (the canvas is 112% of it, for the parallax drift)
-    const vis = { x: Wc * 0.06 / 1.12, y: Hc * 0.06 / 1.12, w: Wc / 1.12, h: Hc / 1.12 };
-    // each side the screen's height (its shape kept), standing on the floor at the bottom; where the screen's too narrow
-    // for its building to stay out of the middle it shrinks a little first (to SHRINK at most), then slides out past
-    // its edge
-    const room = vis.w * (0.5 - CLEAR / 2);
+    // each side the window's full height (its shape kept), pinned to its own edge; where the window's too narrow for
+    // its building to stay out of the middle, it slides out past that edge
+    const room = Wc * (0.5 - CLEAR / 2);
     const place = (S, right) => {
-      const inner = right ? S.crop.W - S.edge : S.edge; // (how far the building reaches in from its own edge)
-      let k = vis.h / S.crop.H;
-      if (inner * k > room) k = Math.max(k * SHRINK, room / inner);
-      let X0 = right ? vis.x + vis.w - S.crop.W * k : vis.x;
+      const k = Hc / S.crop.H;
+      let X0 = right ? Wc - S.crop.W * k : 0;
       const edge = X0 + S.edge * k;
-      if (!right && edge > vis.x + room) X0 -= edge - (vis.x + room);
-      if (right && edge < vis.x + vis.w - room) X0 += vis.x + vis.w - room - edge;
-      return { ...S, k, X0, Y0: vis.y + vis.h - S.crop.H * k };
+      if (!right && edge > room) X0 -= edge - room;
+      if (right && edge < Wc - room) X0 += Wc - room - edge;
+      return { ...S, k, X0, Y0: 0 };
     };
     const L = place(A.left, false), R = place(A.right, true);
-    for (const S of [L, R]) {
-      c.imageSmoothingEnabled = S.k < 1; c.imageSmoothingQuality = 'high'; // (shrunk smoothly; blown up crisp)
-      c.drawImage(S.img, S.X0 + S.crop.ox * S.k, S.Y0 + S.crop.oy * S.k, S.crop.w * S.k, S.crop.h * S.k);
-    }
-    // the coarse canvas: one of its pixels about one of the paintings' (ART_PX of the image's own)
-    const P = Math.max(1, ((L.k + R.k) / 2) * ART_PX);
-    this.fxc.width = Math.ceil(Wc / P); this.fxc.height = Math.ceil(Hc / P); this.P = P;
-    const at = (S, x, y) => [(S.X0 + x * S.k) / P, (S.Y0 + y * S.k) / P];
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; // (shrunk to the pixel grid: each pixel the average of what it covers)
+    for (const S of [L, R]) c.drawImage(S.img, S.X0 + S.crop.ox * S.k, S.Y0 + S.crop.oy * S.k, S.crop.w * S.k, S.crop.h * S.k);
+    const at = (S, x, y) => [S.X0 + x * S.k, S.Y0 + y * S.k];
     this.fx = new FxLayer(this.fxc.getContext('2d'));
-    for (const S of [L, R]) for (const [x, y] of S.fires) { const [fx, fy] = at(S, x, y); this.fx.add(bowlFire, fx, fy, { height: 26, seed: (x * 7 + y) | 0 }); }
+    // a fire's size against its bowl: the brazier fire is drawn for a bowl about 30 of its pixels wide
+    for (const S of [L, R]) for (const [x, y] of S.fires) { const [fx, fy] = at(S, x, y); this.fx.add(bowlFire, fx, fy, { height: Math.max(8, Math.round(85 * S.k * 0.9)), seed: (x * 7 + y) | 0 }); }
     this.lights = [];
     for (const S of [L, R]) for (const [x, y, rad, col, flick] of S.lights) {
       const [lx, ly] = at(S, x, y);
-      this.lights.push({ x: lx, y: ly, r: Math.max(2, (rad * S.k) / P), rgb: hexRgb(col), flick, ph: Math.random() * 6.3, n: 1 });
+      this.lights.push({ x: lx, y: ly, r: Math.max(2, rad * S.k), rgb: hexRgb(col), flick, ph: Math.random() * 6.3, n: 1 });
     }
   }
 
@@ -523,6 +521,7 @@ export class TreeBackground {
   // parallax: drift a tenth of the way with the tree as it is dragged, and scale a touch with the zoom
   // (dx, dy: how far the tree has moved on screen, px; z: its zoom)
   setView(dx, dy, z) {
+    if (this.mode === 'art') return; // (the paintings stay put: their top and bottom always in view)
     const r = this.wrap.getBoundingClientRect(), mx = r.width * 0.05, my = r.height * 0.05;
     const tx = Math.max(-mx, Math.min(mx, dx * 0.1)), ty = Math.max(-my, Math.min(my, dy * 0.1)), k = 1 + Math.min(0.05, Math.max(-0.03, (z - 1) * 0.02));
     for (const c of [this.cv, this.fxc]) c.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(3)})`;
