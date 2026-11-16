@@ -32,7 +32,7 @@ export const TREE_ART = {
         ['scan', 230, 88, 258, 212, RED], ['blink', 222, 360, 12, '#ffa040', 1.7],
         ['bubbles', 132, 450, 186, 580, CYAN], ['bubbles', 194, 470, 224, 580, CYAN],
         ['flow', 700, 168, 930, 100, CYAN, 4], ['smoke', 935, 98, 1], // (coolant along the cannon, smoke at its muzzles)
-        ['pennant', 690, 30, 70, 28, '#a42020'], ['bats', 1000, 260, 260, 90, 4], ['blink', 75, 860, 10, CYAN, 1.2],
+        ['pennant', 690, 30, 70, 28, '#a42020'], ['blink', 75, 860, 10, CYAN, 1.2],
       ],
     },
     right: {
@@ -41,11 +41,11 @@ export const TREE_ART = {
       lights: [[1212, 600, 120, FIRE, 1], [1605, 610, 120, FIRE, 1], [1503, 300, 95, RED, 0], [1503, 160, 70, RED, 0], [928, 410, 70, RED, 0], [1078, 90, 40, RED, 0.3], [1352, 700, 70, RED, 0]],
       anims: [
         ['radar', 1060, 58, 52, 64], // (the dish turning on its mast)
-        ['scan', 672, 174, 770, 196, RED], ['smoke', 612, 158, -1], // (the big gun: a charge running down it, smoke at the muzzle)
+        ['smoke', 612, 158, -1], // (smoke at the big gun's muzzle)
         ['bubbles', 1488, 60, 1528, 360, RED], ['arc', 1490, 70, 1526, 350, RED], ['bubbles', 908, 355, 945, 450, RED],
         ['scan', 1366, 590, 1384, 760, RED], ['scan', 1430, 590, 1446, 760, RED],
         ['blink', 1020, 570, 16, RED, 2.4], ['blink', 1035, 632, 14, RED, 1.9], ['blink', 825, 728, 16, RED, 2.9],
-        ['pennant', 362, 725, 60, 26, '#a42020'], ['bats', 400, 200, 260, 80, 5],
+        ['pennant', 362, 725, 60, 26, '#a42020'],
       ],
     },
   },
