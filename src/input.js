@@ -74,6 +74,11 @@ export class Input {
     });
     addEventListener('mouseup', (e) => this._up('Mouse' + e.button));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // a game, not a web page: anywhere in it (the menus, the skill tree, the Sanctum) a right click, a long press or a
+    // drag brings up none of the browser's own menus, selections or side panels; only text boxes (sign-in, chat, the
+    // tree's search) keep theirs
+    const typing = (t) => t?.closest?.('input, textarea, [contenteditable="true"], #chat-log, #pt-log');
+    for (const ev of ['contextmenu', 'selectstart', 'dragstart']) document.addEventListener(ev, (e) => { if (!typing(e.target)) e.preventDefault(); }, { capture: true });
   }
 
   _bindTouch() {

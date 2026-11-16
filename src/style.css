@@ -515,8 +515,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
 @keyframes sthit { 0% { transform: scale(1.35); background: var(--c); box-shadow: 0 0 22px var(--c), 0 0 4px #fff; } 100% { transform: scale(1); } }
 @media (max-width: 700px), (max-height: 450px) { .psicon { width: 32px; } .psicon svg { width: 22px; height: 22px; } }
 /* skill tree stats breakdown */
-#tree-stats { position: absolute; left: 6px; top: 6px; bottom: auto; max-height: calc(100% - 12px); width: 215px; overflow-y: auto; background: rgba(8,7,10,.74); border: 1px solid #3a3020; padding: 6px 8px; font-size: 12px; color: #d8d0c0; z-index: 2; }
-#tree-stats-btn { position: absolute; left: 6px; top: 6px; z-index: 3; display: none; }
+/* the stats panel: shown and hidden with the Stats button (closed by default, the choice remembered: treeui.js) */
+#tree-stats { display: none; position: absolute; left: 6px; top: 40px; bottom: auto; max-height: calc(100% - 46px); width: 215px; overflow-y: auto; background: rgba(8,7,10,.74); border: 1px solid #3a3020; padding: 6px 8px; font-size: 12px; color: #d8d0c0; z-index: 2; }
+#tree-stats.open { display: block; }
+#tree-stats-btn { position: absolute; left: 6px; top: 6px; z-index: 3; }
+#tree-stats-btn.on { border-color: #c8a060; color: #ffe0a0; }
 .ts-head { color: #e8c88a; font-size: 12px; margin: 8px 0 3px; border-bottom: 1px solid #3a3020; padding-bottom: 2px; }
 .ts-head:first-child { margin-top: 0; }
 .ts-row { display: flex; justify-content: space-between; gap: 8px; line-height: 1.45; }
@@ -527,9 +530,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, .char:focus-vis
 .ts-hit i { font-style: normal; }
 .ts-none { opacity: .5; }
 @media (max-width: 760px), (max-height: 460px) {
-  #tree-stats { display: none; width: 200px; top: 36px; }
-  #tree-stats.open { display: block; }
-  #tree-stats-btn { display: block; }
+  #tree-stats { width: 200px; top: 36px; }
 }
 
 /* ---------- home screen (home.js): Smash-style tiles ---------- */

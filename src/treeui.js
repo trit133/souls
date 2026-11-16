@@ -39,7 +39,11 @@ export class TreeUI {
     document.querySelectorAll('[data-tree-kind]').forEach((b) => b.addEventListener('click', () => { this.kind = b.dataset.treeKind; this.sel = null; this.resetting = false; this.marked.clear(); this.fit(); this.render(); }));
     $('tree-back').addEventListener('click', () => this.close());
     $('tree-unlock').addEventListener('click', () => this.unlockMage());
-    $('tree-stats-btn').addEventListener('click', () => $('tree-stats').classList.toggle('open'));
+    // the stats panel: toggled with its button on every screen, closed until you open it (remembered on this device)
+    const statsOpen = (on) => { $('tree-stats').classList.toggle('open', on); $('tree-stats-btn').classList.toggle('on', on); try { localStorage.setItem('treeStats', on ? '1' : '0'); } catch { /* (private mode) */ } };
+    let wasOpen = false; try { wasOpen = localStorage.getItem('treeStats') === '1'; } catch { /* */ }
+    statsOpen(wasOpen);
+    $('tree-stats-btn').addEventListener('click', () => statsOpen(!$('tree-stats').classList.contains('open')));
     // phone: the tapped node's card has an Upgrade button
     $('tree-tip').addEventListener('click', (e) => {
       const pk = e.target.closest('[data-pick]');
