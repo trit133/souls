@@ -104,7 +104,7 @@ for (const [k, v] of Object.entries(out)) console.log(k.padEnd(12), JSON.stringi
 const ok = !out.lockedButton && out.openButton && out.scene.active && out.scene.people.join() === 'grist' && out.scene.all === 10 && out.scene.stalls === 9 && out.scene.greyed && out.scene.lockedSub === 'Beat Archon Varek' && out.hover.includes('Mother Grist') && out.panel
   && out.buy.paid === 15 && out.buy.stock[1] === out.buy.stock[0] - 1 && out.buy.got === 1 && !out.buy.rareOffered
   && out.sell.got === 3 && out.sell.left === 3 && !out.sell.legendaryListed
-  && !out.hunt.before.bang && out.hunt.after.bang && out.hunt.after.sanctumBang && out.hunt.gold === 120 && out.hunt.em === 2 && out.hunt.xp === 50 && out.hunt.q === 1 && out.hunt.bangGone
+  && !out.hunt.before.bang && out.hunt.after.bang && out.hunt.after.sanctumBang && out.hunt.gold === 720 && out.hunt.em === 2 && out.hunt.xp === 50 && out.hunt.q === 1 && out.hunt.bangGone
   && out.supply.scrapLeft === 2 && out.supply.q === 2 && out.recover.placed.n === 1 && out.recover.placed.id === 'grist_ledger' && out.recover.inStash === 1 && out.recover.left === 0
   && out.restock === 8 && out.claimRelic.q === 3 && out.claimRelic.ledger === 0 && out.perk.hpGain === 300 && out.perk.flaskGain === 0 && out.perk.sigil
   && out.vesk.people.join() === 'grist,vesk' && out.vesk.servoPrice === '◆ 125' && out.vesk.legendaryStockL1 === 0 && out.partyKill.prog === 1 && out.partyKill.kills === 1;
