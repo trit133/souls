@@ -6,6 +6,17 @@ import { ITEMS } from './items.js';
 import { BOSSES } from './boss.js';
 import { pxButton, pxText } from './pixelmenus.js';
 import { drawWorld, drawRegion, MAP_W, MAP_H } from './mapart.js';
+import { MapFx } from './mapfx.js';
+
+// the painted maps (public/maps/web): the world, and each region that has one; the rest are drawn in code (mapart.js)
+const BASE = import.meta.env?.BASE_URL || '/';
+const ART = { world: BASE + 'maps/web/world.webp', r1: BASE + 'maps/web/region-r1.webp' };
+const IMG = {};
+function art(key, then) {
+  let im = IMG[key];
+  if (!im) { im = IMG[key] = new Image(); im.src = ART[key]; }
+  if (im.complete && im.naturalWidth) then(im); else im.addEventListener('load', () => then(im), { once: true });
+}
 
 const $ = (id) => document.getElementById(id);
 const AW = MAP_W, AH = MAP_H; // the art's size (mapart.js draws it)
@@ -18,13 +29,14 @@ export class WorldMap {
     el.id = 'worldmap'; el.className = 'hidden';
     el.innerHTML = `
       <div class="wm-top"><button class="mini-btn" id="wm-back">Back</button><div id="wm-title">The Known World</div><div class="wm-sp"></div></div>
-      <div id="wm-frame"><canvas id="wm-art" width="${AW}" height="${AH}"></canvas><div id="wm-pins"></div></div>
+      <div id="wm-frame"><canvas id="wm-art" width="${AW}" height="${AH}"></canvas><canvas id="wm-fx"></canvas><div id="wm-pins"></div></div>
       <div id="wm-panel" class="hidden">
         <div id="wm-name"></div><div id="wm-blurb"></div><div id="wm-boss"></div>
         <div class="wm-btns"><button class="mini-btn hidden" id="wm-night">Night Raid: Off</button><button class="menu-btn primary" id="wm-go">Deploy</button></div>
       </div>`;
     document.body.append(el);
     this.el = el;
+    this.fx = new MapFx($('wm-fx'));
     pxButton($('wm-back'), 'ash', 2); pxButton($('wm-night'), 'blood', 2); pxButton($('wm-go'), 'ember', innerHeight > 500 ? 3 : 2);
     pxText($('wm-title'), { px: innerHeight > 500 ? 3 : 2 });
     $('wm-back').addEventListener('click', () => (this.region ? this.showWorld() : this.close(true)));
@@ -44,6 +56,7 @@ export class WorldMap {
   }
   close(back) {
     this.el.classList.add('hidden');
+    this.fx.stop();
     if (back) this.onBack?.();
   }
 
@@ -112,9 +125,20 @@ export class WorldMap {
   nightLabel() { $('wm-night').textContent = `Night Raid: ${this.game.nightRaid && this.game.nightUnlocked ? 'On' : 'Off'}`; }
 
   // ---------- the art (mapart.js) ----------
-  drawWorld() { drawWorld($('wm-art'), REGIONS); }
+  // a painted map where there is one (its effects running over it: mapfx.js), else the one drawn in code
+  paint(key, fallback) {
+    const cv = $('wm-art');
+    if (!ART[key]) { this.fx.stop(); cv.width = AW; cv.height = AH; cv.style.imageRendering = 'pixelated'; fallback(cv); return; }
+    this.fx.start(key);
+    art(key, (im) => {
+      if ((key === 'world') !== !this.region) return; // (moved on while it loaded)
+      cv.width = im.naturalWidth; cv.height = im.naturalHeight; cv.style.imageRendering = 'auto';
+      cv.getContext('2d').drawImage(im, 0, 0);
+    });
+  }
+  drawWorld() { this.paint('world', (cv) => drawWorld(cv, REGIONS)); }
   drawRegion(R) {
     const data = this.game.accounts.data, opened = Object.fromEntries(R.areas.map((a) => [a.id, areaOpen(AREAS[a.id], data)]));
-    drawRegion($('wm-art'), R, R.areas, opened);
+    this.paint(R.id, (cv) => drawRegion(cv, R, R.areas, opened));
   }
 }

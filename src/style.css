@@ -927,7 +927,9 @@ html.phone .fp-res { font-size: 8px; } html.phone .fp-none { font-size: 8px; }
 #wm-title { filter: drop-shadow(0 2px 3px #000); }
 #wm-frame { position: relative; margin-top: 30px; box-shadow: 0 0 0 3px #2a2018, 0 0 0 6px #120e0a, 0 10px 40px #000; }
 #wm-art { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+#wm-fx { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
 #wm-pins { position: absolute; inset: 0; }
+.wm-pin .wm-lab { white-space: nowrap; }
 .wm-pin { position: absolute; transform: translate(-50%, -50%); background: none; border: 0; padding: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font: bold 13px monospace; color: #e8d8b0; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
 .wm-pin .wm-dot { width: 12px; height: 12px; background: #ff9a3a; box-shadow: 0 0 0 2px #000, 0 0 10px #ff8a2a; animation: wm-pulse 1.4s ease-in-out infinite; }
 .wm-pin.locked { color: #7a7266; cursor: default; }
@@ -1118,7 +1120,7 @@ body.pt-on #hm-stash, body.pt-on #hm-juke, body.pt-on #hm-work { top: var(--pt-b
 .wk-tip.hidden { display: none; }
 .wk-tip b { font: bold 14px Georgia, serif; } .wk-tip i { color: #a89878; } .wk-tip em { color: #e8c25a; font-style: normal; } .wk-tip u { text-decoration: none; color: #9ac0a0; }
 @media (max-width: 760px), (max-height: 450px) { #hm-work.wk { top: 48px; bottom: 64px; } .wk-main { grid-template-columns: 90px minmax(0, 1fr) minmax(0, 1.2fr); } .wk-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 100px; } .wk-tile .item-ic { width: 40px !important; height: 40px !important; } }
-.wm-pin.unknown .wm-lab { font: bold 22px Georgia, serif; color: #c4281e; text-shadow: 0 0 4px #000, 0 1px 0 #000; }
+.wm-pin.unknown .wm-lab { font: bold 26px Georgia, serif; color: #e8402e; width: 38px; height: 38px; line-height: 38px; text-align: center; border-radius: 50%; background: rgba(10,8,6,0.72); box-shadow: 0 0 0 2px #2a1a12, 0 0 14px rgba(0,0,0,0.8); text-shadow: 0 0 4px #000, 0 1px 0 #000; } /* (a sealed region: a ? on the painted map) */
 .wm-pin.unknown .wm-dot { display: none; }
 
 /* ---------- the Bazaar (bazaar.js) ---------- */

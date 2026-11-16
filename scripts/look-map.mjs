@@ -14,11 +14,11 @@ const t = await page.evaluate(() => {
   g.accounts.data = g.accounts.data || { gems: {}, raids: {}, stats: {} }; g.accounts.data.gems = {};
   const t0 = performance.now(); g.worldMap.open(() => {}, () => {}); return Math.round(performance.now() - t0);
 });
-await page.waitForTimeout(300); await page.screenshot({ path: '/tmp/look/map-world.png' });
+await page.waitForTimeout(2500); await page.screenshot({ path: '/tmp/look/map-world.png' });
 const t2 = await page.evaluate(() => { const t0 = performance.now(); game.worldMap.showRegion('r1'); return Math.round(performance.now() - t0); });
-await page.waitForTimeout(300); await page.screenshot({ path: '/tmp/look/map-r1-none.png' });
+await page.waitForTimeout(2500); await page.screenshot({ path: '/tmp/look/map-r1-none.png' });
 await page.evaluate(() => { const d = game.accounts.data; d.gems = { gem_hask: 1, gem_vael: 1, gem_gorrath: 1 }; game.worldMap.showRegion('r1'); });
-await page.waitForTimeout(300); await page.screenshot({ path: '/tmp/look/map-r1-all.png' });
+await page.waitForTimeout(2500); await page.screenshot({ path: '/tmp/look/map-r1-all.png' });
 console.log(`world drawn in ${t} ms, region in ${t2} ms`);
 await b.close();
 console.log(errs.length ? 'ERRORS\n' + [...new Set(errs)].join('\n') : 'OK no errors');

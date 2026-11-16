@@ -55,11 +55,11 @@ export const areaOpen = (A, data) => !!A?.open && !missingGems(A, data).length;
 
 // map positions are 0..1 across the world map (regions) and across a region's own map (areas)
 export const REGIONS = [
-  { id: 'r1', name: 'The Shattered March', open: true, x: 0.3, y: 0.62, color: '#c8642a',
+  { id: 'r1', name: 'The Shattered March', open: true, x: 0.3, y: 0.68, color: '#c8642a',
     blurb: 'The border hab-wards, where the first of the future-forged armies broke.',
-    areas: [{ id: 'r1a1', x: 0.3, y: 0.66 }, { id: 'r1a2', x: 0.56, y: 0.44 }, { id: 'r1a3', x: 0.78, y: 0.24 }, { id: 'r1f', x: 0.9, y: 0.44 }] },
-  { id: 'r2', name: 'The Glass Wastes', open: false, x: 0.62, y: 0.7, color: '#7ab0c0', blurb: 'Sealed.' },
-  { id: 'r3', name: 'The Forge Reaches', open: false, x: 0.74, y: 0.36, color: '#d8402a', blurb: 'Sealed.' },
-  { id: 'r4', name: 'The Drowned Choir', open: false, x: 0.38, y: 0.28, color: '#5a8a6a', blurb: 'Sealed.' },
-  { id: 'r5', name: 'The Seat of Augury', open: false, x: 0.55, y: 0.12, color: '#a070e0', blurb: 'Where it began.' },
+    areas: [{ id: 'r1a1', x: 0.2, y: 0.66 }, { id: 'r1a2', x: 0.56, y: 0.47 }, { id: 'r1a3', x: 0.795, y: 0.2 }, { id: 'r1f', x: 0.92, y: 0.42 }] }, // (on the painted map: public/maps)
+  { id: 'r2', name: 'The Glass Wastes', open: false, x: 0.74, y: 0.72, color: '#7ab0c0', blurb: 'Sealed.' },
+  { id: 'r3', name: 'The Forge Reaches', open: false, x: 0.86, y: 0.3, color: '#d8402a', blurb: 'Sealed.' },
+  { id: 'r4', name: 'The Drowned Choir', open: false, x: 0.16, y: 0.2, color: '#5a8a6a', blurb: 'Sealed.' },
+  { id: 'r5', name: 'The Seat of Augury', open: false, x: 0.645, y: 0.14, color: '#a070e0', blurb: 'Where it began.' },
 ];
