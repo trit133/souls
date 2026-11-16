@@ -259,6 +259,9 @@ export class Enemy extends Actor {
       ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; rig.root.add(ring); this.auraRing = ring;
     }
     if (G) { this.big = true; this.dmgScale *= 1.3; }
+    // soft: { hp, armor } multipliers for one placed enemy (the armour one is applied when defences roll: main.js)
+    if (opts.soft) { this.maxHp = this.hp = Math.round(this.maxHp * (opts.soft.hp ?? 1)); this.armorMul = opts.soft.armor ?? 1;
+      if (this.dmgTaken) this.dmgTaken = 1 - (1 - this.dmgTaken) * this.armorMul; } // (an armoured elite's cut too)
     this.event = !!opts.event; this.reserve = !!opts.reserve; this.effigy = !!T.still;
     if (this.reserve) rig.root.visible = false; // waits off stage until its seal's event calls it in
     // Night Raid: tougher, harder hitting, faster, quicker to notice you and to attack; watchers step in every 5 s

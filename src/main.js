@@ -326,6 +326,7 @@ class Game {
     // armour and resistances (defenses.js): every enemy and boss rolls its own, the same on every device
     const dr = rng(seed + 29);
     for (const e of all) e.def = e.effigy ? { armor: 0, res: {}, crit: 0, critDmg: 0 } : rollDefenses(dr, { type: e.type, elite: !!e.elite, tier: e.tier });
+    for (const e of all) if (e.armorMul) e.def.armor = Math.round(e.def.armor * e.armorMul);
     for (const b of this.bosses) b.def = rollDefenses(dr, { boss: b.cfg.id, tier: b.tier });
     this.tokens = 0;
     this.resetEncounters();

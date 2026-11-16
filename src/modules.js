@@ -290,10 +290,10 @@ export const FINAL_MODULES = {
       w.spawn('torcher', 1.8, 24, 0);
       w.spawn('flagellant', -6, 33, 0);
       w.spawn('flagellant', 6, 34, 0);
-      w.spawn('castellan', 0, 39, 0, { elite: 'armoured' });
+      w.spawn('castellan', 0, 39, 0, { elite: 'armoured', soft: { hp: 0.5, armor: 0.5 } }); // half its health, half its armour
       w.spawn('augur', -2, 46.5, 0);
       w.spawn('wretch', 7, 44, 0);
-      w.spawn('hulk', 0, 52, 0);
+      w.spawn('hulk', 0, 52, 0, { soft: { hp: 0.6, armor: 0.5 } }); // the Gem Door's keeper: 40% less health, half the armour
     },
   },
 };
