@@ -548,7 +548,10 @@ export class TreeBackground {
     };
     const L = place(A.left, false), R = place(A.right, true);
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; // (shrunk to the pixel grid: each pixel the average of what it covers)
-    for (const S of [L, R]) c.drawImage(S.img, S.X0 + S.crop.ox * S.k, S.Y0 + S.crop.oy * S.k, S.crop.w * S.k, S.crop.h * S.k);
+    for (const S of [L, R]) {
+      c.imageSmoothingEnabled = !S.native; // (a piece painted at its true pixel size stays crisp)
+      c.drawImage(S.img, S.X0 + S.crop.ox * S.k, S.Y0 + S.crop.oy * S.k, S.crop.w * S.k, S.crop.h * S.k);
+    }
     const at = (S, x, y) => [S.X0 + x * S.k, S.Y0 + y * S.k];
     this.fx = new FxLayer(this.fxc.getContext('2d'));
     // a fire's size against its bowl: the brazier fire is drawn for a bowl about 30 of its pixels wide

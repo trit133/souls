@@ -54,15 +54,17 @@ export const TREE_ART = {
       ],
     },
     right: {
-      edge: 380,
+      // (painted by hand at its true pixel size: scripts/paint-adept-right.py; crisp, no smoothing)
+      native: true, edge: 100,
       fires: [],
       anims: [
-        ['bubbles', 862, 460, 968, 680, VIOLET], ['crystal', 913, 568, 30, 58], ['sparks', 913, 568, 70, '#e0b0ff'], // (the jewel in its tube: spinning, bigger than the painted one)
-        ['orbit', 913, 440, 95, 18, 3, '#ffd080', 0.9], // (round the gold ring at the tube's top)
-        ['bubbles', 1058, 255, 1095, 310, VIOLET], ['gimbal', 1325, 370, 48], ['sand', 1342, 512, 545],
-        ['flame', 1164, 426], ['flame', 1244, 604], ['flame', 1218, 616], ['flame', 1077, 636], ['flame', 1181, 824], ['flame', 1361, 154], ['flame', 1293, 160],
+        ['bubbles', 208, 100, 252, 204, VIOLET], ['crystal', 230, 150, 13, 32], ['sparks', 230, 150, 24, '#e0b0ff'], // (the jewel in its tube: spinning, bigger than the painted one)
+        ['orbit', 230, 88, 45, 6, 3, '#ffd080', 0.9], // (round the dome's brass ring)
+        ['bubbles', 307, 78, 320, 98, VIOLET], ['gimbal', 382, 82, 13], ['sand', 390, 154, 164],
+        ['flame', 321, 122], ['flame', 329, 118], ['flame', 336, 124], ['flame', 393, 19], ['flame', 307, 188], ['flame', 369, 123], ['flame', 335, 224], ['flame', 343, 221],
       ],
-      lights: [[910, 570, 160, VIOLET, 0], [1165, 435, 40, CANDLE, 1], [1362, 170, 35, CANDLE, 1], [1295, 170, 30, CANDLE, 1], [1220, 625, 40, CANDLE, 1], [1080, 632, 35, CANDLE, 1], [1125, 720, 35, CANDLE, 1], [1185, 835, 35, CANDLE, 1], [1105, 300, 45, VIOLET, 0], [1390, 500, 40, VIOLET, 0], [975, 820, 40, CYAN, 0], [880, 820, 35, CYAN, 0]],
+      lights: [[230, 152, 46, VIOLET, 0], [230, 88, 30, '#ffd080', 0], [313, 87, 13, VIOLET, 0], [390, 156, 10, VIOLET, 0], [274, 206, 12, CYAN, 0], [230, 237, 12, CYAN, 0],
+        [329, 120, 14, CANDLE, 1], [393, 19, 10, CANDLE, 1], [307, 188, 10, CANDLE, 1], [369, 123, 9, CANDLE, 1], [339, 222, 12, CANDLE, 1]],
     },
   },
 };
