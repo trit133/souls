@@ -19,6 +19,8 @@ const glowMat = (r, id, fallback) => (id && id !== 'default' && colorById(id)?.f
 // fine plate on its trim, leather on its detail. Weapons aren't textured
 const SLOT_PATTERN = { helmet: 'plate', pauldronL: 'plate', pauldronR: 'plate', chest: 'plate', legs: 'plate', mask: 'plate', cloak: 'cloth', shirt: 'cloth', bandL: 'leather', bandR: 'leather', shoulder: 'plate', pants: 'cloth' };
 export const ARMOR_SLOTS = new Set(Object.keys(SLOT_PATTERN));
+// textures off (Jonah, 2026-11-15): the armour is plain colour again; the texture code stays for later
+export const TEXTURED = false;
 // a colour channel's material with its texture on: the surface colour and the outfit's two texture colours (Default:
 // a shade darker and lighter than the surface); a special colour (molten, frost, void, gilded) keeps its own look
 function texMat(r, id, fallback, pattern, f) {
@@ -31,7 +33,7 @@ function texMat(r, id, fallback, pattern, f) {
 }
 function slotMats(r, fit, slot, mainHex, trimHex, detailHex = 0x26262a, glowHex = 0x8ad8ff) {
   const f = fit?.[slot] || {}, P = SLOT_PATTERN[slot];
-  const cm = P ? (id, hex, pat) => texMat(r, id, hex, pat, f) : (id, hex) => colorMat(r, id, hex);
+  const cm = TEXTURED && P ? (id, hex, pat) => texMat(r, id, hex, pat, f) : (id, hex) => colorMat(r, id, hex);
   return { piece: f.piece, main: cm(f.main, mainHex, P), trim: cm(f.trim, trimHex, 'trim'), mainHex: colorHex(f.main, mainHex), trimHex: colorHex(f.trim, trimHex), mainId: f.main, trimId: f.trim,
     detail: cm(f.detail, detailHex, 'leather'), detailHex: colorHex(f.detail, detailHex), detailId: f.detail,
     glow: glowMat(r, f.glow, glowHex), glowHex: colorHex(f.glow, glowHex), glowId: f.glow };

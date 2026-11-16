@@ -10,7 +10,7 @@ import { locomotion } from './anims.js';
 import { PixelPass } from './pixel.js';
 import { CHARS, weaponChar } from './player.js';
 import { outfitModel } from './playerkits.js';
-import { ARMOR_SLOTS } from './playerkits.js';
+import { ARMOR_SLOTS, TEXTURED } from './playerkits.js';
 import { CHANNELS, slotsFor, COLORS, OUTFIT_SLOTS, pieceList, piecePrice, colorPrice, pieceKey, ownsPiece, ownsColor, cosmetics, wornOutfit, tickOutfitColors, forgetRig } from './outfits.js';
 
 const $ = (id) => document.getElementById(id);
@@ -151,7 +151,7 @@ export class SkinMenu {
       return wrap;
     };
     const rows = [row('main', 'Main'), row('trim', 'Trim'), row('detail', 'Detail'), row('glow', 'Glow')];
-    if (ARMOR_SLOTS.has(this.slot)) rows.push(row('texA', 'Texture 1'), row('texB', 'Texture 2')); // (armour only: its texture's two colours)
+    if (TEXTURED && ARMOR_SLOTS.has(this.slot)) rows.push(row('texA', 'Texture 1'), row('texB', 'Texture 2')); // (armour only: its texture's two colours)
     $('cz-colors').replaceChildren(...rows);
     // the bar along the bottom: what you're trying on, Cancel and Buy (or the note when trying nothing)
     const t = this.try, price = this.priceOf(t), b = $('cz-buy');

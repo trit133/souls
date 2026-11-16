@@ -83,12 +83,11 @@ export const KNIGHT_ARMORY = {
       for (let i = 0; i < 8; i++) { const a = (i / 8) * PI * 2; B(H, 0.04, 0.07, 0.03, M.trim, Math.sin(a) * 0.165, 0.065, Math.cos(a) * 0.165, 0, a, 0); }
     },
     // Crown of the Fallen Archon: a Spartan face: a solid faceplate cut through with tall slits, dark behind them but
-    // for two burning eyes; a brow band and a nasal bar; spikes radiating out of the helm all round its crown and down
-    // the back; riveted cheek guards; a mail aventail
+    // for two burning eyes; a brow band and a nasal bar; riveted cheek guards; over the helm a crown of eight blades
+    // on a ring with a lit gem; a mail aventail
     crowned(r, M, H) {
       B(H, 0.13, 0.1, 0.13, M.detail, 0, 0.03, 0);
       B(H, 0.28, 0.31, 0.29, M.main, 0, 0.195, -0.005);
-      B(H, 0.26, 0.06, 0.27, M.main, 0, 0.37, -0.01); // (the crown, rounded up)
       // the face: dark behind, the eyes, then the plate with its slits
       B(H, 0.23, 0.2, 0.03, DARK, 0, 0.17, 0.138);
       for (const s of [1, -1]) {
@@ -100,16 +99,10 @@ export const KNIGHT_ARMORY = {
       B(H, 0.26, 0.04, 0.035, M.trim, 0, 0.275, 0.165); rivets(H, -0.1, 0.1, 0.275, 0.185, 5, M.detail, 0.014); // (the brow band)
       B(H, 0.24, 0.04, 0.03, M.main, 0, 0.065, 0.165); B(H, 0.025, 0.2, 0.03, M.trim, 0, 0.17, 0.18); // (the chin plate, the nasal bar)
       for (const s of [1, -1]) { B(H, 0.035, 0.22, 0.17, M.main, s * 0.155, 0.16, 0.06); rivetCol(H, s * 0.174, 0.08, 0.24, 0.1, 4, M.detail); B(H, 0.04, 0.24, 0.02, M.trim, s * 0.155, 0.16, 0.148); }
-      // the spikes: a fan over the crown from ear to ear, a smaller row behind it, a few down the back
-      const SP = new THREE.Vector3(0, 0.22, -0.02);
-      const spike = (ax, ay, az, len, rad) => {
-        const d = new THREE.Vector3(ax, ay, az).normalize(), g = pivot(H, SP.x + d.x * 0.15, SP.y + d.y * 0.15, SP.z + d.z * 0.15);
-        g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
-        K(g, rad, len, M.trim, 0, len / 2, 0, 0, 0, 0, 5); C(g, rad * 1.3, rad * 1.5, 0.03, M.detail, 0, 0.005, 0, 0, 0, 0, 6);
-      };
-      for (let i = 0; i < 11; i++) { const a = -PI * 0.55 + (i / 10) * PI * 1.1; spike(Math.sin(a), Math.cos(a), 0.05, i % 2 ? 0.17 : 0.26, 0.028); }
-      for (let i = 0; i < 7; i++) { const a = -PI * 0.42 + (i / 6) * PI * 0.84; spike(Math.sin(a) * 0.9, Math.cos(a) * 0.8, -0.6, 0.15, 0.022); }
-      for (let i = 0; i < 3; i++) spike(0, 0.4 - i * 0.35, -1, 0.14 - i * 0.02, 0.022);
+      // the crown: eight blades on a ring over the helm, a lit gem at its front
+      const cr = pivot(H, 0, 0.36, 0); ring(cr, 0.16, 0.025, M.trim, 0, 0, 0, PI / 2, 0, 16);
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * PI * 2; K(cr, 0.03, k % 2 ? 0.14 : 0.24, M.trim, Math.cos(a) * 0.16, k % 2 ? 0.07 : 0.12, Math.sin(a) * 0.16, 0, 0, 0); }
+      B(cr, 0.05, 0.05, 0.04, M.glow, 0, 0.03, 0.17);
       for (let k = 0; k < 6; k++) strip(r, H, -0.13 + k * 0.052, 0.06, -0.1, 0.05, [0.1, 0.06], M.detail, { lx: [-0.4, 0.6], th: 0.02 });
       B(H, 0.32, 0.03, 0.32, M.trim, 0, 0.07, 0);
     },
