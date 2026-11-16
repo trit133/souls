@@ -265,7 +265,7 @@ class Game {
       this.run = { raid: area.id, night: !!layout.night, minis: [area.boss] };
       this.act = 0;
       // the region's last area: the approach and Varek's throne, everything as hard as the last act of the old run
-      if (area.kind === 'final') { this.act = 3; return this.buildLevel(['bastion', 'boss'], seed, players); }
+      if (area.kind === 'final') { this.act = 3; return this.buildLevel(['bastion', 'throne'], seed, players); }
       return this.buildLevel({ dungeon: new City(seed, area, players) }, seed, players);
     }
     if (layout === 'dungeon' || layout === 'night') {
@@ -304,6 +304,7 @@ class Game {
     const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
     const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players, night: this.night })));
     for (const e of all) e.roam = this.world.dungeon?.roam(e.mod) ?? null;
+    for (const e of all) { e.gy = e.pos.y = this.world.floorAt(e.pos.x, e.pos.z); e.rig.root.position.y = e.gy + (e.y || 0); } // (stood on the terrain from the start, not only once they wake)
     this.enemies = all.filter((e) => !e.reserve);
     this.reserves = all.filter((e) => e.reserve); // seal events call these in (seals.js)
     this.clearTotal = this.enemies.filter((e) => !e.event && !e.effigy).length; this.clearKilled = 0; this.clearPaid = false;

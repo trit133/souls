@@ -105,6 +105,12 @@ export class Audio {
         this._tone(90, 1.4, { f1: 60, gain: 0.35 * v, type: 'sawtooth', attack: 0.15 });
         this._tone(135, 1.3, { f1: 85, gain: 0.25 * v, type: 'sawtooth', attack: 0.2 });
         this._noise(1.4, { freq: 300, f1: 150, q: 0.8, gain: 0.45 * v, attack: 0.2 }); break;
+      // Varek's crowd (crowd.js): a roar, a smaller cheer, a weapon banged on the stands
+      case 'crowdRoar':
+        this._noise(1.9, { freq: 650, f1: 420, q: 0.6, gain: 0.32 * v, attack: 0.28 }); this._noise(1.6, { freq: 1500, f1: 900, q: 1.1, gain: 0.12 * v, attack: 0.35 });
+        this._tone(118, 1.6, { f1: 96, gain: 0.05 * v, type: 'sawtooth', attack: 0.3 }); this._tone(176, 1.4, { f1: 150, gain: 0.03 * v, type: 'sawtooth', attack: 0.35 }); break;
+      case 'crowdCheer': this._noise(1.1, { freq: 900, f1: 600, q: 0.8, gain: 0.12 * v, attack: 0.25 }); this._noise(0.9, { freq: 1700, f1: 1200, q: 1.4, gain: 0.05 * v, attack: 0.3 }); break;
+      case 'crowdThud': this._noise(0.14, { freq: 160, q: 0.7, gain: 0.45 * v, type: 'lowpass' }); this._tone(64, 0.16, { f1: 40, gain: 0.35 * v, type: 'triangle' }); this._noise(0.06, { freq: 2600, q: 2, gain: 0.06 * v }); break;
       case 'fire': this._noise(0.6, { freq: 800, f1: 300, q: 0.5, gain: 0.3 * v, attack: 0.05 }); break;
       case 'bow': this._tone(220, 0.12, { f1: 110, gain: 0.2 * v, type: 'triangle' }); this._noise(0.1, { freq: 3000, gain: 0.15 * v }); break;
       case 'death': this._tone(110, 2.2, { f1: 55, gain: 0.35 * v, type: 'sawtooth', attack: 0.3 }); this._tone(165, 2.2, { f1: 82, gain: 0.2 * v, attack: 0.3 }); break;

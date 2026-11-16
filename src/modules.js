@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { decorateArena } from './decor.js';
+import { decorateArena, cage } from './decor.js';
+import { buildStands } from './crowd.js';
 
 // Level modules. build(w, Z, mod) receives the World, Z(d) (module distance -> world z)
 // and the module record. Coordinates: x across, d along the module (0 = entry, len = exit).
@@ -237,63 +238,146 @@ export const MINI_ARENAS = {
   gorrath: miniArena('gorrath', 'The Slag Forge', 'ash', 'forge'),
 };
 
-// the region's last area (regions.js r1f): the Sentinel's Bastion, the approach to Varek's throne. A landing with
-// the beacon; a broken causeway; the Court of Penance where the last of the March's hardest wait (a few from each
-// deeper area, one an elite); the Gem Door, its arch set with the three bosses' gems, burning (you carry
-// them, or you couldn't be here). The door on to the throne fogs until the court is clear. BOSS_ARENA follows
+// the region's last area (regions.js r1f): the Sentinel's Bastion, a climb to Varek's throne. Four tiers rise north
+// (terrain.js), the throne's floor at the top:
+//   - the Landing (-5.2 m): the beacon, sandbags; the dry moat either side, overgrown;
+//   - the causeway (-3.6 m): a raised road over the moat on broken parapets (drop off them into the moat; a ladder
+//     on its west side climbs back);
+//   - the Court of Penance (-2 m): where the last of the March's hardest wait (a few from each deeper area, one an
+//     elite), galleries up either side (-0.4 m) with hanged cages, a dais at the back where an Augur reads you coming.
+//     A ladder (pulled up) drops from the court to the moat;
+//   - the Gem Door's hall (0 m): up the grand stair, its arch set with the three bosses' gems, burning (you carry
+//     them, or you couldn't be here). The door on to the throne fogs until the court is clear.
+// FINAL_MODULES.throne follows: Varek's arena, flat, in a ring of stands full of the March cheering him on
+const LAND = -5.2, CAUSE = -3.6, COURT = -2.0, GAL = -0.4, DAIS = -1.6;
 export const FINAL_MODULES = {
   bastion: {
-    name: "The Sentinel's Bastion", len: 64, ground: 'stone',
+    name: "The Sentinel's Bastion", len: 76, ground: 'bastion',
     build(w, Z, mod) {
-      const M = w.mats, gold = new THREE.MeshLambertMaterial({ color: 0x8a6a2a, flatShading: true });
-      ends(w, mod, 64);
-      w.rect(-5, 5, 0, 11); // the landing
-      w.rect(-3.2, 3.2, 9, 27); // the causeway
-      w.rect(-12, 12, 25, 49); // the Court of Penance
-      w.rect(-4, 4, 47, 64); // the Gem Door's hall
+      const M = w.mats, T = w.terrain, L = 76, gold = new THREE.MeshLambertMaterial({ color: 0x8a6a2a, flatShading: true });
+      // (terrain in module distance: d0..d1 north; up(...) a flight climbing north from h0 to h1)
+      const band = (x0, x1, d0, d1, h, o) => T.flat(x0, x1, Z(d1), Z(d0), h, o);
+      const up = (x0, x1, d0, d1, h0, h1, o) => T.stairs(x0, x1, Z(d1), Z(d0), h1, h0, 'z', o);
+      band(-40, 40, -2, 30, LAND, { look: 'basalt', ivy: 0.2 });
+      band(-3.4, 3.4, 12, 30, CAUSE, { look: 'pale', ivy: 0.45 });
+      up(-3.4, 3.4, 9, 12, LAND, CAUSE, { look: 'pale' });
+      band(-40, 40, 30, 52, COURT, { look: 'pale', ivy: 0.4 });
+      up(-3.4, 3.4, 26.5, 30, CAUSE, COURT, { look: 'pale' });
+      for (const s of [-1, 1]) {
+        T.flat(s < 0 ? -40 : 10, s < 0 ? -10 : 40, Z(52), Z(32), GAL, { look: 'brick', ivy: 0.5 });
+        T.stairs(s < 0 ? -10 : 7, s < 0 ? -7 : 10, Z(37.5), Z(34), s < 0 ? GAL : COURT, s < 0 ? COURT : GAL, 'x', { look: 'pale' });
+      }
+      band(-4.5, 4.5, 44.5, 48.5, DAIS, { look: 'basalt' });
+      up(-4, 4, 52, 56, COURT, 0, { look: 'pale' });
+      T.ladder(-3.85, Z(20), PI / 2, LAND, CAUSE);                 // the moat back up on to the causeway
+      T.ladder(8, Z(29.55), PI, LAND, COURT, { raised: true });     // the court down to the moat, lowered from the top
+      ends(w, mod, L);
+      w.rect(-11, 11, 0, 31);   // the landing, the moat and the causeway over it (each overlaps the next by a body's width)
+      w.rect(-14, 14, 29, 54);  // the court and its galleries
+      w.rect(-4.5, 4.5, 52, L); // the grand stair and the Gem Door's hall
+
+      // the ground: flagstones round the beacon and across the court, setts on the causeway and the hall, the moat
+      // gone back to dirt and grass
+      const P = (s, x0, x1, d0, d1, o) => w.paint({ x0, x1, z0: Z(d1), z1: Z(d0) }, s, o), C = (s, x, d, r, o) => w.paint({ cx: x, cz: Z(d), r }, s, o);
+      P('dirt', -11, 11, 0, 30, { edge: 1, amount: 0.8 });
+      for (const [x, d, r] of [[-8, 14, 3.4], [8.5, 19, 3], [-7.5, 25, 2.8], [7, 27, 2.4], [-9.5, 4, 2.2], [9, 7, 2.6]]) C('grass', x, d, r, { edge: 1.8 });
+      C('flag', 0, 5, 4.2, { edge: 0.6 });
+      P('cobble', -3.4, 3.4, 9, 30, { edge: 0.3 });
+      P('flag', -14, 14, 30, 52, { edge: 0.5 });
+      C('cobble', 0, 39, 5.5, { edge: 0.8 });
+      for (const [x, d, r] of [[-12, 31, 2], [12.5, 50, 2.4], [-12.5, 50, 1.8], [9, 31, 1.4]]) C('grass', x, d, r, { edge: 1.4, amount: 0.85 });
+      P('cobble', -14, -10, 32, 52, { edge: 0.4, amount: 0.8 }); P('cobble', 10, 14, 32, 52, { edge: 0.4, amount: 0.8 });
+      P('flag', -4.5, 4.5, 44.5, 48.5, { edge: 0.2 });
+      P('cobble', -4.5, 4.5, 52, L, { edge: 0.3 }); P('flag', -2.6, 2.6, 56, L, { edge: 0.3 });
+      w.flora.push(
+        { kind: 'tree', x: -9, z: Z(15.5), s: 0.85, dead: true }, { kind: 'tree', x: 9, z: Z(24), s: 0.9 }, { kind: 'leaves', x: 9, z: Z(24), r: 2.8, n: 70 },
+        { kind: 'tree', x: 12.5, z: Z(50), s: 0.8 }, { kind: 'leaves', x: 12.5, z: Z(50), r: 2.2, n: 40 },
+        { kind: 'bush', x: -8.5, z: Z(11), n: 4 }, { kind: 'bush', x: 7.5, z: Z(13), n: 3 }, { kind: 'bush', x: -7, z: Z(27.5), n: 4 }, { kind: 'bush', x: 10, z: Z(4), n: 3, s: 0.8 },
+        { kind: 'bush', x: -12.5, z: Z(31.5), n: 3, s: 0.8 }, { kind: 'leaves', x: -6, z: Z(22), r: 2, n: 30 },
+      );
+
       // the landing: the beacon, sandbags, a banner each side
       const fire = w.bonfire(0, Z(5)); fire.lit = true;
-      for (const s of [-1, 1]) { w.box(0.8, 0.8, 6, M.cloth, s * 4.4, 0.4, Z(5)); w.banner(s * 3.6, Z(9.5)); }
-      // the causeway: broken parapets over a drop, black stone with gold caps, lamps on chains
-      for (let d = 10; d < 26; d += 2.2) for (const s of [-1, 1]) {
-        const h = vhash(d, s) < 0.3 ? 0.4 : 1.1;
-        w.box(0.5, h, 1.8, M.stoneDark, s * 3.6, h / 2, Z(d + 1)); if (h > 1) w.box(0.6, 0.12, 1.9, gold, s * 3.6, h + 0.06, Z(d + 1));
+      for (const s of [-1, 1]) { w.box(0.8, 0.8, 6, M.cloth, s * 4.4, 0.4, Z(5)); w.ob(s * 4.4, Z(3.5), 0.5); w.ob(s * 4.4, Z(6.5), 0.5); w.banner(s * 3.6, Z(9.5)); }
+      // the causeway: parapets along its lips, black stone with gold caps, broken here and there (where you can drop
+      // into the moat); lamps on posts; what fell of it lies in the moat
+      for (let d = 13; d < 26.5; d += 2.2) for (const s of [-1, 1]) {
+        if (vhash(d, s) < 0.3) { w.rock(s * 5.2, Z(d + 1), 0.6, true); continue; }
+        w.box(0.5, 1.0, 1.9, M.stoneDark, s * 3.1, 0.5, Z(d + 1)); w.box(0.6, 0.12, 2.0, gold, s * 3.1, 1.06, Z(d + 1));
+        w.solid(s * 3.1 - 0.3, s * 3.1 + 0.3, d + 0.05, d + 1.95);
       }
-      for (const d of [14, 22]) for (const s of [-1, 1]) w.torch(s * 4.6, Z(d), 0xffb050);
-      // the Court of Penance: a ring of hanged cages, broken statues of the regime's saints, braziers, a dais at the
-      // back where an Augur reads you coming
-      for (const [x, d, h] of [[-10, 28, 6], [10, 28, 6], [-10.5, 46, 7], [10.5, 46, 7], [-11, 37, 4], [11, 37, 4.5]]) w.pillar(x, Z(d), h, h < 5);
+      for (const d of [14, 25]) for (const s of [-1, 1]) w.torch(s * 2.5, Z(d), 0xffb050);
+      // the moat: bones and the dead the fighting left, a broken cart wheel of rubble
+      for (const [x, d] of [[-6, 18], [6.5, 21.5], [-9.5, 21], [5.5, 15]]) w.rock(x, Z(d), 0.5 + vhash(x, d) * 0.4, vhash(d, x) < 0.5, true);
+      w.fallenColumn(-6.5, Z(28), 3.5, 0.3);
+      // the Court of Penance: pillars, braziers, broken statues of the regime's saints, a dais at the back
+      for (const [x, d, h] of [[-8.6, 31.5, 6], [8.6, 31.5, 6], [-8.6, 50.5, 7], [8.6, 50.5, 7]]) w.pillar(x, Z(d), h, false);
       for (const s of [-1, 1]) {
-        w.brazier(s * 7.5, Z(31)); w.brazier(s * 7.5, Z(44));
-        const st = new THREE.Group(); st.position.set(s * 9.5, 0, Z(40));
-        for (const [geo, y] of [[new THREE.BoxGeometry(1.6, 1, 1.6), 0.5], [new THREE.ConeGeometry(0.6, 2.4, 6), 2.2], [new THREE.BoxGeometry(0.5, 0.5, 0.5), 3.6]]) { const m = new THREE.Mesh(geo, M.stone); m.position.y = y; st.add(m); }
-        w.add(st); w.ob(s * 9.5, Z(40), 1.0);
+        w.brazier(s * 6, Z(31.5)); w.brazier(s * 6, Z(44));
+        const st = new THREE.Group(); st.position.set(s * 7.6, 0, Z(41));
+        for (const [geo, y] of [[new THREE.BoxGeometry(1.4, 1, 1.4), 0.5], [new THREE.ConeGeometry(0.55, 2.4, 6), 2.2], [new THREE.BoxGeometry(0.5, 0.5, 0.5), 3.6]]) { const m = new THREE.Mesh(geo, M.stone); m.position.y = y; st.add(m); }
+        w.add(st); w.ob(s * 7.6, Z(41), 0.9);
       }
-      w.box(9, 0.4, 3.6, M.stoneDark, 0, 0.2, Z(46.5)); w.box(9.2, 0.08, 3.8, gold, 0, 0.42, Z(46.5));
-      w.fallenColumn(-5, Z(33), 4, 0.5); w.rock(6, Z(35), 0.8, true, true);
-      // the Gem Door: a gatehouse at the hall's end with the three bosses' gems burning in sockets over the arch (you
-      // carry them, or you couldn't be here), a candle-lit kneeling step each side
+      w.fallenColumn(-4.5, Z(35), 4, 0.5); w.rock(5, Z(37), 0.8, true, true);
+      // the galleries: hanged cages, lamps, banners down their back walls
       for (const s of [-1, 1]) {
-        w.box(1.4, 7, 1.4, M.stone, s * 3.5, 3.5, Z(62)); w.box(1.5, 0.2, 1.5, gold, s * 3.5, 7.1, Z(62));
-        w.box(1.6, 0.3, 2.4, M.stoneDark, s * 3.0, 0.15, Z(55)); w.banner(s * 3.7, Z(51));
+        for (const d of [38, 46]) cage(w, s * 12.2, Z(d), s < 0 ? 0 : PI);
+        for (const d of [35, 43, 51]) w.torch(s * 13.4, Z(d), 0xffb050);
+        w.banner(s * 13.6, Z(39)); w.banner(s * 13.6, Z(47));
       }
-      w.box(8.4, 1.6, 1.4, M.stone, 0, 7.6, Z(62)); w.box(8.6, 0.12, 1.5, gold, 0, 6.8, Z(62));
+      // the Gem Door: a walled hall, a gatehouse at its end with the three bosses' gems burning in sockets over the arch
+      // (you carry them, or you couldn't be here), a candle-lit kneeling step each side
+      const wallMat = M.stone, G = L - 2;
+      for (const s of [-1, 1]) {
+        w.box(0.7, 4, 18, wallMat, s * 4.85, 2, Z(G - 10)); for (const d of [58, 64, 70]) w.box(1.0, 4.6, 0.9, M.stoneDark, s * 4.85, 2.3, Z(d));
+        w.box(1.4, 7, 1.4, M.stone, s * 3.5, 3.5, Z(G)); w.box(1.5, 0.2, 1.5, gold, s * 3.5, 7.1, Z(G));
+        w.box(1.6, 0.3, 2.4, M.stoneDark, s * 3.0, 0.15, Z(G - 7)); w.banner(s * 3.7, Z(G - 11));
+      }
+      w.box(8.4, 1.6, 1.4, M.stone, 0, 7.6, Z(G)); w.box(8.6, 0.12, 1.5, gold, 0, 6.8, Z(G));
       [0xff3a1a, 0xa8e0ff, 0xffb040].forEach((col, k) => {
-        const x = (k - 1) * 2.2, z = Z(62) + 0.75;
+        const x = (k - 1) * 2.2, z = Z(G) + 0.75;
         w.box(0.9, 0.9, 0.2, gold, x, 7.6, z - 0.05);
         const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: col })); gem.position.set(x, 7.6, z + 0.1); gem.userData.noMerge = true; w.add(gem);
         w.ambient.push({ x, z, update: (dt, t) => { gem.rotation.y = t * 1.5 + k; } });
         w.lights.push({ x, y: 6.8, z: z + 1.2, color: col, power: 5, range: 8, src: {} });
       });
-      // the last of the March's hardest: a few from each deeper area (the court's elite an armoured Castellan)
+      // the last of the March's hardest: a few from each deeper area (the court's elite an armoured Castellan), the
+      // Hulk at the Gem Door
       w.spawn('hook', -1.4, 17, 0);
       w.spawn('torcher', 1.8, 24, 0);
-      w.spawn('flagellant', -6, 33, 0);
-      w.spawn('flagellant', 6, 34, 0);
+      w.spawn('flagellant', -5, 33.5, 0);
+      w.spawn('flagellant', 5, 34, 0);
       w.spawn('castellan', 0, 39, 0, { elite: 'armoured', soft: { hp: 0.3, armor: 0.3 } }); // softened: 30% of its health and armour
       w.spawn('augur', -2, 46.5, 0);
-      w.spawn('wretch', 7, 44, 0);
-      w.spawn('hulk', 0, 52, 0);
+      w.spawn('wretch', 6.5, 44, 0);
+      w.spawn('hulk', 0, 62, 0);
+    },
+  },
+  // Varek's arena: a flat ring of worn flagstones (no grass), cobbles round its edge, old blood; the throne and the
+  // great statue to the north; and all round it stands packed with the March's own, cheering him on (crowd.js)
+  throne: {
+    name: 'The Throne of the Last Sentinel', len: 64, ground: 'throne',
+    build(w, Z, mod) {
+      const R = 19, CD = 31;
+      w.rect(-3, 3, 0, 8);
+      w.rect(-3, 3, 5, 13, { gate: 'boss_in' });
+      w.circle(0, CD, R);
+      w.gate('boss_in', 8.5, 6, true);
+      const enc = { id: 'boss', kind: 'boss', arena: { x: 0, z: Z(CD), r: R }, gateIn: 'boss_in', gateOut: null, mod: mod.i, active: false, defeated: false };
+      w.encounters.push(enc);
+      w.lights.push({ x: 0, y: 6, z: Z(35), color: 0xff7a3a, power: 26, range: 34, src: { cond: () => enc.active } });
+      // the ground: flagstones, a ring of cobbles at the edge, scuffed dirt where the fighting's worn it
+      w.paint({ cx: 0, cz: Z(CD), r: R + 0.5 }, 'cobble', { edge: 0.6 });
+      w.paint({ cx: 0, cz: Z(CD), r: R - 2.6 }, 'flag', { edge: 0.8 });
+      for (const [x, d, r] of [[-6, 26, 3], [7, 36, 2.6], [1, 42, 2.2], [-9, 38, 2], [10, 23, 2.2], [-2, 18, 1.8]]) w.paint({ cx: x, cz: Z(d), r }, 'dirt', { edge: 1.4, amount: 0.7 });
+      w.paint({ x0: -3, x1: 3, z0: Z(13), z1: Z(0) }, 'cobble', { edge: 0.4 });
+      // the great statue behind the throne
+      w.box(5, 2, 4, w.mats.stone, 0, 1, Z(58));
+      w.cyl(1.0, 1.6, 6, w.mats.stone, 0, 5, Z(58), 6);
+      const hd = w.rock(0, Z(58), 0.9); hd.position.y = 8.6; hd.material = w.mats.stone;
+      w.box(0.3, 7, 0.8, w.mats.stone, 0, 4.5, Z(56.2));
+      decorateArena(w, 'throne', 0, Z(CD), R, enc, { stands: true });
+      buildStands(w, 0, Z(CD), R, enc);
     },
   },
 };

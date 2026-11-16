@@ -88,3 +88,27 @@ walk from the gate to the Crest, the canal ladder and the drop into the garden.
 - Breaking the last shrine opens a portal by it (main.js `bossPortal`). It's a stair to the boss's corridor, just
   short of the open blast door. Every player gets one, and each steps through on their own.
 - `node scripts/ward-under.mjs` checks the heights, walks a vault, and takes the portal to the arena.
+
+## The Sentinel's Bastion and Varek's throne (`modules.js FINAL_MODULES`, `src/crowd.js`)
+The region's last area is a climb, built on the module chain with the same terrain, textures and plants:
+- **Landing (−5.2 m):** the beacon. The dry moat either side has gone back to dirt and grass.
+- **Causeway (−3.6 m):** stairs up from the landing, parapets along its lips with gaps you can drop through into
+  the moat, and a ladder on its west side to climb back.
+- **Court of Penance (−2 m):** the last of the March's hardest. Galleries up either side (−0.4 m, stairs in from
+  the court) have hanged cages, lamps and banners. There's a dais at the back for the Augur, and a pulled-up ladder
+  down to the moat as a shortcut.
+- **Gem Door's hall (0 m):** up the grand stair, walled. The Bilge Hulk guards the door.
+
+Varek's arena (`throne`) is flat at 0 m: flagstones, a ring of cobbles at the edge, scuffed dirt and old blood, and
+no grass or weeds (the ground style is `bare`). Stone stands ring it: four tiers on the far side with a back wall and
+a gap for the throne, and one low tier either side of the way in, so nothing hides the fight. The stands are packed
+with region one's enemies in their own colours and sizes, the big ones at the back. They're instanced and visual
+only: about 250 figures in 6 meshes, around 0.4 ms a frame. They follow the fight:
+- before it starts, they murmur;
+- while he fights, they cheer;
+- when he hits you, they roar;
+- while he's staggered, they go quiet and bang their weapons in time;
+- at his second phase, they erupt;
+- when he dies, they fall silent, heads bowed.
+
+`node scripts/look-bastion.mjs` shoots the climb and the crowd in each mood, and walks from the beacon to the arena.

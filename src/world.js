@@ -29,6 +29,10 @@ const GROUND = {
   proving: { walk: [0x8a8a8a, 0x787878], out: [0x404040, 0x585858], tex: { walk: [0, 1, 0, 0], out: [0, 0.55, 0.45, 0] } },
   // Ashfall Ward (ward.js): the same, a shade darker (a burned ward under smoke)
   ward: { walk: [0x7e7c78, 0x6c6a66], out: [0x3a3836, 0x4e4c48], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
+  // the Sentinel's Bastion (modules.js FINAL_MODULES): dirt and setts on the walk, grass coming back off it; Varek's
+  // arena: flagstones and cobbles, bare (no grass or weeds on the fighting floor)
+  bastion: { walk: [0x7a7874, 0x686662], out: [0x34322f, 0x48463f], tsub: 2, dressed: true, tex: { walk: [0, 0.5, 0, 0.5], out: [0, 0.5, 0.5, 0] } },
+  throne: { walk: [0x7a7672, 0x6a6662], out: [0x2e2c2a, 0x403c38], tsub: 2, bare: true, dressed: true, tex: { walk: [1, 0, 0, 0], out: [0, 0.7, 0, 0.3] } },
   // its cellars and vaults: tiles, brick paving, grime and flagstones (the underground set: no grass), wet walls round
   // the Drained Cut (cut.js): gravel, setts and weeds under grey daylight; its cellars as the ward's
   cut: { walk: [0x828480, 0x707270], out: [0x3e403c, 0x52544e], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
@@ -416,7 +420,7 @@ export class World {
     return mesh;
   }
 
-  scatterBorders(m) { this.scatter(m.ground, -32, 32, m.z1, m.z0); }
+  scatterBorders(m) { if (!GROUND[m.ground]?.dressed) this.scatter(m.ground, -32, 32, m.z1, m.z0); } // (a map that dresses its own borders: none)
 
   // rocks, trees and crypt blocks on the raised ground around the walkable area, in the box x0..x1, z0..z1
   scatter(style, X0, X1, Z0, Z1) {

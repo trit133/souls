@@ -420,7 +420,8 @@ const ARENAS = {
     drift(w, cx, cz, 'spark', 6, r * 2);
   },
   // the Throne of Ash: a ruined throne, torn standards, a ring of braziers that flare when Varek ignites
-  throne: (w, cx, cz, r, enc) => {
+  // (o.stands: stands ring it (crowd.js), so nothing round the rim; and its floor is textured, so no loose slabs)
+  throne: (w, cx, cz, r, enc, o = {}) => {
     const m = mats();
     // the throne before the great statue
     const tz = cz - r - 2.2;
@@ -430,15 +431,17 @@ const ARENAS = {
     for (const s of [-1, 1]) { w.box(0.4, 1.4, 1.6, w.mats.stone, cx + s * 1.2, 2.2, tz - 0.3); w.cyl(0.18, 0.18, 1.2, m.gold, cx + s * 1.2, 5.6, tz - 1.0, 6); }
     w.box(1.6, 0.6, 0.4, m.ragRed, cx, 2.6, tz - 0.7);
     });
-    // torn standards round the rim
-    for (const p of around(cx, cz, r + 2.4, 8, 0.15, PI - 0.15)) at(w, p.x, p.z, () => w.banner(p.x, p.z, true));
-    for (const p of around(cx, cz, r + 1.5, 6, PI + 0.3, PI * 2 - 0.3)) { if (w.rand() < 0.6) corpse(w, p.x, p.z, w.rand() * 6); else bones(w, p.x, p.z); }
-    // braziers that only light once his blade ignites
-    for (const p of around(cx, cz, r + 3.6, 6, 0.2, PI - 0.2)) at(w, p.x, p.z, () => w.brazier(p.x, p.z, { cond: () => enc.active && enc.boss?.ignited, power: 10, scale: 1 }));
+    if (!o.stands) {
+      // torn standards round the rim
+      for (const p of around(cx, cz, r + 2.4, 8, 0.15, PI - 0.15)) at(w, p.x, p.z, () => w.banner(p.x, p.z, true));
+      for (const p of around(cx, cz, r + 1.5, 6, PI + 0.3, PI * 2 - 0.3)) { if (w.rand() < 0.6) corpse(w, p.x, p.z, w.rand() * 6); else bones(w, p.x, p.z); }
+      // braziers that only light once his blade ignites
+      for (const p of around(cx, cz, r + 3.6, 6, 0.2, PI - 0.2)) at(w, p.x, p.z, () => w.brazier(p.x, p.z, { cond: () => enc.active && enc.boss?.ignited, power: 10, scale: 1 }));
+    }
     for (let i = 0; i < 6; i++) bloodStain(w, cx + (w.rand() - 0.5) * r * 1.3, cz + (w.rand() - 0.5) * r * 1.3, 1);
-    for (let i = 0; i < 26; i++) { const a = w.rand() * PI * 2, d = w.rand() * r * 0.9; flat(w, new THREE.PlaneGeometry(1.4 + w.rand(), 1.0 + w.rand()), w.rand() < 0.5 ? w.mats.stoneDark : w.mats.stone, cx + Math.cos(a) * d, cz + Math.sin(a) * d, w.rand() * 3, 0.025); }
+    if (!o.stands) for (let i = 0; i < 26; i++) { const a = w.rand() * PI * 2, d = w.rand() * r * 0.9; flat(w, new THREE.PlaneGeometry(1.4 + w.rand(), 1.0 + w.rand()), w.rand() < 0.5 ? w.mats.stoneDark : w.mats.stone, cx + Math.cos(a) * d, cz + Math.sin(a) * d, w.rand() * 3, 0.025); }
     for (const p of around(cx, cz, r - 1.2, 14)) stuckBlade(w, p.x + (w.rand() - 0.5), p.z + (w.rand() - 0.5));
-    for (const p of [...around(cx, cz, r + 2.8, 3, -0.7, 0.3), ...around(cx, cz, r + 2.8, 3, PI - 0.3, PI + 0.7)]) at(w, p.x, p.z, () => { w.cyl(0.6, 0.7, 2 + w.rand() * 4, w.mats.stone, p.x, null, p.z); w.box(1.2, 0.5, 1.2, w.mats.stoneDark, p.x, 0.25, p.z); });
+    if (!o.stands) for (const p of [...around(cx, cz, r + 2.8, 3, -0.7, 0.3), ...around(cx, cz, r + 2.8, 3, PI - 0.3, PI + 0.7)]) at(w, p.x, p.z, () => { w.cyl(0.6, 0.7, 2 + w.rand() * 4, w.mats.stone, p.x, null, p.z); w.box(1.2, 0.5, 1.2, w.mats.stoneDark, p.x, 0.25, p.z); });
     drift(w, cx, cz, 'ash', 6, r * 2);
   },
 };
@@ -537,7 +540,7 @@ export function decorate(w, key, mod) {
 }
 export { crows, candles, bones, corpse, robed, skullStake, lanternPost, bloodStain, cage, sacks, cart, drift };
 // called by the arena builders: theme is 'pit' | 'cloister' | 'forge' | 'throne'
-export function decorateArena(w, theme, cx, cz, r, enc) { mats(); W = w; ARENAS[theme]?.(w, cx, cz, r, enc); W = null; }
+export function decorateArena(w, theme, cx, cz, r, enc, o = {}) { mats(); W = w; ARENAS[theme]?.(w, cx, cz, r, enc, o); W = null; }
 
 // per frame (from World.update): only things near the player move
 export function updateAmbient(w, dt, time, fx, focus) {

@@ -85,7 +85,7 @@ export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
     if (gr > 0.45 && r < gr * 0.85 * clump) {
       const s = 0.7 + vh(jx, jz, 4) * 0.8;
       grass.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s, GRASS[Math.floor(vh(jx, jz, 6) * GRASS.length)], s * (0.8 + vh(jx, jz, 7) * 0.6));
-    } else if (gI >= 0 && cr > 0.5 && r < 0.035) {
+    } else if (gI >= 0 && !st.bare && cr > 0.5 && r < 0.035) {
       // a weed in a crack
       const s = 0.45 + vh(jx, jz, 4) * 0.4;
       weeds.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s, WEED[Math.floor(vh(jx, jz, 6) * WEED.length)]);
