@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { City, GRID } from './city.js';
 import { Ward } from './ward.js';
+import { wallTex } from './ground.js';
 import { candles, bones, corpse, robed, crows, bloodStain } from './decor.js';
 import { SPIRE } from './spire.js';
 
@@ -63,6 +64,7 @@ export class Hill extends Ward {
       glassRed: lam(0x000000, { emissive: 0xc8402a }), glassGold: lam(0x000000, { emissive: 0xd8a040 }), glassViolet: lam(0x000000, { emissive: 0x9a5ae0 }),
       fire: lam(0x000000, { emissive: 0xff7a2a }), bronze: lam(0x7a5a2a), timber: lam(0x3a2c22), bone: lam(0xbab09a),
     };
+    for (const [k, kind, sc] of [['pale', 'stone'], ['paleDk', 'stone'], ['basalt', 'rock'], ['slate', 'stone', 1], ['lead', 'metal', 1.2], ['timber', 'wood', 1.5]]) wallTex(this.K[k], kind, sc);
     super.build(w);
   }
 

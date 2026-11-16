@@ -10,6 +10,7 @@
 // sharp edge. build(w) adds what you see: the retaining walls along every edge that drops, the steps of stairs, the
 // ladders. The ground mesh (world.groundMesh) follows floorAt.
 import * as THREE from 'three';
+import { wallTex } from './ground.js';
 
 export const STEP = 0.45;     // the most a body steps up (or an enemy down) without stairs
 export const SAFE_FALL = 2.6; // a fall shorter than this lands on the feet
@@ -121,8 +122,8 @@ export class Terrain {
   build(w, from = 0) {
     if (!this.grid) this.bake();
     const M = w.mats, add = (m) => { w.add(m); return m; };
-    const brick = (this.brickMat ||= new THREE.MeshLambertMaterial({ color: 0x4e3c34, flatShading: true }));
-    const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : o.look === 'iron' ? M.rust : o.look === 'pale' ? (this.paleMat ||= new THREE.MeshLambertMaterial({ color: 0x9a9284, flatShading: true })) : o.look === 'basalt' ? M.stoneDark : M.stone);
+    const brick = (this.brickMat ||= wallTex(new THREE.MeshLambertMaterial({ color: 0x4e3c34, flatShading: true }), 'brick'));
+    const look = (o) => (o.look === 'brick' ? brick : o.look === 'earth' ? M.rockDark : o.look === 'iron' ? M.rust : o.look === 'pale' ? (this.paleMat ||= wallTex(new THREE.MeshLambertMaterial({ color: 0x9a9284, flatShading: true }), 'stone')) : o.look === 'basalt' ? M.stoneDark : M.stone);
     const capMat = M.stoneDark;
     if (!from || !this.faces) this.faces = []; // (each piece of face, for what grows on it: flora.js ivy)
     const seen = new Set();

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MODULES, MINI_ARENAS, BOSS_ARENA, FINAL_MODULES, TRAINING_ARENA } from './modules.js';
 import { Terrain, STEP } from './terrain.js';
-import { groundMaterial, paintAt, TEXSETS } from './ground.js';
+import { groundMaterial, paintAt, TEXSETS, wallTex } from './ground.js';
 import { growFlora, FLORA_TIME } from './flora.js';
 
 // The level is either a chain of modules laid out along -Z (the approach to Varek, and the old layouts the tests
@@ -83,6 +83,8 @@ export class World {
       glowBlue: new THREE.MeshLambertMaterial({ color: 0x000000, emissive: 0x8ad8ff, flatShading: true }),
       glowWindow: new THREE.MeshLambertMaterial({ color: 0x000000, emissive: 0xd8822a, flatShading: true }),
     };
+    // a pattern on the sides of things (ground.js wallTex): stone, rock, iron, boards
+    { const M = this.mats; for (const [k, kind, s] of [['stone', 'stone'], ['stoneDark', 'stone'], ['rock', 'rock'], ['rockDark', 'rock'], ['char', 'stone'], ['log', 'metal', 1.2], ['logDark', 'metal', 1.2], ['metal', 'metal', 1.2], ['rust', 'metal', 1.2], ['plank', 'metal', 1.2], ['wood', 'wood', 1.5]]) wallTex(M[k], kind, s); }
     this.fogMat = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
       uniforms: { uT: { value: 0 } },

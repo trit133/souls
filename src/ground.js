@@ -195,3 +195,50 @@ export function paintAt(paints, x, z, base, names = SURFACES) {
   }
   return w;
 }
+
+// ---------- walls and the sides of things ----------
+// A grey detail pattern laid over a plain material's colour, projected from whichever way each face looks (so any
+// box takes it without UVs): brick courses, cut stone, cracked plaster, planks, corrugated iron, rough rock. It only
+// darkens and lightens what's there, so every wall keeps its own colour.
+function grey() { const { cv, c, img } = canvas(); return { cv, c, img, set: (x, y, v) => put(img, x, y, [v, v, v], 255) }; }
+const WALLS = {
+  // brick: courses 8 px high (0.25 m over 2 m), bricks 16 px, staggered, mortar lines, a shade per brick
+  brick() { const r = rng(0xb71c), G = grey(), n = tileNoise(r, 8); for (let row = 0; row < 8; row++) { const off = row % 2 ? 8 : 0; for (let bx = -1; bx < 5; bx++) { const k = 150 + Math.floor(r() * 70); for (let y = 0; y < 8; y++) for (let x = 0; x < 16; x++) { const px = bx * 16 + off + x, py = row * 8 + y, m = x === 0 || y === 0; G.set(px, py, m ? 70 : k + (n(((px % PX) + PX) % PX, py) - 0.5) * 50 + (y === 1 ? 18 : 0)); } } } G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // cut stone: big blocks in courses, chamfered tops, the odd chipped one
+  stone() { const r = rng(0x570e), G = grey(), n = tileNoise(r, 6); const rows = [16, 16, 16, 16]; let y0 = 0; for (const h of rows) { let x0 = Math.floor(r() * 16); const st = x0; while (x0 < st + PX) { const w = Math.min(st + PX - x0, 16 + Math.floor(r() * 16)), k = 150 + Math.floor(r() * 60); for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const m = y === y0 || x === x0; G.set(x, y, m ? 80 : k + (n(((x % PX) + PX) % PX, y) - 0.5) * 60 + (y === y0 + 1 ? 22 : 0) + (y === y0 + h - 1 ? -18 : 0)); } x0 += w; } y0 += h; } G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // plaster: near flat, blotched with damp and soot, hairline cracks
+  plaster() { const r = rng(0x9a57), G = grey(), n = tileNoise(r, 5), m = tileNoise(r, 14); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) G.set(x, y, 185 + (n(x, y) - 0.5) * 50 + (m(x, y) - 0.5) * 24); for (let k = 0; k < 5; k++) { let x = Math.floor(r() * PX), y = Math.floor(r() * PX); for (let s = 0; s < 18; s++) { G.set(x, y, 95); y++; x += r() < 0.35 ? (r() < 0.5 ? 1 : -1) : 0; } } G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // planks: upright boards with grain and dark seams, nail heads
+  wood() { const r = rng(0x3d0d), G = grey(), n = tileNoise(r, 4); for (let bx = 0; bx < 8; bx++) { const k = 150 + Math.floor(r() * 60); for (let y = 0; y < PX; y++) for (let x = 0; x < 8; x++) { const px = bx * 8 + x; G.set(px, y, x === 0 ? 60 : k + Math.sin((y + bx * 13) * 0.6 + x) * 10 + (n(px, y) - 0.5) * 40); } for (const y of [6, 38]) G.set(bx * 8 + 4, y, 70); } G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // corrugated iron: ribs every 4 px, rust blooms, a seam and its rivets
+  metal() { const r = rng(0x3e7a), G = grey(), n = tileNoise(r, 6); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) { const rib = Math.sin(x * Math.PI / 2) * 22; G.set(x, y, 175 + rib + (n(x, y) > 0.66 ? -55 : 0) + (y === 31 ? -60 : 0)); } for (let x = 2; x < PX; x += 8) G.set(x, 33, 230); G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // rough rock: crags and strata
+  rock() { const r = rng(0x70c4), G = grey(), n = tileNoise(r, 5), m = tileNoise(r, 12); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) { const a = n(x, y), b = m(x, y); G.set(x, y, 120 + a * 90 + (b - 0.5) * 50 + (Math.sin(y * 0.5 + a * 4) > 0.85 ? -40 : 0)); } G.c.putImageData(G.img, 0, 0); return G.cv; },
+};
+const WTEX = {};
+function wallTexture(kind) {
+  if (WTEX[kind]) return WTEX[kind];
+  const t = new THREE.CanvasTexture(WALLS[kind]());
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+  return (WTEX[kind] = t);
+}
+// lay a pattern over a material (once): kind of WALLS, `scale` metres to a tile (2 by default)
+export function wallTex(mat, kind, scale = 2) {
+  if (!mat || mat.userData.wallTex || !WALLS[kind]) return mat;
+  mat.userData.wallTex = kind;
+  const T = wallTexture(kind);
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.tWall = { value: T }; sh.uniforms.uWallScale = { value: 1 / scale };
+    sh.vertexShader = 'varying vec3 vWP;\nvarying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = 'uniform sampler2D tWall;\nuniform float uWallScale;\nvarying vec3 vWP;\nvarying vec3 vWN;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      {
+        vec3 an = abs(vWN);
+        vec2 uv = an.y > 0.6 ? vWP.xz : (an.x > an.z ? vWP.zy : vWP.xy);
+        float t = texture2D(tWall, uv * uWallScale).r;
+        diffuseColor.rgb *= 0.3 + t * 1.05; // (strong enough to read through the pixel pass)
+      }`);
+  };
+  mat.customProgramCacheKey = () => 'wall-' + kind;
+  mat.needsUpdate = true;
+  return mat;
+}

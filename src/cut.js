@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { City, GRID } from './city.js';
 import { Ward } from './ward.js';
+import { wallTex } from './ground.js';
 import { candles, bones, corpse, sacks, crows, bloodStain } from './decor.js';
 import { SUMP } from './sump.js';
 
@@ -51,8 +52,8 @@ export class Cut extends Ward {
   get look() { return 'sump'; }
   get ground() { return 'cut'; }
   get groundUnder() { return 'cutUnder'; }
-  // grey daylight from an open sky, cooler and brighter than the ward's
-  get sky() { return { hemi: 3.4, sun: 2.4, hemiColor: 0xbcc4d4, sunColor: 0xf2eee4, fog: 0x2c3032 }; }
+  // a sickly green light over the Cut, a little dim: the sky through the pumps' haze
+  get sky() { return { hemi: 1.9, sun: 1.15, hemiColor: 0x86b494, sunColor: 0xb8e6a8, fog: 0x14231a }; }
 
   streets() {
     return [[-4, 4, 30, 46], [-30, -16, 26, 31], [24, 40, 26, 32], [-6, 6, -2, 12], [-6, 6, -28, -16], [-36, -14, -16, -12], [16, 34, -14, -10], [-6, 6, -44, -41]]
@@ -66,6 +67,7 @@ export class Cut extends Ward {
       tile: lam(0x5a7262), tileDk: lam(0x3e5246), brick: lam(0x6a4436), iron: lam(0x3a3c40), glass: lam(0x000000, { emissive: 0x5a7a72 }),
       lamp: lam(0x000000, { emissive: 0xffc860 }), green: lam(0x000000, { emissive: 0x7aff9a }), rock: lam(0x5a5650), rockDk: lam(0x3e3b37), paint: lam(0x8a7a2a),
     };
+    for (const [k, kind, sc] of [['concrete', 'plaster'], ['concreteDk', 'plaster'], ['rust', 'metal', 1.2], ['rustDk', 'metal', 1.2], ['tin', 'metal', 1.2], ['tinDk', 'metal', 1.2], ['tile', 'stone', 1], ['tileDk', 'stone', 1], ['brick', 'brick'], ['iron', 'metal', 1.2], ['rock', 'rock'], ['rockDk', 'rock']]) wallTex(this.K[k], kind, sc);
     super.build(w);
   }
 

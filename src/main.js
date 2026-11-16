@@ -214,7 +214,7 @@ class Game {
     if (cones && !this.nightLights) {
       // one cone and one glow per player (up to 3); added once, so shaders compile once
       this.nightLights = [0, 1, 2].map(() => {
-        const cone = new THREE.SpotLight(0xffdcae, 0, 8, 1.05, 0.45, 1.2), glow = new THREE.PointLight(0xffc890, 0, 2.4, 1.5);
+        const cone = new THREE.SpotLight(0xffdcae, 0, 8, 1.05, 0.45, 1.2), glow = new THREE.PointLight(0xffc890, 0, 3.2, 1.5);
         this.scene.add(cone, cone.target, glow);
         return { cone, glow };
       });
@@ -230,11 +230,12 @@ class Game {
       // at night always; in a raid by day, wherever that player is in the dark (a house, a basement)
       const want = !p ? 0 : this.night ? 1 : D?.darkAt?.(p.pos.x, p.pos.z) ? 1 : 0;
       L.k = (L.k || 0) + (want - (L.k || 0)) * 0.12;
-      L.cone.intensity = p && p.alive !== false ? 17 * L.k : 0; L.glow.intensity = p ? 0.7 * L.k : 0;
+      L.cone.intensity = p && p.alive !== false ? 17 * L.k : 0; L.glow.intensity = p ? 1.1 * L.k : 0;
       if (!p) return;
       const f = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
-      L.cone.position.set(p.pos.x - f.x * 1.2, 3.4, p.pos.z - f.z * 1.2); // from above and behind: lights the ground ahead, not you
-      L.cone.target.position.set(p.pos.x + f.x * 4, 0, p.pos.z + f.z * 4);
+      const gy = p.pos.y || 0; // (the ground he stands on: a house up on a terrace, a cellar's sunken hall)
+      L.cone.position.set(p.pos.x - f.x * 1.2, gy + 3.4, p.pos.z - f.z * 1.2); // from above and behind: lights the ground ahead, not you
+      L.cone.target.position.set(p.pos.x + f.x * 4, gy, p.pos.z + f.z * 4);
       L.glow.position.set(p.pos.x, 1.4 + (p.pos.y || 0), p.pos.z);
     });
   }

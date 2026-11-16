@@ -15,6 +15,7 @@
 // blocks and buildings laid free instead of on the maze's grid.
 import * as THREE from 'three';
 import { City, GRID } from './city.js';
+import { wallTex } from './ground.js';
 import { candles, bones, corpse, sacks, cart, crows, bloodStain, skullStake } from './decor.js';
 
 const { UNDER, vh, inside } = GRID;
@@ -91,6 +92,7 @@ export class Ward extends City {
   build(w) {
     const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
     this.S = { stone: lam(0x6a665e), stoneDk: lam(0x46433e), brick: lam(0x5a4034), plaster: lam(0x8a8070), timber: lam(0x3a2c22), slate: lam(0x34343a), awning: lam(0x5a2a22), awning2: lam(0x4a4a30), iron: lam(0x3a3a3e), grave: lam(0x7a766c) };
+    for (const [k, kind, sc] of [['stone', 'stone'], ['stoneDk', 'stone'], ['brick', 'brick'], ['plaster', 'plaster'], ['timber', 'wood', 1.5], ['slate', 'stone', 1], ['iron', 'metal', 1.2], ['grave', 'stone', 1]]) wallTex(this.S[k], kind, sc);
     super.build(w);
     this.def.name = this.area.name;
   }

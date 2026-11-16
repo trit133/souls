@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { STEP } from './terrain.js';
 import { GROUND } from './world.js';
 import { growFlora } from './flora.js';
+import { wallTex } from './ground.js';
 import { rng } from './world.js';
 import { mix, ELITES } from './dungeon.js';
 import { arenaFurnish, stoneRing } from './modules.js';
@@ -231,6 +232,7 @@ export class City {
     this.facade = [lam(0x6e665a), lam(0x6a4a3a), lam(0x575450), lam(0x7a6e5e)];
     this.facadeDark = lam(0x3a3430);
     this.brick = lam(0x5a3e30);
+    this.facade.forEach((m, i) => wallTex(m, i === 1 ? 'brick' : 'plaster')); wallTex(this.facadeDark, 'stone'); wallTex(this.brick, 'brick'); // (patterns on the walls: ground.js)
     this.shroudMat = new THREE.MeshBasicMaterial({ color: 0x17130f });
     this.glass = new Map(); // a faded copy of each material a building uses
     this.stairs = []; this.unders = []; this.layers = []; this.occluders = []; this.exits = [];
