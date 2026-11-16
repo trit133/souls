@@ -38,7 +38,7 @@ export class WorldMap {
     this.el = el;
     this.fx = new MapFx($('wm-fx'));
     pxButton($('wm-back'), 'ash', 2); pxButton($('wm-night'), 'blood', 2); pxButton($('wm-go'), 'ember', innerHeight > 500 ? 3 : 2);
-    pxText($('wm-title'), { px: innerHeight > 500 ? 3 : 2 });
+    pxText($('wm-title'), { px: innerHeight > 500 ? 5 : 3 });
     $('wm-back').addEventListener('click', () => (this.region ? this.showWorld() : this.close(true)));
     $('wm-go').addEventListener('click', () => { if (this.area) { const id = this.area; this.close(false); this.onPick?.(id); } });
     $('wm-night').addEventListener('click', () => { this.game.nightRaid = !this.game.nightRaid; this.game.refreshNight(); this.nightLabel(); });
@@ -60,15 +60,26 @@ export class WorldMap {
     if (back) this.onBack?.();
   }
 
-  // the art fills the screen at a whole-number scale where it can
+  // the art fills the screen (smaller than its own size on a phone)
   fit() {
-    const f = $('wm-frame'), s = Math.max(1, Math.min(innerWidth * 0.96 / AW, (innerHeight - 70) / AH));
+    const f = $('wm-frame'), s = Math.max(0.3, Math.min(innerWidth * 0.96 / AW, (innerHeight - (document.documentElement.classList.contains('phone') ? 60 : 100)) / AH));
     f.style.width = AW * s + 'px'; f.style.height = AH * s + 'px';
+    this.keepIn();
+  }
+
+  // a plaque near the map's edge slides in until it fits inside the frame
+  keepIn() {
+    const box = $('wm-pins'), W = box.clientWidth, H = box.clientHeight, m = 12;
+    for (const b of box.children) {
+      const half = b.offsetWidth / 2 + m, halfH = b.offsetHeight / 2 + m;
+      b.style.left = Math.min(W - half, Math.max(half, b.dataset.x * W)) / W * 100 + '%';
+      b.style.top = Math.min(H - halfH, Math.max(halfH, b.dataset.y * H)) / H * 100 + '%';
+    }
   }
 
   pin(label, x, y, cls, onClick) {
     const b = document.createElement('button');
-    b.className = 'wm-pin ' + cls; b.style.left = x * 100 + '%'; b.style.top = y * 100 + '%';
+    b.className = 'wm-pin ' + cls; b.dataset.x = x; b.dataset.y = y; b.style.left = x * 100 + '%'; b.style.top = y * 100 + '%';
     b.innerHTML = `<span class="wm-dot"></span><span class="wm-lab">${label}</span>`;
     b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
     $('wm-pins').append(b);
@@ -84,6 +95,7 @@ export class WorldMap {
     this.drawWorld();
     // a region not yet found is a question mark under the fog, its name unknown
     for (const R of REGIONS) this.pin(R.open ? R.name : '?', R.x, R.y, R.open ? 'open' : 'locked unknown', () => (R.open ? this.showRegion(R.id) : this.info('Uncharted', 'No one sent into these lands has come back with a map. Clear the regions before it to find the way.', '', false)));
+    this.keepIn();
   }
 
   showRegion(id) {
@@ -99,6 +111,7 @@ export class WorldMap {
       const done = data?.raids?.[a.id];
       this.pin(A.name + (done ? ' ✓' : ''), a.x, a.y, areaOpen(A, data) ? 'open' : 'locked', () => this.pickArea(A));
     }
+    this.keepIn();
     // the furthest open area is picked to start with
     const first = R.areas.map((a) => AREAS[a.id]).filter((A) => areaOpen(A, data)).at(-1);
     if (first) this.pickArea(first);

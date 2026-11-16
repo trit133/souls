@@ -925,17 +925,25 @@ html.phone .fp-res { font-size: 8px; } html.phone .fp-none { font-size: 8px; }
 .wm-top > * { pointer-events: auto; }
 .wm-sp { width: 80px; }
 #wm-title { filter: drop-shadow(0 2px 3px #000); }
-#wm-frame { position: relative; margin-top: 30px; box-shadow: 0 0 0 3px #2a2018, 0 0 0 6px #120e0a, 0 10px 40px #000; }
+#wm-frame { position: relative; margin-top: 50px; box-shadow: 0 0 0 3px #2a2018, 0 0 0 6px #120e0a, 0 10px 40px #000; }
 #wm-art { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 #wm-fx { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
 #wm-pins { position: absolute; inset: 0; }
-.wm-pin .wm-lab { white-space: nowrap; }
-.wm-pin { position: absolute; transform: translate(-50%, -50%); background: none; border: 0; padding: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font: bold 13px monospace; color: #e8d8b0; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
-.wm-pin .wm-dot { width: 12px; height: 12px; background: #ff9a3a; box-shadow: 0 0 0 2px #000, 0 0 10px #ff8a2a; animation: wm-pulse 1.4s ease-in-out infinite; }
-.wm-pin.locked { color: #7a7266; cursor: default; }
+/* each place's name on a dark plaque in a gold frame (a bright rim, a dark gap, a dull outer rim, a gold diamond stud at
+   each end); the whole plaque is the button, and the picked one goes black */
+.wm-pin { position: absolute; transform: translate(-50%, -50%); background: none; border: 0; padding: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; font: bold 22px Georgia, serif; letter-spacing: 1px; color: #f0dcae; text-shadow: 0 2px 0 #000, 0 0 6px #000; }
+.wm-pin .wm-lab { position: relative; white-space: nowrap; padding: 10px 26px; min-height: 26px; line-height: 26px; background: rgba(16,11,7,0.88); border: 3px solid #e2b44c; box-shadow: inset 0 0 0 2px #2a1c0c, inset 0 0 0 4px #8a6224, inset 0 0 18px rgba(0,0,0,0.85), 0 0 0 2px #000, 0 0 0 5px #6a4818, 0 0 0 7px #000, 0 6px 18px rgba(0,0,0,0.8); transition: background 0.12s, color 0.12s; }
+.wm-pin .wm-lab::before, .wm-pin .wm-lab::after { content: ''; position: absolute; top: 50%; width: 10px; height: 10px; margin-top: -5px; background: #f2c860; transform: rotate(45deg); box-shadow: 0 0 0 2px #000, 0 0 6px #ffb040; }
+.wm-pin .wm-lab::before { left: -8px; } .wm-pin .wm-lab::after { right: -8px; }
+.wm-pin .wm-dot { width: 14px; height: 14px; background: #ff9a3a; box-shadow: 0 0 0 2px #000, 0 0 10px #ff8a2a; animation: wm-pulse 1.4s ease-in-out infinite; }
+.wm-pin.locked { color: #8a8070; cursor: default; }
+.wm-pin.locked .wm-lab { border-color: #7a6440; box-shadow: inset 0 0 0 2px #1a140c, inset 0 0 0 4px #4a3a22, inset 0 0 18px rgba(0,0,0,0.85), 0 0 0 2px #000, 0 0 0 5px #3a2c18, 0 0 0 7px #000, 0 6px 18px rgba(0,0,0,0.8); }
+.wm-pin.locked .wm-lab::before, .wm-pin.locked .wm-lab::after { background: #8a7040; box-shadow: 0 0 0 2px #000; }
 .wm-pin.locked .wm-dot { background: #4a443c; box-shadow: 0 0 0 2px #000; animation: none; }
+.wm-pin.sel .wm-lab { background: #000; color: #ffe08a; border-color: #ffd470; }
+.wm-pin.sel .wm-lab::before, .wm-pin.sel .wm-lab::after { background: #fff0b0; box-shadow: 0 0 0 2px #000, 0 0 10px #ffd070; }
 .wm-pin.sel .wm-dot { background: #fff2c0; box-shadow: 0 0 0 2px #000, 0 0 14px #ffd070; }
-.wm-pin:hover:not(.locked) .wm-lab { color: #fff; }
+.wm-pin:hover:not(.locked) .wm-lab { color: #fff; background: rgba(6,4,2,0.95); }
 @keyframes wm-pulse { 50% { transform: scale(1.25); } }
 #wm-panel { position: absolute; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); width: min(340px, 44vw); background: rgba(14,10,8,0.92); border: 2px solid #4a3a28; box-shadow: 0 0 0 2px #000, 0 8px 30px #000; padding: 12px 14px; color: #d8c8a8; font: 13px/1.45 monospace; }
 #wm-panel.hidden { display: none; }
@@ -1120,7 +1128,7 @@ body.pt-on #hm-stash, body.pt-on #hm-juke, body.pt-on #hm-work { top: var(--pt-b
 .wk-tip.hidden { display: none; }
 .wk-tip b { font: bold 14px Georgia, serif; } .wk-tip i { color: #a89878; } .wk-tip em { color: #e8c25a; font-style: normal; } .wk-tip u { text-decoration: none; color: #9ac0a0; }
 @media (max-width: 760px), (max-height: 450px) { #hm-work.wk { top: 48px; bottom: 64px; } .wk-main { grid-template-columns: 90px minmax(0, 1fr) minmax(0, 1.2fr); } .wk-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 100px; } .wk-tile .item-ic { width: 40px !important; height: 40px !important; } }
-.wm-pin.unknown .wm-lab { font: bold 26px Georgia, serif; color: #e8402e; width: 38px; height: 38px; line-height: 38px; text-align: center; border-radius: 50%; background: rgba(10,8,6,0.72); box-shadow: 0 0 0 2px #2a1a12, 0 0 14px rgba(0,0,0,0.8); text-shadow: 0 0 4px #000, 0 1px 0 #000; } /* (a sealed region: a ? on the painted map) */
+.wm-pin.unknown .wm-lab { font: bold 30px Georgia, serif; color: #e8402e; padding: 8px 18px; } /* (a sealed region: a ? on its plaque) */
 .wm-pin.unknown .wm-dot { display: none; }
 
 /* ---------- the Bazaar (bazaar.js) ---------- */
@@ -1225,7 +1233,9 @@ html.phone #wm-name { font-size: 11px; margin-bottom: 3px; letter-spacing: 0; }
 html.phone #wm-boss { margin-top: 3px; }
 html.phone .wm-btns { gap: 4px; margin-top: 5px; }
 html.phone .wm-top { top: calc(4px + env(safe-area-inset-top)); padding: 0 calc(6px + env(safe-area-inset-left)); }
-html.phone .wm-pin { font-size: 9px; gap: 1px; padding: 2px; } html.phone .wm-pin .wm-dot { width: 8px; height: 8px; }
+html.phone .wm-pin { font-size: 13px; gap: 3px; padding: 2px; letter-spacing: 0; } html.phone .wm-pin .wm-dot { width: 9px; height: 9px; }
+html.phone .wm-pin .wm-lab { padding: 6px 14px; min-height: 16px; line-height: 16px; border-width: 2px; } html.phone .wm-pin .wm-lab::before, html.phone .wm-pin .wm-lab::after { width: 7px; height: 7px; margin-top: -3.5px; } html.phone .wm-pin .wm-lab::before { left: -6px; } html.phone .wm-pin .wm-lab::after { right: -6px; }
+html.phone #wm-frame { margin-top: 30px; }
 /* in a raid: no enemy description card on a phone */
 html.phone #foe-panel { display: none !important; }
 html.phone #hm-solo, html.phone #hm-party { min-width: 150px; }
