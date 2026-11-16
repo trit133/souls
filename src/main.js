@@ -505,6 +505,11 @@ class Game {
     document.querySelectorAll('[data-fs]').forEach((b) => b.addEventListener('click', toggleFs));
     document.addEventListener('fullscreenchange', fsLabel);
     document.addEventListener('webkitfullscreenchange', fsLabel);
+    // in fullscreen, Escape is the game's (pause) rather than the browser's way out: Chrome and Edge hand it over with
+    // the Keyboard Lock (holding Escape for a moment still leaves fullscreen there); elsewhere the browser keeps it
+    const escLock = () => { const kb = navigator.keyboard; if (!kb?.lock) return; if (fsOn()) kb.lock(['Escape']).catch(() => {}); else kb.unlock?.(); };
+    document.addEventListener('fullscreenchange', escLock);
+    document.addEventListener('webkitfullscreenchange', escLock);
     fsLabel();
     $('pause-settings').addEventListener('click', () => this.openSettings());
     $('set-back').addEventListener('click', () => this.closeSettings());
