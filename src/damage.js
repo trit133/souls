@@ -55,6 +55,12 @@ export function mitigate(parts, tree = {}, buildMul = 1) {
   return { taken, build, total: sumParts(taken) };
 }
 
+// how much of each element a light hit deals (as the damage numbers show it): how strongly it burns on the weapon
+export function weaponElemPow(tree, statusLv, base = 15 * NUM) {
+  const p = playerParts(tree, statusLv, base), out = {};
+  for (const k of ELEMS) if ((p[k] || 0) >= 1.5 * NUM) out[k] = Math.round(p[k]);
+  return out;
+}
 // which elements show on the weapon: at least 1.5 (× NUM) of that element on a light hit
 export function weaponElems(tree, statusLv, base = 15 * NUM) {
   const p = playerParts(tree, statusLv, base);

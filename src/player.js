@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Actor, angDiff, clamp } from './actor.js';
 import { buildHumanoid } from './models.js';
 import { outfitModel } from './playerkits.js';
-import { weaponElems, mitigate, enemyParts } from './damage.js';
+import { weaponElems, weaponElemPow, mitigate, enemyParts } from './damage.js';
 import { StatusState } from './status.js';
 import { locomotion, P, sample } from './anims.js';
 import { gaitPose, hasClips, CARRIAGE } from './clips.js';
@@ -515,6 +515,7 @@ export class Player extends Actor {
     // visual only: idle flourishes, rune glow
     this.rig.idle = this.state === 'move' && this.speed < 0.2;
     this.wfxKey = weaponElems(this.tree, this.statusLv); // elements showing on the weapon
+    if ((this.wfxT = (this.wfxT || 0) - dt) <= 0) { this.wfxT = 0.5; this.wfxPow = weaponElemPow(this.tree, this.statusLv); } // (and how strongly: weaponfx.js)
     this.status.update(dt, this.game);
     if (this.c.caster) this.rig.setGlow(this.maxMana ? this.mana / this.maxMana : 0);
     if (this.atkLift && (this.state !== 'attack' || !this.atk?.def.jump)) { this.y = 0; this.atkLift = false; }

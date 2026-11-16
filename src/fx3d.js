@@ -51,8 +51,10 @@ export class BladeArc {
     });
     this.mesh = new THREE.Mesh(g, this.mat); this.mesh.frustumCulled = false; this.geo = g;
     scene.add(this.mesh);
-    this.t = 0;
+    this.t = 0; this.baseHex = col.getHex();
   }
+  // the weapon's elements recolour the arc (weaponfx.js): the body to their colour, the hot edge warmed toward it
+  setColor(c) { this.mat.uniforms.uCol.value.set(c); }
   update(dt, active, baseObj, tipObj) {
     this.t += dt; this.mat.uniforms.uT.value = this.t;
     for (const s of this.samples) s.age += dt;

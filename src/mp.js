@@ -1,3 +1,4 @@
+import { packPow } from './weaponfx.js';
 import * as THREE from 'three';
 import { Actor, angDiff } from './actor.js';
 import { buildHumanoid } from './models.js';
@@ -91,7 +92,7 @@ class RemotePlayer extends Actor {
       if (this.spectral.visible) this.spectral.material.opacity = 0.45 + Math.sin(this.game.time * 30) * 0.1;
     }
     const hand = P0?.def.hand || 'R';
-    this.trail.update(dt, trail && hand !== 'L', this.rig.base, this.rig.tip);
+    this.trail.update(dt, trail && hand !== 'L', this.rig.base, this.rig.tip); this.trailOn = trail; // (trailOn: the weapon's elements leave their trail: weaponfx.js)
     this.trailL?.update(dt, trail && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
     this.rig.stow(st === 'climb'); // (his weapons put away on a ladder, as on his own screen)
     if (this.play) { /* the swing already set the pose */ }
@@ -390,7 +391,7 @@ export class Multiplayer {
     this.clock += dt; this.netT = (this.netT || 0) + dt; // (netT: the host's world clock, stamped on its snapshots)
     if (this.clock < 1 / 30) return;
     this.clock = 0;
-    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), gy: r2(p.gy || 0), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '', ...g.runes?.snapshot() });
+    this.sendAll({ t: 'p', x: r2(p.pos.x), z: r2(p.pos.z), gy: r2(p.gy || 0), yaw: r2(p.yaw), st: p.state, a: p.state === 'attack' ? p.atkKey : 0, tt: r2(p.state === 'attack' ? p.atk?.t || 0 : p.t), b: p.blocking ? 1 : 0, alive: p.alive, hp: Math.round(p.hp), maxHp: p.maxHp, w: p.wfxKey || '', wp: packPow(p.wfxPow), ...g.runes?.snapshot() });
     if (this.isHost) {
       const ps = g.allPlayers().map((x) => x.pos);
       const near = (o) => ps.some((v) => Math.abs(v.z - o.z) < 46 && Math.abs(v.x - o.x) < 46);

@@ -79,6 +79,7 @@ class ParticleSystem {
 // ---------- weapon trail ribbon ----------
 export class Trail {
   constructor(scene, color = 0xffffff, n = 16, opacity = 0.55) {
+    this.baseHex = color;
     this.n = n;
     this.samples = [];
     const g = new THREE.BufferGeometry();
