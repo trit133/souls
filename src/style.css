@@ -14,7 +14,7 @@ html, body {
 .hidden { display: none !important; }
 
 /* ---------- HUD ---------- */
-#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 1; } /* (over the touch controls: the move stick's half of the screen mustn't swallow taps on Combos and Pouch) */
 #bars {
   position: absolute; left: calc(18px + env(safe-area-inset-left)); top: calc(14px + env(safe-area-inset-top));
   width: min(38vw, 340px);
@@ -996,7 +996,7 @@ html.phone #wm-panel { width: 46vw; font-size: 11px; padding: 8px 10px; }
 @keyframes lf-in { from { opacity: 0; transform: scale(1.4); } to { opacity: 1; transform: none; } }
 html.phone .lf-line { font-size: 16px; } html.phone .lf-line .item-ic { width: 24px !important; height: 24px !important; }
 /* the pouch (Game.togglePouch): what you carry in a raid */
-#pouch-btn { position: absolute; left: calc(16px + env(safe-area-inset-left)); top: 128px; pointer-events: auto; cursor: pointer; padding: 5px 10px; font: bold 12px monospace; letter-spacing: 1px; color: #ffd36a; background: rgba(20,12,8,.85); border: 2px solid #6a3a1a; box-shadow: 0 0 0 2px #000; }
+#pouch-btn { position: absolute; left: calc(16px + env(safe-area-inset-left)); top: 128px; pointer-events: auto; margin: 0; }
 #pouch-btn.hidden { display: none; }
 #pouch { position: absolute; left: calc(16px + env(safe-area-inset-left)); top: 162px; width: min(300px, 46vw); max-height: 55vh; display: flex; flex-direction: column; padding: 8px 10px; pointer-events: auto; background: rgba(12,8,6,.92); border: 3px solid #6a3a1a; box-shadow: 0 0 0 3px #1a0c06, 0 8px 24px rgba(0,0,0,.7); color: #d0c0a0; font: 12px monospace; z-index: 5; }
 #pouch.hidden { display: none; }
@@ -1242,14 +1242,14 @@ html.phone #foe-panel { display: none !important; }
 html.phone #hm-solo, html.phone #hm-party { min-width: 150px; }
 html.phone #hm-slots { grid-template-columns: repeat(8, 1fr); gap: 2px; }
 html.phone .tiles { gap: 6px; }
-html.phone .tile-big, html.phone .tile-small { height: 52px; padding: 4px 8px; }
+html.phone .tile-big, html.phone .tile-small { height: 62px; padding: 4px 8px; }
 html.phone .tile-big { width: 165px; } html.phone .tile-small, html.phone #btn-settings { width: 145px; } html.phone .tile-fs { width: 125px; }
 #hm-work .wk-dark, #wk-detail .wk-dark { filter: brightness(.25) grayscale(.6); }
 
 /* the combo list (combolist.js): a button under the bars, dropping down the weapon's combos until toggled off */
 #combo-hud { margin-top: 8px; pointer-events: auto; width: max-content; max-width: min(92vw, 360px); }
-#combo-btn { padding: 4px 10px; background: rgba(20,12,8,.85); border: 1px solid #6a3a1a; box-shadow: 0 0 0 1px #1a0c06; color: #e8dcc0; font: 12px Georgia, serif; letter-spacing: .04em; cursor: pointer; touch-action: manipulation; }
-#combo-btn:hover, #combo-btn.on { border-color: #b8621e; color: #ffd890; }
+#combo-btn { margin: 0; touch-action: manipulation; }
+#combo-hud #pouch-btn { position: static; margin: 0 0 0 8px; vertical-align: top; }
 #combo-list { margin-top: 4px; padding: 6px 8px; background: rgba(10,7,5,.86); border: 2px solid #6a3a1a; box-shadow: 0 0 0 2px #1a0c06, 0 6px 16px rgba(0,0,0,.6); color: #e8dcc0; max-height: 52vh; overflow-y: auto; }
 #combo-list.hidden { display: none; }
 .cl-row { padding: 5px 4px; border-bottom: 1px solid rgba(106,58,26,.45); }
@@ -1275,3 +1275,13 @@ html.phone .tile-big { width: 165px; } html.phone .tile-small, html.phone #btn-s
 #tree-count { display: none; }
 html.phone #tree-foot { bottom: calc(10px + env(safe-area-inset-bottom)); }
 html.phone #tree-resetbar { bottom: calc(52px + env(safe-area-inset-bottom)); }
+
+/* settings: Done up top by the heading, Sign Out last at the bottom */
+#settings > #set-back { margin: 0 0 10px; }
+#settings .set-foot { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 6px; }
+#settings .set-foot #set-signout { margin-top: 14px; }
+/* the title on a phone: the flame canvas has empty sky above the letters for the flames to rise into; pull it up so
+   the title, the tiles and Fullscreen sit in the middle of the screen (in the visible height, svh, not behind the bars) */
+html.phone #menu { justify-content: center; height: 100svh; }
+html.phone #menu > :first-child, html.phone #menu > :last-child { margin-top: 0; margin-bottom: 0; }
+html.phone #title-fire { width: min(60vw, 52svh); margin-top: calc(-0.1 * min(60vw, 52svh)); }

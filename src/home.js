@@ -99,7 +99,9 @@ export class Home {
       const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000)); this.last = now;
       const menuUp = !$('menu').classList.contains('hidden');
       if (menuUp) for (const L of this.labels) if (L.tile.offsetParent) {
-        const w = L.tile.clientWidth - 24; // fit the tile, shrinking on small screens
+        // fit the tile, shrinking on small screens: its width, and its height too (a short word like PLAY would
+        // otherwise grow taller than a phone's low tiles)
+        const w = Math.min(L.tile.clientWidth - 24, Math.max(1, Math.floor((L.tile.clientHeight - 4) / L.cv.height)) * L.cv.width);
         if (w !== L.fitW) L.size(w);
         L.step(dt, L.tile.matches(':hover, :focus-visible'));
       }

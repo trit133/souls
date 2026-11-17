@@ -57,7 +57,7 @@ import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
-import { pixelMenus, syncRanges } from './pixelmenus.js';
+import { pixelMenus, syncRanges, pxButton } from './pixelmenus.js';
 import { ComboList } from './combolist.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
@@ -1494,9 +1494,11 @@ class Game {
     $('hud').append(el);
     el.querySelector('#pc-close').addEventListener('click', (e) => { e.stopPropagation(); this.togglePouch(false); });
     el.addEventListener('pointerdown', (e) => e.stopPropagation());
-    const btn = document.createElement('button'); btn.id = 'pouch-btn'; btn.textContent = 'POUCH';
+    const btn = document.createElement('button'); btn.id = 'pouch-btn'; btn.className = 'mini-btn'; btn.textContent = 'POUCH';
     btn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); this.togglePouch(); });
-    $('hud').append(btn);
+    // (beside the Combos button, so the combo list drops down under both instead of under the pouch)
+    const row = $('combo-hud'); if (row) row.insertBefore(btn, row.children[1]); else $('hud').append(btn);
+    pxButton(btn, 'rust', 2);
     return (this._pouch = el);
   }
   renderPouch() {

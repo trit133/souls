@@ -3,6 +3,7 @@
 // touch buttons) and what it does, and stays open until it's toggled off (remembered on this device). While a combo
 // is going, its row lights up: the moves done, and the one to press next once its window opens.
 import { keyLabel } from './settings.js';
+import { pxButton } from './pixelmenus.js';
 
 const KEY = 'souls.comboList';
 const WORD = { attack: 'Light', heavy: 'Heavy', roll: 'Roll' };
@@ -13,9 +14,10 @@ export class ComboList {
     this.game = game;
     const bars = document.getElementById('bars');
     this.wrap = document.createElement('div'); this.wrap.id = 'combo-hud';
-    this.btn = document.createElement('button'); this.btn.id = 'combo-btn'; this.btn.type = 'button';
+    this.btn = document.createElement('button'); this.btn.id = 'combo-btn'; this.btn.type = 'button'; this.btn.className = 'mini-btn'; this.btn.textContent = 'Combos';
     this.panel = document.createElement('div'); this.panel.id = 'combo-list';
     this.wrap.append(this.btn, this.panel);
+    pxButton(this.btn, 'rust', 2);
     bars.append(this.wrap);
     // (its own clicks: never an attack, never the camera)
     for (const ev of ['pointerdown', 'mousedown', 'touchstart']) this.wrap.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
@@ -29,8 +31,7 @@ export class ComboList {
   set(on) {
     this.open = on;
     try { localStorage.setItem(KEY, on ? '1' : '0'); } catch {}
-    this.btn.textContent = on ? 'Combos ▴' : 'Combos ▾';
-    this.btn.classList.toggle('on', on);
+    this.btn.classList.toggle('on', on); // (lit while the list is open)
     this.panel.classList.toggle('hidden', !on);
     if (on) this.render();
   }

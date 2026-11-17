@@ -68,6 +68,15 @@ export function pxText(el, o = {}) {
 function syncRange(r) { r.style.setProperty('--v', ((r.value - r.min) / (r.max - r.min || 1)) * 100 + '%'); }
 export function syncRanges() { document.querySelectorAll('#settings input[type=range]').forEach(syncRange); }
 
+// a button's tone from what it does: going on ember, going back or away ash, leaving for good blood, the rest rust
+export function toneOf(b) {
+  const t = (b.textContent || '').trim().toLowerCase();
+  if (b.classList.contains('primary') || b.classList.contains('lit') || /^(resume|done|play again|try again|save|confirm|unlock|forge|build|equip|deploy|begin)/.test(t)) return 'ember';
+  if (/^(sign out|quit)/.test(t)) return 'blood';
+  if (/^(back|title|cancel|close|x$|reset)/.test(t)) return 'ash';
+  return 'rust';
+}
+
 export function pixelMenus() {
   frames();
   const q = (sel) => document.querySelectorAll(sel);
@@ -81,6 +90,9 @@ export function pixelMenus() {
   for (const b of q('#account button, #skins-back, #cz-cancel, #skins #skin-tabs button, #skins #cz-outfits button, #cz-buy, #settings > button, #settings #set-layout, #lobby button.menu-btn, #lobby button.mini-btn')) {
     pxButton(b, tone[b.id] || (b.closest('#skin-tabs') ? 'scarlet' : 'rust'), b.classList.contains('menu-btn') ? 3 : 2);
   }
+  // and every other button still in the old look (the pause menu, the death and victory screens, the layout bar, the
+  // skill trees' bars...): a tone from what it does
+  for (const b of q('button.menu-btn:not(.pxbtn), button.mini-btn:not(.pxbtn)')) if (!b.closest('#tree-zoom')) pxButton(b, toneOf(b), b.classList.contains('menu-btn') ? 3 : 2);
   // the lobby's class picks: framed tiles with their names in the pixel font
   for (const p of q('#lobby .pick')) {
     p.classList.add('pxpick'); const n = p.querySelector('b'); if (n) pxText(n, { font: 'big', px: 2, hover: p });

@@ -880,7 +880,7 @@ export class Hermitage {
     const missing = R2.rows.reduce((s2, r) => s2 + Math.max(0, r.need - r.have), 0), needWeapon = evo && !ownsWeapon(d, x.id);
     const b = document.createElement('button'); b.className = 'menu-btn primary wk-go';
     b.textContent = needWeapon ? `Forge the ${W.short} first` : missing ? `Missing ${missing} material${missing > 1 ? 's' : ''}` : evo ? 'Build' : 'Forge';
-    b.disabled = needWeapon || !!missing;
+    b.disabled = needWeapon || !!missing; pxButton(b, 'ember', 2);
     b.addEventListener('click', (e) => {
       e.stopPropagation();
       if (b.disabled) return;
@@ -916,7 +916,7 @@ export class Hermitage {
     }
     const missing = R2.rows.reduce((s2, r) => s2 + Math.max(0, r.need - r.have), 0);
     const b = document.createElement('button'); b.className = 'menu-btn primary wk-go';
-    b.textContent = missing ? `Missing ${missing} material${missing > 1 ? 's' : ''}` : 'Forge'; b.disabled = !!missing;
+    b.textContent = missing ? `Missing ${missing} material${missing > 1 ? 's' : ''}` : 'Forge'; b.disabled = !!missing; pxButton(b, 'ember', 2);
     b.addEventListener('click', (e) => {
       e.stopPropagation(); if (b.disabled) return;
       spend(d, R.recipe); grantRune(d, id);
@@ -943,7 +943,7 @@ export class Hermitage {
       const top = document.createElement('div'); top.className = 'wb-top';
       top.append(weaponIcon(id, 2), Object.assign(document.createElement('div'), { className: 'wb-t', innerHTML: `<b>${W.name}</b><span>${on ? 'Equipped' : W.region ? 'Crafted' : 'Starting weapon'} · special: ${W.special.name}</span>` }));
       c.append(top, Object.assign(document.createElement('div'), { className: 'wb-d', textContent: `${W.desc} ${W.special.name}: ${W.special.desc}` }));
-      if (!on) { const b = document.createElement('button'); b.className = 'mini-btn wb-go'; b.textContent = 'Equip'; b.addEventListener('click', (e) => { e.stopPropagation(); A.equip[kind] = id; g.accounts.save(); this.placeCharacter(); g.audio.play('clang', 0.6); this.renderEquip(); }); c.append(b); }
+      if (!on) { const b = document.createElement('button'); b.className = 'mini-btn wb-go'; b.textContent = 'Equip'; b.addEventListener('click', (e) => { e.stopPropagation(); A.equip[kind] = id; g.accounts.save(); this.placeCharacter(); g.audio.play('clang', 0.6); this.renderEquip(); }); c.append(b); pxButton(b, 'ember', 2); }
       // its evolution: on or off (only on this weapon)
       const E = W.evo, ev = document.createElement('div'); ev.className = 'wb-evo';
       if (hasEvo(d, E.id)) {
@@ -951,7 +951,7 @@ export class Hermitage {
         ev.innerHTML = `<span>Evolution · <b>${E.name}</b></span>`;
         const t = document.createElement('button'); t.className = 'mini-btn wb-go' + (live ? ' lit' : ''); t.textContent = live ? 'On' : 'Off';
         t.addEventListener('click', (e) => { e.stopPropagation(); A.evoOn[id] = live ? 0 : 1; g.accounts.save(); this.renderEquip(); });
-        ev.append(t);
+        ev.append(t); pxButton(t, live ? 'ember' : 'ash', 2);
       } else ev.innerHTML = `<span>Evolution · ${E.name}: build it at the workbench</span>`;
       c.append(ev);
       body.append(c);

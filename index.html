@@ -66,7 +66,7 @@
     <div id="home-in" class="home-view">
       <div id="acct-bar"><span id="acct-name"></span><span id="acct-gold"></span></div>
       <div class="tiles">
-        <button class="tile tile-big tile-herm" id="btn-herm" data-tile="ember"><span class="tile-ic" data-icon="camp"></span><span class="tile-t">Sanctum</span></button>
+        <button class="tile tile-big tile-herm" id="btn-herm" data-tile="ember"><span class="tile-ic" data-icon="camp"></span><span class="tile-t">Play</span></button>
         <button class="tile tile-small" id="btn-settings" data-tile="ash"><span class="tile-ic" data-icon="gear"></span><span class="tile-t">Settings</span></button>
       </div>
       <div id="controls-help"><div id="kb-help"></div>
@@ -170,8 +170,8 @@
   </div>
   <div id="settings" class="screen hidden">
     <h2>Settings</h2>
+    <button class="menu-btn" id="set-back">Done</button>
     <div id="set-owner"></div>
-    <button class="mini-btn hidden" id="set-signout">Sign Out</button>
     <div class="set-group">
       <div class="shop-head">Audio</div>
       <label>Master <input type="range" min="0" max="100" data-set="master"><b></b></label>
@@ -192,9 +192,9 @@
       <div id="set-hint">Click a key, then press the new key or mouse button. Esc cancels; Backspace clears.</div>
       <div id="binds"></div>
     </div>
-    <div>
+    <div class="set-foot">
       <button class="menu-btn" id="set-reset">Reset to defaults</button>
-      <button class="menu-btn" id="set-back">Done</button>
+      <button class="mini-btn hidden" id="set-signout">Sign Out</button>
     </div>
   </div>
   <div id="skins" class="screen hidden">
