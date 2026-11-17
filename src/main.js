@@ -58,6 +58,7 @@ import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from 
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
 import { pixelMenus, syncRanges, pxButton } from './pixelmenus.js';
+import { Lighting, GFX_PRESETS, GFX_KEYS } from './lighting.js';
 import { ComboList } from './combolist.js';
 import { LayoutEditor, applyLayout } from './touchlayout.js';
 import { ACTIONS, DEFAULTS, normalize, loadGuest, saveGuest, keyLabel } from './settings.js';
@@ -110,6 +111,7 @@ class Game {
     this.fx3d = new Fx3D(this.scene); // (the Templar's effects in 3D: fx3d.js)
     this.weaponFx = new WeaponFx(this);
     this.world = new World(this.scene);
+    this.lighting = new Lighting(this); // (the enhanced lighting: the Proving Ring for now)
     this.ui = new UI();
 
     this.time = 0;
@@ -517,6 +519,16 @@ class Game {
     $('set-back').addEventListener('click', () => this.closeSettings());
     $('set-quality').addEventListener('change', (e) => { this.settings.quality = e.target.value; this.applySettings(this.settings); this.saveSettings(); });
     $('set-reset').addEventListener('click', () => { this.applySettings(normalize()); this.saveSettings(); this.renderSettings(); });
+    // graphics: a preset sets every switch; changing a switch makes it Custom (or the preset it now matches)
+    document.querySelectorAll('[data-gfx]').forEach((el) => el.addEventListener('change', () => {
+      const s = this.settings, k = el.dataset.gfx, v = el.value === 'true' ? true : el.value === 'false' ? false : el.value;
+      if (k === 'gfx') { s.gfx = v; if (GFX_PRESETS[v]) Object.assign(s, GFX_PRESETS[v]); }
+      else {
+        s[k] = v;
+        if (GFX_KEYS.includes(k)) s.gfx = Object.keys(GFX_PRESETS).find((p) => GFX_KEYS.every((q) => GFX_PRESETS[p][q] === s[q])) || 'custom';
+      }
+      this.applySettings(s); this.saveSettings(); this.renderSettings();
+    }));
     document.querySelectorAll('[data-set]').forEach((el) => {
       el.addEventListener('input', () => {
         this.settings[el.dataset.set] = el.value / 100;
@@ -755,6 +767,7 @@ class Game {
     this.input.setBinds(s.binds);
     this.audio.setVolumes({ master: s.master, music: s.music, sfx: s.sfx, team: s.team });
     this.fx.shakeMul = s.shake;
+    this.lighting?.configure(s);
     const root = document.documentElement.style;
     root.setProperty('--touch-size', s.touchSize); root.setProperty('--touch-opacity', s.touchOpacity);
     if (!this.layoutEditor?.layout) applyLayout(s.touchLayout);
@@ -783,6 +796,7 @@ class Game {
     const s = this.settings;
     $('set-owner').textContent = this.accounts.user ? `Saved to ${this.accounts.displayName}'s account` : 'Guest: saved on this device only. Sign in to keep them on your account.';
     $('set-quality').value = s.quality;
+    document.querySelectorAll('[data-gfx]').forEach((el) => { el.value = String(s[el.dataset.gfx]); });
     document.querySelectorAll('[data-set]').forEach((el) => {
       const k = el.dataset.set;
       el.value = Math.round(s[k] * 100);
@@ -2250,6 +2264,7 @@ class Game {
       return;
     }
     if (this.mode === 'play' || this.mode === 'title') this.advance(now);
+    this.lighting.update(rdt);
     this.pixel.render(this.scene, this.camera);
   }
 

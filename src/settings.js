@@ -1,5 +1,6 @@
 // Player settings: key bindings, volumes, screen shake and touch layout.
 // Signed-in players keep them on their account; guests keep them on this device.
+import { GFX_PRESETS, GFX_KEYS } from './lighting.js';
 
 export const ACTIONS = [
   ['up', 'Move up'], ['down', 'Move down'], ['left', 'Move left'], ['right', 'Move right'],
@@ -14,7 +15,10 @@ export const DEFAULT_BINDS = {
 };
 
 // quality: pixel size of the game picture (see PIXEL_H in pixel.js)
-export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, touchLayout: {}, quality: 'medium', binds: DEFAULT_BINDS };
+// gfx: the graphics preset (lighting.js GFX_PRESETS: phones start on Medium, everything else High; 'custom' once a
+// switch is changed), its switches, the palette (Strict: the pixel palette; Soft: smooth light) and the FPS counter
+const PHONE = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse) and (hover: none)').matches;
+export const DEFAULTS = { master: 0.7, music: 1, sfx: 1, team: 0.5, shake: 1, touchSize: 1, touchOpacity: 1, touchLayout: {}, quality: 'medium', gfx: PHONE ? 'medium' : 'high', palette: 'soft', fps: false, binds: DEFAULT_BINDS };
 export const QUALITY = { chunky: 1, medium: 1, fine: 1 };
 
 const LOCAL = 'ashenVigil.settings.v1';
@@ -23,6 +27,11 @@ const LOCAL = 'ashenVigil.settings.v1';
 export function normalize(s) {
   const out = { ...DEFAULTS, ...(s || {}) };
   if (!(out.quality in QUALITY)) out.quality = DEFAULTS.quality; // older Auto/High/Low values
+  if (!(out.gfx in GFX_PRESETS) && out.gfx !== 'custom') out.gfx = DEFAULTS.gfx;
+  for (const k of GFX_KEYS) if (out.gfx !== 'custom' || out[k] === undefined) out[k] = GFX_PRESETS[out.gfx === 'custom' ? DEFAULTS.gfx : out.gfx][k];
+  if (!['off', 'low', 'high'].includes(out.shadows)) out.shadows = 'low';
+  if (out.palette !== 'strict') out.palette = 'soft';
+  out.fps = !!out.fps;
   // touchLayout: { action or 'stick': [x, y] } screen fractions (see touchlayout.js)
   if (!out.touchLayout || typeof out.touchLayout !== 'object') out.touchLayout = {};
   out.binds = {};

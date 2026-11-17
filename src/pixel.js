@@ -3,13 +3,18 @@
 // with 4x4 ordered dithering, into a canvas of exactly that size. CSS then scales the canvas up by a whole number
 // with image-rendering: pixelated, so every game pixel is the same size and the upscale costs nothing.
 // Gameplay never sees any of this.
+// The enhanced lighting (lighting.js, the Proving Ring for now) adds to that same pass, all at the game's low
+// resolution so it stays cheap: light shafts (the sun's light scattered by the dusty air, ray-marched through its
+// shadow map at half size), bloom on what's brightest, soft shadow in creases (from the depth), a filmic tone curve,
+// and the Soft palette (smooth light, finely posterized) in place of the strict one.
 import * as THREE from 'three';
 
 // Hard light bands on every Lambert material (all of the world, characters and props): 3 steps instead of a
-// smooth falloff. Patched into the shared shader chunk so no material file has to change.
+// smooth falloff. Patched into the shared shader chunk so no material file has to change. A material with the
+// SOFT_LIGHT define (lighting.js, the Soft palette) keeps the smooth falloff
 THREE.ShaderChunk.lights_lambert_pars_fragment = THREE.ShaderChunk.lights_lambert_pars_fragment.replace(
   'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );',
-  'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );\n\tdotNL = dotNL < 0.12 ? 0.0 : dotNL < 0.55 ? 0.5 : 1.0;',
+  'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );\n#ifndef SOFT_LIGHT\n\tdotNL = dotNL < 0.12 ? 0.0 : dotNL < 0.55 ? 0.5 : 1.0;\n#endif',
 );
 
 // target height in game pixels for each Pixel size setting
@@ -38,6 +43,9 @@ uniform sampler2D tDepth;
 uniform vec2 uSize;      // render target size in game pixels
 uniform float uNear, uFar;
 uniform vec3 uPal[${PALETTE.length}];
+uniform sampler2D tRays, tBloom;
+uniform float uRays, uBloom, uAO, uSoft, uTone; // (each 0 when off)
+uniform vec3 uSunCol;
 
 float lin(ivec2 p) {
   p = clamp(p, ivec2(0), ivec2(uSize) - 1);
@@ -51,15 +59,49 @@ float bayer(ivec2 p) {
   return float(m[i]) / 16.0 - 0.5;
 }
 
+vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+
+// soft shadow where surfaces meet (a wall's foot, under a ledge): this pixel lies deeper than the plane through its
+// neighbours either side, in four directions at two reaches; jumps in depth (silhouettes) don't count
+float crease(ivec2 p, float d) {
+  float occ = 0.0;
+  for (int r = 1; r <= 2; r++) {
+    int k = r * 3;
+    ivec2 o[4] = ivec2[4](ivec2(k, 0), ivec2(0, k), ivec2(k, k), ivec2(k, -k));
+    for (int i = 0; i < 4; i++) {
+      float a = lin(p + o[i]), b = lin(p - o[i]);
+      float dip = d - (a + b) * 0.5, jump = abs(a - b);
+      occ += smoothstep(0.015, 0.22, dip) * (1.0 - smoothstep(0.8, 2.0, jump));
+    }
+  }
+  return 1.0 - min(0.6, occ * 0.12);
+}
+
 void main() {
   ivec2 p = ivec2(gl_FragCoord.xy);
-  vec3 c = toSRGB(texelFetch(tColor, clamp(p, ivec2(0), ivec2(uSize) - 1), 0).rgb);
+  vec3 lc = texelFetch(tColor, clamp(p, ivec2(0), ivec2(uSize) - 1), 0).rgb;
+  float d = lin(p);
+  vec2 uv = (vec2(p) + 0.5) / uSize;
+  if (uAO > 0.0) lc *= crease(p, d);
+  if (uRays > 0.0) {
+    vec2 h = 1.0 / uSize;
+    vec3 r = texture(tRays, uv).rgb * 0.4 + (texture(tRays, uv + vec2(h.x, 0)).rgb + texture(tRays, uv - vec2(h.x, 0)).rgb + texture(tRays, uv + vec2(0, h.y)).rgb + texture(tRays, uv - vec2(0, h.y)).rgb) * 0.15;
+    lc += uSunCol * r * uRays;
+  }
+  if (uBloom > 0.0) lc += texture(tBloom, uv).rgb * uBloom;
+  if (uTone > 0.0) lc = aces(lc * uTone);
+  vec3 c = toSRGB(lc);
 
   // outline: this pixel sits just behind something nearer (a silhouette edge)
-  float d = lin(p);
   float near = min(min(lin(p + ivec2(1, 0)), lin(p - ivec2(1, 0))), min(lin(p + ivec2(0, 1)), lin(p - ivec2(0, 1))));
   float edge = step(0.2 + d * 0.025, d - near);
 
+  // the Soft palette: smooth light kept, posterized finely (32 steps a channel) through the same dither
+  if (uSoft > 0.0) {
+    c = floor(clamp(c + bayer(p) / 32.0, 0.0, 1.0) * 32.0 + 0.5) / 32.0;
+    outColor = vec4(mix(c, c * 0.25, edge), 1.0);
+    return;
+  }
   // ordered dither, then the nearest palette colour (weighted for how the eye sees brightness)
   c += bayer(p) * 0.035;
   vec3 best = uPal[0]; float bd = 1e9;
@@ -71,6 +113,67 @@ void main() {
   best = mix(best, best * 0.25, edge);
   outColor = vec4(best, 1.0);
 }`;
+
+// the light shafts: from the camera to each pixel's surface, how much of the way is in the sun (its shadow map) and
+// thick with dust (more near the ground), with more glow looking toward the sun. Half the game's resolution; the
+// march starts at a different point per pixel and the main pass blurs it a little
+const RAYS = /* glsl */ `
+out vec4 outColor;
+uniform sampler2D tDepth;
+uniform sampler2DShadow tShadow;
+uniform mat4 uInvProj, uCamWorld, uShadowMat;
+uniform vec3 uCamPos, uSunDir;
+uniform vec2 uSize, uFull;
+uniform float uMaxD;
+uniform int uSteps;
+float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+void main() {
+  vec2 q = gl_FragCoord.xy, uv = q / uSize;
+  float z = texelFetch(tDepth, ivec2(uv * uFull), 0).r;
+  vec4 v = uInvProj * vec4(uv * 2.0 - 1.0, z * 2.0 - 1.0, 1.0); v /= v.w;
+  vec3 wp = (uCamWorld * v).xyz, rd = wp - uCamPos;
+  float L = length(rd); rd /= L; L = min(L, uMaxD);
+  float st = L / float(uSteps), j = ign(q), acc = 0.0;
+  for (int i = 0; i < 64; i++) {
+    if (i >= uSteps) break;
+    vec3 pos = uCamPos + rd * (float(i) + j) * st;
+    vec4 sc = uShadowMat * vec4(pos, 1.0);
+    float lit = 1.0;
+    if (sc.x > 0.0 && sc.x < 1.0 && sc.y > 0.0 && sc.y < 1.0 && sc.z < 1.0) lit = texture(tShadow, vec3(sc.xy, sc.z - 0.0015));
+    acc += lit * exp(-max(pos.y, 0.0) * 0.32);
+  }
+  float mu = dot(rd, uSunDir), g = 0.6;
+  float phase = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * mu, 1.5);
+  outColor = vec4(vec3(acc * st * (0.15 + phase * 0.25)), 1.0);
+}`;
+// bloom: what's brightest, halved, then blurred one way and the other (9 taps)
+const BRIGHT = /* glsl */ `
+out vec4 outColor;
+uniform sampler2D tColor;
+uniform vec2 uSize;
+void main() {
+  vec3 c = texture(tColor, gl_FragCoord.xy / uSize).rgb;
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  outColor = vec4(c * smoothstep(0.45, 0.85, l), 1.0);
+}`;
+const BLUR = /* glsl */ `
+out vec4 outColor;
+uniform sampler2D tSrc;
+uniform vec2 uSize, uDir;
+void main() {
+  vec2 uv = gl_FragCoord.xy / uSize, s = uDir / uSize;
+  float w[5] = float[5](0.227, 0.194, 0.121, 0.054, 0.016);
+  vec3 c = texture(tSrc, uv).rgb * w[0];
+  for (int i = 1; i < 5; i++) c += (texture(tSrc, uv + s * float(i) * 1.5).rgb + texture(tSrc, uv - s * float(i) * 1.5).rgb) * w[i];
+  outColor = vec4(c, 1.0);
+}`;
+const fsq = (frag, uniforms) => {
+  const m = new THREE.ShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: VERT, fragmentShader: frag, depthTest: false, depthWrite: false, uniforms });
+  const q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m); q.frustumCulled = false;
+  const sc = new THREE.Scene(); sc.add(q);
+  return { m, sc };
+};
+const linRT = (type = THREE.UnsignedByteType) => new THREE.WebGLRenderTarget(16, 16, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type });
 
 export class PixelPass {
   constructor(renderer) {
@@ -87,8 +190,23 @@ export class PixelPass {
         uSize: { value: new THREE.Vector2(16, 16) },
         uNear: { value: 0.1 }, uFar: { value: 200 },
         uPal: { value: PALETTE.map((h) => new THREE.Color().setRGB(...[0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255))) },
+        tRays: { value: null }, tBloom: { value: null },
+        uRays: { value: 0 }, uBloom: { value: 0 }, uAO: { value: 0 }, uSoft: { value: 0 }, uTone: { value: 0 },
+        uSunCol: { value: new THREE.Color(1, 0.7, 0.45) },
       },
     });
+    // the enhanced lighting's passes (lighting.js sets this.fx: { rays: { sun, steps, strength }, bloom, ao, soft, tone })
+    this.fx = null;
+    this.rayRT = linRT(THREE.HalfFloatType);
+    this.rays = fsq(RAYS, {
+      tDepth: { value: this.rt.depthTexture }, tShadow: { value: null },
+      uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uShadowMat: { value: new THREE.Matrix4() },
+      uCamPos: { value: new THREE.Vector3() }, uSunDir: { value: new THREE.Vector3() },
+      uSize: { value: new THREE.Vector2() }, uFull: { value: new THREE.Vector2() }, uMaxD: { value: 40 }, uSteps: { value: 24 },
+    });
+    this.bloomA = linRT(); this.bloomB = linRT();
+    this.bright = fsq(BRIGHT, { tColor: { value: this.rt.texture }, uSize: { value: new THREE.Vector2() } });
+    this.blur = fsq(BLUR, { tSrc: { value: null }, uSize: { value: new THREE.Vector2() }, uDir: { value: new THREE.Vector2() } });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.mat);
     this.quad.frustumCulled = false;
     this.post = new THREE.Scene(); this.post.add(this.quad);
@@ -107,6 +225,8 @@ export class PixelPass {
     this.size.set(w, h); this.scale = scale;
     this.rt.setSize(w, h);
     this.mat.uniforms.uSize.value.set(w, h);
+    const hw = Math.max(1, Math.ceil(w / 2)), hh = Math.max(1, Math.ceil(h / 2));
+    this.rayRT.setSize(hw, hh); this.bloomA.setSize(hw, hh); this.bloomB.setSize(hw, hh);
     const r = this.renderer;
     r.setPixelRatio(1);
     r.setSize(w, h, false);
@@ -121,7 +241,34 @@ export class PixelPass {
     this.mat.uniforms.uNear.value = camera.near; this.mat.uniforms.uFar.value = camera.far;
     r.setRenderTarget(this.rt);
     r.render(scene, camera);
+    const U = this.mat.uniforms, fx = this.fx;
+    U.uRays.value = 0; U.uBloom.value = 0;
+    U.uAO.value = fx?.ao ? 1 : 0; U.uSoft.value = fx?.soft ? 1 : 0; U.uTone.value = fx?.tone || 0;
+    if (fx?.rays && fx.rays.sun.shadow.map?.depthTexture) this.drawRays(camera, fx.rays);
+    if (fx?.bloom) this.drawBloom(fx.bloom);
     r.setRenderTarget(null);
     r.render(this.post, this.cam);
+  }
+
+  drawRays(camera, R) {
+    const r = this.renderer, u = this.rays.m.uniforms, sun = R.sun;
+    u.tShadow.value = sun.shadow.map.depthTexture;
+    u.uInvProj.value.copy(camera.projectionMatrixInverse); u.uCamWorld.value.copy(camera.matrixWorld);
+    u.uShadowMat.value.copy(sun.shadow.matrix); u.uCamPos.value.setFromMatrixPosition(camera.matrixWorld);
+    u.uSunDir.value.subVectors(sun.position, sun.target.position).normalize();
+    u.uSize.value.set(this.rayRT.width, this.rayRT.height); u.uFull.value.copy(this.size); u.uSteps.value = R.steps;
+    r.setRenderTarget(this.rayRT); r.render(this.rays.sc, this.cam);
+    const U = this.mat.uniforms;
+    U.tRays.value = this.rayRT.texture; U.uRays.value = R.strength; U.uSunCol.value.copy(sun.color);
+  }
+
+  drawBloom(k) {
+    const r = this.renderer, sz = new THREE.Vector2(this.bloomA.width, this.bloomA.height);
+    this.bright.m.uniforms.uSize.value.copy(sz);
+    r.setRenderTarget(this.bloomA); r.render(this.bright.sc, this.cam);
+    const b = this.blur.m.uniforms; b.uSize.value.copy(sz);
+    b.tSrc.value = this.bloomA.texture; b.uDir.value.set(1, 0); r.setRenderTarget(this.bloomB); r.render(this.blur.sc, this.cam);
+    b.tSrc.value = this.bloomB.texture; b.uDir.value.set(0, 1); r.setRenderTarget(this.bloomA); r.render(this.blur.sc, this.cam);
+    this.mat.uniforms.tBloom.value = this.bloomA.texture; this.mat.uniforms.uBloom.value = k;
   }
 }
