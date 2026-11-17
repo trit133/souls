@@ -1,9 +1,10 @@
 // Life on the painted maps (worldmap.js): pixel effects over the art, drawn on a small canvas scaled up with hard
 // pixels so they read as pixel art over the painting. Smoke rising off burning towns, flickering fires and torches,
 // embers off the lava, mist drifting over marsh and mountain, sparkles round the Seat of Augury and on the glass,
-// glints on the water and rivers, green steam out of the Sump Lines, cloud shadows passing over, crows circling.
+// glints on the water and rivers, green steam out of the Sump Lines, white clouds drifting over, crows circling.
 // The spots are in the art's own pixels (both maps are 1672 x 941); it only runs while the map is open.
-const ART_W = 1672, ART_H = 941, DOWN = 4; // (the effects at a quarter of the art's size)
+const ART_W = 1672, ART_H = 941, DOWN = 2; // (the effects at half the art's size)
+const K = 4 / DOWN; // (the numbers below were made for a quarter-size canvas: speeds and sizes times this)
 export const FX_W = Math.round(ART_W / DOWN), FX_H = Math.round(ART_H / DOWN);
 
 // ---------- what each map has, where ----------
@@ -72,47 +73,71 @@ export class MapFx {
     this.t += dt;
     const c = this.c, t = this.t;
     c.clearRect(0, 0, FX_W, FX_H);
-    // cloud shadows first, under everything
-    if (this.list.some((E) => E.kind === 'clouds')) {
-      this.clouds ||= Array.from({ length: 5 }, (_, k) => ({ x: rnd(-60, FX_W), y: rnd(10, FX_H - 10), rx: rnd(40, 80), ry: rnd(14, 26), v: rnd(2, 4) }));
-      for (const C of this.clouds) {
-        C.x += C.v * dt; if (C.x - C.rx > FX_W) { C.x = -C.rx * 2; C.y = rnd(10, FX_H - 10); }
-        c.fillStyle = 'rgba(10,8,14,0.10)';
-        for (let k = -2; k <= 2; k++) { const w = C.rx * (1 - Math.abs(k) * 0.22); c.fillRect(Math.round(C.x - w), Math.round(C.y + k * C.ry / 3), Math.round(w * 2), Math.round(C.ry / 3) + 1); }
-      }
-    }
     for (const E of this.list) {
-      const o = E.o, rate = { fire: 18, smoke: o.big ? 5 : 3, steam: o.big ? 6 : 3.5, embers: 4, mist: 0.35, sparkle: 1.2 * (o.n || 1), glints: 3, lava: 0, torch: 0, pulse: 0, glint: 0, clouds: 0, crows: 0 }[E.kind] ?? 0;
+      const o = E.o, rate = { fire: 30, smoke: o.big ? 5 : 3, steam: o.big ? 6 : 3.5, embers: 4, mist: 0.35, sparkle: 1.2 * (o.n || 1), glints: 3, lava: 0, torch: 0, pulse: 0, glint: 0, clouds: 0, crows: 0 }[E.kind] ?? 0;
       E.acc += rate * dt;
       while (E.acc >= 1) { E.acc -= 1; this.emit(E); }
       // the steady ones, drawn straight from time
-      if (E.kind === 'lava') { const f = 0.5 + 0.5 * Math.sin(t * 3 + E.x); c.fillStyle = `rgba(255,${120 + Math.floor(f * 80)},40,${0.25 + f * 0.3})`; c.fillRect(Math.round(E.x) - 2, Math.round(E.y) - 1, 4, 3); c.fillStyle = `rgba(255,230,140,${0.3 + f * 0.4})`; c.fillRect(Math.round(E.x), Math.round(E.y), 1 + (f > 0.6 ? 1 : 0), 1); }
-      if (E.kind === 'torch') { const f = Math.random(), s = o.big ? 2 : 1, g = o.col === 'green'; c.fillStyle = g ? `rgba(150,255,140,${0.4 + f * 0.5})` : `rgba(255,${150 + Math.floor(f * 90)},60,${0.55 + f * 0.45})`; c.fillRect(Math.round(E.x), Math.round(E.y) - (f > 0.7 ? 1 : 0), s, s + (f > 0.5 ? 1 : 0)); c.fillStyle = g ? 'rgba(150,255,140,0.12)' : 'rgba(255,160,60,0.14)'; c.fillRect(Math.round(E.x) - 2, Math.round(E.y) - 2, 4 + s, 4 + s); }
-      if (E.kind === 'pulse') { const f = 0.5 + 0.5 * Math.sin(t * 2.2); c.fillStyle = `rgba(190,120,255,${0.10 + f * 0.18})`; for (let k = 0; k < 4; k++) { const w = 3 + k * 2 + Math.round(f * 2); c.fillRect(Math.round(E.x) - w, Math.round(E.y) - k * 3, w * 2, 2); } c.fillStyle = `rgba(255,240,255,${0.4 + f * 0.6})`; c.fillRect(Math.round(E.x), Math.round(E.y) - 3, 1, 2); }
-      if (E.kind === 'glint') { const ph = (t * 0.6) % 3; if (ph < 0.5) { const k = Math.sin(ph / 0.5 * Math.PI); c.fillStyle = `rgba(255,248,210,${k})`; c.fillRect(Math.round(E.x), Math.round(E.y) - 2, 1, 5); c.fillRect(Math.round(E.x) - 2, Math.round(E.y), 5, 1); } }
+      if (E.kind === 'lava') { const f = 0.5 + 0.5 * Math.sin(t * 3 + E.x); c.fillStyle = `rgba(255,${120 + Math.floor(f * 80)},40,${0.4 + f * 0.4})`; c.fillRect(Math.round(E.x) - 2 * K, Math.round(E.y) - K, 4 * K, 3 * K - 1); c.fillStyle = `rgba(255,230,140,${0.5 + f * 0.5})`; c.fillRect(Math.round(E.x), Math.round(E.y), 1 + (f > 0.6 ? K : 0), 2); }
+      if (E.kind === 'torch') { const f = Math.random(), s = o.big ? 3 : 2, g = o.col === 'green'; c.fillStyle = g ? 'rgba(150,255,140,0.22)' : 'rgba(255,160,60,0.24)'; c.fillRect(Math.round(E.x) - 4, Math.round(E.y) - 4, 8 + s, 8 + s); c.fillStyle = g ? `rgba(150,255,140,${0.7 + f * 0.3})` : `rgba(255,${150 + Math.floor(f * 90)},60,${0.8 + f * 0.2})`; c.fillRect(Math.round(E.x), Math.round(E.y) - (f > 0.7 ? 1 : 0), s, s + (f > 0.5 ? 1 : 0)); c.fillStyle = '#fff4c0'; c.fillRect(Math.round(E.x) + (s >> 1), Math.round(E.y) + 1, 1, 1); }
+      if (E.kind === 'pulse') { const f = 0.5 + 0.5 * Math.sin(t * 2.2); c.fillStyle = `rgba(190,120,255,${0.18 + f * 0.25})`; for (let k = 0; k < 8; k++) { const w = 3 + k * 2 + Math.round(f * 3); c.fillRect(Math.round(E.x) - w, Math.round(E.y) - k * 3, w * 2, 2); } c.fillStyle = `rgba(255,240,255,${0.6 + f * 0.4})`; c.fillRect(Math.round(E.x), Math.round(E.y) - 6, 2, 4); }
+      if (E.kind === 'glint') { const ph = (t * 0.6) % 3; if (ph < 0.5) { const k = Math.sin(ph / 0.5 * Math.PI); c.fillStyle = `rgba(255,248,210,${k})`; c.fillRect(Math.round(E.x), Math.round(E.y) - 4, 1, 9); c.fillRect(Math.round(E.x) - 4, Math.round(E.y), 9, 1); } }
       if (E.kind === 'crows') for (let k = 0; k < 3; k++) {
         const a = t * (0.5 + k * 0.13) + k * 2.1, r = (o.r || 40) / DOWN * (0.7 + k * 0.2), x = Math.round(E.x + Math.cos(a) * r), y = Math.round(E.y + Math.sin(a) * r * 0.45), flap = Math.sin(t * 9 + k) > 0;
-        c.fillStyle = '#14100e'; c.fillRect(x, y, 1, 1); c.fillRect(x - 1, y - (flap ? 1 : 0), 1, 1); c.fillRect(x + 1, y - (flap ? 1 : 0), 1, 1);
+        c.fillStyle = '#14100e'; c.fillRect(x - 1, y, 2, 2); c.fillRect(x - 3, y - (flap ? 2 : 0), 2, 1); c.fillRect(x + 1, y - (flap ? 2 : 0), 2, 1);
       }
     }
     // the particles
     const keep = [];
     for (const P of this.parts) {
       P.age += dt; if (P.age >= P.life) continue;
-      P.x += P.vx * dt; P.y += P.vy * dt; P.vx += (P.ax || 0) * dt;
-      const k = P.age / P.life, a = P.a0 * (P.fadeIn ? Math.min(1, k * 4) : 1) * (1 - k), s = Math.max(1, Math.round(P.s0 + (P.s1 - P.s0) * k));
+      P.x += P.vx * K * dt; P.y += P.vy * K * dt; P.vx += (P.ax || 0) * dt;
+      const k = P.age / P.life, a = Math.min(1, P.a0 * 1.45) * (P.fadeIn ? Math.min(1, k * 4) : 1) * (1 - k), s = Math.max(1, Math.round((P.s0 + (P.s1 - P.s0) * k) * (P.s1 > 1 ? K : 1)));
       c.fillStyle = typeof P.col === 'function' ? P.col(k, a) : P.col.replace('A', a.toFixed(3));
-      if (P.cross) { const x = Math.round(P.x), y = Math.round(P.y), L = k < 0.5 ? 2 : 1; c.fillRect(x - L, y, L * 2 + 1, 1); c.fillRect(x, y - L, 1, L * 2 + 1); }
+      if (P.cross) { const x = Math.round(P.x), y = Math.round(P.y), L = k < 0.5 ? 3 : 2; c.fillRect(x - L, y, L * 2 + 1, 1); c.fillRect(x, y - L, 1, L * 2 + 1); }
+      else if (s > 3) { c.beginPath(); c.arc(Math.round(P.x), Math.round(P.y), s / 2, 0, Math.PI * 2); c.fill(); } // (a puff of smoke or mist round, now there are pixels enough)
       else c.fillRect(Math.round(P.x - s / 2), Math.round(P.y - s / 2), s, s);
       keep.push(P);
     }
     this.parts = keep.length > 1400 ? keep.slice(-1400) : keep;
+    // clouds last, over everything: white, thick but see-through, drifting across the map (the place names sit above)
+    if (this.list.some((E) => E.kind === 'clouds')) {
+      this.clouds ||= Array.from({ length: 6 }, (_, k) => this.cloud(FX_W * (k / 6) + rnd(-30, 30)));
+      c.save();
+      for (const C of this.clouds) {
+        C.x += C.v * dt; if (C.x > FX_W) Object.assign(C, this.cloud(-C.img.width));
+        c.globalAlpha = C.a; c.drawImage(C.img, Math.round(C.x), Math.round(C.y));
+      }
+      c.restore();
+    }
+  }
+
+  // a cloud: a flat base with billows heaped on top, drawn once at full strength (so the overlaps don't stack), then
+  // shaded: grey along the base, bright white where the light catches the tops
+  cloud(x) {
+    const w = Math.round(rnd(110, 190)), h = Math.round(w * rnd(0.42, 0.55)), cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const g = cv.getContext('2d'), base = h * 0.86, puffs = [];
+    for (let px = w * 0.1; px < w * 0.9; px += rnd(6, 10)) puffs.push([px, base - h * 0.12, h * rnd(0.1, 0.16)]); // (the base, a row of small ones)
+    const n = 4 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) { // (the billows: biggest in the middle, smaller to the sides)
+      const u = (i + rnd(0.2, 0.8)) / n, r = h * (0.16 + 0.24 * Math.sin(u * Math.PI)) * rnd(0.85, 1.15);
+      puffs.push([w * (0.1 + 0.8 * u), base - r * rnd(0.7, 1), r]);
+    }
+    const blob = (dx, dy, k, col) => { g.fillStyle = col; g.beginPath(); for (const [px, py, r] of puffs) { const R = r * k; g.moveTo(px + dx + R, py + dy); g.arc(px + dx, py + dy, R, 0, Math.PI * 2); } g.fill(); };
+    blob(0, 0, 1, '#aeb6c4'); // (the shade underneath)
+    blob(-1, -2, 0.94, '#dfe4ec'); blob(-2, -4, 0.84, '#f6f8fc'); blob(-3, -6, 0.6, '#ffffff');
+    g.clearRect(0, base, w, h - base); // (flat along the bottom)
+    g.fillStyle = '#aeb6c4'; g.fillRect(w * 0.12, base - 2, w * 0.76, 2);
+    // hard pixel edges: anything half there is in, the rest out
+    const d = g.getImageData(0, 0, w, h); for (let i = 3; i < d.data.length; i += 4) d.data[i] = d.data[i] > 110 ? 255 : 0; g.putImageData(d, 0, 0);
+    return { img: cv, x, y: rnd(-h * 0.3, FX_H - h * 0.7), v: rnd(5, 10), a: rnd(0.62, 0.72) };
   }
 
   emit(E) {
     const o = E.o, add = (p) => this.parts.push({ age: 0, ax: 0, ...p });
     switch (E.kind) {
-      case 'fire': add({ x: E.x + rnd(-1.5, 1.5), y: E.y + rnd(-0.5, 0.5), vx: rnd(-1, 1), vy: rnd(-7, -3), life: rnd(0.25, 0.6), s0: 1, s1: 1, a0: 1, col: (k) => (k < 0.3 ? 'rgba(255,240,170,1)' : k < 0.6 ? 'rgba(255,160,50,0.95)' : 'rgba(200,60,30,0.8)') }); break;
+      case 'fire': add({ x: E.x + rnd(-3, 3), y: E.y + rnd(-0.5, 0.5), vx: rnd(-1, 1), vy: rnd(-7, -3), life: rnd(0.25, 0.6), s0: 2, s1: 1, a0: 1, col: (k) => (k < 0.3 ? 'rgba(255,240,170,1)' : k < 0.6 ? 'rgba(255,160,50,0.95)' : 'rgba(200,60,30,0.8)') }); break;
       case 'smoke': { const dark = o.dark; add({ x: E.x + rnd(-1, 1), y: E.y, vx: rnd(1, 3), vy: rnd(-5, -3), ax: 0.6, life: rnd(3.5, 6) * (o.big ? 1.3 : 1), s0: 1, s1: o.big ? 6 : 4, a0: dark ? 0.55 : 0.42, fadeIn: 1, col: dark ? 'rgba(26,22,22,A)' : 'rgba(70,66,64,A)' }); break; }
       case 'steam': add({ x: E.x + rnd(-2, 2), y: E.y, vx: rnd(0.5, 2.5), vy: rnd(-4, -2), ax: 0.4, life: rnd(3, 5), s0: 1, s1: o.big ? 4 : 3, a0: 0.34, fadeIn: 1, col: 'rgba(150,230,140,A)' }); break;
       case 'embers': add({ x: E.x + rnd(-3, 3), y: E.y, vx: rnd(-2, 2), vy: rnd(-9, -4), life: rnd(0.8, 1.6), s0: 1, s1: 1, a0: 1, col: pick(['rgba(255,190,80,A)', 'rgba(255,120,40,A)', 'rgba(255,230,150,A)']) }); break;
