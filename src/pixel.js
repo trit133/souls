@@ -114,17 +114,18 @@ void main() {
   outColor = vec4(best, 1.0);
 }`;
 
-// the light shafts: from the camera to each pixel's surface, how much of the way is in the sun (its shadow map) and
-// thick with dust (more near the ground), with more glow looking toward the sun. Half the game's resolution; the
-// march starts at a different point per pixel and the main pass blurs it a little
+// the light shafts: from the camera to each pixel's surface, how much of the way is in the light (its shadow map) and
+// thick with dust (more near the ground outdoors), with more glow looking toward the light. The sun, or a spotlight
+// (a hideout's moonbeam: only inside its cone, softening to the edge). Half the game's resolution; the march starts
+// at a different point per pixel and the main pass blurs it a little
 const RAYS = /* glsl */ `
 out vec4 outColor;
 uniform sampler2D tDepth;
 uniform sampler2DShadow tShadow;
 uniform mat4 uInvProj, uCamWorld, uShadowMat;
-uniform vec3 uCamPos, uSunDir;
+uniform vec3 uCamPos, uSunDir, uLightPos;
 uniform vec2 uSize, uFull;
-uniform float uMaxD;
+uniform float uMaxD, uSpot, uFall;
 uniform int uSteps;
 float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
 void main() {
@@ -139,10 +140,14 @@ void main() {
     vec3 pos = uCamPos + rd * (float(i) + j) * st;
     vec4 sc = uShadowMat * vec4(pos, 1.0);
     float lit = 1.0;
-    if (sc.x > 0.0 && sc.x < 1.0 && sc.y > 0.0 && sc.y < 1.0 && sc.z < 1.0) lit = texture(tShadow, vec3(sc.xy, sc.z - 0.0015));
-    acc += lit * exp(-max(pos.y, 0.0) * 0.32);
+    if (uSpot > 0.0) {
+      sc.xyz /= sc.w;
+      float rr = length(sc.xy - 0.5) * 2.0;
+      lit = (sc.w > 0.0 && rr < 1.0 && sc.z < 1.0) ? texture(tShadow, vec3(sc.xy, sc.z - 0.0015)) * (1.0 - smoothstep(0.45, 1.0, rr)) : 0.0;
+    } else if (sc.x > 0.0 && sc.x < 1.0 && sc.y > 0.0 && sc.y < 1.0 && sc.z < 1.0) lit = texture(tShadow, vec3(sc.xy, sc.z - 0.0015));
+    acc += lit * exp(-max(pos.y, 0.0) * uFall);
   }
-  float mu = dot(rd, uSunDir), g = 0.6;
+  float mu = dot(rd, uSpot > 0.0 ? normalize(uLightPos - uCamPos) : uSunDir), g = 0.6;
   float phase = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * mu, 1.5);
   outColor = vec4(vec3(acc * st * (0.15 + phase * 0.25)), 1.0);
 }`;
@@ -201,7 +206,7 @@ export class PixelPass {
     this.rays = fsq(RAYS, {
       tDepth: { value: this.rt.depthTexture }, tShadow: { value: null },
       uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uShadowMat: { value: new THREE.Matrix4() },
-      uCamPos: { value: new THREE.Vector3() }, uSunDir: { value: new THREE.Vector3() },
+      uCamPos: { value: new THREE.Vector3() }, uSunDir: { value: new THREE.Vector3() }, uLightPos: { value: new THREE.Vector3() }, uSpot: { value: 0 }, uFall: { value: 0.3 },
       uSize: { value: new THREE.Vector2() }, uFull: { value: new THREE.Vector2() }, uMaxD: { value: 40 }, uSteps: { value: 24 },
     });
     this.bloomA = linRT(); this.bloomB = linRT();
@@ -244,18 +249,19 @@ export class PixelPass {
     const U = this.mat.uniforms, fx = this.fx;
     U.uRays.value = 0; U.uBloom.value = 0;
     U.uAO.value = fx?.ao ? 1 : 0; U.uSoft.value = fx?.soft ? 1 : 0; U.uTone.value = fx?.tone || 0;
-    if (fx?.rays && fx.rays.sun.shadow.map?.depthTexture) this.drawRays(camera, fx.rays);
+    if (fx?.rays && fx.rays.light.shadow.map?.depthTexture) this.drawRays(camera, fx.rays);
     if (fx?.bloom) this.drawBloom(fx.bloom);
     r.setRenderTarget(null);
     r.render(this.post, this.cam);
   }
 
   drawRays(camera, R) {
-    const r = this.renderer, u = this.rays.m.uniforms, sun = R.sun;
+    const r = this.renderer, u = this.rays.m.uniforms, sun = R.light;
     u.tShadow.value = sun.shadow.map.depthTexture;
     u.uInvProj.value.copy(camera.projectionMatrixInverse); u.uCamWorld.value.copy(camera.matrixWorld);
     u.uShadowMat.value.copy(sun.shadow.matrix); u.uCamPos.value.setFromMatrixPosition(camera.matrixWorld);
     u.uSunDir.value.subVectors(sun.position, sun.target.position).normalize();
+    u.uLightPos.value.setFromMatrixPosition(sun.matrixWorld); u.uSpot.value = sun.isSpotLight ? 1 : 0; u.uFall.value = R.fall ?? 0.3;
     u.uSize.value.set(this.rayRT.width, this.rayRT.height); u.uFull.value.copy(this.size); u.uSteps.value = R.steps;
     r.setRenderTarget(this.rayRT); r.render(this.rays.sc, this.cam);
     const U = this.mat.uniforms;

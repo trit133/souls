@@ -403,11 +403,12 @@ class Game {
     const dark = this.player && D.darkAt(this.player.pos.x, this.player.pos.z) ? D.darkness?.(this.player.pos.x, this.player.pos.z) ?? 1 : 0; // (how dark: an area can be dim rather than black)
     const k = (this.darkK = (this.darkK || 0) + (dark - (this.darkK || 0)) * Math.min(1, dt * 4));
     // an area's own daylight out in the open (D.sky: brighter, warmer or greyer than the ward's), going as it darkens
-    const S = D.sky || {}, H = S.hemi ?? 2.0, Sn = S.sun ?? 2.0;
+    const S = this.lighting?.sky || D.sky || {}, H = S.hemi ?? 2.0, Sn = S.sun ?? 2.0; // (the enhanced lighting's sky, where it's on)
     this.hemi.intensity = H - (H - 0.28) * k; this.sun.intensity = Sn * (1 - k);
     (this._sky ||= [new THREE.Color(0x9aa6c8), new THREE.Color(0x40507a), new THREE.Color(0x1a1712), new THREE.Color(0x040508), new THREE.Color(), new THREE.Color()]);
     this._sky[4].set(S.hemiColor ?? 0x9aa6c8); this._sky[5].set(S.fog ?? 0x1a1712);
     this.hemi.color.lerpColors(this._sky[4], this._sky[1], k);
+    if (this.lighting?.sky) this.hemi.groundColor.set(S.ground);
     this.scene.fog.color.lerpColors(this._sky[5], this._sky[3], k);
     this.sun.color.set(S.sunColor ?? 0xffd8a8);
   }
@@ -2255,11 +2256,13 @@ class Game {
     this.pings?.update(rdt);
     if (this.bazaar?.active && this.mode === 'title') {
       this.bazaar.update(rdt);
+      this.lighting.update(rdt); // (off here: puts a hideout's back)
       this.pixel.render(this.bazaar.scene, this.bazaar.camera);
       return;
     }
     if (this.hermitage?.active && this.mode === 'title') {
       this.hermitage.update(rdt);
+      this.lighting.update(rdt); // (a hideout's shadows and moonbeam)
       this.pixel.render(this.hermitage.scene, this.hermitage.camera);
       return;
     }
