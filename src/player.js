@@ -529,6 +529,8 @@ export class Player extends Actor {
     this.dashCd = Math.max(0, this.dashCd - dt); this.quakeCd = Math.max(0, this.quakeCd - dt); this.sigilCd = Math.max(0, (this.sigilCd || 0) - dt);
     this.updateVeil(dt);
     this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
+    if (this.state !== 'charge') this.autoSlam = false; // (knocked out of the charge: no leap after it)
+    this.chargeButton();
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
     const mv = input.move();
     const dir = this.worldDir(mv);
@@ -727,7 +729,10 @@ export class Player extends Actor {
         pose = { ...this.basePose(), ...P.block, ...lunge(1.2), torso: [0.35, -0.1, 0] };
         rate = 22;
         if (Math.random() < dt * 20) this.game.fx.dust(this.pos, 1, 0.4);
-        if (this.t >= D) { this.chargeEndT = this.game.time; this.setState('move'); }
+        if (this.t >= D) {
+          this.chargeEndT = this.game.time; this.setState('move');
+          if (this.autoSlam) { this.autoSlam = false; this.chargeEndT = -9; this.doAttack('chargeSlam', dir, mag); }
+        }
         break;
       }
       case 'riposte': {
@@ -874,6 +879,15 @@ export class Player extends Actor {
       if (!this.canSpend()) return false;
       this.mana -= this.c.attacks.heavy.mana;
     }
+    // the phone's CHARGE button: the evolved Knight's whole Shield Charge, the leaping overhead after it on its own
+    if (a === 'charge') {
+      this.buf = null;
+      if (this.evo !== 'aegisRam') return false;
+      if (this.chargeCd > 0) { this.game.ui.toastSmall?.(`Shield charge in ${Math.ceil(this.chargeCd)}s`); return false; }
+      if (!this.canSpend()) return false;
+      this.startCharge(dir, mag); this.autoSlam = true;
+      return true;
+    }
     if (a === 'attack' || a === 'heavy') {
       this.buf = null;
       if (!this.affords(a === 'heavy' ? 'heavy' : this.c.light)) return false; // (LOW STAMINA: the press is spent)
@@ -988,6 +1002,14 @@ export class Player extends Actor {
   behindOf(tg, d) { const f = tg.fwd(); return { x: tg.pos.x - f.x * (tg.radius + d), z: tg.pos.z - f.z * (tg.radius + d) }; }
 
   // ---------- evolved knight: shield charge ----------
+  // the phone's CHARGE button: there while you have the evolution, greyed while it cools down
+  chargeButton() {
+    const k = this.evo !== 'aegisRam' ? 'off' : this.chargeCd > 0 ? 'cd' : 'on';
+    if (k === this.chargeBtnK) return;
+    this.chargeBtnK = k;
+    const b = document.getElementById('b-charge'); if (!b) return;
+    b.classList.toggle('hidden', k === 'off'); b.classList.toggle('cd', k === 'cd');
+  }
   startCharge(dir, mag) {
     this.chargeCd = CHARGE_CD - (this.tree.chargeCd || 0);
     this.spend(20);

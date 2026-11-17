@@ -74,6 +74,7 @@ html, body {
 #b-lock { right: 178px; bottom: 96px; }
 #b-summon { right: 262px; bottom: 6px; font-size: 9px; }
 #b-runebuff { right: 258px; bottom: 96px; font-size: 10px; }
+#b-charge { right: 78px; bottom: 184px; font-size: 9px; } /* (the evolved Knight on a phone: the whole Shield Charge and its leap in one press) */
 #rune-hud { margin-left: 12px; font-size: 12px; opacity: .8; letter-spacing: 1px; color: #b8e8c0; }
 #b-pause {
   position: absolute; pointer-events: auto; right: calc(14px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
