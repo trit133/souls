@@ -4,7 +4,7 @@
 // until they're dead, Varek at the end; his death ends it (victory, Back to Map) and ticks the area on the map.
 // node scripts/final-area.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4199/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = [], fails = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

@@ -6,7 +6,7 @@
 // xp), level 5's buff (+300 health), restocking after a raid, a teammate's kill reaching you. Screenshots
 // /tmp/bazaar-*.png. node scripts/bazaar.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', url = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', url = process.argv[2] || `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const page = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + '\n' + e.stack));

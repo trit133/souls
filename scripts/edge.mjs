@@ -3,7 +3,7 @@
 // blade's edge line (the weapon's y; its flat faces x), weighted by that speed. Stabs (motion along the blade) count
 // little. node scripts/edge.mjs [filter] [url]   filter: comma list of classes, weapons or moves
 import { chromium } from 'playwright';
-const filter = (process.argv[2] || '').split(',').filter(Boolean), url = process.argv[3] || 'http://localhost:4199/?chain';
+const filter = (process.argv[2] || '').split(',').filter(Boolean), url = process.argv[3] || 'http://localhost:5180/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 640, height: 400 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));

@@ -7,7 +7,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync, existsSync, readdirSync } from 'fs';
 mkdirSync('/tmp/look', { recursive: true }); mkdirSync('src/anim-data', { recursive: true });
-const url = process.argv[2] || 'http://localhost:4199/';
+const url = process.argv[2] || 'http://localhost:5180/';
 // what to bake: [file, clip, our name, options]
 const JOBS = [
   ['/assets-src/ual/UAL1_Standard.glb', 'Idle_Loop', 'idle', { loop: true }],

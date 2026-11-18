@@ -2,7 +2,7 @@
 // obstacles, slow zones, gates, enemy spawns and positions, seals, encounters) for several dungeons and the chain
 // to Varek. Run before and after a visual change: the hashes must match. node scripts/layout-fingerprint.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/?chain';
+const url = process.argv[2] || 'http://localhost:5180/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 320, height: 200 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));

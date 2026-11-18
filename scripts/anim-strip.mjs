@@ -7,7 +7,7 @@
 // node scripts/anim-strip.mjs [tag] [filter] [url]   filter: comma list of move names, classes, weapons, foes or 'foes'
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'fs';
-const tag = process.argv[2] || 'now', filter = (process.argv[3] || '').split(',').filter(Boolean), url = process.argv[4] || 'http://localhost:4173/?chain';
+const tag = process.argv[2] || 'now', filter = (process.argv[3] || '').split(',').filter(Boolean), url = process.argv[4] || 'http://localhost:5180/?chain';
 const dir = `/tmp/anim/${tag}`; mkdirSync(dir, { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1810, height: 640 } })).newPage();

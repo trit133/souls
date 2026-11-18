@@ -4,7 +4,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 mkdirSync('/tmp/look', { recursive: true });
-const url = process.argv[2] || 'http://localhost:4173/', W = +process.argv[3] || 1280, H = +process.argv[4] || 720;
+const url = process.argv[2] || 'http://localhost:5180/', W = +process.argv[3] || 1280, H = +process.argv[4] || 720;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: W, height: H } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

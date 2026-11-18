@@ -3,7 +3,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 mkdirSync('/tmp/look', { recursive: true });
-const url = process.argv[2] || 'http://localhost:4173/?chain';
+const url = process.argv[2] || 'http://localhost:5180/?chain';
 const SLOTS = { knight: { helmet: ['great', 'barbute', 'winged', 'crowned'], pauldronL: ['segmented', 'spiked', 'lion', 'sunburst'], pauldronR: ['segmented', 'spiked', 'lion', 'sunburst'], chest: ['plate', 'mail', 'radiant', 'dragonscale'], legs: ['greaves', 'mailskirt', 'kingsguard', 'ember'], sword: ['longsword', 'falchion', 'dawn', 'frostbrand'], shield: ['heater', 'round', 'kite', 'dragon'] },
   rogue: { mask: ['wrap', 'iron', 'bone', 'kitsune'], cloak: ['tattered', 'mantle', 'wraith', 'raven'], shirt: ['jerkin', 'brigandine', 'assassin', 'shadowweave'], bandL: ['cloth', 'bracer', 'serpent', 'blade'], bandR: ['cloth', 'bracer', 'serpent', 'blade'], knives: ['curved', 'stiletto', 'spectral', 'fang'] },
   mage: { shoulder: ['mantle', 'pauldron', 'crystal', 'phoenix'], shirt: ['runecoat', 'robe', 'starcape', 'archmage'], pants: ['trousers', 'greaves', 'runed', 'astral'], wand: ['rune', 'bone', 'starfall', 'ember'], sword: ['runeblade', 'steel', 'moonblade', 'voidedge'] } };

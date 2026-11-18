@@ -3,7 +3,7 @@
 // Templar's rig with the given weapon (the left hand finds the hilt by itself). Prints the angles and how close they get.
 // node scripts/solve-arm.mjs '<json: [{ name, pose, hand: [x,y,z], dir: [x,y,z] }, ...]>' [weapon] [url]
 import { chromium } from 'playwright';
-const specs = JSON.parse(process.argv[2]), weapon = process.argv[3] || 'greatsword', url = process.argv[4] || 'http://localhost:4199/?chain';
+const specs = JSON.parse(process.argv[2]), weapon = process.argv[3] || 'greatsword', url = process.argv[4] || 'http://localhost:5180/?chain';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 320, height: 200 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));

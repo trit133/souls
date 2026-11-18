@@ -4,7 +4,7 @@
 // number of times, Second Wind, Last Stand, Sandevistan (afterimages, the world slowed alone); Varek's death grants his
 // five; a teammate sees your aura ring and summons. Screenshots /tmp/runes-*.png. node scripts/runes.mjs [url ?server=]
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const errs = [];
 const device = async (n, w = 1280, h = 720) => {

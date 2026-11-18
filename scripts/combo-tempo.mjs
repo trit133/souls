@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { COMBOS } from '../src/combos.js';
 import { WEAPON_SETS } from '../src/weaponmoves.js';
 import { WEAPONS } from '../src/weapons.js';
-const url = process.argv[2] || 'http://localhost:4173/?chain', weapon = process.argv[3] || null;
+const url = process.argv[2] || 'http://localhost:5180/?chain', weapon = process.argv[3] || null;
 const SETS = weapon ? { [WEAPONS[weapon].kind]: WEAPON_SETS[weapon].combos } : COMBOS;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 480, height: 270 } })).newPage();

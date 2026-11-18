@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
-await page.goto('http://localhost:4199/'); await page.waitForTimeout(900);
+await page.goto('http://localhost:5180/'); await page.waitForTimeout(900);
 const shot = async (name) => { await page.evaluate(() => { const g = game, c = g.camera; g.camLock = true; c.position.set(0, 20, 8); c.lookAt(0, 0, -13); g.pixel.render(g.scene, c); g.camLock = false; }); await page.screenshot({ path: `/tmp/look/tr-${name}.png` }); };
 await page.evaluate(() => { const g = game; g.loop = () => {}; g.audio.play = () => {}; for (const el of document.body.children) if (el.tagName !== 'CANVAS') el.style.display = 'none'; g.training = true; g.start('knight'); for (let i = 0; i < 30; i++) g.step(1 / 60, 1 / 60); });
 await shot('fresh');

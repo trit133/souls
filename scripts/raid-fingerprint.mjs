@@ -3,7 +3,7 @@
 // two). Run before and after a change that shouldn't touch play: the hashes must match.
 // node scripts/raid-fingerprint.mjs [url] [areas]   areas: comma list (default r1a1)
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4199/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const areas = (process.argv[3] || 'r1a1').split(',');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 320, height: 200 } })).newPage();

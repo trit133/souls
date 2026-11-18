@@ -2,7 +2,7 @@
 // bunches (held back and let through every 300 ms here), and keep up with where the host has them; a host's hit on
 // the guest counts only when the guest really is in the enemy's reach. node scripts/netsync.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const errs = [];
 const device = async (n) => {

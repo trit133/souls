@@ -6,7 +6,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 mkdirSync('/tmp/look', { recursive: true });
-const url = process.argv[2] || 'http://localhost:4199/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const only = process.argv[3]?.split(',');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 900, height: 600 } })).newPage();

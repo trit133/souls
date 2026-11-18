@@ -2,7 +2,7 @@
 // (the double's first at 0.77, its second at 1.13). Screenshot of the wind-up: /tmp/spear-windup.png.
 // node scripts/spear.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));

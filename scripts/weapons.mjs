@@ -4,7 +4,7 @@
 // switches the evolution, the wardrobe shows its skin slot, and an old tree evolution comes back built.
 // node scripts/weapons.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4173/?server=' + encodeURIComponent('http://127.0.0.1:4111');
+const url = process.argv[2] || 'http://localhost:5180/?server=' + encodeURIComponent('http://127.0.0.1:4111');
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 1100, height: 620 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')));

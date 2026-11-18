@@ -3,7 +3,7 @@
 // The pause menu's button reads "Back to the Sanctum". Screenshots: /tmp/training-*.png
 // node scripts/training.mjs [url with ?server=]
 import { chromium } from 'playwright';
-const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:4173/?server=${encodeURIComponent(SRV)}`;
+const SRV = 'http://127.0.0.1:4111', URL = process.argv[2] || `http://localhost:5180/?server=${encodeURIComponent(SRV)}`;
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] });
 const errs = [];
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();

@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 640, height: 400 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
-await page.goto(process.argv[2] || 'http://localhost:4199/?chain'); await page.waitForTimeout(800);
+await page.goto(process.argv[2] || 'http://localhost:5180/?chain'); await page.waitForTimeout(800);
 const out = []; for (const ROLL of [1, -1]) { const r = await page.evaluate((ROLL) => {
   const g = game; g.loop = () => {}; g.audio.play = () => {};
   g.loadoutFor = () => ({ weapon: 'greatsword', evo: null }); g.start('knight');

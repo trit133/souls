@@ -16,7 +16,7 @@ const SPOTS = {
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
-await page.goto(process.argv[3] || 'http://localhost:4199/'); await page.waitForFunction(() => window.game?.audio && window.game?.world, null, { timeout: 30000 }); await page.waitForTimeout(500);
+await page.goto(process.argv[3] || 'http://localhost:5180/'); await page.waitForFunction(() => window.game?.audio && window.game?.world, null, { timeout: 30000 }); await page.waitForTimeout(500);
 const info = await page.evaluate(({ area, H }) => {
   const g = game; g.loop = () => {}; g.audio.play = () => {};
   const t0 = performance.now(); g.start('knight'); g.buildRun({ raid: area }, 4242, 1); const built = Math.round(performance.now() - t0);

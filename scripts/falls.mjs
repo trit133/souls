@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext()).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
-await page.goto(process.argv[2] || 'http://localhost:4173/?training'); await page.waitForTimeout(800);
+await page.goto(process.argv[2] || 'http://localhost:5180/?training'); await page.waitForTimeout(800);
 const r = await page.evaluate(() => {
   const g = game; g.loop = () => {}; g.audio.play = () => {}; g.training = true; g.start('knight');
   const p = g.player, M = p.maxHp, out = {};

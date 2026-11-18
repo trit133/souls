@@ -8,7 +8,7 @@ mkdirSync('/tmp/look', { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
-await page.goto(process.argv[2] || 'http://localhost:4199/'); await page.waitForTimeout(900);
+await page.goto(process.argv[2] || 'http://localhost:5180/'); await page.waitForTimeout(900);
 const info = await page.evaluate(() => {
   const g = game; g.loop = () => {}; g.audio.play = () => {};
   g.start('knight'); g.buildRun({ raid: 'r1a1' }, 4242, 1);

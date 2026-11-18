@@ -8,7 +8,7 @@ mkdirSync('/tmp/look', { recursive: true });
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
-await page.goto(process.argv[2] || 'http://localhost:4199/'); await page.waitForTimeout(900);
+await page.goto(process.argv[2] || 'http://localhost:5180/'); await page.waitForTimeout(900);
 await page.evaluate(() => { const g = game; g.loop = () => {}; g.audio.play = () => {}; g.training = true; g.start('knight'); for (const el of document.body.children) if (el.tagName !== 'CANVAS') el.style.display = 'none'; window.__shots = {}; });
 const shot = async (name, cam) => { await page.evaluate(([name, cam]) => { const g = game, p = g.player, c = g.camera; g.camLock = true; if (cam) { c.position.set(p.pos.x + cam[0], p.gy + cam[1], p.pos.z + cam[2]); c.lookAt(p.pos.x, p.gy + 0.9, p.pos.z); } else { g.updateCamera(1); } g.pixel.render(g.scene, c); }, [name, cam]); await page.screenshot({ path: `/tmp/look/terrain-${name}.png` }); };
 const run = (fn, arg) => page.evaluate(fn, arg);

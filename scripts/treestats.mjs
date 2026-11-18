@@ -9,7 +9,7 @@ const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-p
 const out = {};
 for (const [w, h, tag] of [[1280, 720, 'desk'], [844, 390, 'phone']]) {
   const page = await (await b.newContext({ viewport: { width: w, height: h } })).newPage();
-  await page.goto(process.argv[2] || 'http://localhost:4173/'); await page.waitForTimeout(800);
+  await page.goto(process.argv[2] || 'http://localhost:5180/'); await page.waitForTimeout(800);
   await page.evaluate(() => game.treeUI.open('knight')); await page.waitForTimeout(500);
   const shown = () => page.evaluate(() => getComputedStyle(document.getElementById('tree-stats')).display !== 'none');
   const r = { atFirst: await shown(), button: await page.isVisible('#tree-stats-btn') };

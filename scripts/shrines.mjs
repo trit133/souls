@@ -4,7 +4,7 @@
 // the four notes in order breaks it; the bells take no damage and never die. Both maps: every enemy and stair can be
 // reached, nothing's stuck in a wall. node scripts/shrines.mjs [url]
 import { chromium } from 'playwright';
-const url = process.argv[2] || 'http://localhost:4199/';
+const url = process.argv[2] || 'http://localhost:5180/';
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 480, height: 270 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
