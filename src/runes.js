@@ -91,7 +91,66 @@ export const RUNES = {
   archon_mantle: { type: 'util', kind: 'unique', name: 'Archon\'s Mantle', desc: '+300 health, and once a raid you rise again with 30% health when you would fall.', fx: { hp: 300, winds: 1 },
     glyph: G('#.#.#.#/#######/.#####./.##.##./.#####./.#####./#######') },
 };
+// ---------- the Sunless Deep (region 2, 2026-11-26): 10 runes, 10 supports and the Kilnfather's 5, a step up from
+// the March's, forged from the Deep's materials ----------
+Object.assign(RUNES, {
+  shard_step: { type: 'roll', kind: 'main', region: 'r2', name: 'Shard Step', desc: 'Your roll leaves a trail of seer-glass shards for 2.5 s that cut enemies standing in it (bleed).', fx: { ember: 2.6, trailEl: 'bleed', trailHex: 0xb090ff },
+    recipe: { raw_seerglass: 4, ore_chunk: 6, pit_timber: 3 }, glyph: G('...#.../..#.#../.#...#./..#.#../...#.../..#.#../.#...#.') },
+  lantern_step: { type: 'roll', kind: 'main', region: 'r2', name: 'Lantern Step', desc: 'Each roll heals you for 3% of your health, in a flash of lamplight.', fx: { heal: 0.03 },
+    recipe: { lamp_oil: 6, glowcap: 3, ore_chunk: 4 }, glyph: G('..###../.#...#./.#.#.#./.#...#./..###../...#.../..###..') },
+  spore_halo: { type: 'aura', kind: 'main', region: 'r2', name: 'Spore Halo', desc: 'Spores drift round you: enemies within 2.8 m take poison damage every half second.', fx: { r: 2.8, burn: 1.8, el: 'poison', hex: 0x3ad8c8 },
+    recipe: { glowcap: 5, lamp_oil: 4, rivet_spool: 2 }, glyph: G('.#...#./..#.#../#..#..#/.#.#.#./#..#..#/..#.#../.#...#.') },
+  glass_halo: { type: 'aura', kind: 'main', region: 'r2', name: 'Glass Halo', desc: 'A ring of turning shards: enemies within 3.2 m move 15% slower and bleed.', fx: { r: 3.2, slow: 0.15, burn: 1.0, el: 'bleed', hex: 0xb090ff },
+    recipe: { raw_seerglass: 4, prism_lens: 1, pit_timber: 4 }, glyph: G('...#.../.#.#.#./#.....#/.#.#.#./#.....#/.#.#.#./...#...') },
+  lantern_wisp: { type: 'summon', kind: 'main', region: 'r2', name: 'Lantern Wisp', desc: 'Calls a burning wisp that circles you for 22 s, throwing fire at the nearest enemy. 45 s cooldown.', fx: { pet: 'wisp', dur: 22, cd: 45 },
+    recipe: { lamp_oil: 6, glowcap: 3, prism_lens: 1 }, glyph: G('...#.../..###../.#####./.#####./..###../.......//') },
+  burrow_grub: { type: 'summon', kind: 'main', region: 'r2', name: 'Tame Grub', desc: 'Calls a burrow grub that chases down and bites the nearest enemy for 20 s, its bite poisoning. 40 s cooldown.', fx: { pet: 'grub', dur: 20, cd: 40 },
+    recipe: { ore_chunk: 8, glowcap: 3, borer_tooth: 1 }, glyph: G('.......//.#####./#######/#.#.#.#/#######/.#####./.......') },
+  kiln_litany: { type: 'buff', kind: 'main', region: 'r2', name: 'Kiln Litany', desc: 'For 12 s you deal 12% more damage and take 10% less. Once a raid.', fx: { buff: 'kiln', dur: 12 },
+    recipe: { lamp_oil: 5, rivet_spool: 3, ore_chunk: 4 }, glyph: G('#.#.#.#/#######/.#####./..###../.#####./#######/.......') },
+  quickening: { type: 'buff', kind: 'main', region: 'r2', name: 'Quickening', desc: 'For 10 s you attack 25% faster and move 15% faster. Once a raid.', fx: { buff: 'swift', dur: 10 },
+    recipe: { rivet_spool: 4, raw_seerglass: 3, pit_timber: 3 }, glyph: G('#...#../.#...#./..#...#/...#.../..#...#/.#...#./#...#..') },
+  ore_heart: { type: 'util', kind: 'main', region: 'r2', name: 'Ore Heart', desc: '+220 health.', fx: { hp: 220 },
+    recipe: { ore_chunk: 10, pit_timber: 4, rivet_spool: 2 }, glyph: G('.......//.##.##./#######/###.###/.#####./..###../...#...') },
+  deep_lungs: { type: 'util', kind: 'main', region: 'r2', name: 'Deep Lungs', desc: '+18 stamina.', fx: { st: 18 },
+    recipe: { glowcap: 4, lamp_oil: 4, ore_chunk: 4 }, glyph: G('.......//.#...#./##.#.##/##.#.##/##...##/.##.##./.......') },
+  glass_soles: { type: 'roll', kind: 'support', region: 'r2', name: 'Glass Soles', desc: 'Support · Roll: +12% roll distance.', fx: { dist: 0.12 },
+    recipe: { raw_seerglass: 2, ore_chunk: 3 }, glyph: G('.......//...#.../..#.#../.#...#./#######/.......//') },
+  bright_wick: { type: 'roll', kind: 'support', region: 'r2', name: 'Bright Wick', desc: 'Support · Roll: your roll rune\'s effect is 60% stronger.', fx: { rollPow: 0.6 },
+    recipe: { lamp_oil: 4, glowcap: 2 }, glyph: G('...#.../..###../...#.../...#.../..###../.#####./.......') },
+  deep_reach: { type: 'aura', kind: 'support', region: 'r2', name: 'Deep Reach', desc: 'Support · Aura: +30% aura radius.', fx: { auraR: 0.3 },
+    recipe: { pit_timber: 4, raw_seerglass: 2 }, glyph: G('#.....#/.#...#./..#.#../...#.../..#.#../.#...#./#.....#') },
+  caustic: { type: 'aura', kind: 'support', region: 'r2', name: 'Caustic', desc: 'Support · Aura: your aura\'s slow and damage are 40% stronger.', fx: { auraPow: 0.4 },
+    recipe: { glowcap: 3, rivet_spool: 2 }, glyph: G('..###../.#...#./#.#.#.#/#..#..#/#.#.#.#/.#...#./..###..') },
+  brood: { type: 'summon', kind: 'support', region: 'r2', name: 'Brood', desc: 'Support · Summon: one more of whatever you summon.', fx: { pets: 1 },
+    recipe: { glowcap: 3, ore_chunk: 5, borer_tooth: 1 }, glyph: G('.......//.#.#.#./#######/.#.#.#./#######/.#.#.#./.......') },
+  quick_whistle: { type: 'summon', kind: 'support', region: 'r2', name: 'Quick Whistle', desc: 'Support · Summon: summon cooldown 20% shorter.', fx: { petCd: 0.2 },
+    recipe: { rivet_spool: 3, pit_timber: 3 }, glyph: G('...#.../..###../...#.../.#.#.#./...#.../..###../...#...') },
+  slow_burn: { type: 'buff', kind: 'support', region: 'r2', name: 'Slow Burn', desc: 'Support · Buff: your rune buff lasts 5 s longer.', fx: { buffDur: 5 },
+    recipe: { lamp_oil: 4, ore_chunk: 3 }, glyph: G('#######/#.....#/#.###.#/#.#.#.#/#.###.#/#.....#/#######') },
+  spare_litany: { type: 'buff', kind: 'support', region: 'r2', name: 'Spare Litany', desc: 'Support · Buff: your rune buff can be used once more a raid.', fx: { buffUses: 1 },
+    recipe: { prism_lens: 1, raw_seerglass: 3 }, glyph: G('.......//.#...#./.##.##./.#.#.#./.#...#./.......//') },
+  seer_blood: { type: 'util', kind: 'support', region: 'r2', name: 'Seer Blood', desc: 'Support · Utility: +160 health.', fx: { hp: 160 },
+    recipe: { raw_seerglass: 3, ore_chunk: 4 }, glyph: G('...#.../..###../.#####./.##.##./..###../...#.../.......') },
+  iron_lungs: { type: 'util', kind: 'support', region: 'r2', name: 'Iron Lungs', desc: 'Support · Utility: +12 stamina.', fx: { st: 12 },
+    recipe: { rivet_spool: 2, pit_timber: 4 }, glyph: G('.......//##...##/#.#.#.#/#..#..#/#.#.#.#/##...##/.......') },
+  // the Kilnfather's five: one of each type, his reward
+  kilnwalk: { type: 'roll', kind: 'unique', region: 'r2', name: 'Kilnwalk', desc: 'Your roll goes 40% further and leaves molten glass behind you that burns hard for 2.5 s, in your chest glow\'s colour.', fx: { dist: 0.4, ember: 4, trailEl: 'fire', trailGlow: true },
+    glyph: G('#.#.#.#/.#####./##...##/.#.#.#./##...##/.#####./#.#.#.#') },
+  kiln_halo: { type: 'aura', kind: 'unique', region: 'r2', name: 'Halo of the Kiln', desc: 'The Crucible\'s heat round you: enemies within 4 m move 20% slower and burn hard.', fx: { r: 4, slow: 0.2, burn: 3, el: 'fire', hex: 0xff6a1a },
+    glyph: G('.#####./#.....#/#.###.#/#.#.#.#/#.###.#/#.....#/.#####.') },
+  glass_golem: { type: 'summon', kind: 'unique', region: 'r2', name: 'Glass Golem', desc: 'Calls a golem of molten glass that fights beside you for 18 s, cleaving everything in front of it. 55 s cooldown.', fx: { pet: 'golem', dur: 18, cd: 55 },
+    glyph: G('..###../.#####./#.#.#.#/#######/.#.#.#./.#...#./##...##') },
+  molten_heart: { type: 'buff', kind: 'unique', region: 'r2', name: 'Molten Heart', desc: 'For 12 s you hit 20% harder, attack 15% faster and take 15% less. Once a raid.', fx: { buff: 'molten', dur: 12 },
+    glyph: G('.##.##./#######/#######/.#####./..###../...#.../.......') },
+  first_glass: { type: 'util', kind: 'unique', region: 'r2', name: 'The First Glass', desc: '+400 health and +10 stamina, and once a raid you rise again with 30% health when you would fall.', fx: { hp: 400, st: 10, winds: 1 },
+    glyph: G('...#.../..###../.#.#.#./#######/.#.#.#./..###../...#...') },
+});
 export const VAREK_RUNES = ['sandevistan', 'varek_halo', 'sentinel_echo', 'last_stand', 'archon_mantle'];
+export const KILN_RUNES = ['kilnwalk', 'kiln_halo', 'glass_golem', 'molten_heart', 'first_glass'];
+// a rune buff's effect: damage dealt, attack speed and move speed multiplied, damage taken multiplied (take)
+export const BUFF_FX = { fury: { dmg: 1.15 }, iron: { take: 0.8 }, stand: { dmg: 1.25 }, kiln: { dmg: 1.12, take: 0.9 }, swift: { aspd: 1.25, move: 1.15 }, molten: { dmg: 1.2, aspd: 1.15, take: 0.85 } };
+const BUFF_RGB = { fury: [1, 0.3, 0.2], iron: [0.6, 0.7, 0.9], stand: [1, 0.85, 0.3], kiln: [1, 0.55, 0.15], swift: [0.6, 0.9, 1], molten: [1, 0.45, 0.1] };
 export const RUNE_ORDER = Object.keys(RUNES).sort((a, b) => TYPE_ORDER.indexOf(RUNES[a].type) - TYPE_ORDER.indexOf(RUNES[b].type) || ['main', 'support', 'unique'].indexOf(RUNES[a].kind) - ['main', 'support', 'unique'].indexOf(RUNES[b].kind));
 export const kindLabel = (R) => `${RUNE_TYPES[R.type].name}${R.kind === 'support' ? ' support' : R.kind === 'unique' ? ' · unique' : ''} rune`;
 
@@ -147,6 +206,11 @@ export function runeLoadout(d, kind) {
   const L = { roll: { dist: 1, ember: 0, sande: false }, aura: null, summon: null, buff: null, util: { hp: 0, st: 0, winds: 0, maim: 0 }, ids: [] };
   if (!d) return L;
   const have = owned(d, kind), list = Object.entries(socketed(d, kind)).filter(([n, id]) => have.has(n) && RUNES[id] && ownsRune(d, id)).map(([, id]) => id);
+  return loadoutOf(list);
+}
+// what a set of socketed runes adds up to (also used by the tests: scripts/deep-runes.mjs)
+export function loadoutOf(list) {
+  const L = { roll: { dist: 1, ember: 0, sande: false }, aura: null, summon: null, buff: null, util: { hp: 0, st: 0, winds: 0, maim: 0 }, ids: [] };
   L.ids = list;
   const sup = { dist: 0, rollPow: 0, auraR: 0, auraPow: 0, pets: 0, petCd: 0, buffDur: 0, buffUses: 0 };
   let roll = null;
@@ -154,14 +218,15 @@ export function runeLoadout(d, kind) {
     const R = RUNES[id], f = R.fx;
     if (R.kind === 'support') { for (const k in sup) sup[k] += f[k] || 0; L.util.hp += f.hp || 0; L.util.st += f.st || 0; L.util.maim += f.maim || 0; continue; }
     if (R.type === 'roll') roll = R;
-    else if (R.type === 'aura') L.aura = { id, r: f.r, slow: f.slow || 0, burn: f.burn || 0, hex: R.kind === 'unique' ? 0xff5a2a : f.slow && !f.burn ? 0x6ab4ff : 0xff8a3a };
+    else if (R.type === 'aura') L.aura = { id, r: f.r, slow: f.slow || 0, burn: f.burn || 0, el: f.el || 'fire', hex: f.hex ?? (R.kind === 'unique' ? 0xff5a2a : f.slow && !f.burn ? 0x6ab4ff : 0xff8a3a) };
     else if (R.type === 'summon') L.summon = { id, pet: f.pet, dur: f.dur, cd: f.cd, n: 1 };
     else if (R.type === 'buff') L.buff = { id, buff: f.buff, dur: f.dur, uses: 1 };
-    else { L.util.hp += f.hp || 0; L.util.winds += f.winds || 0; }
+    else { L.util.hp += f.hp || 0; L.util.winds += f.winds || 0; L.util.st += f.st || 0; }
   }
   const pow = 1 + sup.rollPow;
   L.roll.dist = 1 + ((roll?.fx.dist || 0) * pow) + sup.dist;
-  if (roll?.fx.ember) L.roll.ember = roll.fx.ember * pow;
+  if (roll?.fx.ember) { L.roll.ember = roll.fx.ember * pow; L.roll.trailEl = roll.fx.trailEl || 'fire'; L.roll.trailHex = roll.fx.trailHex ?? null; L.roll.trailGlow = !!roll.fx.trailGlow; }
+  if (roll?.fx.heal) L.roll.heal = roll.fx.heal * pow;
   if (roll?.fx.sande) { L.roll.sande = true; L.roll.sandeT = 0.9 * pow; }
   if (L.aura) { L.aura.r *= 1 + sup.auraR; L.aura.slow *= 1 + sup.auraPow; L.aura.burn *= 1 + sup.auraPow; }
   if (L.summon) { L.summon.n += sup.pets; L.summon.cd *= Math.max(0.4, 1 - sup.petCd); }
@@ -194,6 +259,30 @@ function petModel(pet) {
     parts.legs = [];
     for (const [x, z] of [[-0.12, 0.25], [0.12, 0.25], [-0.12, -0.25], [0.12, -0.25]]) { const l = new THREE.Group(); l.position.set(x, 0.4, z); g.add(l); box(l, 0.07, 0.4, 0.07, dark, 0, -0.2, 0); parts.legs.push(l); }
     const tail = box(g, 0.04, 0.04, 0.3, dark, 0, 0.62, -0.45); tail.rotation.x = -0.6; parts.tail = tail;
+  } else if (pet === 'wisp') {
+    // a lantern wisp: a little caged flame with a halo of embers
+    const s = new THREE.Group(); s.position.y = 1.7; g.add(s); parts.body = s;
+    box(s, 0.2, 0.26, 0.2, new THREE.MeshBasicMaterial({ color: 0xffb040 }), 0, 0, 0);
+    for (const [x, z] of [[-0.11, -0.11], [0.11, -0.11], [-0.11, 0.11], [0.11, 0.11]]) box(s, 0.03, 0.3, 0.03, L(0x3a3a40), x, 0, z);
+    box(s, 0.26, 0.03, 0.26, L(0x3a3a40), 0, 0.15, 0); box(s, 0.26, 0.03, 0.26, L(0x3a3a40), 0, -0.15, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.015, 4, 14), glow(0xff8a2a, 0.7)); ring.rotation.x = Math.PI / 2; s.add(ring);
+    parts.eye = s.children[0];
+  } else if (pet === 'grub') {
+    // a tame burrow grub: fat pale rings, a round mouth of teeth
+    const flesh = L(0xd8ccb8), fold = L(0xa89a84);
+    for (let k = 0; k < 4; k++) box(g, 0.44 - k * 0.05, 0.34 - k * 0.04, 0.22, k % 2 ? fold : flesh, 0, 0.22, -0.3 + k * 0.2);
+    const head = new THREE.Group(); head.position.set(0, 0.26, 0.42); g.add(head); parts.head = head;
+    box(head, 0.36, 0.3, 0.22, flesh, 0, 0, 0); box(head, 0.18, 0.14, 0.04, L(0x3a1a14), 0, -0.02, 0.12);
+    for (const sx of [-1, 1]) box(head, 0.04, 0.04, 0.02, new THREE.MeshBasicMaterial({ color: 0x8af050 }), sx * 0.1, 0.08, 0.12);
+    parts.legs = []; parts.tail = null;
+  } else if (pet === 'golem') {
+    // the Kilnfather's gift: a golem of molten glass, the fire moving in it
+    const rig = buildHumanoid({ scale: 1.35, skin: 0x5a3a2a, cloth: 0x2a1a14, armor: 0x3a2a24, head: 'none', weapon: 'club', eyes: 0xffd040, bulk: 1.4 });
+    const shell = glow(0x5ab8d8, 0.45);
+    rig.root.traverse((o) => { if (o.isMesh && o !== rig.shadow) o.material = shell; });
+    if (rig.shadow) rig.shadow.visible = false;
+    const core = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.2), glow(0xff6a1a, 0.9)); core.position.y = 0.4; rig.j.torso.add(core);
+    g.add(rig.root); parts.rig = rig;
   } else {
     // Varek's echo: his shape in burning light
     const rig = buildHumanoid({ scale: 1.3, skin: 0x5a5048, cloth: 0x1e1c20, armor: 0x34343c, accent: 0x6a1412, head: 'horned', weapon: 'greatsword', eyes: 0xffb040, bulk: 1.2 });
@@ -204,7 +293,10 @@ function petModel(pet) {
   }
   return { g, parts };
 }
-const TARGET_R = { skull: 9, hound: 12, echo: 10 };
+const TARGET_R = { skull: 9, hound: 12, echo: 10, wisp: 9, grub: 11, golem: 10 };
+// the Deep's summons ride the March's behaviours: the wisp a servo-skull's, the grub a hound's, the golem the echo's
+const BEHAVE = { skull: 'skull', wisp: 'skull', hound: 'hound', grub: 'hound', echo: 'echo', golem: 'echo' };
+const PET_HIT = { skull: [6, 'phys', 0x9affb0], wisp: [8, 'fire', 0xffa040], hound: [8, 'phys'], grub: [9, 'poison'], echo: [14, 'fire'], golem: [17, 'bleed'] };
 
 export class RuneRuntime {
   constructor(game) { this.game = game; this.reset(); }
@@ -249,20 +341,18 @@ export class RuneRuntime {
       if (p.buffT > 0) return;
       if (p.buffUses <= 0) { g.ui.toastSmall?.('Your rune buff is spent for this raid'); return; }
       p.buffUses--; p.buffT = L.buff.dur; p.buffKind = L.buff.buff;
-      if (p.buffKind === 'fury') p.dmgMul *= 1.15;
-      if (p.buffKind === 'stand') p.dmgMul *= 1.25;
+      const B = BUFF_FX[p.buffKind] || {}; p.dmgMul *= B.dmg || 1; p.aspdMul *= B.aspd || 1; p.moveMul *= B.move || 1;
       g.audio.play('heal', 0.8); g.ui.toast(RUNES[L.buff.id].name.toUpperCase(), 2);
     }
     this.hud();
   }
   endBuff() {
     const p = this.p;
-    if (p.buffKind === 'fury') p.dmgMul /= 1.15;
-    if (p.buffKind === 'stand') p.dmgMul /= 1.25;
+    const B = BUFF_FX[p.buffKind] || {}; p.dmgMul /= B.dmg || 1; p.aspdMul /= B.aspd || 1; p.moveMul /= B.move || 1;
     p.buffKind = null; p.buffT = 0;
   }
   // (player.js) what a hit does with a buff up, and falling with Second Wind or Last Stand
-  hitMul() { return this.p?.buffKind === 'iron' ? 0.8 : 1; }
+  hitMul() { return BUFF_FX[this.p?.buffKind]?.take || 1; }
   // returns true if the fall was stopped
   saveFromDeath(p) {
     const g = this.game;
@@ -282,8 +372,13 @@ export class RuneRuntime {
     if (!L) return;
     if (L.roll.ember && (this.emberT -= dt) <= 0) {
       this.emberT = 0.07;
-      const m = new THREE.Mesh(new THREE.CircleGeometry(0.45, 8), glow(0xff6a1a, 0.45)); m.rotation.x = -Math.PI / 2; m.position.set(p.pos.x, 0.05 + (p.pos.y || 0), p.pos.z); g.scene.add(m);
+      const hex = L.roll.trailGlow ? (p.rig.chestGlow ?? 0xff6a1a) : L.roll.trailHex ?? 0xff6a1a; // (the Kilnwalk's glass: your chest glow's colour)
+      const m = new THREE.Mesh(new THREE.CircleGeometry(0.45, 8), glow(hex, 0.45)); m.rotation.x = -Math.PI / 2; m.userData.hex = hex; m.position.set(p.pos.x, 0.05 + (p.pos.y || 0), p.pos.z); g.scene.add(m);
       this.embers.push({ x: p.pos.x, z: p.pos.z, t: 2.5, m });
+    }
+    if (L.roll.heal && !this.lastRoll && p.alive) { // (Lantern Step: a little health back with each roll)
+      const got = Math.min(p.maxHp - p.hp, p.maxHp * L.roll.heal); p.hp += got;
+      g.fx.burst({ x: p.pos.x, y: 1 + (p.pos.y || 0), z: p.pos.z }, 10, [1, 0.85, 0.5], 2, 0.4, 0.2);
     }
     if (L.roll.sande) {
       if (!this.lastRoll && !g.mp.active) this.foeSlowT = L.roll.sandeT; // (alone: the world nearly stops)
@@ -349,7 +444,8 @@ export class RuneRuntime {
     const g = this.game, p = this.p, pos = P.pos, t = g.time;
     P.t -= dt; P.cd -= dt;
     const tgt = this.nearest(pos.x, pos.z, TARGET_R[P.pet]);
-    if (P.pet === 'skull') {
+    const kind = BEHAVE[P.pet] || 'echo', [hitDmg, hitEl, hitHex] = PET_HIT[P.pet] || [10, 'phys'];
+    if (kind === 'skull') {
       // hovers at your shoulder, bobbing; a needle at the nearest enemy every 1.2 s
       const want = V.set(p.pos.x + Math.cos(t * 0.8 + P.ph) * 0.9, 0, p.pos.z + Math.sin(t * 0.8 + P.ph) * 0.9);
       pos.lerp(want, Math.min(1, dt * 4));
@@ -358,11 +454,11 @@ export class RuneRuntime {
       if (tgt && P.cd <= 0) {
         P.cd = 1.2;
         const from = new THREE.Vector3(pos.x, 1.7, pos.z), to = new THREE.Vector3(tgt.pos.x, 1.1 * tgt.rig.root.scale.y + (tgt.pos.y || 0), tgt.pos.z);
-        this.tracer(from, to, 0x9affb0);
-        this.damage(tgt, 6, 'phys');
+        this.tracer(from, to, hitHex ?? 0x9affb0);
+        this.damage(tgt, hitDmg, hitEl);
         g.audio.play('bow', 0.35);
       }
-    } else if (P.pet === 'hound') {
+    } else if (kind === 'hound') {
       // runs at the nearest enemy and bites; with none, trots at your heel
       const goal = tgt ? tgt.pos : V.set(p.pos.x + Math.cos(P.ph) * 1.4, 0, p.pos.z + Math.sin(P.ph) * 1.4);
       const dx = goal.x - pos.x, dz = goal.z - pos.z, d = Math.hypot(dx, dz), reach = tgt ? 0.9 + (tgt.radius || 0.45) : 0.4;
@@ -372,11 +468,11 @@ export class RuneRuntime {
         g.world.resolve(pos, to, 0.3); pos.x = to.x; pos.z = to.z; moving = true;
       }
       if (d > 0.01) P.yaw = Math.atan2(dx, dz);
-      if (tgt && d <= reach + 0.1 && P.cd <= 0) { P.cd = 1.0; P.swing = 0.25; this.damage(tgt, 8, 'phys'); g.audio.play('hit', 0.4); }
+      if (tgt && d <= reach + 0.1 && P.cd <= 0) { P.cd = 1.0; P.swing = 0.25; this.damage(tgt, hitDmg, hitEl); g.audio.play('hit', 0.4); }
       const run = moving ? Math.sin(t * 18) : 0;
-      P.parts.legs.forEach((l, k) => { l.rotation.x = run * 0.7 * (k % 2 ? 1 : -1) * (k < 2 ? 1 : -1); });
-      P.parts.head.rotation.x = P.swing > 0 ? -0.5 : 0; P.swing -= dt;
-      P.parts.tail.rotation.y = Math.sin(t * 10) * 0.4;
+      P.parts.legs?.forEach((l, k) => { l.rotation.x = run * 0.7 * (k % 2 ? 1 : -1) * (k < 2 ? 1 : -1); });
+      if (P.parts.head) P.parts.head.rotation.x = P.swing > 0 ? -0.5 : 0; P.swing -= dt;
+      if (P.parts.tail) P.parts.tail.rotation.y = Math.sin(t * 10) * 0.4;
     } else {
       // Varek's echo: strides at the nearest enemy and cleaves everything in front of it
       const goal = tgt ? tgt.pos : V.set(p.pos.x + Math.cos(P.ph) * 1.8, 0, p.pos.z + Math.sin(P.ph) * 1.8);
@@ -386,8 +482,8 @@ export class RuneRuntime {
       if (d > 0.01) P.yaw = Math.atan2(dx, dz);
       if (tgt && d <= reach + 0.2 && P.cd <= 0) {
         P.cd = 1.3; P.swing = 0.5;
-        for (const e of g.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) < 2.8 && Math.cos(Math.atan2(e.pos.x - pos.x, e.pos.z - pos.z) - P.yaw) > 0) this.damage(e, 14, 'fire');
-        g.fx.shockwave?.(pos.x + Math.sin(P.yaw) * 1.4, pos.z + Math.cos(P.yaw) * 1.4, 1.6, 0xff6a2a, 0.35); g.audio.play('heavySwing', 0.6);
+        for (const e of g.enemiesAll()) if (e.alive && Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) < 2.8 && Math.cos(Math.atan2(e.pos.x - pos.x, e.pos.z - pos.z) - P.yaw) > 0) this.damage(e, hitDmg, hitEl);
+        g.fx.shockwave?.(pos.x + Math.sin(P.yaw) * 1.4, pos.z + Math.cos(P.yaw) * 1.4, 1.6, P.pet === 'golem' ? 0x8ae0ff : 0xff6a2a, 0.35); g.audio.play('heavySwing', 0.6);
       }
       P.swing -= dt;
       const sw = P.swing > 0 ? 1 - P.swing / 0.5 : -1, run = moving ? Math.sin(t * 9) : 0;
@@ -411,14 +507,14 @@ export class RuneRuntime {
     this.foeSlowT = Math.max(0, this.foeSlowT - dt);
     p.summonCd = Math.max(0, p.summonCd - dt);
     if (p.buffT > 0 && (p.buffT -= dt) <= 0) { this.endBuff(); g.ui.toastSmall?.('Your rune buff fades'); }
-    if (p.buffKind && Math.random() < dt * 25) { const c = { fury: [1, 0.3, 0.2], iron: [0.6, 0.7, 0.9], stand: [1, 0.85, 0.3] }[p.buffKind]; g.fx.add.spawn({ x: p.pos.x + (Math.random() - 0.5) * 0.7, y: 0.3 + Math.random() * 1.6, z: p.pos.z + (Math.random() - 0.5) * 0.7, vy: 1.2, life: 0.6, size: 0.14, size1: 0.02, r: c[0], g: c[1], b: c[2] }); }
+    if (p.buffKind && Math.random() < dt * 25) { const c = BUFF_RGB[p.buffKind] || [1, 1, 1]; g.fx.add.spawn({ x: p.pos.x + (Math.random() - 0.5) * 0.7, y: 0.3 + Math.random() * 1.6, z: p.pos.z + (Math.random() - 0.5) * 0.7, vy: 1.2, life: 0.6, size: 0.14, size1: 0.02, r: c[0], g: c[1], b: c[2] }); }
     // the aura: its ring follows you; it burns every half second
     if (this.ring) {
       this.ring.position.set(p.pos.x, 0.06 + (p.pos.y || 0), p.pos.z); this.ring.rotation.y += dt * 0.5; this.ring.visible = p.alive;
       this.ring.userData.m.opacity = 0.28 + Math.sin(g.time * 3) * 0.08;
       if (L.aura.burn && p.alive && (this.burnT -= dt) <= 0) {
         this.burnT = 0.5;
-        for (const e of g.enemiesAll()) if (e.alive && !e.reserve && Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < L.aura.r + (e.radius || 0.4)) this.damage(e, L.aura.burn, 'fire');
+        for (const e of g.enemiesAll()) if (e.alive && !e.reserve && Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < L.aura.r + (e.radius || 0.4)) this.damage(e, L.aura.burn, L.aura.el || 'fire');
       }
       if (Math.random() < dt * 14) { const a = Math.random() * 6.28, r = Math.random() * L.aura.r, c = new THREE.Color(L.aura.hex); g.fx.add.spawn({ x: p.pos.x + Math.cos(a) * r, y: 0.1, z: p.pos.z + Math.sin(a) * r, vy: 0.8, life: 0.7, size: 0.1, size1: 0.02, r: c.r, g: c.g, b: c.b, alpha: 0.7 }); }
     }
@@ -429,8 +525,8 @@ export class RuneRuntime {
       const hit = new Set();
       for (const E of this.embers) {
         E.t -= dt; E.m.material.opacity = Math.min(0.45, E.t * 0.3);
-        if (Math.random() < dt * 6) g.fx.flame?.({ x: E.x + (Math.random() - 0.5) * 0.4, y: 0.1, z: E.z + (Math.random() - 0.5) * 0.4 }, 0.35);
-        if (tick) for (const e of g.enemiesAll()) if (e.alive && !hit.has(e) && Math.hypot(e.pos.x - E.x, e.pos.z - E.z) < 0.9 + (e.radius || 0.4)) { hit.add(e); this.damage(e, L.roll.ember, 'fire'); }
+        if (Math.random() < dt * 6) { if (L.roll.trailEl === 'fire' && !L.roll.trailGlow) g.fx.flame?.({ x: E.x + (Math.random() - 0.5) * 0.4, y: 0.1, z: E.z + (Math.random() - 0.5) * 0.4 }, 0.35); else { const c = new THREE.Color(E.m.userData.hex ?? 0xb090ff); g.fx.add.spawn({ x: E.x + (Math.random() - 0.5) * 0.5, y: 0.15, z: E.z + (Math.random() - 0.5) * 0.5, vy: 0.9, life: 0.5, size: 0.1, size1: 0.02, r: c.r, g: c.g, b: c.b }); } }
+        if (tick) for (const e of g.enemiesAll()) if (e.alive && !hit.has(e) && Math.hypot(e.pos.x - E.x, e.pos.z - E.z) < 0.9 + (e.radius || 0.4)) { hit.add(e); this.damage(e, L.roll.ember, L.roll.trailEl || 'fire'); }
       }
       this.embers = this.embers.filter((E) => { if (E.t > 0) return true; g.scene.remove(E.m); E.m.geometry.dispose(); return false; });
     }

@@ -57,7 +57,7 @@ import { noteKill, restockAll, relicsWanted } from './traders.js';
 import { Ragdolls } from './ragdoll.js';
 import { Gore, BLADES } from './gore.js';
 import { TrainPads } from './trainpads.js';
-import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, RUNES } from './runes.js';
+import { RuneRuntime, grantRune, ownsRune, VAREK_RUNES, KILN_RUNES, RUNES } from './runes.js';
 import { rollDefenses, enemyMitigate, enemyBuildMul, critRoll, RES_ELEMS } from './defenses.js';
 import { ELITE } from './enemies.js';
 import { currentRecord } from './records.js';
@@ -1429,6 +1429,11 @@ class Game {
       const st = this.accounts.data.stats;
       if (this.run?.raid) { const d = this.accounts.data; d.raids = d.raids || {}; d.raids[this.run.raid] = (d.raids[this.run.raid] || 0) + 1; } // (the region's master: its pin gets its tick)
       // Varek's five unique runes, one of each type (runes.js), the first time he falls
+      // the Kilnfather's five, the first time he falls
+      if (this.accounts.user && enc.boss?.cfg?.id === 'kilnfather' && KILN_RUNES.some((id) => !ownsRune(this.accounts.data, id))) {
+        for (const id of KILN_RUNES) grantRune(this.accounts.data, id);
+        setTimeout(() => this.ui.toast('THE KILNFATHER\'S FIVE RUNES ARE YOURS · socket them in your tree', 4), 5200);
+      }
       if (this.accounts.user && enc.boss?.cfg?.id === 'varek' && VAREK_RUNES.some((id) => !ownsRune(this.accounts.data, id))) {
         for (const id of VAREK_RUNES) grantRune(this.accounts.data, id);
         setTimeout(() => this.ui.toast('VAREK\'S FIVE RUNES ARE YOURS · socket them in your tree', 4), 5200);

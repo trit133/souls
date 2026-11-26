@@ -920,7 +920,7 @@ export class Hermitage {
     add(`<h4>${T.name} runes</h4>${T.desc} ${R.kind === 'support' ? 'A support rune: socket it as often as you like alongside one ' + T.name.toLowerCase() + ' rune.' : 'One ' + T.name.toLowerCase() + ' rune in a tree at a time.'}`, 'wk-sec');
     add('Socket runes in your skill tree\'s rune sockets (click an owned socket). Runes are shared by every character and never used up.', 'wk-p dim');
     if (have) return;
-    if (!R.recipe) { add('<b>Archon Varek\'s.</b> Beat him and all five of his runes are yours.', 'wk-p'); return; }
+    if (!R.recipe) { add(R.region === 'r2' ? '<b>The Kilnfather\'s.</b> Beat him and all five of his runes are yours.' : '<b>Archon Varek\'s.</b> Beat him and all five of his runes are yours.', 'wk-p'); return; }
     const R2 = recipeState(d, R.recipe), rec = add('<h4>Recipe</h4>', 'wk-sec wk-rec');
     for (const r of R2.rows) {
       const it = ITEMS[r.id], ok = r.have >= r.need, row = document.createElement('div'); row.className = 'wk-mat' + (ok ? ' ok' : '');
