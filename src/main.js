@@ -16,6 +16,8 @@ import './sump.js'; import './spire.js'; import './ward.js'; import './cut.js'; 
 import './lanternhold.js'; import './wormways.js'; import './glasshallow.js'; // (the Sunless Deep's maps register themselves too: City.MAPS)
 import { AREAS, areaOpen } from './regions.js';
 import { needsPick, showPick } from './regionbuffs.js';
+import { armorFx } from './deeparmory.js';
+import { DEEP_PIECES, pieceKey } from './outfits.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
 import * as ItemsLib from './items.js';
@@ -883,6 +885,9 @@ class Game {
       if (!A.data.traderKeys.vesk) { A.data.traderKeys.vesk = 1; added = true; }
       for (const k of ['kettle', 'sorrow']) if (!A.data.traderKeys[k]) { A.data.traderKeys[k] = 1; added = true; }
       if (!A.data.exchange) { A.data.exchange = 1; added = true; } // (the Bazaar's Exchange, open)
+      // and every piece of the Sunless Deep's armour (asked for 2026-11-26)
+      A.data.cosmetics ??= { pieces: [], colors: [] };
+      for (const [k, sl, id] of DEEP_PIECES) { const key = pieceKey(k, sl, id); if (!A.data.cosmetics.pieces.includes(key)) { A.data.cosmetics.pieces.push(key); added = true; } }
       if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
@@ -2345,6 +2350,7 @@ class Game {
       if (dt > 0) {
         if (!this.isGuest) { this.assignEngagement(); this.stepRooms(); }
         p.update(dt, this.input, presses);
+        for (const q of this.allPlayers()) armorFx(q.rig, this.fx, dt); // (the Deep's armour: embers, smoke, steam, sparkle off it: deeparmory.js)
         const ps = this.allPlayers().map((x) => x.pos);
         const close = (o, r) => ps.some((q) => Math.abs(o.pos.z - q.z) < r && Math.abs(o.pos.x - q.x) < r);
         for (const e of this.enemies) {

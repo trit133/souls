@@ -7,6 +7,7 @@ import { KITS, strip, plate, basic, add, easeOut, CLOTH, RIBBON } from './kits.j
 import { colorMat, colorHex, colorById } from './outfits.js';
 import { armorTex, shade } from './armortex.js';
 import { KNIGHT_ARMORY, ROGUE_ARMORY, MAGE_ARMORY } from './armory.js';
+import { deepKnight, deepRogue, deepMage } from './deeparmory.js';
 
 const lighten = (hex, f) => { const c = new THREE.Color(hex); c.lerp(new THREE.Color(0xffffff), f); return c.getHex(); };
 const darken = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(1 - f); return c.getHex(); };
@@ -308,6 +309,7 @@ const KNIGHT = {
 };
 // The Last Crusade's armoury (armory.js) replaces every piece
 for (const slot in KNIGHT_ARMORY) KNIGHT[slot] = Object.assign(KNIGHT[slot] || {}, KNIGHT_ARMORY[slot]);
+{ const D = deepKnight(KNIGHT); for (const slot in D) KNIGHT[slot] = Object.assign(KNIGHT[slot] || {}, D[slot]); } // (the Sunless Deep's sets: deeparmory.js)
 KITS.knight = {
   weapon: true,
   build(r, o) {
@@ -538,6 +540,7 @@ const ROGUE = {
   },
 };
 for (const slot in ROGUE_ARMORY) ROGUE[slot] = Object.assign(ROGUE[slot] || {}, ROGUE_ARMORY[slot]);
+{ const D = deepRogue(ROGUE); for (const slot in D) ROGUE[slot] = Object.assign(ROGUE[slot] || {}, D[slot]); } // (the Sunless Deep's sets: deeparmory.js)
 KITS.rogue = {
   weapon: true,
   build(r, o) {
@@ -775,6 +778,7 @@ const MAGE = {
   },
 };
 for (const slot in MAGE_ARMORY) MAGE[slot] = Object.assign(MAGE[slot] || {}, MAGE_ARMORY[slot]);
+{ const D = deepMage(MAGE); for (const slot in D) MAGE[slot] = Object.assign(MAGE[slot] || {}, D[slot]); } // (the Sunless Deep's sets: deeparmory.js)
 KITS.mage = {
   weapon: true,
   build(r, o) {

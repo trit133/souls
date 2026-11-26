@@ -83,6 +83,33 @@ export const PIECES = {
     sword: [{ id: 'runeblade', name: 'Rune Blade', desc: 'A blade of blue light.' }, { id: 'steel', name: 'Steel Sword', desc: 'A plain arming sword.' }, { id: 'moonblade', name: 'Moonblade', desc: 'A crescent of pale moonlight.', special: true }, { id: 'voidedge', name: 'Voidedge', desc: 'Black steel with a violet void at its core.', special: true }],
   },
 };
+// the Sunless Deep's sets (deeparmory.js builds them; 2026-11-26): two per class, a piece for every armour slot
+const DEEP = {
+  knight: {
+    helmet: [{ id: 'foreman', name: "Foreman's Helm", desc: 'A riveted miner\'s helm with a great lamp on the brow, dust drifting in its light.', special: true }, { id: 'glasshelm', name: "Glass-Wright's Helm", desc: 'A crest of seer-glass crystals growing out of it, sparkling.', special: true }],
+    pauldron: [{ id: 'boiler', name: 'Boiler Caps', desc: 'Riveted copper caps, a pipe venting steam.', special: true }, { id: 'shardguard', name: 'Shard Guard', desc: 'Crystal spikes grown through the plate.', special: true }],
+    chest: [{ id: 'foreman', name: "Foreman's Rig", desc: 'A riveted cuirass, a gauge on the chest, a boiler on the back venting steam.', special: true }, { id: 'vein', name: 'Vein Plate', desc: 'A seam of glowing seer-glass split down the chest.', special: true }],
+    legs: [{ id: 'foreman', name: "Foreman's Boots", desc: 'Hobnailed boots, knee lamps and a tool belt.' }, { id: 'shard', name: 'Shard Greaves', desc: 'Crystals growing out of the knees.' }],
+  },
+  rogue: {
+    mask: [{ id: 'creeper', name: "Creeper's Wraps", desc: 'Black bandages, two pinprick eyes, wisps of smoke.', special: true }, { id: 'mirror', name: 'Mirror Face', desc: 'A smooth mirror where the face should be.', special: true }],
+    cloak: [{ id: 'smoke', name: "Creeper's Shroud", desc: 'Lamp-black strips, smoke curling off the hem.', special: true }, { id: 'mirror', name: 'Mirror Silk', desc: 'Silver silk edged with shards of mirror that glint.', special: true }],
+    shirt: [{ id: 'creeper', name: "Creeper's Harness", desc: 'Black wraps and straps.' }, { id: 'mirror', name: 'Mirror Scale', desc: 'Overlapping mirror shards that catch the light.', special: true }],
+    band: [{ id: 'spike', name: "Creeper's Spikes", desc: 'Black wraps with iron nails driven through.' }, { id: 'shard', name: 'Shard Bracer', desc: 'A silver bracer set with a long mirror shard.' }],
+  },
+  mage: {
+    shoulder: [{ id: 'kiln', name: 'Kiln Mantle', desc: 'A glass-blower\'s leather mantle and heat shield, embers rising off it.', special: true }, { id: 'spore', name: 'Spore Crown', desc: 'Glowing caps grown over the shoulders, spores drifting off them.', special: true }],
+    shirt: [{ id: 'kiln', name: 'Kiln Coat', desc: 'A scorched apron-coat, tongs at the belt, coals glowing at the chest.', special: true }, { id: 'spore', name: 'Spore Robe', desc: 'A robe grown over with moss and glowing caps.', special: true }],
+    pants: [{ id: 'kiln', name: 'Kiln Leggings', desc: 'Heat-scarred leathers, embers falling from the knees.' }, { id: 'spore', name: 'Spore Leggings', desc: 'Moss wraps and a ring of tiny caps round each knee.' }],
+  },
+};
+for (const [kind, slots] of Object.entries(DEEP)) for (const [slot, list] of Object.entries(slots)) {
+  const into = slot === 'pauldron' ? ['pauldronL', 'pauldronR'] : slot === 'band' ? ['bandL', 'bandR'] : [slot];
+  for (const sl of into) { PIECES[kind][sl] ||= []; for (const p of list) if (!PIECES[kind][sl].some((q) => q.id === p.id)) PIECES[kind][sl].push({ ...p, deep: true }); }
+}
+// every Sunless Deep piece, as [kind, slot, id] (joeandre gets them all: main.js)
+export const DEEP_PIECES = Object.entries(PIECES).flatMap(([kind, slots]) => Object.entries(slots).flatMap(([slot, list]) => list.filter((p) => p.deep).map((p) => [kind, slot, p.id])));
+
 // The Last Crusade: the pieces' display names and descriptions (crusadekit.js); ids unchanged
 for (const [kind, slots] of Object.entries(PIECES)) for (const [slot, list] of Object.entries(slots)) {
   const N = CRUSADE_NAMES[kind]?.[slot.replace(/[LR]$/, '')];
