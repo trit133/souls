@@ -25,7 +25,7 @@ import { Seals } from './seals.js';
 import { Chests } from './chests.js';
 import { Basements } from './basements.js';
 import { Minimap } from './minimap.js';
-import { Player } from './player.js';
+import { Player, PERFECT } from './player.js';
 import { Enemy, NIGHT, TYPES as FOE_TYPES } from './enemies.js';
 import { Boss, BOSS_MOVES, BOSSES } from './boss.js';
 import { UI } from './ui.js';
@@ -1604,6 +1604,16 @@ class Game {
         this.pfx.play('parry', w);
         this.hitstop(0.12); if (tg.evo !== 'redRiposte') this.slow = 0.35;
         this.fx.addShake(0.4);
+      } else if (r === 'perfect') {
+        // a Templar's perfect block: a blow that could be parried staggers its attacker briefly (bosses a little longer)
+        if (h.parry ?? def.parry) att.onParried(att.isBoss ? PERFECT.bossStagger : PERFECT.stagger);
+        this.audio.play('parry'); this.audio.play('clang', 0.7);
+        this.mp.event({ k: 'parry' });
+        const s = tg.rig.shield ? tg.rig.shield.getWorldPosition(new THREE.Vector3()) : hp;
+        this.fx.sparks(s, dir.clone().negate(), 22, [1, 0.75, 0.3]);
+        this.pfx.play('block', s, { dir: dir.clone().negate() });
+        this.statusPopup(tg, 'PERFECT BLOCK', '#ffb040');
+        this.hitstop(0.08); this.fx.addShake(0.3);
       } else if (r === 'block' || r === 'guardbreak') {
         this.audio.play('clang');
         this.mp.event({ k: 'block' });

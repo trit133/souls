@@ -353,7 +353,7 @@ export class Multiplayer {
       // ----- what the host needs to apply -----
       case 'hit': { const e = this.entity(d.id), p = this.peers.get(from); if (e?.alive && p) { e.receive({ dmg: d.dmg, poise: d.poise, srcPos: p.pos, attacker: p, noKnock: !!d.kb, combo: !!d.c }); if (d.kb) e.kb.set(d.kb[0], 0, d.kb[1]); } break; }
       case 'status': this.entity(d.id)?.status.add(d.kind, d.amount, g); break;
-      case 'parried': { const e = this.entity(d.id); if (e?.alive) e.onParried(); break; }
+      case 'parried': { const e = this.entity(d.id); if (e?.alive) e.onParried(d.dur); break; }
       case 'riposted': this.entity(d.id)?.beginRiposted(null, d.at); break;
       case 'rip': { const e = this.entity(d.id); if (e?.alive) { e.hp = Math.max(0, e.hp - d.dmg); e.hpShow = 4; e.lastHitBy = this.peers.get(from) || e.lastHitBy; } break; }
       // ----- shared events -----

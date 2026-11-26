@@ -363,6 +363,11 @@ export function critFor(kind, tg, evolved) {
 
 export const PARRY_CD = 8, PARRY_CD_EVO = 5; // rogue: seconds between parries (Red Riposte: 5)
 export const CHARGE_CD = 20;   // evolved knight: seconds between shield charges
+// the Templar's perfect block: the shield raised just as a blow comes (the parry's own window, PARRY_EARLY in main.js,
+// plus a frame's grace). The blow is turned completely (no stamina, nothing through), a parryable attacker staggers
+// briefly (shorter than a parry, and no riposte), and Bulwark's Rhythm runs 5 s: 20% faster attacks, 20% faster
+// on your feet and 10% more damage, an amber aura coming off you. Another perfect block resets it to 5 s (never stacks)
+export const PERFECT = { window: 0.25, stagger: 0.8, bossStagger: 0.9, dur: 5, aspd: 0.2, move: 0.2, dmg: 1.1, color: 0xffa040 };
 
 const PARRY = {
   dur: 0.56, cost: 14, trail: [0.03, 0.16], hand: 'L',
@@ -529,6 +534,7 @@ export class Player extends Actor {
     this.dashCd = Math.max(0, this.dashCd - dt); this.quakeCd = Math.max(0, this.quakeCd - dt); this.sigilCd = Math.max(0, (this.sigilCd || 0) - dt);
     this.updateVeil(dt);
     this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
+    this.rhythmTick(dt);
     if (this.state !== 'charge') this.autoSlam = false; // (knocked out of the charge: no leap after it)
     this.chargeButton();
     if (this.state !== 'cast' && this.castDef?.charge) { this.game.pfx.kill(this.castDef.charge); this.castDef.charge = null; }
@@ -657,8 +663,9 @@ export class Player extends Actor {
       case 'hurt': {
         pose = { ...locomotion(style, 0, 0, false, 0), ...P.hurt };
         rate = 22;
-        if (this.t > 0.32 && this.buf && this.tryAct(dir, mag)) break;
-        if (this.t > 0.42) this.setState('move');
+        const hd = this.hurtDur ?? 0.42;
+        if (this.t > Math.min(0.32, hd * 0.7) && this.buf && this.tryAct(dir, mag)) break;
+        if (this.t > hd) this.setState('move');
         break;
       }
       case 'knockdown': {
@@ -846,6 +853,8 @@ export class Player extends Actor {
     }
 
     if (this.state !== 'move' && this.state !== 'heal') this.blocking = false;
+    if (this.blocking && !this.wasBlocking) this.blockStartT = this.game.time; // (when the shield went up: a perfect block's timing)
+    this.wasBlocking = this.blocking;
     this.applyKnockback(dt);
     this.groundStep(dt, px, pz, dir, mag);
     if (pose) this.syncRig(dt, pose, rate);
@@ -1000,6 +1009,37 @@ export class Player extends Actor {
   }
   // the spot behind its back he slips to (or presses against, hanging on)
   behindOf(tg, d) { const f = tg.fwd(); return { x: tg.pos.x - f.x * (tg.radius + d), z: tg.pos.z - f.z * (tg.radius + d) }; }
+
+  // ---------- the Templar's perfect block: Bulwark's Rhythm ----------
+  startRhythm() {
+    if (!(this.rhythmT > 0)) { this.aspdMul += PERFECT.aspd; this.moveMul += PERFECT.move; this.dmgMul *= PERFECT.dmg; }
+    this.rhythmT = PERFECT.dur; // (reset, never stacked)
+    if (!this.rhythmAura) {
+      const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: PERFECT.color, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.78, 32), m); ring.rotation.x = -Math.PI / 2; g.add(ring);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(0.62, 32), m.clone()); disc.material.opacity = 0.14; disc.rotation.x = -Math.PI / 2; disc.position.y = -0.003; g.add(disc);
+      g.userData.noMerge = true;
+      this.game.scene.add(g); this.rhythmAura = g;
+    }
+    this.rig.flash(1, 0.65, 0.25);
+  }
+  rhythmTick(dt) {
+    if (!(this.rhythmT > 0)) return;
+    this.rhythmT -= dt;
+    const A = this.rhythmAura, t = this.game.time;
+    if (this.rhythmT <= 0 || !this.alive) {
+      this.rhythmT = 0;
+      this.aspdMul -= PERFECT.aspd; this.moveMul -= PERFECT.move; this.dmgMul /= PERFECT.dmg;
+      if (A) { this.game.scene.remove(A); A.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); }); this.rhythmAura = null; }
+      return;
+    }
+    // the aura: a glowing ring at your feet that breathes (and fades in its last second), embers rising off you
+    const fade = Math.min(1, this.rhythmT);
+    A.position.set(this.pos.x, (this.pos.y || 0) + 0.04, this.pos.z);
+    A.scale.setScalar(1 + Math.sin(t * 6) * 0.06);
+    A.children[0].material.opacity = (0.32 + Math.sin(t * 6) * 0.1) * fade; A.children[1].material.opacity = 0.14 * fade;
+    if (Math.random() < dt * 30 * fade) this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.8, y: (this.pos.y || 0) + 0.2 + Math.random() * 1.5, z: this.pos.z + (Math.random() - 0.5) * 0.8, vy: 1.4, life: 0.7, size: 0.13, size1: 0.02, r: 1, g: 0.62, b: 0.22 });
+  }
 
   // ---------- evolved knight: shield charge ----------
   // the phone's CHARGE button: there while you have the evolution, greyed while it cools down
@@ -1291,7 +1331,13 @@ export class Player extends Actor {
     const A = info.attacker;
     if (this.state === 'parry' && A?.parryMark && A.parryMark.h === info.hit && (A.puppet || A.parryMark.atk === A.atk)) { A.parryMark = null; return 'parry'; }
     if (this.blocking && facing && !info.unblockable) {
-      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15); // stamina isn't scaled
+      // raised just as a blow came (a swing, not a shot): a perfect block
+      if (A && info.hit && this.game.time - (this.blockStartT ?? -9) <= PERFECT.window) {
+        this.lastBlockT = this.game.time; this.blockHitT = 0.25;
+        this.startRhythm();
+        return 'perfect';
+      }
+      const cost = info.dmg / NUM * (info.knock === 'heavy' ? 1.6 : 1.15) * 0.2; // stamina isn't scaled (a fifth of what it was)
       this.st -= cost; this.stDelay = 0.6;
       this.lastBlockT = this.game.time;
       this.blockHitT = 0.25;
@@ -1321,9 +1367,13 @@ export class Player extends Actor {
       this.setState('knockdown');
       this.atk = null;
     } else if (!this.hyperArmor()) {
-      this.kb.copy(away).multiplyScalar(4);
-      if (this.state !== 'heal' || info.dmg > 0) this.setState('hurt');
-      this.atk = null;
+      // a hit with its own short flinch (a flamer's ticks) doesn't restart one it's already in
+      const fl = info.hit?.flinch;
+      if (!(fl && this.state === 'hurt')) {
+        this.kb.copy(away).multiplyScalar(fl ? 1.5 : 4);
+        if (this.state !== 'heal' || info.dmg > 0) { this.setState('hurt'); this.hurtDur = fl || 0.42; }
+        this.atk = null;
+      }
     }
     return 'hit';
   }

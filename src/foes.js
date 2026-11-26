@@ -150,7 +150,7 @@ const TORCHER_MOVES = {
   gout: {
     ranged: true, unparryable: true, dur: 2.05, range: 5.6, track: [0.7, 2.6], tracks: [[0.7, 1.6, 0.9]], recover: 0.45,
     keys: [[0.5, FLAMER_AIM], [0.7, FLAMER_AIM], [0.76, FLAMER_KICK], [1.6, FLAMER_KICK], [1.8, FLAMER_AIM]],
-    hits: [0, 1, 2, 3, 4, 5].map((i) => ({ t0: 0.76 + i * 0.14, t1: 0.84 + i * 0.14, range: 5.7, arc: 0.8, dmg: 7, poise: 4 })),
+    hits: [0, 1, 2, 3, 4, 5].map((i) => ({ t0: 0.76 + i * 0.14, t1: 0.84 + i * 0.14, range: 5.7, arc: 0.8, dmg: 4, poise: 4, flinch: 0.15 })), // (a brief flinch, not one long stagger lock)
     onTime: [
       { t: 0.25, fn: (e, g) => { g.fx.burst(tipPos(e), 10, [0.4, 0.6, 1], 1.5, 0.3, 0.25); g.audio.play('fire', 0.4); } }, // the pilot flares blue
       { t: 0.76, fn: (e, g) => g.audio.play('fire', 0.9) },
@@ -164,7 +164,7 @@ const TORCHER_MOVES = {
     onTime: [{ t: 0.8, fn: (e, g) => {
       // a fuel can rolls along the floor in flames
       const f = e.fwd().clone(), pos = new THREE.Vector3(e.pos.x + f.x * 0.8, 0.3, e.pos.z + f.z * 0.8);
-      g.addProj(g.foeCrit(e, { kind: 'fire', pos, vel: f.multiplyScalar(9), life: 1.3, r: 0.75, dmg: 18 * NUM * (e.dmgScale || 1), mesh: null, elems: { fire: 0.5 } }));
+      g.addProj(g.foeCrit(e, { kind: 'fire', pos, vel: f.multiplyScalar(9), life: 1.3, r: 0.75, dmg: 12 * NUM * (e.dmgScale || 1), mesh: null, elems: { fire: 0.5 } }));
       g.audio.play('fire', 0.7);
     } }],
   },
@@ -199,7 +199,7 @@ const HULK_MOVES = {
     onTime: [{ t: 0.25, fn: glint([1, 0.15, 0.1], 'clang') }, { t: 1.14, fn: (e, g) => { const f = e.fwd(); g.impact(e.pos.x + f.x * 2.5, e.pos.z + f.z * 2.5, 3.4, 0.6); } }],
   },
   surge: {
-    dur: 2.0, range: 8.5, minRange: 4, track: [0.7, 3], sfx: [0.7, 'heavySwing'], recover: 0.7, armor: true, unparryable: true,
+    dur: 2.0, range: 8.5, minRange: 4, track: [0.7, 3], sfx: [0.7, 'heavySwing'], recover: 0.7, armor: true, unparryable: true, cool: 8, // (8 s between charges)
     keys: [[0.55, { ...CHARGE, by: -0.15, torso: [0.4, 0, 0] }], [0.75, CHARGE], [1.3, CHARGE], [1.5, { ...CHARGE, torso: [0.3, 0, 0], by: -0.1 }]],
     hits: [{ t0: 0.8, t1: 1.32, range: 1.9, arc: 1.8, dmg: 34, poise: 55, knock: 'heavy' }],
     move: [[0.75, 1.32, 6.5]], stopAt: 0.6,

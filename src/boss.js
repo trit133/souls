@@ -145,7 +145,7 @@ export class Boss extends Actor {
   }
 
   get target() { return this.game.targetOf(this); }
-  critable() { return this.state === 'parried' || this.state === 'broken'; }
+  critable() { return (this.state === 'parried' && !this.lightStagger) || this.state === 'broken'; }
   attackRate() { return this.atkSpeed * (this.counterAtk ? 1.15 : 1) * this.status.slow() * this.atkScale * this.chillMul(); }
 
   reset() {
@@ -337,7 +337,7 @@ export class Boss extends Actor {
       case 'parried': {
         pose = { ...loco(0), ...P.stagger };
         rate = 12;
-        if (this.t > 1.8) { this.setState('neutral'); this.gap = 0.2; }
+        if (this.t > (this.parriedDur ?? 1.8)) { this.setState('neutral'); this.gap = 0.2; }
         break;
       }
       case 'riposted': {
@@ -413,8 +413,9 @@ export class Boss extends Actor {
 
   endHold() { this.setState('neutral'); this.gap = 0.3; }
 
-  onParried() {
-    if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId }); this.state = 'parried'; this.t = 0; this.atk = null; return; }
+  onParried(dur) {
+    this.parriedDur = dur || 1.8; this.lightStagger = !!dur;
+    if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId, dur }); this.state = 'parried'; this.t = 0; this.atk = null; return; }
     this.atk = null; this.y = 0;
     if (this.tele) { this.tele.dead = true; this.tele = null; }
     this.setState('parried');

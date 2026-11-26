@@ -299,7 +299,7 @@ export class Enemy extends Actor {
   // how long an enemy waiting its turn holds back before stepping in for one attack
   watchGap() { return this.night ? NIGHT.watch : 10 + Math.random() * 5; }
 
-  critable() { return this.state === 'parried'; }
+  critable() { return this.state === 'parried' && !this.lightStagger; } // (a perfect block's short stagger can't be riposted)
   attackRate() { return (this.atkSpeed || 1) * this.status.slow() * this.atkScale * (this.T.rate?.(this) ?? 1); }
 
   // elemental damage this enemy carries (a share of each hit, taken out of the physical): { fire: 0.25 } or null.
@@ -333,6 +333,7 @@ export class Enemy extends Actor {
       if (m.minRange && dist < m.minRange) continue;
       if (m.maxRange && dist > m.maxRange) continue;
       if (m.rear && !behind) continue;
+      if (m.cool && this.game.time - (this.usedAt?.[name] ?? -1e9) < m.cool) continue; // (a move with its own cooldown)
       let ww = w;
       if (behind && m.rear) ww *= 4;
       if (name === this.lastMove) ww *= 0.4;
@@ -453,7 +454,7 @@ export class Enemy extends Actor {
             if (!this.engaged) this.watchCd = this.watchGap();
             this.atkSpeed = this.urgent ? 1.3 : 1;
             this.urgent = false;
-            this.lastMove = m;
+            this.lastMove = m; (this.usedAt ||= {})[m] = this.game.time;
             this.trackMul = this.atkSpeed;
             if (this.wild) { this.trackMul = 0.25; this.atkSpeed *= 1.15; this.yaw += (Math.random() - 0.5) * 1.1; } // (one-armed: flailing, barely aimed)
             this.startAttack(T.moves[m]);
@@ -535,7 +536,7 @@ export class Enemy extends Actor {
       case 'parried': {
         pose = { ...locomotion(T.style, 0, 0, false, 0), ...P.stagger };
         rate = 16;
-        if (this.t > 1.7) this.setState('chase');
+        if (this.t > (this.parriedDur ?? 1.7)) this.setState('chase');
         break;
       }
       case 'riposted': {
@@ -662,8 +663,10 @@ export class Enemy extends Actor {
     if (this.state === 'recover') this.setState('chase');
   }
 
-  onParried() {
-    if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId }); this.state = 'parried'; this.t = 0; this.atk = null; return; }
+  // dur: a shorter stagger (a Templar's perfect block), which can't be riposted
+  onParried(dur) {
+    this.parriedDur = dur || 1.7; this.lightStagger = !!dur;
+    if (this.puppet) { this.game.mp.send({ t: 'parried', id: this.netId, dur }); this.state = 'parried'; this.t = 0; this.atk = null; return; }
     this.releaseToken();
     this.atk = null;
     if (this.tele) { this.tele.dead = true; this.tele = null; }
