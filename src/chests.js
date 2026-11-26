@@ -15,7 +15,7 @@
 // in a party the same way ('drum' / 'drumReq').
 import * as THREE from 'three';
 import { KILL_GOLD, killGold, partyShare } from './progress.js';
-import { RARITY, rollChest, rollDrum } from './items.js';
+import { RARITY, rollChest, rollDrum, rankTier } from './items.js';
 import { AREAS } from './regions.js';
 
 const REACH = 1.9, HEAL_PCT = 0.3;
@@ -51,7 +51,7 @@ export function buildChest(w, x, z, yaw, big = false, rarity = 'common') {
   w.ob(x, z, big ? 1.05 : 0.7);
   return { x, z, big, rarity, group: g, lid, lock, halo, glow };
 }
-const rarityHex = (r) => parseInt(RARITY[r].color.slice(1), 16);
+const rarityHex = (r, region = 'r1') => parseInt(rankTier(region, r).color.slice(1), 16); // (a chest of a rank shows its tier in its region)
 
 // a supply drum: a rusted promethium drum with hazard bands and an amber seal light; smash it for what's inside
 export function buildDrum(w, x, z, plain = false) {
@@ -87,7 +87,7 @@ export class Chests {
     const t = this.game.time;
     this.updateDebris(dt);
     for (const c of this.list) {
-      const d = c.def, rc = rarityHex(d.rarity || 'common'), col = c.opened ? 0x3a2a10 : this.locked(c) ? LOCKED : rc;
+      const d = c.def, rc = rarityHex(d.rarity || 'common', this.region), col = c.opened ? 0x3a2a10 : this.locked(c) ? LOCKED : rc;
       d.glow.color.setHex(col); d.halo.material.color.setHex(c.opened ? 0x3a2a10 : rc); // (the glow: its rarity)
       d.halo.material.opacity = c.opened ? 0 : 0.26 + Math.sin(t * 3 + c.i) * 0.08;
       if (c.opened && c.lidT < 1) { c.lidT = Math.min(1, c.lidT + dt * 3); d.lid.rotation.x = -1.9 * (1 - (1 - c.lidT) ** 3); }
@@ -99,7 +99,7 @@ export class Chests {
   promptFor(p, key) {
     const c = this.near(p);
     if (!c) return null;
-    const kind = `${RARITY[c.def.rarity || 'common'].name} ${c.def.big ? 'hoard' : 'chest'}`;
+    const kind = `${rankTier(this.region, c.def.rarity || 'common').short} ${c.def.big ? 'hoard' : 'chest'}`;
     if (this.locked(c)) return { c, line: `${kind} sealed · kill its guards (${c.def.guards.filter((sp) => sp.enemy?.alive).length} left)` };
     return { c, line: `${key}: Open the ${kind.toLowerCase()}${this.game.mp.active ? ' (for the whole party)' : ''}` };
   }
@@ -149,7 +149,7 @@ export class Chests {
         lines.push('healed 30%');
       }
     }
-    g.ui.toast(`${RARITY[c.def.rarity || 'common'].name.toUpperCase()} ${c.def.big ? 'HOARD' : 'CACHE'} · ${lines.join(' · ')}`, 4);
+    g.ui.toast(`${rankTier(this.region, c.def.rarity || 'common').short.toUpperCase()} ${c.def.big ? 'HOARD' : 'CACHE'} · ${lines.join(' · ')}`, 4);
     g.audio.play('heal', 0.7);
     g.fx.burst({ x: c.def.x, y: 0.8, z: c.def.z }, c.def.big ? 40 : 18, [1, 0.78, 0.3], 3, 0.7, 0.2);
   }

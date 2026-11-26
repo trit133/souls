@@ -14,6 +14,34 @@ export const RARITY = {
   legendary: { name: 'Legendary', color: '#ffa82a', value: 6000 },
 };
 export const TIERS = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+// ---------- star tiers (2026-11-26) ----------
+// Each rarity has four stars, and the whole ladder is geared down so it stretches over the game: an item's `rarity`
+// is still its rank inside its own region (what the loot tables, chests and traders go by), but what it's called and
+// the colour it shows are its place on the ladder: region 1's five ranks are Common ★1-★4 and Uncommon ★1 (the Oracle
+// Core), region 2's Uncommon ★1-★4 and Rare ★1, and so on, so legendary waits for the last region.
+// The colour: the rarity's own (grey, green, blue, violet, orange); each star above the first twinkles with the
+// colour of a rarity further up (a Common ★2 grey with a green twinkle, ★3 a blue one, ★4 violet)
+export const RANKS = [
+  { name: 'Common', color: '#b8b0a0' }, { name: 'Uncommon', color: '#6ac85a' }, { name: 'Rare', color: '#4a9aff' },
+  { name: 'Epic', color: '#b05aff' }, { name: 'Legendary', color: '#ffa82a' },
+];
+const REGION_BASE = { r1: 0, r2: 4, r3: 8, r4: 12, r5: 16 }; // (each region's first rank sits this far up the ladder)
+// a tier 0..19 as { name: 'Common ★2', color, twinkle (a colour or null), rank, star }
+export function tierInfo(t) {
+  const rank = Math.min(4, Math.floor(t / 4)), star = t - rank * 4 + 1;
+  const twinkle = star > 1 ? (RANKS[rank + star - 1]?.color || '#fff6d8') : null;
+  return { t, rank, star, name: `${RANKS[rank].name} ${'★'.repeat(star)}`, short: `${RANKS[rank].name} ★${star}`, color: RANKS[rank].color, twinkle };
+}
+// an item's tier (a region's rank `rarity` placed on the ladder), and a chest's of a rank in a region
+export const tierOf = (id) => { const it = ITEMS[id]; return (REGION_BASE[it?.region] ?? 0) + Math.max(0, TIERS.indexOf(it?.rarity)); };
+export const itemTier = (id) => tierInfo(tierOf(id));
+export const rankTier = (region, rarity) => tierInfo((REGION_BASE[region] ?? 0) + Math.max(0, TIERS.indexOf(rarity)));
+// dress an element in an item's tier: its colour, and the twinkle for the stars above one (style.css .tw)
+export function twinkle(el, id) {
+  const T = typeof id === 'number' ? tierInfo(id) : itemTier(id);
+  if (T.twinkle) { el.classList.add('tw'); el.style.setProperty('--tw', T.twinkle); el.style.setProperty('--twn', T.star - 1); }
+  return T;
+}
 export const REGION_WORTH = { r1: 1, r2: 1.3, r3: 1.7 }; // later regions' materials are worth more (about a third more a region)
 
 // ---------- icons: 16 x 16, one character a pixel ('.' clear), each with its own palette ----------

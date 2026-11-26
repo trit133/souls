@@ -553,7 +553,7 @@ const NEW_TYPES = {
     model: { cloth: 0x141210, armor: 0x1e1a18, skin: 0x8a8480, head: 'bare', weapon: 'daggers', eyes: 0xffe080, bulk: 0.85, kit: 'creeper' },
   },
   hauler: {
-    name: 'Ore Hauler', heavy: true, hp: 700, poise: 120, scale: 1.65, radius: 0.9, run: 2.7, walk: 1.3, aggro: 12, prefer: 2.4, style: 'club', turn: 2.3,
+    name: 'Ore Hauler', heavy: true, hp: 600, poise: 120, scale: 1.65, radius: 0.9, run: 2.7, walk: 1.3, aggro: 12, prefer: 2.4, style: 'club', turn: 2.3,
     cd: [0.9, 1.8], moves: HAULER_MOVES, weights: { drill: 3, slam: 2, charge: 1.5, stomp: 3 }, superArmor: true,
     model: { cloth: 0x3a3028, armor: 0x5a4a38, skin: 0x8a7a6a, head: 'bare', weapon: 'club', bulk: 1.5, eyes: 0xffb040, kit: 'hauler' },
   },

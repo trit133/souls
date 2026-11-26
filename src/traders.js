@@ -5,7 +5,7 @@
 // worth that climbs with his level (BUY_RATE). His stock of each item is limited and refills to its level's limit
 // after every raid (main.js commitLoot -> restockAll). Quests pay experience, gold and emeralds; experience levels him
 // up (LEVEL_XP); at level 5 his buff is yours for good (bazaarPerks: used by player.js).
-import { ITEMS, TIERS, itemValue } from './items.js';
+import { ITEMS, TIERS, itemValue, tierOf } from './items.js';
 
 export const MAX_LEVEL = 5;
 export const LEVEL_XP = [0, 100, 250, 450, 700]; // experience needed for levels 1..5
@@ -211,4 +211,4 @@ export function bazaarPerks(d) {
   return out;
 }
 
-export const RARITY_ORDER = (a, b) => TIERS.indexOf(ITEMS[a].rarity) - TIERS.indexOf(ITEMS[b].rarity);
+export const RARITY_ORDER = (a, b) => tierOf(a) - tierOf(b);

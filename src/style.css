@@ -1291,3 +1291,29 @@ html.phone #title-fire { width: min(60vw, 52svh); margin-top: calc(-0.1 * min(60
 #settings .set-note { font-size: 12px; opacity: .65; margin: 0 0 6px; text-align: left; }
 #fps { position: fixed; left: 50%; top: calc(4px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 40; pointer-events: none; font: bold 12px monospace; color: #ffd36a; background: rgba(0,0,0,.55); padding: 2px 6px; }
 #fps.hidden { display: none; }
+
+/* an item of a tier above ★1: twinkles of a higher rarity's colour drift over it (items.js twinkle) */
+.tw { position: relative; }
+.tw::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 22% 28%, var(--tw) 0 1.5px, transparent 2.5px), radial-gradient(circle at 74% 64%, var(--tw) 0 1.5px, transparent 2.5px), radial-gradient(circle at 58% 18%, var(--tw) 0 1px, transparent 2px);
+  animation: twinkle 1.6s steps(4) infinite; box-shadow: inset 0 0 6px var(--tw); }
+.tw:nth-child(3n)::after { animation-delay: -0.5s; } .tw:nth-child(3n+1)::after { animation-delay: -1.1s; }
+@keyframes twinkle { 0%, 100% { opacity: 0.15; } 40% { opacity: 1; } 70% { opacity: 0.45; } }
+.tw-text { text-shadow: 0 0 4px var(--tw); }
+
+.bz-ic { display: inline-block; line-height: 0; }
+.bz-row.sel { outline: 1px solid #c8a040; }
+
+/* the region master's strength: the pick over the victory screen, and the trophy shelf's card (regionbuffs.js) */
+#rb-pick { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(6, 4, 3, 0.72); }
+#rb-pick .rb-box { max-width: 760px; padding: 18px 22px; background: #160e0a; border: 2px solid #6a4a24; color: #e8dcc8; text-align: center; }
+#rb-pick h2 { margin: 0 0 6px; color: #ffcf7a; letter-spacing: 1px; }
+#rb-pick p { font-size: 14px; line-height: 1.4; }
+.rb-cards { display: flex; gap: 12px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.rb-card { width: 200px; padding: 14px 10px; background: #24160e; border: 2px solid #8a6a34; color: #e8dcc8; cursor: pointer; display: flex; flex-direction: column; gap: 6px; align-items: center; font: inherit; }
+.rb-card:hover { border-color: #ffcf7a; background: #34200e; }
+.rb-card i { font-style: normal; font-size: 28px; color: #ffb040; } .rb-card b { color: #ffcf7a; } .rb-card span { font-size: 13px; }
+#hm-shelf { position: absolute; right: 16px; top: 70px; width: min(420px, 92vw); background: #140c08ee; border: 2px solid #5a3a1e; padding: 10px 12px; color: #e8dcc8; z-index: 5; }
+.rb-note { font-size: 13px; line-height: 1.4; margin: 6px 0 10px; }
+.rb-row { display: flex; flex-direction: column; padding: 6px 8px; margin-bottom: 6px; background: #0c0806; border: 1px solid #3a2a1a; opacity: 0.65; }
+.rb-row.won { opacity: 1; border-color: #8a6a34; } .rb-row b { color: #ffcf7a; font-size: 13px; } .rb-row span { font-size: 12px; }

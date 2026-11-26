@@ -23,7 +23,7 @@ import { pixelIcon } from './pixelui.js';
 import { MAGE_UNLOCK } from './treeui.js';
 import { ownedRecords, currentRecord, recordById } from './records.js';
 import { SONG_NAMES } from './music.js';
-import { ITEMS, RARITY, TIERS, itemValue, iconEl } from './items.js';
+import { ITEMS, RARITY, TIERS, itemValue, iconEl, itemTier, tierOf, twinkle } from './items.js';
 import { REGIONS } from './regions.js';
 import { BOSSES } from './boss.js';
 import { GUIDE } from './guide.js';
@@ -32,6 +32,7 @@ import { WEAPON_SETS } from './weaponmoves.js';
 import { AREAS } from './regions.js';
 import { bazaarOpen, anyClaimable } from './traders.js';
 import { RUNES, RUNE_TYPES, RUNE_ORDER, ownsRune, grantRune, runeIconEl, kindLabel } from './runes.js';
+import { trophyShelf, shelfHtml } from './regionbuffs.js';
 import { WEAPONS, WEAPON_REGIONS, BASE_WEAPON, weaponFor, armoury, ownsWeapon, hasEvo, equippedWeapon, recipeState, spend, weaponIcon, weaponsOf } from './weapons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -228,6 +229,8 @@ function hangingLamp(g, style, color, x, y, z) {
   return [];
 }
 const WORKBENCH = { knight: { at: [-1.3, 1.75], ry: 0.3, glow: 0xffa040 }, rogue: { at: [-1.4, 1.75], ry: 0.3, glow: 0xff3a2a }, mage: { at: [-1.35, 1.75], ry: 0.3, glow: 0x7aa8ff } };
+// the trophy shelf, against the back wall right of the jukebox
+const SHELF = { knight: { at: [1.1, -2.75], ry: -0.1 }, rogue: { at: [0.95, -2.8], ry: -0.1 }, mage: { at: [1.05, -2.7], ry: -0.15 } };
 const JUKEBOX = { knight: { at: [-0.75, -2.65], ry: 0.15, wood: 0x5a1414 }, rogue: { at: [-1.2, -2.7], ry: 0.2, wood: 0x6a1412 }, mage: { at: [-0.95, -2.6], ry: 0.25, wood: 0x2a3a5a } };
 
 // deck plating: square plates with darker seams (and the odd darker plate)
@@ -475,6 +478,7 @@ export class Hermitage {
         <div class="wk-main"><div class="wk-tabs"><button data-wt="weapons">Weapons</button><button data-wt="evos">Evolutions</button><button data-wt="runes">Runes</button></div>
           <div id="wk-grid" class="wk-grid"></div><div id="wk-detail" class="wk-detail"></div></div>
         <div id="wk-tip" class="wk-tip hidden"></div></div>
+      <div id="hm-shelf" class="hidden"><div class="hm-sh"><span>Trophies</span><button class="mini-btn" id="hm-shelf-close">Close</button></div><div id="hm-shelf-body"></div></div>
       <div id="hm-equip" class="hidden"><div class="hm-sh"><span>Equipment</span><button class="mini-btn" id="hm-equip-close">Close</button></div>
         <div class="hm-note">The weapon you take into a raid, and its evolution.</div><div id="hm-equip-body" class="wb-body"></div></div>
       <div class="hm-bottom">
@@ -490,7 +494,7 @@ export class Hermitage {
     el.querySelectorAll('.hm-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.stashTab = b.dataset.tab; this.renderStash(); }));
     // one size for the small buttons, one for the two raid buttons
     const big = innerHeight > 500 ? 3 : 2;
-    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-bazaar', 'ember'], ['hm-training', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
+    for (const [id, tone] of [['hm-back', 'ash'], ['hm-chars', 'rust'], ['hm-stash-close', 'ash'], ['hm-juke-close', 'ash'], ['hm-work-close', 'ash'], ['hm-equip-close', 'ash'], ['hm-shelf-close', 'ash'], ['hm-guide-btn', 'rust'], ['hm-bazaar', 'ember'], ['hm-training', 'rust'], ['hm-guide-close', 'ash'], ['hm-night', 'blood'], ['hm-begin', 'ember'], ['hm-fs', 'ash'], ['hm-settings', 'ash']]) pxButton($(id), tone, 2);
     for (const [id, tone] of [['hm-solo', 'ember'], ['hm-party', 'blood']]) pxButton($(id), tone, big);
     pixelIcon($('hm-chars-ic'), 'person', 2);
     pxText($('hm-name'), { px: innerHeight > 500 ? 3 : 2 });
@@ -509,6 +513,8 @@ export class Hermitage {
     $('hm-juke-close').addEventListener('click', () => this.setJuke(false));
     $('hm-work-close').addEventListener('click', () => this.setWork(false));
     $('hm-equip-close').addEventListener('click', () => this.setEquip(false));
+    $('hm-shelf-close').addEventListener('click', () => this.setShelf(false));
+    $('hm-shelf').addEventListener('click', (e) => e.stopPropagation());
     for (const id of ['hm-work', 'hm-equip']) $(id).addEventListener('click', (e) => e.stopPropagation());
     this.wkTab = 'weapons'; this.wkSel = null;
     el.querySelectorAll('.wk-tabs button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.wkTab = b.dataset.wt; this.wkSel = null; this.renderWork(); }));
@@ -654,6 +660,8 @@ export class Hermitage {
     const W = WORKBENCH[kind], bench = workbench(W.glow); bench.group.position.set(W.at[0], 0, W.at[1]); bench.group.rotation.y = W.ry; bench.group.scale.setScalar(0.56); g.add(bench.group);
     const E = EQUIP[kind], stand = equipStand(kind); stand.group.position.set(E.at[0], 0, E.at[1]); stand.group.rotation.y = E.ry; stand.group.scale.setScalar(E.scale); g.add(stand.group);
     this.standSpin = stand.spin;
+    // the trophy shelf: a place for each region's master this character beats (regionbuffs.js)
+    const SH = SHELF[kind], shelf = trophyShelf(this.game.accounts.data, kind); shelf.group.position.set(SH.at[0], 0, SH.at[1]); shelf.group.rotation.y = SH.ry; g.add(shelf.group);
     const standLight = new THREE.PointLight(E.glow, 1.6, 3.2, 1.5); standLight.position.set(E.at[0], 1.2, E.at[1] + 0.8); scene.add(standLight);
     // a lamp hung over each thing you can use, with a pool of light falling on it
     const LP = LAMPS[kind]; this.lamps = [];
@@ -670,6 +678,7 @@ export class Hermitage {
       { id: 'jukebox', group: juke.group, label: 'Vox-Caster', sub: 'Choose the music' },
       { id: 'workbench', group: bench.group, label: 'Workbench', sub: 'Craft weapons and evolutions' },
       { id: 'equip', group: stand.group, label: 'Equipment', sub: 'Choose your weapon and its evolution' },
+      { id: 'shelf', group: shelf.group, label: 'Trophies', sub: 'The region masters this character has beaten' },
     ];
     this.showRecord(false);
     this.scene = scene;
@@ -744,6 +753,14 @@ export class Hermitage {
     else if (it.id === 'jukebox') this.setJuke(!this.jukeOpen);
     else if (it.id === 'workbench') this.setWork(!this.workOpen);
     else if (it.id === 'equip') this.setEquip(!this.equipOpen);
+    else if (it.id === 'shelf') this.setShelf(!this.shelfOpen);
+  }
+
+  // the trophy shelf's card (regionbuffs.js): this character's beaten masters and the strength each gave
+  setShelf(v) {
+    this.shelfOpen = v;
+    if (v) { this.setStash(false); this.setJuke(false); this.setWork(false); this.setEquip?.(false); $('hm-shelf-body').innerHTML = shelfHtml(this.game.accounts.data, this.kind, NAMES[this.kind]); this.game.audio.play('uiTick', 1); }
+    $('hm-shelf')?.classList.toggle('hidden', !v);
   }
 
   // ---------- How to Play: a page per topic, its tabs down the side ----------
@@ -785,7 +802,7 @@ export class Hermitage {
   }
   // the floating card for a material under the mouse
   showTip(id, e) {
-    const it = ITEMS[id], R = RARITY[it.rarity], tip = $('wk-tip'), d = this.game.accounts.data;
+    const it = ITEMS[id], R = itemTier(id), tip = $('wk-tip'), d = this.game.accounts.data;
     tip.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${R.name} material · ${REGIONS.find((r) => r.id === it.region)?.name || ''}</span><i>${it.desc}</i>`
       + `<em>In your stash: ${d?.items?.[id] || 0} · worth ◆ ${itemValue(id)} each</em><u>Found in ${this.whereFound(id)}.</u>`;
     tip.classList.remove('hidden');
@@ -871,7 +888,7 @@ export class Hermitage {
     for (const r of R2.rows) {
       const it = ITEMS[r.id], ok = r.have >= r.need, row = document.createElement('div'); row.className = 'wk-mat' + (ok ? ' ok' : '');
       row.append(iconEl(r.id, 2));
-      row.insertAdjacentHTML('beforeend', `<span class="wk-mn" style="color:${RARITY[it.rarity].color}">${it.name}</span><span class="wk-mc">${r.have} / ${r.need}</span><span class="wk-mk">${ok ? '✓' : '✗'}</span>`);
+      row.insertAdjacentHTML('beforeend', `<span class="wk-mn" style="color:${itemTier(r.id).color}">${it.name}</span><span class="wk-mc">${r.have} / ${r.need}</span><span class="wk-mk">${ok ? '✓' : '✗'}</span>`);
       row.addEventListener('pointermove', (e) => this.showTip(r.id, e));
       row.addEventListener('pointerleave', () => $('wk-tip').classList.add('hidden'));
       row.addEventListener('click', (e) => { e.stopPropagation(); this.showTip(r.id, e); });
@@ -908,7 +925,7 @@ export class Hermitage {
     for (const r of R2.rows) {
       const it = ITEMS[r.id], ok = r.have >= r.need, row = document.createElement('div'); row.className = 'wk-mat' + (ok ? ' ok' : '');
       row.append(iconEl(r.id, 2));
-      row.insertAdjacentHTML('beforeend', `<span class="wk-mn" style="color:${RARITY[it.rarity].color}">${it.name}</span><span class="wk-mc">${r.have} / ${r.need}</span><span class="wk-mk">${ok ? '✓' : '✗'}</span>`);
+      row.insertAdjacentHTML('beforeend', `<span class="wk-mn" style="color:${itemTier(r.id).color}">${it.name}</span><span class="wk-mc">${r.have} / ${r.need}</span><span class="wk-mk">${ok ? '✓' : '✗'}</span>`);
       row.addEventListener('pointermove', (e) => this.showTip(r.id, e));
       row.addEventListener('pointerleave', () => $('wk-tip').classList.add('hidden'));
       row.addEventListener('click', (e) => { e.stopPropagation(); this.showTip(r.id, e); });
@@ -1018,7 +1035,7 @@ export class Hermitage {
     slots.innerHTML = ''; tip.classList.add('hidden'); $('hm-worth').textContent = '';
     const region = (id) => REGIONS.find((r) => r.id === ITEMS[id].region)?.name || '';
     const show = (id, n, owned) => {
-      const it = ITEMS[id], R = RARITY[it.rarity], v = itemValue(id);
+      const it = ITEMS[id], R = itemTier(id), v = itemValue(id);
       tip.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${it.kind === 'gem' ? 'Gem' : it.kind === 'relic' ? 'Relic' : R.name + ' material'} · ${region(id)}</span><i>${it.desc}</i>`
         + (it.kind === 'relic' ? '<em>A trader at the Bazaar wants this. Hand it in there.</em>' : it.kind === 'gem' ? (owned ? '<em>Not used up: you only need to carry it.</em>' : `<em>Dropped by ${BOSSES[it.boss]?.name.split(',')[0] || 'its boss'}.</em>`)
           : `<em>Worth ◆ ${v} each${n > 1 ? ` · ◆ ${v * n} for ${n}` : ''}</em>`);
@@ -1026,7 +1043,8 @@ export class Hermitage {
     };
     const slot = (id, n, owned = true) => {
       const el = document.createElement('div'); el.className = 'hm-slot' + (owned ? '' : ' empty');
-      el.style.borderColor = owned ? RARITY[ITEMS[id].rarity].color : '';
+      el.style.borderColor = owned ? itemTier(id).color : '';
+      if (owned && ITEMS[id].kind === 'mat') twinkle(el, id); // (a star above one twinkles)
       el.append(iconEl(id, 2));
       if (n > 1) { const c = document.createElement('span'); c.className = 'hm-count'; c.textContent = n; el.append(c); }
       el.addEventListener('pointerenter', () => show(id, n, owned));
@@ -1037,7 +1055,7 @@ export class Hermitage {
     if (tab === 'items') {
       $('hm-stash-note').textContent = 'Materials from your raids, shared by all your characters. The Bazaar\'s traders buy and sell them.';
       const have = Object.entries(d.items || {}).filter(([id, n]) => n > 0 && (ITEMS[id]?.kind === 'mat' || ITEMS[id]?.kind === 'relic'))
-        .sort((a, b) => TIERS.indexOf(ITEMS[b[0]].rarity) - TIERS.indexOf(ITEMS[a[0]].rarity) || ITEMS[a[0]].region.localeCompare(ITEMS[b[0]].region));
+        .sort((a, b) => tierOf(b[0]) - tierOf(a[0]) || ITEMS[a[0]].region.localeCompare(ITEMS[b[0]].region));
       // a section for each region, its materials rarest first (a region you have nothing from yet shows no section)
       const used = REGIONS.filter((R) => have.some(([id]) => ITEMS[id].region === R.id));
       for (const R of used) {

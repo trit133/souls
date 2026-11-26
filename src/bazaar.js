@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { SETS, greyOut, clutter, backdrop } from './bazaarsets.js';
 import { pxButton, pxText } from './pixelmenus.js';
-import { ITEMS, RARITY, iconEl, itemValue } from './items.js';
+import { ITEMS, RARITY, iconEl, itemValue, itemTier, twinkle, rankTier, tierOf, tierInfo } from './items.js';
 import { cosmetics } from './outfits.js';
 import { TRADERS, MAX_LEVEL, LEVEL_XP, BUY_RATE, traderState, levelOf, sellPrice, buyPrice, dealsIn, buy, sell,
   currentQuest, questProgress, claimable, claim, bazaarOpen, RARITY_ORDER } from './traders.js';
@@ -44,6 +44,22 @@ const SIGILS = {
 const SPAL = { o: '#1a0c06', y: '#d8a040', Y: '#ffe890', r: '#a0141a', R: '#ff4a3a', g: '#2a8a4a', G: '#6aff9a', W: '#e8fff0' };
 
 const V0 = new THREE.Vector3(), V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), V3 = new THREE.Vector3();
+
+// ---------- the Exchange (2026-11-26) ----------
+// opened once by paying Shattered March commons; then two of a material buy any one material a star higher
+const EXCHANGE = { id: 'exchange', name: 'The Exchange' };
+export const EXCHANGE_COST = { scrap_iron: 10, ash_rag: 10, spent_casings: 6, copper_coil: 6, cracked_lens: 4, servo_motor: 2, purity_seal: 2 };
+export const exchangeOpen = (d) => !!d?.exchange;
+export function openExchange(d) {
+  if (exchangeOpen(d) || !Object.entries(EXCHANGE_COST).every(([id, n]) => (d.items?.[id] || 0) >= n)) return false;
+  for (const [id, n] of Object.entries(EXCHANGE_COST)) d.items[id] -= n;
+  d.exchange = 1; return true;
+}
+export function exchange(d, from, to) {
+  if ((d.items?.[from] || 0) < 2 || ITEMS[to]?.kind !== 'mat' || tierOf(to) !== tierOf(from) + 1) return false;
+  d.items[from] -= 2; d.items[to] = (d.items[to] || 0) + 1; return true;
+}
+
 export class Bazaar {
   constructor(game) {
     this.game = game; this.active = false; this.time = 0;
@@ -55,7 +71,7 @@ export class Bazaar {
   buildDom() {
     const el = document.createElement('div'); el.id = 'bazaar'; el.className = 'hidden';
     el.innerHTML = `
-      <div class="hm-top"><div class="hm-left"><button class="mini-btn" id="bz-back">Sanctum</button></div>
+      <div class="hm-top"><div class="hm-left"><button class="mini-btn" id="bz-back">Sanctum</button><button class="mini-btn" id="bz-exch">Exchange</button></div>
         <div class="bz-title" id="bz-title">The Bazaar</div><div id="bz-gold"></div></div>
       <div id="bz-label" class="hidden"></div>
       <div id="bz-panel" class="hidden"><div class="hm-sh"><span id="bz-name"></span><button class="mini-btn" id="bz-close">Close</button></div>
@@ -65,7 +81,8 @@ export class Bazaar {
       <div id="bz-hint">Click a trader to deal with them</div>`;
     document.body.append(el);
     this.el = el; this.tab = 'buy';
-    pxButton($('bz-back'), 'rust', 2); pxButton($('bz-close'), 'ash', 2);
+    pxButton($('bz-back'), 'rust', 2); pxButton($('bz-close'), 'ash', 2); pxButton($('bz-exch'), 'ember', 2);
+    $('bz-exch').addEventListener('click', (e) => { e.stopPropagation(); this.setPanel(EXCHANGE); });
     pxText($('bz-title'), { px: innerHeight > 500 ? 3 : 2 });
     $('bz-back').addEventListener('click', (e) => { e.stopPropagation(); this.close(); });
     $('bz-close').addEventListener('click', (e) => { e.stopPropagation(); this.setPanel(null); });
@@ -226,6 +243,8 @@ export class Bazaar {
   renderPanel() {
     const T = this.trader, d = this.data;
     if (!T || !d) return;
+    document.querySelector('.bz-tabs').classList.toggle('hidden', T === EXCHANGE);
+    if (T === EXCHANGE) return this.renderExchange();
     const s = traderState(d, T.id), lvl = levelOf(s.xp), next = LEVEL_XP[lvl] ?? null, prev = LEVEL_XP[lvl - 1];
     $('bz-name').textContent = T.name;
     $('bz-head').innerHTML = `<div class="bz-who">${T.title}. <i>${T.blurb}</i></div>
@@ -236,8 +255,8 @@ export class Bazaar {
     const qb = document.querySelector('.bz-tabs [data-bt=quests]'); qb.classList.toggle('ready', claimable(d, T));
     const body = $('bz-body'); body.replaceChildren(); body.scrollTop = 0;
     const row = (id, right, btns) => {
-      const it = ITEMS[id], R = RARITY[it.rarity], el = document.createElement('div'); el.className = 'bz-row';
-      el.append(iconEl(id, 2));
+      const it = ITEMS[id], R = itemTier(id), el = document.createElement('div'); el.className = 'bz-row';
+      const ic = iconEl(id, 2), icw = document.createElement('span'); icw.className = 'bz-ic'; icw.append(ic); twinkle(icw, id); el.append(icw);
       const nm = document.createElement('div'); nm.className = 'bz-nm'; nm.innerHTML = `<b style="color:${R.color}">${it.name}</b><span>${R.name} · worth ◆ ${itemValue(id)}</span>`; el.append(nm);
       const rt = document.createElement('div'); rt.className = 'bz-rt'; rt.innerHTML = right; el.append(rt);
       for (const [label, fn, ok] of btns) { const b = document.createElement('button'); b.className = 'bz-btn'; b.textContent = label; b.disabled = !ok; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); el.append(b); }
@@ -262,9 +281,49 @@ export class Bazaar {
         if (gem ? many >= 1 : true) btns.push([gem ? `Spares ×${many}` : `All ×${n}`, () => { const got = sell(d, T, id, many); if (got) { this.game.audio.play('heal', 0.5); this.say(`Sold ${many} ${ITEMS[id].name} for ◆ ${got}.`); done(); } }, gem || many > 1]);
         row(id, `<b>◆ ${pay}</b><span>you have ${n}${gem && n === 1 ? ' · your last: its door closes' : ''}</span>`, btns);
       }
-      if (!ids.length) { const e = document.createElement('div'); e.className = 'bz-note'; e.textContent = `Nothing in your stash this trader wants. ${T.name} deals in ${T.rarities.join(', ')} materials.`; body.append(e); }
+      if (!ids.length) { const e = document.createElement('div'); e.className = 'bz-note'; e.textContent = `Nothing in your stash this trader wants. ${T.name} deals in ${T.rarities.map((r) => rankTier(T.region || 'r1', r).short).join(', ')} materials from ${T.region === 'r2' ? 'the Sunless Deep' : 'the Shattered March'}.`; body.append(e); }
     } else this.renderQuests(T, s, done);
   }
+  // ---------- the Exchange: two of a material for any one a star higher ----------
+  renderExchange() {
+    const d = this.data, body = $('bz-body'); body.replaceChildren(); body.scrollTop = 0;
+    $('bz-name').textContent = 'The Exchange';
+    const done = () => { this.game.accounts.save(); this.refresh(); this.renderPanel(); this.game.hermitage.refresh?.(); };
+    const note = (t) => { const e = document.createElement('div'); e.className = 'bz-note'; e.innerHTML = t; body.append(e); };
+    const row = (id, right, btns, sel) => {
+      const T = itemTier(id), el = document.createElement('div'); el.className = 'bz-row' + (sel ? ' sel' : '');
+      const icw = document.createElement('span'); icw.className = 'bz-ic'; icw.append(iconEl(id, 2)); twinkle(icw, id); el.append(icw);
+      const nm = document.createElement('div'); nm.className = 'bz-nm'; nm.innerHTML = `<b style="color:${T.color}">${ITEMS[id].name}</b><span>${T.name}</span>`; el.append(nm);
+      const rt = document.createElement('div'); rt.className = 'bz-rt'; rt.innerHTML = right; el.append(rt);
+      for (const [label, fn, ok] of btns) { const b = document.createElement('button'); b.className = 'bz-btn'; b.textContent = label; b.disabled = !ok; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); el.append(b); }
+      body.append(el);
+    };
+    $('bz-head').innerHTML = `<div class="bz-who">A brass counter with two pans and an old weigher behind it. <i>Two of a kind on the left pan; take any one a star higher off the shelf.</i></div>`;
+    if (!exchangeOpen(d)) {
+      // closed: what it takes to open it, all Shattered March commons
+      note('The weigher wants paying before he deals with you, once. Bring these from your stash:');
+      const ok = Object.entries(EXCHANGE_COST).every(([id, n]) => (d.items?.[id] || 0) >= n);
+      for (const [id, n] of Object.entries(EXCHANGE_COST)) row(id, `<b>${Math.min(n, d.items?.[id] || 0)} / ${n}</b>`, []);
+      const b = document.createElement('button'); b.className = 'bz-btn bz-claim'; b.textContent = ok ? 'Pay and open the Exchange' : 'Not enough yet'; b.disabled = !ok;
+      b.addEventListener('click', (e) => { e.stopPropagation(); if (!openExchange(d)) return; this.game.audio.play('victory', 0.5); this.say('The Exchange is open to you.'); done(); });
+      body.append(b);
+      return;
+    }
+    const have = Object.entries(d.items || {}).filter(([id, n]) => n >= 2 && ITEMS[id]?.kind === 'mat' && tierOf(id) < 19).map(([id]) => id).sort((a, b) => tierOf(a) - tierOf(b));
+    if (this.exPick && !have.includes(this.exPick)) this.exPick = null;
+    if (!this.exPick) {
+      note('Pick a material you have two of. You can trade it for any material one star higher.');
+      for (const id of have) row(id, `<span>you have ${d.items[id]}</span>`, [['Trade 2', () => { this.exPick = id; this.game.audio.play('uiTick', 0.8); this.renderPanel(); }, true]]);
+      if (!have.length) note('Nothing in your stash you have two of yet.');
+      return;
+    }
+    const from = this.exPick, up = tierOf(from) + 1, choices = Object.keys(ITEMS).filter((id) => ITEMS[id].kind === 'mat' && tierOf(id) === up);
+    row(from, `<span>you have ${d.items[from]}</span>`, [['Back', () => { this.exPick = null; this.renderPanel(); }, true]], true);
+    note(`Two ${ITEMS[from].name} for one of these (${tierInfo(up).name}):`);
+    for (const id of choices) row(id, `<span>you have ${d.items?.[id] || 0}</span>`, [['Take', () => { if (!exchange(d, from, id)) return; this.game.audio.play('heal', 0.6); this.say(`Two ${ITEMS[from].name} for a ${ITEMS[id].name}.`); done(); }, (d.items?.[from] || 0) >= 2]]);
+    if (!choices.length) note('Nothing a star higher has been found anywhere yet.');
+  }
+
   renderQuests(T, s, done) {
     const d = this.data, body = $('bz-body'), Q = currentQuest(d, T);
     const head = document.createElement('div'); head.className = 'bz-note'; head.textContent = Q ? `Quest ${s.q + 1} of ${T.quests.length}` : `All ${T.quests.length} quests done.`; body.append(head);
@@ -272,7 +331,7 @@ export class Bazaar {
     const P0 = questProgress(d, T), card = document.createElement('div'); card.className = 'bz-quest' + (P0.ready ? ' ready' : '');
     let goal = '';
     if (Q.kind === 'hunt') goal = `Kill ${Q.n} ${enemyName(Q.type, Q.n)} (your own kills, in any raid): <b>${P0.have} / ${P0.need}</b>`;
-    else if (Q.kind === 'supply') goal = 'Bring: ' + P0.parts.map((p) => `<b style="color:${RARITY[ITEMS[p.id].rarity].color}">${ITEMS[p.id].name}</b> ${p.have} / ${p.need}`).join(', ') + ' (from your stash)';
+    else if (Q.kind === 'supply') goal = 'Bring: ' + P0.parts.map((p) => `<b style="color:${itemTier(p.id).color}">${ITEMS[p.id].name}</b> ${p.have} / ${p.need}`).join(', ') + ' (from your stash)';
     else goal = `Find <b style="color:${RARITY.epic.color}">${ITEMS[Q.relic].name}</b>, hidden somewhere in <b>${AREA_NAMES[Q.area] || Q.area}</b>: ${P0.ready ? '<b>in your stash</b>' : 'not found yet'}`;
     card.innerHTML = `<h4>${Q.title}</h4><i>"${Q.say}"</i><div class="bz-goal">${goal}</div><div class="bz-reward">Reward: ◆ ${Q.gold} · ✦ ${Q.em} emeralds · ${Q.xp} xp</div>`;
     const b = document.createElement('button'); b.className = 'bz-btn bz-claim'; b.textContent = P0.ready ? 'Hand in' : 'Not done yet'; b.disabled = !P0.ready;

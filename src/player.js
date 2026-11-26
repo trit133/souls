@@ -16,6 +16,7 @@ import { bazaarPerks } from './traders.js';
 import { runeLoadout } from './runes.js';
 import { comboMoves, comboTree, COMBO_WINDOW, FAST, TAIL } from './combos.js';
 import { STEP, SAFE_FALL } from './terrain.js';
+import { buffMul } from './regionbuffs.js';
 const FALL_FLOOR = 0.05; // (the least health a fall leaves you: landFrom)
 
 // ---------- move sets ----------
@@ -434,6 +435,10 @@ export class Player extends Actor {
     this.flasks = this.maxFlasks = c.flasks + (T.flask || 0) + BZ.flasks;
     this.potionMul = 1 + pct('potion');
     this.maxMana = this.mana = c.caster ? 100 + (T.mana || 0) : 0;
+    // what this character took from each region master it has beaten (regionbuffs.js): health, damage, mana / stamina
+    const RB = buffMul(game.accounts.user ? game.accounts.data : null, kind);
+    this.maxHp = this.hp = Math.round(this.maxHp * RB.hp); this.dmgMul *= RB.dmg;
+    if (c.caster) this.maxMana = this.mana = Math.round(this.maxMana * RB.res); else this.maxSt = this.st = Math.round(this.maxSt * RB.res);
     this.evo = L.evo || null; // (one evolution, its weapon's own: 'aegisRam', 'redRiposte', 'twinPlasma', 'berserk' (Pyresunder; the id is older than the name), 'ghostVeil', 'stormSigil')
     this.evolved = !!this.evo;
     this.ripRate = 1;

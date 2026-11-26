@@ -15,6 +15,7 @@ import { City } from './city.js';
 import './sump.js'; import './spire.js'; import './ward.js'; import './cut.js'; import './hill.js'; // (the areas' maps: Ashfall Ward, the Drained Cut, the Spire's hill) // (the deeper areas' own maps, registered on City.MAPS)
 import './lanternhold.js'; import './wormways.js'; import './glasshallow.js'; // (the Sunless Deep's maps register themselves too: City.MAPS)
 import { AREAS, areaOpen } from './regions.js';
+import { needsPick, showPick } from './regionbuffs.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
 import * as ItemsLib from './items.js';
@@ -881,6 +882,7 @@ class Game {
       A.data.traderKeys ||= {};
       if (!A.data.traderKeys.vesk) { A.data.traderKeys.vesk = 1; added = true; }
       for (const k of ['kettle', 'sorrow']) if (!A.data.traderKeys[k]) { A.data.traderKeys[k] = 1; added = true; }
+      if (!A.data.exchange) { A.data.exchange = 1; added = true; } // (the Bazaar's Exchange, open)
       if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
@@ -1439,6 +1441,9 @@ class Game {
       this.ui.show('victory');
       this.ui.show('boss', false);
       this.world.setGate(enc.gateIn, true, false);
+      // a region's master, beaten for the first time by this character: a strength to carry on (regionbuffs.js)
+      const region = AREAS[this.run?.raid]?.region;
+      if (this.accounts.user && needsPick(this.accounts.data, this.kind, region)) showPick(this, this.kind, region, CHAR_NAMES[this.kind]);
     }, 2600);
   }
 
@@ -1495,9 +1500,9 @@ class Game {
   lootFeed(items) {
     const feed = (this.feedEl ||= Object.assign(document.createElement('div'), { id: 'loot-feed' }));
     if (!feed.isConnected) $('hud').append(feed);
-    const list = Object.entries(items).sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b[0]].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a[0]].rarity));
+    const list = Object.entries(items).sort((a, b) => ItemsLib.tierOf(b[0]) - ItemsLib.tierOf(a[0]));
     for (const [id, n] of list) {
-      const it = ITEMS[id], col = ItemsLib.RARITY[it.rarity].color, line = document.createElement('div');
+      const it = ITEMS[id], col = ItemsLib.itemTier(id).color, line = document.createElement('div');
       line.className = 'lf-line r-' + it.rarity; line.style.color = col;
       line.append(ItemsLib.iconEl(id, 2), Object.assign(document.createElement('span'), { textContent: `+${n} ${it.name}` }));
       feed.append(line);
@@ -1537,11 +1542,11 @@ class Game {
     $('pouch-btn').textContent = n ? `POUCH ${n}` : 'POUCH';
     if (!this.pouchOpen) return;
     const list = Object.entries(this.raidLoot || {}).filter(([, k]) => k > 0)
-      .sort((a, b) => ItemsLib.TIERS.indexOf(ITEMS[b[0]].rarity) - ItemsLib.TIERS.indexOf(ITEMS[a[0]].rarity));
+      .sort((a, b) => ItemsLib.tierOf(b[0]) - ItemsLib.tierOf(a[0]));
     $('pc-safe').textContent = this.accounts.user ? 'Found this raid. Already in your stash, kept even if you fall.' : 'Found this raid (guest: not saved).';
     $('pc-list').replaceChildren(...(list.length ? list.map(([id, k]) => {
-      const it = ITEMS[id], R = ItemsLib.RARITY[it.rarity], row = document.createElement('div');
-      row.className = 'pc-row'; row.style.borderColor = R.color;
+      const it = ITEMS[id], R = ItemsLib.itemTier(id), row = document.createElement('div');
+      row.className = 'pc-row'; row.style.borderColor = R.color; ItemsLib.twinkle(row, id);
       row.append(ItemsLib.iconEl(id, 2), Object.assign(document.createElement('span'), { className: 'pc-n', textContent: it.name }), Object.assign(document.createElement('span'), { className: 'pc-k', textContent: `×${k}` }), Object.assign(document.createElement('span'), { className: 'pc-v', textContent: `◆ ${ItemsLib.itemValue(id) * k}` }));
       row.querySelector('.pc-n').style.color = R.color;
       return row;

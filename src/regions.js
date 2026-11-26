@@ -34,7 +34,8 @@ export const AREAS = {
     blurb: 'Flooded transit tunnels under the ward. The ones who stayed below changed; the gangs who work the pumps burn them out.',
     mix: { wretch: 4, hook: 2, torcher: 2, hulk: 0.5 }, look: {}, heavy: 'hulk', melee: ['wretch', 'hook'],
     // epic first shows here (Augury Shards: the region's weapons can be forged from here on)
-    loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 40, rare: 32, epic: 10 }, hoard: { rare: 60, epic: 40 } },
+    // (each region's top item, its Oracle Core, turns up from its second area on: often in the hoard, now and then in a chest)
+    loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 38, rare: 32, epic: 10, legendary: 2 }, hoard: { epic: 35, legendary: 65 } },
   },
   r1a3: {
     id: 'r1a3', region: 'r1', name: 'Saint Orsk\'s Spire', kind: 'city', map: 'spire', boss: 'gorrath', open: true, needs: ['gem_vael'],
@@ -65,7 +66,8 @@ Object.assign(AREAS, {
     id: 'r2a2', region: 'r2', name: 'The Wormways', kind: 'city', map: 'wormways', boss: 'borer', open: true, needs: ['gem_lampking'],
     blurb: 'Below the town the regime\'s borers went down, drilling engines the size of chapels, half machine and half grown. Some never stopped. Their tunnels cross over and under each other, round as a gun barrel.',
     mix: { grub: 3, lobber: 2, burrower: 1.2, thrall: 0.5 }, look: {}, heavy: 'thrall', melee: ['grub'],
-    loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 40, rare: 32, epic: 10 }, hoard: { rare: 60, epic: 40 } },
+    // (each region's top item, its Oracle Core, turns up from its second area on: often in the hoard, now and then in a chest)
+    loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 38, rare: 32, epic: 10, legendary: 2 }, hoard: { epic: 35, legendary: 65 } },
   },
   r2a3: {
     id: 'r2a3', region: 'r2', name: 'Glasshallow', kind: 'city', map: 'glasshallow', boss: 'hierophant', open: true, needs: ['gem_borer'],
