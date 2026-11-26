@@ -262,6 +262,7 @@ export class Enemy extends Actor {
     // soft: { hp, armor } multipliers for one placed enemy (the armour one is applied when defences roll: main.js)
     if (opts.soft) { this.maxHp = this.hp = Math.round(this.maxHp * (opts.soft.hp ?? 1)); this.armorMul = opts.soft.armor ?? 1;
       if (this.dmgTaken) this.dmgTaken = 1 - (1 - this.dmgTaken) * this.armorMul; } // (an armoured elite's cut too)
+    this.opts = opts; // (a Mirror Shade and its copies find each other by these: deepfoes.js)
     this.event = !!opts.event; this.reserve = !!opts.reserve; this.effigy = !!T.still;
     if (this.reserve) rig.root.visible = false; // waits off stage until its seal's event calls it in
     // Night Raid: tougher, harder hitting, faster, quicker to notice you and to attack; watchers step in every 5 s
@@ -393,7 +394,7 @@ export class Enemy extends Actor {
       const c = ELITE[this.elite].rgb;
       this.game.fx.add.spawn({ x: this.pos.x + (Math.random() - 0.5) * 0.9, y: 0.2 + Math.random() * 1.8, z: this.pos.z + (Math.random() - 0.5) * 0.9, vy: 1 + Math.random(), life: 0.7, size: 0.16, size1: 0.02, r: c[0], g: c[1], b: c[2] });
     }
-    if (this.puppet) return this.puppetUpdate(dt, this.T.style);
+    if (this.puppet) { const r = this.puppetUpdate(dt, this.T.style); this.T.frame?.(this, dt); return r; }
     this.t += dt;
     this.iceFx();
     this.status.update(dt, this.game);
@@ -579,6 +580,7 @@ export class Enemy extends Actor {
     if (pose && this.state !== 'dead') this.syncRig(dt, pose, rate);
     else if (pose) { this.rig.apply(pose, dt, rate); }
     this.trail.update(dt, this.trailOn, this.rig.base, this.rig.tip);
+    this.T.frame?.(this, dt); // (its own look each frame: a Creeper unseen in the dark)
   }
 
   // an effigy: stands with its arms spread, shuddering when struck, and crumbles when broken
@@ -688,7 +690,7 @@ export class Enemy extends Actor {
   }
 
   die(silent) {
-    if (this.alive) this.game.onEnemyKilled(this);
+    if (this.alive) { this.game.onEnemyKilled(this); if (!silent && !this.vanished) this.T.onDie?.(this); } // (a Grub's acid, an Acolyte's shards)
     this.alive = false;
     this.hp = 0;
     this.releaseToken();

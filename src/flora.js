@@ -49,6 +49,10 @@ const IVY = [0x2e3f22, 0x34482a, 0x3c5230, 0x2a3820, 0x4a5a2c];
 const LEAF = [0x6a4a24, 0x7a5a2a, 0x5a3e20, 0x6e6a30, 0x4a3a22, 0x8a6a34];
 const BUSH = [0x34442a, 0x3c4c2e, 0x2e3a24, 0x485430, 0x4a4228];
 const PEBBLE = [0x6a6560, 0x5a5650, 0x4c4844, 0x7a746a];
+const MOSS = [0x5a6a52, 0x4e5e4a, 0x66745a, 0x4a5a4e, 0x72806a]; // (cave moss, pale: the Sunless Deep)
+const IVY_DEEP = [0x3a4a3a, 0x445444, 0x2e3a30, 0x506052]; // (pale roots and creepers down a cave's faces)
+const SHROOM = { teal: [0x3ad8c8, 0x6af0e0, 0x2ab0a8], amber: [0xe8a040, 0xffc860, 0xc87a2a], violet: [0xa070ff, 0xc8a0ff, 0x7a4ad8] };
+const CRYSTAL = { violet: [0x8a6ad8, 0xb090ff, 0x6a4ac0], cyan: [0x5ab8d8, 0x8ae0f0, 0x3a8ab0], red: [0xff6a3a, 0xffa060, 0xc83a1a] };
 
 class Batch {
   constructor(geo, mat, max) { this.mesh = new THREE.InstancedMesh(geo, mat, max); this.n = 0; this.max = max; this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.e = new THREE.Euler(); this.c = new THREE.Color(); this.mesh.userData.noMerge = true; }
@@ -66,12 +70,15 @@ class Batch {
 export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
   const TX = st.tex; if (!TX) return;
   // which of its four surfaces is grass (none underground: no grass, no weeds), which dirt or grime (pebbles), which cracked paving
-  const names = TEXSETS[TX.set || 'surface'], gI = names.indexOf('grass'), dI = Math.max(names.indexOf('dirt'), names.indexOf('grime')), cracks = ['flag', 'cobble'].map((n) => names.indexOf(n)).filter((k) => k >= 0);
+  const names = TEXSETS[TX.set || 'surface'], moss = names.includes('moss'), gI = moss ? names.indexOf('moss') : names.indexOf('grass'), dI = Math.max(names.indexOf('dirt'), names.indexOf('grime'), names.indexOf('gravel')), cracks = ['flag', 'cobble'].map((n) => names.indexOf(n)).filter((k) => k >= 0);
   const sway = swayMat(), flat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, flatShading: true });
   const grass = new Batch(tuftGeo(7), sway, 9000), weeds = new Batch(tuftGeo(5), sway, 2000);
   const ivy = new Batch(leafGeo(0.13), flat, 6000), leaves = new Batch(leafGeo(0.09), flat, 3000);
   const bush = new Batch(new THREE.IcosahedronGeometry(0.34, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 600);
   const pebble = new Batch(new THREE.DodecahedronGeometry(0.06, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 1500);
+  const stalk = new Batch(new THREE.CylinderGeometry(0.025, 0.035, 0.28, 5), new THREE.MeshLambertMaterial({ flatShading: true }), 800);
+  const cap = new Batch(new THREE.SphereGeometry(0.1, 6, 3, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial(), 800); // (lit caps: they glow)
+  const shard = new Batch(new THREE.ConeGeometry(0.12, 0.8, 4).translate(0, 0.4, 0), new THREE.MeshBasicMaterial(), 600);
   const T = w.terrain, { x0, x1, z0, z1 } = m;
   const groundAt = (x, z) => { const inside = w.area(x, z, -0.6), f = T.floorAt(x, z); return { inside, y: inside ? f : f + w.heightAt(x, z, st) - 0.04 }; };
   const steep = (x, z) => { const h = T.floorAt(x, z); return Math.abs(T.floorAt(x + 0.3, z) - h) > 0.3 || Math.abs(T.floorAt(x - 0.3, z) - h) > 0.3 || Math.abs(T.floorAt(x, z + 0.3) - h) > 0.3 || Math.abs(T.floorAt(x, z - 0.3) - h) > 0.3; };
@@ -84,7 +91,8 @@ export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
     const gr = gI < 0 ? 0 : sp[gI], cr = cracks.reduce((a, k) => a + sp[k], 0), dt = dI < 0 ? 0 : sp[dI];
     if (gr > 0.45 && r < gr * 0.85 * clump) {
       const s = 0.7 + vh(jx, jz, 4) * 0.8;
-      grass.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s, GRASS[Math.floor(vh(jx, jz, 6) * GRASS.length)], s * (0.8 + vh(jx, jz, 7) * 0.6));
+      if (moss) grass.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s * 1.2, MOSS[Math.floor(vh(jx, jz, 6) * MOSS.length)], s * 0.35); // (a low cushion, not a tuft)
+      else grass.add(jx, G.y, jz, 0, vh(jx, jz, 5) * 6.28, 0, s, GRASS[Math.floor(vh(jx, jz, 6) * GRASS.length)], s * (0.8 + vh(jx, jz, 7) * 0.6));
     } else if (gI >= 0 && !st.bare && cr > 0.5 && r < 0.035) {
       // a weed in a crack
       const s = 0.45 + vh(jx, jz, 4) * 0.4;
@@ -104,13 +112,13 @@ export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
         for (let q = 0; q < 2; q++) {
           const o = along + wob + (vh(F.x, F.z + d, 40 + q) - 0.5) * spread * 2;
           const px = F.x + (F.ax === 'x' ? o : 0) + F.nx * 0.03, pz = F.z + (F.ax === 'z' ? o : 0) + F.nz * 0.03;
-          ivy.add(px, F.top - d, pz, (vh(px, d, 41) - 0.5) * 0.8, Math.atan2(F.nx, F.nz), (vh(px, d, 42) - 0.5) * 1.6, 0.8 + vh(px, d, 43) * 0.6, IVY[Math.floor(vh(px, d, 44) * IVY.length)]);
+          ivy.add(px, F.top - d, pz, (vh(px, d, 41) - 0.5) * 0.8, Math.atan2(F.nx, F.nz), (vh(px, d, 42) - 0.5) * 1.6, 0.8 + vh(px, d, 43) * 0.6, (moss ? IVY_DEEP : IVY)[Math.floor(vh(px, d, 44) * (moss ? IVY_DEEP : IVY).length)]);
         }
       }
       // and a cushion of it along the coping
       for (let s = -0.3; s <= 0.3; s += 0.1) {
         const px = F.x + (F.ax === 'x' ? along + s : F.nx * -0.05), pz = F.z + (F.ax === 'z' ? along + s : F.nz * -0.05);
-        ivy.add(px, F.top + 0.07, pz, -Math.PI / 2 + (vh(px, pz, 45) - 0.5) * 0.6, vh(px, pz, 46) * 6, 0, 0.9, IVY[Math.floor(vh(px, pz, 47) * IVY.length)]);
+        ivy.add(px, F.top + 0.07, pz, -Math.PI / 2 + (vh(px, pz, 45) - 0.5) * 0.6, vh(px, pz, 46) * 6, 0, 0.9, (moss ? IVY_DEEP : IVY)[Math.floor(vh(px, pz, 47) * (moss ? IVY_DEEP : IVY).length)]);
       }
     }
   }
@@ -131,10 +139,30 @@ export function growFlora(w, m, st) { // m: the patch { x0, x1, z0, z1, group }
         const a = vh(P.x, P.z, i) * 6.28, r = (P.r ?? 2) * Math.sqrt(vh(P.x, P.z, i + 100)), x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
         leaves.add(x, T.floorAt(x, z) + 0.02, z, -Math.PI / 2, vh(x, z, 3) * 6, 0, 0.8 + vh(x, z, 4) * 0.6, LEAF[Math.floor(vh(x, z, 5) * LEAF.length)]);
       }
+    } else if (P.kind === 'shroom') {
+      // glowing mushrooms: a clump of pale stalks with lit caps (the Sunless Deep), and a little light over them
+      const C = SHROOM[P.color || 'teal'], n = P.n ?? 6;
+      for (let i = 0; i < n; i++) {
+        const a = vh(P.x, P.z, i) * 6.28, r = (P.r ?? 0.6) * Math.sqrt(vh(P.x, P.z, i + 9)), s = (P.s ?? 1) * (0.5 + vh(P.x, P.z, i + 20) * 0.9);
+        const x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r, y = T.floorAt(x, z);
+        stalk.add(x, y + 0.14 * s, z, 0, 0, (vh(x, z, 2) - 0.5) * 0.4, s, 0xb8b0a0);
+        cap.add(x, y + 0.3 * s, z, 0, vh(x, z, 3) * 6, 0, s, C[Math.floor(vh(x, z, 4) * C.length)], s * 0.55);
+      }
+      if (P.light !== false) w.lights.push({ x: P.x, y: y0 + 0.8, z: P.z, color: C[0], power: P.power ?? 2.2, range: 4.5, src: {} });
+    } else if (P.kind === 'crystal') {
+      // a cluster of seer-glass crystals growing out of the floor, leaning out from the middle, glowing
+      const C = CRYSTAL[P.color || 'violet'], n = P.n ?? 5;
+      for (let i = 0; i < n; i++) {
+        const a = vh(P.x, P.z, i) * 6.28, r = (P.r ?? 0.5) * vh(P.x, P.z, i + 9), s = (P.s ?? 1) * (0.5 + vh(P.x, P.z, i + 20) * 0.9);
+        const x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
+        shard.add(x, T.floorAt(x, z), z, Math.sin(a) * 0.35 * (r > 0.05 ? 1 : 0), 0, -Math.cos(a) * 0.35 * (r > 0.05 ? 1 : 0), s * 0.7, C[Math.floor(vh(x, z, 4) * C.length)], s * (1.2 + vh(x, z, 5)));
+      }
+      if (P.light !== false) w.lights.push({ x: P.x, y: y0 + 1.2, z: P.z, color: C[0], power: P.power ?? 3, range: 6, src: {} });
+      if (P.block) w.ob(P.x, P.z, (P.r ?? 0.5) + 0.3);
     } else if (P.kind === 'puddle') puddle(w, P.x, y0, P.z, P.r ?? 0.9);
     else if (P.kind === 'tree') tree(w, P.x, y0, P.z, P.s ?? 1, P.dead);
   }
-  for (const B of [grass, weeds, ivy, leaves, bush, pebble]) B.done(m.group);
+  for (const B of [grass, weeds, ivy, leaves, bush, pebble, stalk, cap, shard]) B.done(m.group);
 }
 
 // a puddle: still water holding a little of the sky's grey, a darker rim of wet grit, a glint or two across it

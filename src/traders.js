@@ -19,7 +19,7 @@ export const TRADERS = [
     id: 'grist', name: 'Mother Grist', title: 'Rag-and-bone crone',
     blurb: 'Buys anything that can be scraped, sewn or melted down. Sells it back to you dearer.',
     unlocked: (d) => !!d?.gems?.gem_hask, lockText: 'Beat Executor Hask',
-    rarities: ['common', 'uncommon'], markup: 3,
+    region: 'r1', rarities: ['common', 'uncommon'], markup: 3,
     stock: { common: [6, 8, 10, 13, 16], uncommon: [3, 4, 5, 7, 9] },
     perk: { hp: 300, name: "Grist's Tonic", desc: '+300 base health for every character' },
     quests: [
@@ -39,7 +39,7 @@ export const TRADERS = [
     id: 'vesk', name: 'Brother Vesk', title: 'Reliquary dealer',
     blurb: 'Deals only in the rare and the holy, behind iron bars, at prices to match.',
     unlocked: (d) => (d?.raids?.r1f || 0) > 0 || !!d?.traderKeys?.vesk, lockText: 'Beat Archon Varek', // (traderKeys: opened by hand, joeandre)
-    rarities: ['rare', 'epic', 'legendary'], markup: 2.5, gems: true, // (and he buys the mini bosses' gems: you can carry more than one)
+    region: 'r1', rarities: ['rare', 'epic', 'legendary'], markup: 2.5, gems: true, // (and he buys the mini bosses' gems: you can carry more than one)
     stock: { rare: [2, 3, 3, 4, 5], epic: [1, 1, 2, 2, 3], legendary: [0, 0, 1, 1, 1] },
     perk: { flasks: 1, name: 'Vesk\'s Vial', desc: 'One more injector for every character' },
     quests: [
@@ -56,11 +56,50 @@ export const TRADERS = [
     ],
   },
 ];
-// the eight still to come, two a region (its first mini boss, then its master): their looks and stalls are in the
+// the Sunless Deep's two (region 2): Old Kettle after the Lamp-King, Mama Sorrow after the Kilnfather. They deal
+// only in the Deep's own materials (and Sorrow in its gems); their quests pay a third more than the March's
+TRADERS.push(
+  {
+    id: 'kettle', name: 'Old Kettle', title: 'Half-servitor tinker',
+    blurb: 'More brass than man these days. Mends anything, buys anything that came up out of the dark, and hums while he works.',
+    unlocked: (d) => !!d?.gems?.gem_lampking || !!d?.traderKeys?.kettle, lockText: 'Beat the Lamp-King',
+    region: 'r2', rarities: ['common', 'uncommon'], markup: 3,
+    stock: { common: [6, 8, 10, 13, 16], uncommon: [3, 4, 5, 7, 9] },
+    perk: { hp: 400, name: 'Kettle\'s Plating', desc: '+400 base health for every character' },
+    quests: [
+      { kind: 'hunt', type: 'shaftrat', n: 12, xp: 50, gold: 940, em: 2, title: 'Rats in the Works', say: 'Shaft Rats in my pipes again. Twelve of them, if you please. Mind the picks.' },
+      { kind: 'supply', items: { ore_chunk: 8 }, xp: 50, gold: 780, em: 2, title: 'Something to Melt', say: 'Eight chunks of ore. The furnace in my chest runs cold without it.' },
+      { kind: 'recover', relic: 'kettle_gauge', area: 'r2a1', xp: 80, gold: 1560, em: 4, title: 'The Lost Gauge', say: 'My pressure gauge. Left it on a ledge in Lanternhold when the lamps went out. Without it I can\'t tell when I\'m about to burst.' },
+      { kind: 'hunt', type: 'rivet', n: 6, xp: 60, gold: 1170, em: 3, title: 'Borrowed Rivets', say: 'Six Rivet Gunners. Those guns were mine before they were theirs.' },
+      { kind: 'supply', items: { lamp_oil: 6, rivet_spool: 3 }, xp: 70, gold: 1400, em: 3, title: 'Oil and Iron', say: 'Six cans of lamp oil and three rivet spools. A tinker needs his stock.' },
+      { kind: 'hunt', type: 'creeper', n: 6, xp: 70, gold: 1560, em: 4, title: 'Lights On', say: 'Six Shaft Creepers. I\'ve not slept with the lamp off in thirty years and I\'d like to.' },
+      { kind: 'supply', items: { glowcap: 5, raw_seerglass: 3 }, xp: 80, gold: 1820, em: 4, title: 'Strange Fuel', say: 'Five glowcaps and three lumps of raw seer-glass. Don\'t ask what I\'m building.' },
+      { kind: 'hunt', type: 'hauler', n: 3, xp: 110, gold: 3120, em: 8, title: 'Big Iron', say: 'Three Ore Haulers. Bring them down and my plating\'s yours, the good stuff.' },
+    ],
+  },
+  {
+    id: 'sorrow', name: 'Mama Sorrow', title: 'Fortune-teller',
+    blurb: 'Reads your future in a ball of seer-glass and charges you for it. Deals in the rarest things of the Deep, and in the gems of those who ruled it.',
+    unlocked: (d) => (d?.raids?.r2f || 0) > 0 || !!d?.traderKeys?.sorrow, lockText: 'Beat the Kilnfather',
+    region: 'r2', rarities: ['rare', 'epic', 'legendary'], markup: 2.5, gems: true,
+    stock: { rare: [2, 3, 3, 4, 5], epic: [1, 1, 2, 2, 3], legendary: [0, 0, 1, 1, 1] },
+    perk: { flasks: 1, name: 'Sorrow\'s Draught', desc: 'One more injector for every character' },
+    quests: [
+      { kind: 'hunt', type: 'grub', n: 15, xp: 60, gold: 2340, em: 4, title: 'Little Mouths', say: 'Fifteen Burrow Grubs. I have seen what they grow into, dearie. Better now.' },
+      { kind: 'supply', items: { prism_lens: 3 }, xp: 60, gold: 2340, em: 4, title: 'A Clearer Glass', say: 'Three prism lenses. My ball has gone cloudy and the future with it.' },
+      { kind: 'recover', relic: 'sorrow_mirror', area: 'r2a3', xp: 80, gold: 3120, em: 6, title: 'The Hand-Mirror', say: 'A little silver mirror, somewhere in Glasshallow. It was my mother\'s. Do not look into it on the way back.' },
+      { kind: 'hunt', type: 'lancer', n: 8, xp: 70, gold: 3510, em: 6, title: 'Bent Light', say: 'Eight Prism Lancers. Their light goes round corners. So should you.' },
+      { kind: 'supply', items: { borer_tooth: 3, geode_heart: 1 }, xp: 80, gold: 3900, em: 7, title: 'Teeth and Hearts', say: 'Three borer teeth and a geode heart. For a charm. A strong one.' },
+      { kind: 'hunt', type: 'shade', n: 8, xp: 80, gold: 4290, em: 7, title: 'Which One Is Real', say: 'Eight Mirror Shades. The real ones. You will know them by their shadows.' },
+      { kind: 'hunt', type: 'shardback', n: 3, xp: 100, gold: 5460, em: 10, title: 'Crack the Shell', say: 'Three Shardbacks. Break their glass and bring me none of it.' },
+      { kind: 'supply', items: { kiln_ember: 1 }, xp: 120, gold: 7800, em: 12, title: 'The Undying Coal', say: 'One ember from the Kiln that will not go out. Then my draught is yours. I have foreseen it.' },
+    ],
+  },
+);
+
+// the six still to come, two a region (its first mini boss, then its master): their looks and stalls are in the
 // Bazaar already (bazaar.js), greyed out; what they trade, their quests and their buffs come with their regions
 const FUTURE = [
-  ['kettle', 'Old Kettle', 'Half-servitor tinker', 'Beat the first warden of The Glass Wastes'],
-  ['sorrow', 'Mama Sorrow', 'Fortune-teller', 'Beat the master of The Glass Wastes'],
   ['krell', 'Sergeant Krell', 'Veteran gun-runner', 'Beat the first warden of The Forge Reaches'],
   ['tobias', 'Fat Tobias', 'Street cook', 'Beat the master of The Forge Reaches'],
   ['pip', 'Pip the Rat-King', 'Scavenger child', 'Beat the first warden of The Drowned Choir'],
@@ -86,12 +125,12 @@ export function levelOf(xp) { let l = 1; while (l < MAX_LEVEL && xp >= LEVEL_XP[
 // what's in his stock at a level: each material of his rarities, up to its limit
 export function stockLimits(T, level) {
   const out = {};
-  for (const [id, it] of Object.entries(ITEMS)) if (it.kind === 'mat' && T.rarities.includes(it.rarity)) out[id] = T.stock[it.rarity][level - 1];
+  for (const [id, it] of Object.entries(ITEMS)) if (it.kind === 'mat' && it.region === (T.region || 'r1') && T.rarities.includes(it.rarity)) out[id] = T.stock[it.rarity][level - 1];
   return out;
 }
 export const sellPrice = (T, id) => Math.round(itemValue(id) * T.markup);           // what he charges you
 export const buyPrice = (T, id, level) => Math.max(1, Math.round(itemValue(id) * BUY_RATE[level - 1])); // what he pays you
-export const dealsIn = (T, id) => (ITEMS[id]?.kind === 'mat' || (ITEMS[id]?.kind === 'gem' && T.gems)) && T.rarities.includes(ITEMS[id].rarity);
+export const dealsIn = (T, id) => (ITEMS[id]?.kind === 'mat' || (ITEMS[id]?.kind === 'gem' && T.gems)) && ITEMS[id].region === (T.region || 'r1') && T.rarities.includes(ITEMS[id].rarity); // (each trader only his own region's)
 // where an item is kept: a gem with the gems (d.gems: how many of each you carry), anything else in the stash
 export const bagOf = (d, id) => (ITEMS[id]?.kind === 'gem' ? (d.gems ||= {}) : (d.items ||= {}));
 

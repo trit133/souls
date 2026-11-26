@@ -24,7 +24,7 @@ const OUTLINE = new THREE.MeshBasicMaterial({ color: 0xffd36a, side: THREE.BackS
 const FAINT = new THREE.MeshBasicMaterial({ color: 0x9a7444, side: THREE.BackSide, depthWrite: false });
 const ENEMY = { grunt: 'Zealots', spear: 'Pike Zealots', archer: 'Needle Gunners', brute: 'War Servitors' };
 const enemyName = (type, n) => ENEMY[type] || (FOE_NAMES?.[type] ? FOE_NAMES[type] + (n > 1 ? 's' : '') : type);
-const AREA_NAMES = { r1a1: 'Ashfall Ward', r1a2: 'The Sump Lines', r1a3: 'Saint Orsk\'s Spire', r1f: 'The Sentinel\'s Bastion' };
+const AREA_NAMES = { r1a1: 'Ashfall Ward', r1a2: 'The Sump Lines', r1a3: 'Saint Orsk\'s Spire', r1f: 'The Sentinel\'s Bastion', r2a1: 'Lanternhold', r2a2: 'The Wormways', r2a3: 'Glasshallow', r2f: 'The Crucible' };
 
 // a 16 x 16 pixel sprite over a head: the "!" of a quest ready to hand in, or a trader's buff sigil
 function pixelSprite(rows, pal) {

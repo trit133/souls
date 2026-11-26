@@ -13,6 +13,7 @@ import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
 import './sump.js'; import './spire.js'; import './ward.js'; import './cut.js'; import './hill.js'; // (the areas' maps: Ashfall Ward, the Drained Cut, the Spire's hill) // (the deeper areas' own maps, registered on City.MAPS)
+import './lanternhold.js'; // (the Sunless Deep's maps register themselves too: City.MAPS)
 import { AREAS, areaOpen } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
@@ -37,7 +38,7 @@ import { Multiplayer } from './mp.js';
 import { PartyTab } from './partytab.js';
 import { Pings } from './pings.js';
 import { rng } from './world.js';
-import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare } from './progress.js';
+import { MINI_GOLD, BOSS_GOLD, extraEnemyShare, killGold, partyShare, GOLD_RATE, REGION_GOLD } from './progress.js';
 const FULL_CLEAR_EMERALDS = 5; // for killing everything in a dungeon
 import { wornOutfit, migrateCosmetics, cosmetics, tickOutfitColors } from './outfits.js';
 import { treeStats, migrateUpgrades, migrateTree, TREE_VERSION, TREES } from './skilltree.js';
@@ -266,8 +267,9 @@ class Game {
       const area = AREAS[layout.raid];
       this.run = { raid: area.id, night: !!layout.night, minis: [area.boss] };
       this.act = 0;
-      // the region's last area: the approach and Varek's throne, everything as hard as the last act of the old run
-      if (area.kind === 'final') { this.act = 3; return this.buildLevel(['bastion', 'throne'], seed, players); }
+      GOLD_RATE.k = REGION_GOLD[area.region] || 1; // (a deeper region pays more: progress.js)
+      // a region's last area: the approach and its master's arena, everything as hard as the last act of the old run
+      if (area.kind === 'final') { this.act = 3; return this.buildLevel(area.chain || ['bastion', 'throne'], seed, players); }
       return this.buildLevel({ dungeon: new City(seed, area, players) }, seed, players);
     }
     if (layout === 'dungeon' || layout === 'night') {
@@ -276,7 +278,7 @@ class Game {
       this.run = { minis, night: layout === 'night' };
       return this.buildAct(0);
     }
-    this.run = null; this.act = 0; this.night = false;
+    this.run = null; this.act = 0; this.night = false; GOLD_RATE.k = 1;
     this.buildLevel(layout, seed, players);
   }
 
@@ -304,6 +306,12 @@ class Game {
     // tier = mini bosses passed before a module (in a run of dungeons, the act); everything after them is stronger
     const tierAt = this.run ? () => this.act : (i) => layout.slice(0, i).filter((k) => k.startsWith('mini:')).length;
     const spawns = [...this.world.spawns, ...this.extraSpawns(players, seed)];
+    // a type that brings companions (a Mirror Shade's two copies: deepfoes.js) gets them, waiting off stage
+    for (const sp of [...spawns]) {
+      const n = FOE_TYPES[sp.type]?.companions; if (!n) continue;
+      const id = 'sh' + spawns.indexOf(sp); sp.o = { ...sp.o, shadeId: id };
+      for (let k = 0; k < n; k++) spawns.push({ type: 'shadecopy', x: sp.x, z: sp.z, yaw: sp.yaw, mod: sp.mod, o: { look: sp.o.look, reserve: true, copyOf: id } });
+    }
     const all = spawns.map((s) => (s.enemy = new Enemy(this, s.type, s.x, s.z, s.yaw, { ...s.o, mod: s.mod, tier: tierAt(s.mod), players, night: this.night })));
     for (const e of all) e.roam = this.world.dungeon?.roam(e.mod) ?? null;
     for (const e of all) { e.gy = e.pos.y = this.world.floorAt(e.pos.x, e.pos.z); e.rig.root.position.y = e.gy + (e.y || 0); } // (stood on the terrain from the start, not only once they wake)
@@ -312,7 +320,8 @@ class Game {
     this.clearTotal = this.enemies.filter((e) => !e.event && !e.effigy).length; this.clearKilled = 0; this.clearPaid = false;
     this.encounters = this.world.encounters;
     this.bosses = this.encounters.map((enc) => {
-      enc.boss = new Boss(this, enc.kind === 'mini' ? BOSSES[enc.bossId] : BOSSES.varek, enc.arena, enc.mod, tierAt(enc.mod), players);
+      enc.boss = new Boss(this, BOSSES[enc.bossId] || BOSSES.varek, // (a final arena names its master: modules.js)
+        enc.arena, enc.mod, tierAt(enc.mod), players);
       enc.boss.enc = enc;
       if (this.night) { enc.boss.maxHp = enc.boss.hp = Math.round(enc.boss.maxHp * NIGHT.hp); enc.boss.dmgScale *= NIGHT.dmg; } // bosses too, at night
       return enc.boss;
@@ -750,7 +759,7 @@ class Game {
     $('boss-name').textContent = enc.boss.name;
     this.ui.show('boss');
     this.ui.boss.snap(1);
-    this.audio.startMusic(enc.kind === 'mini' ? enc.bossId : 'varek');
+    this.audio.startMusic(enc.boss?.cfg?.music || (enc.kind === 'mini' ? enc.bossId : 'varek'));
     setTimeout(() => enc.active && this.audio.play('roar', enc.kind === 'mini' ? 0.5 : 0.8), 1200);
   }
 
@@ -865,9 +874,13 @@ class Game {
       // and every gem of the March, so every area and Varek's door are open (asked for 2026-11-15: playing them), and
       // Brother Vesk's stall open without beating Varek (traders.js traderKeys)
       A.data.gems ||= {};
-      for (const g of ['gem_hask', 'gem_vael', 'gem_gorrath']) if (!A.data.gems[g]) { A.data.gems[g] = 1; added = true; }
+      for (const g of ['gem_hask', 'gem_vael', 'gem_gorrath', 'gem_lampking', 'gem_borer', 'gem_hierophant']) if (!A.data.gems[g]) { A.data.gems[g] = 1; added = true; }
+      // and the Sunless Deep open without beating Varek (asked for 2026-11-26: "just do it all")
+      A.data.regionKeys ||= {};
+      if (!A.data.regionKeys.r2) { A.data.regionKeys.r2 = 1; added = true; }
       A.data.traderKeys ||= {};
       if (!A.data.traderKeys.vesk) { A.data.traderKeys.vesk = 1; added = true; }
+      for (const k of ['kettle', 'sorrow']) if (!A.data.traderKeys[k]) { A.data.traderKeys[k] = 1; added = true; }
       if (added) A.save();
     }
     // skins became outfits: every kill so far is an emerald, unlocked skins became pieces and colours
@@ -1357,7 +1370,7 @@ class Game {
     // a boss pays everyone in the party its full drop (double at night)
     let drop;
     if (net && this.isGuest) drop = net.drop || 0;
-    else { drop = (enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD) * (this.night ? 2 : 1); this.addRunGold(drop, enc.boss); }
+    else { drop = Math.round((enc.kind === 'mini' ? MINI_GOLD[section] : BOSS_GOLD) * (this.night ? 2 : 1) * GOLD_RATE.k); this.addRunGold(drop, enc.boss); }
     this.bankNow(drop, 'boss' + this.encounters.indexOf(enc));
     return { drop, bonus: 0 };
   }

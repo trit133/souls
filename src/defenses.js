@@ -26,6 +26,20 @@ const TYPES = {
   castellan: { armor: [20, 26], res: [14, 20], crit: [5, 8], critDmg: [40, 55] },
   augur: { armor: [8, 12], res: [16, 22], crit: [10, 14], critDmg: [40, 55] },
   bellwarden: { armor: [22, 28], res: [16, 22], crit: [6, 10], critDmg: [45, 60] },
+  // the Sunless Deep (region 2): Lanternhold about 12 more armour than Ashfall Ward, the Wormways 16, Glasshallow 20
+  shaftrat: { armor: [14, 18], res: [12, 18], crit: [5, 8], critDmg: [35, 50] },
+  rivet: { armor: [16, 20], res: [12, 18], crit: [8, 12], critDmg: [40, 55] },
+  creeper: { armor: [10, 14], res: [14, 20], crit: [12, 16], critDmg: [45, 60] },
+  hauler: { armor: [24, 30], res: [16, 22], crit: [6, 10], critDmg: [45, 60] },
+  grub: { armor: [12, 16], res: [14, 20], always: { poison: [35, 45] }, crit: [4, 7], critDmg: [30, 45] },
+  lobber: { armor: [14, 18], res: [16, 22], always: { poison: [35, 45] }, crit: [6, 10], critDmg: [40, 55] },
+  burrower: { armor: [20, 24], res: [16, 22], crit: [10, 14], critDmg: [45, 60] },
+  thrall: { armor: [28, 34], res: [18, 24], crit: [7, 11], critDmg: [50, 65] },
+  acolyte: { armor: [24, 28], res: [18, 24], crit: [8, 12], critDmg: [45, 60] },
+  lancer: { armor: [16, 20], res: [22, 28], crit: [10, 14], critDmg: [50, 65] },
+  shade: { armor: [14, 18], res: [20, 26], crit: [14, 18], critDmg: [50, 65] },
+  shadecopy: { armor: [0, 0], res: [0, 0], crit: [14, 18], critDmg: [50, 65] },
+  shardback: { armor: [32, 38], res: [20, 26], crit: [8, 12], critDmg: [50, 65] },
 };
 const ELITE = 5, ELITE_CRIT = 3, ELITE_CRIT_DMG = 5; // an elite: its type's ranges, this much higher
 const BOSSES = {

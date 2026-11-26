@@ -1,7 +1,7 @@
 // The world map (regions.js): every region on one ashen continent; click an open one to see its own map with its
 // three raid areas; pick an area to read about it and deploy. Drawn small on a canvas and scaled up with hard pixels;
 // the regions and areas are buttons laid over it.
-import { REGIONS, AREAS, areaOpen, missingGems } from './regions.js';
+import { REGIONS, AREAS, areaOpen, missingGems, regionDone } from './regions.js';
 import { ITEMS } from './items.js';
 import { BOSSES } from './boss.js';
 import { pxButton, pxText } from './pixelmenus.js';
@@ -123,8 +123,10 @@ export class WorldMap {
     document.querySelectorAll('.wm-pin').forEach((p) => p.classList.toggle('sel', p.querySelector('.wm-lab').textContent.startsWith(A.name)));
     const boss = A.open ? `${A.kind === 'final' ? 'At its end' : 'Somewhere in it'}: ${BOSSES[A.boss].name}` : '';
     // sealed: which gems are still wanted, and who carries them
-    const sealed = !A.open ? ' Sealed for now.' : ` Sealed: you need ${need.map((g) => `the ${ITEMS[g].name} (${BOSSES[ITEMS[g].boss]?.name.split(',')[0]})`).join(', ')}.`;
-    const how = A.kind === 'final' ? ' Fight your way up to his throne. The only ways out are victory or death.' : ' Break three shrines to open the way to its master. The only ways out are victory or death.';
+    const before = A.after && AREAS[A.after];
+    const sealed = !A.open ? ' Sealed for now.' : !regionDone(A, data) ? ` Sealed: first beat ${BOSSES[before.boss]?.name.split(',')[0]} in ${before.name}.`
+      : ` Sealed: you need ${need.map((g) => `the ${ITEMS[g].name} (${BOSSES[ITEMS[g].boss]?.name.split(',')[0]})`).join(', ')}.`;
+    const how = A.kind === 'final' ? (A.region === 'r1' ? ' Fight your way up to his throne.' : ' Fight your way down to the Kiln.') + ' The only ways out are victory or death.' : ' Break three shrines to open the way to its master. The only ways out are victory or death.';
     this.info(A.name, A.blurb + (can ? how : sealed), boss, can);
   }
 

@@ -32,6 +32,16 @@ const SKIES = {
   r1a3: sky({ sunDir: [-0.42, 0.78, -0.46], sunColor: 0xfff0d6, sun: 4.6, hemiColor: 0xc4d4ec, ground: 0x5a4a36, hemi: 2.3, fog: 0x8c98a6, fogNear: 50, fogFar: 140, bg: 0x404a56, rays: 0.006, tone: 1.15 }),
   // the Sentinel's Bastion: bright day as well, the sun high over the throne
   r1f: sky({ sunDir: [0.36, 0.8, -0.48], sunColor: 0xfff2dc, sun: 4.6, hemiColor: 0xc8d4e8, ground: 0x544636, hemi: 2.3, fog: 0x8a94a0, fogNear: 50, fogFar: 140, bg: 0x3c444e, rays: 0.006, tone: 1.15 }),
+  // the Sunless Deep (region 2): underground, no sky. The "sun" is what light comes from above or within: only a little
+  // darker than the March's evening, and the torches and lanterns do the rest (they keep their brightness)
+  // Lanternhold: cold white daylight falling in shafts through cracks in the glass far overhead, warm lamps below
+  r2a1: sky({ sunDir: [-0.18, 0.92, -0.34], sunColor: 0xe0eeff, sun: 3.2, hemiColor: 0xa8968a, ground: 0x3a2c1e, hemi: 2.0, fog: 0x1e1812, fogNear: 30, fogFar: 90, bg: 0x0c0a08, rays: 0.02, tone: 1.45 }),
+  // the Wormways: the darkest, a faint teal from the fungus, the torches carry it
+  r2a2: sky({ sunDir: [0.3, 0.9, -0.3], sunColor: 0x9ae0d0, sun: 2.0, hemiColor: 0x7a948e, ground: 0x1e2622, hemi: 1.55, fog: 0x0c1412, fogNear: 26, fogFar: 80, bg: 0x060908, rays: 0.01, tone: 1.45 }),
+  // Glasshallow: bright again, violet and cyan from the crystal in the cavern's walls
+  r2a3: sky({ sunDir: [-0.4, 0.82, -0.4], sunColor: 0xd8c4ff, sun: 3.6, hemiColor: 0xa4a8dc, ground: 0x3a3452, hemi: 2.3, fog: 0x1a1630, fogNear: 34, fogFar: 100, bg: 0x0e0c1a, rays: 0.015, tone: 1.35 }),
+  // the Crucible: lit red from below by the lava, embers in the air
+  r2f: sky({ sunDir: [0.2, 0.7, -0.5], sunColor: 0xff8a4a, sun: 3.0, hemiColor: 0xa86a54, ground: 0x7a3418, hemi: 1.9, fog: 0x2a0e08, fogNear: 30, fogFar: 95, bg: 0x140604, rays: 0.012, tone: 1.4 }),
 };
 const SHADOW_SIZE = { low: 1024, high: 2048 };
 const BOX = 18; // (half the sun's shadow box, metres: it follows you)
@@ -174,7 +184,7 @@ export class Lighting {
   mark() {
     const g = this.game, soft = this.s.palette === 'soft', casting = this.shadows || this.s.godRays;
     this.scene.traverse((o) => {
-      if (!o.isMesh || this.marked.has(o)) return;
+      if (!o.isMesh || this.marked.has(o) || o.userData.noShadow) return; // (a Mirror Shade's copy casts none: deepfoes.js)
       const ms = Array.isArray(o.material) ? o.material : [o.material];
       if (soft) for (const m of ms) if (m?.isMeshLambertMaterial && !this.soft.has(m)) { m.defines = { ...(m.defines || {}), SOFT_LIGHT: '' }; m.needsUpdate = true; this.soft.add(m); }
       if (!casting) return;

@@ -54,8 +54,10 @@ export const ASHFALL = {
   shrines: { pool: ['elite', 'circle', 'altar'] },
 };
 // a shrine's colour by its kind (its crystal, beam, light and map dot)
-export const SHRINE_COLOR = { altar: 0xff3a2a, circle: 0xffc040, elite: 0xb060ff, valve: 0x5ae0b0, bells: 0xffd070 };
-export const ARENAS = { hask: { theme: 'pit', name: 'The Penitent Pit', ground: 'arena' }, vael: { theme: 'cloister', name: 'The Cryo Cloister', ground: 'crypt' }, gorrath: { theme: 'forge', name: 'The Slag Foundry', ground: 'ash' } };
+export const SHRINE_COLOR = { altar: 0xff3a2a, circle: 0xffc040, elite: 0xb060ff, valve: 0x5ae0b0, bells: 0xffd070, cart: 0xffa040, lantern: 0xffd890, prism: 0xb090ff };
+export const ARENAS = { hask: { theme: 'pit', name: 'The Penitent Pit', ground: 'arena' }, vael: { theme: 'cloister', name: 'The Cryo Cloister', ground: 'crypt' }, gorrath: { theme: 'forge', name: 'The Slag Foundry', ground: 'ash' },
+  // the Sunless Deep's (dressed by deepbosses.js)
+  lampking: { theme: 'lamp', name: 'The Undercroft', ground: 'deepArena' }, borer: { theme: 'nest', name: 'The Borer\'s Nest', ground: 'deepArena' }, hierophant: { theme: 'mirrors', name: 'The Hall of Mirrors', ground: 'glassArena' } };
 
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 function shuffle(a, r) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -284,7 +286,7 @@ export class City {
         group.add(w.groundMesh(tile.x, tile.z, T14, T14, style));
         w.cur = tile;
         if (GROUND[style]?.tex) growFlora(w, { x0: tx, x1: tx + T14, z0: tz, z1: tz + T14, group }, GROUND[style]); // (a textured ground's grass and the rest: flora.js)
-        if (style !== 'city') w.scatter('crypt', tx, tx + T14, tz, tz + T14);
+        if (style !== 'city' && !GROUND[style]?.dressed) w.scatter('crypt', tx, tx + T14, tz, tz + T14); // (a map that dresses its own edges: none)
         w.mergeStatic(group);
         w.tiles.push(tile);
       }
@@ -825,6 +827,9 @@ export class City {
       while (song.length < 4) { const n = Math.floor(this.r() * 3); if (n !== song[song.length - 1]) song.push(n); }
       seal.song = song;
     }
+    if (S.kind === 'cart') Object.assign(seal, this.buildCart(w, x, z, mod));
+    if (S.kind === 'lantern') Object.assign(seal, this.buildLanternHook(w, x, z, mod));
+    if (S.kind === 'prism') Object.assign(seal, this.buildPrism(w, x, z, mod));
     if (S.kind === 'circle') {
       const ring = new THREE.Mesh(new THREE.RingGeometry(4.3, 4.75, 48), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
       ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.06, z); ring.userData.noMerge = true; w.add(ring);
@@ -839,6 +844,90 @@ export class City {
     if (!seal.spawnPts.length) seal.spawnPts.push({ x: x + 4, z: z + 3 });
     w.seals.push(seal);
     S.rec = seal;
+  }
+
+  // ---------- the Sunless Deep's shrines (seals.js runs them) ----------
+  // a straight way from somewhere 14-24 m out to the shrine that a body can walk the whole of (level enough, no wall)
+  wayTo(w, x, z, mod, dists, need = 0.7) {
+    const r = this.r;
+    for (const d of dists) for (let t = 0; t < 32; t++) {
+      const a = r() * Math.PI * 2, sx = x + Math.cos(a) * d, sz = z + Math.sin(a) * d;
+      if (!w.walkable(sx, sz, need) || !this.reach(sx, sz) || this.modAt(sx, sz) !== mod) continue;
+      let ok = true, h = w.floorAt(sx, sz);
+      for (let k = 1; k <= Math.ceil(d / 0.5) && ok; k++) {
+        const u = Math.min(1, k * 0.5 / d), px = sx + (x - sx) * u, pz = sz + (z - sz) * u;
+        if (u < 0.92 && !w.walkable(px, pz, need)) ok = false;
+        const h2 = w.floorAt(px, pz); if (Math.abs(h2 - h) > 0.3) ok = false; h = h2;
+      }
+      if (ok) return { x: sx, z: sz, d };
+    }
+    return null;
+  }
+  // the Ore Cart: rails laid from out in the workings to the shrine, a loaded cart at their far end
+  buildCart(w, x, z, mod) {
+    const M = w.mats, way = this.wayTo(w, x, z, mod, [22, 18, 14, 10]) || { x: x + 8, z, d: 8 };
+    const ang = Math.atan2(x - way.x, z - way.z), len = Math.hypot(x - way.x, z - way.z) - 1.8;
+    const side = { x: Math.cos(ang), z: -Math.sin(ang) };
+    for (let k = 0; k <= len; k += 0.9) { const px = way.x + Math.sin(ang) * k, pz = way.z + Math.cos(ang) * k; this.at(w, px, pz); w.box(1.5, 0.08, 0.22, M.logDark, px, 0.04, pz, ang + Math.PI / 2); }
+    for (const s of [-1, 1]) for (let k = 0; k < len; k += 3) { const L = Math.min(3, len - k), px = way.x + Math.sin(ang) * (k + L / 2) + side.x * s * 0.5, pz = way.z + Math.cos(ang) * (k + L / 2) + side.z * s * 0.5; this.at(w, px, pz); w.box(0.07, 0.1, L, M.metal, px, 0.1, pz, ang); }
+    // the cart: an iron tub on four wheels, heaped with ore that glints
+    this.at(w, way.x, way.z);
+    const g = new THREE.Group(); g.position.set(way.x, w.floorAt(way.x, way.z), way.z); g.rotation.y = ang; g.userData.noMerge = true; g.userData.noSettle = true;
+    const part = (W, H, D, m, px, py, pz) => { const o = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), m); o.position.set(px, py, pz); g.add(o); return o; };
+    part(1.2, 0.7, 1.6, M.rust, 0, 0.6, 0); part(1.26, 0.08, 1.66, M.metal, 0, 0.96, 0);
+    for (const sx of [-0.62, 0.62]) for (const sz of [-0.5, 0.5]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8), M.logDark); wh.rotation.z = Math.PI / 2; wh.position.set(sx, 0.22, sz); g.add(wh); }
+    const ore = new THREE.MeshLambertMaterial({ color: 0x6a5a4a, flatShading: true }), glint = new THREE.MeshBasicMaterial({ color: 0x9ad8e8 });
+    for (let k = 0; k < 7; k++) { const o = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), k % 3 ? ore : glint); o.position.set((k % 3 - 1) * 0.34, 1.05 + (k % 2) * 0.1, (Math.floor(k / 3) - 1) * 0.45); g.add(o); }
+    const lamp = part(0.18, 0.2, 0.18, new THREE.MeshBasicMaterial({ color: 0xffc860 }), 0.55, 1.2, 0.75);
+    w.add(g);
+    const light = { x: way.x, y: 1.8, z: way.z, color: 0xffb050, power: 6, range: 8, src: {} }; w.lights.push(light);
+    return { cart: { g, from: { x: way.x, z: way.z }, ang, len, prog: 0, light, lamp } };
+  }
+  // the Lantern Run: a lit brazier somewhere out along the tunnels with a lantern on its hook; carry it to the shrine
+  buildLanternHook(w, x, z, mod) {
+    const M = w.mats, way = this.wayTo(w, x, z, mod, [26, 22, 18, 14], 0.5) || { x: x + 10, z };
+    this.at(w, way.x, way.z);
+    w.brazier(way.x + 1.2, way.z, { power: 10 });
+    w.box(0.12, 2.2, 0.12, M.logDark, way.x, 1.1, way.z); w.box(0.6, 0.08, 0.08, M.logDark, way.x + 0.25, 2.15, way.z);
+    const L = new THREE.Group(); L.userData.noMerge = true; L.userData.noSettle = true;
+    const glass = new THREE.MeshBasicMaterial({ color: 0xffd890 });
+    L.add(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.22), glass));
+    for (const y of [-0.16, 0.16]) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 0.26), M.metal); c.position.y = y; L.add(c); }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 4, 8), M.metal); ring.position.y = 0.24; L.add(ring);
+    w.root.add(L); w.extras.push(L);
+    const hook = { x: way.x + 0.5, y: w.floorAt(way.x, way.z) + 1.85, z: way.z };
+    L.position.set(hook.x, hook.y, hook.z);
+    // the shrine's dark until the lantern comes home: a cold cage round its crystal
+    const light = { x: hook.x, y: 2.25, z: hook.z, color: 0xffc870, power: 7, range: 9, src: {} }; w.lights.push(light); // (lifted onto the ground by settle; moved by seals.js once carried)
+    return { lantern: { mesh: L, hook, light, state: 'hook', who: null, x: hook.x, z: hook.z, t: 0 } };
+  }
+  // the Prism: a crystal on the cavern wall throws a beam; three mirrors on pivots round the shrine bend it home
+  buildPrism(w, x, z, mod) {
+    const M = w.mats, posts = this.shrinePosts(w, x, z, mod, 6.2), r = this.r;
+    const src = this.wayTo(w, x, z, mod, [11, 9, 13], 0.3) || { x: x - 9, z: z + 3 };
+    this.at(w, src.x, src.z);
+    const glass = new THREE.MeshLambertMaterial({ color: 0xc0a8ff, emissive: 0x6040c0, flatShading: true });
+    w.box(0.9, 1.6, 0.9, M.stoneDark, src.x, 0.8, src.z); const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.45, 0), glass); gem.position.set(src.x, 2.1, src.z); w.add(gem); w.ob(src.x, src.z, 0.7);
+    w.lights.push({ x: src.x, y: 2.4, z: src.z, color: 0xb090ff, power: 6, range: 8, src: {} });
+    const chain = [{ x: src.x, z: src.z }, ...posts, { x, z }];
+    const mirrors = posts.map((p, k) => {
+      this.at(w, p.x, p.z);
+      const inA = Math.atan2(chain[k].x - p.x, chain[k].z - p.z), outA = Math.atan2(chain[k + 2].x - p.x, chain[k + 2].z - p.z);
+      let bis = (inA + outA) / 2; if (Math.abs(inA - outA) > Math.PI) bis += Math.PI;
+      const want = 1 + Math.floor(r() * 7), notch = 0, base = bis - want * Math.PI / 4;
+      const g = new THREE.Group(); g.position.set(p.x, w.floorAt(p.x, p.z), p.z); g.userData.noMerge = true; g.userData.noSettle = true;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 1.2, 6), M.metal); post.position.y = 0.6; g.add(post);
+      const pivot = new THREE.Group(); pivot.position.y = 1.5; g.add(pivot);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.0, 0.1), M.brass); pivot.add(frame);
+      const face = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.85, 0.02), new THREE.MeshLambertMaterial({ color: 0xe0e8ff, emissive: 0x404a60, flatShading: true })); face.position.z = 0.06; pivot.add(face);
+      // a faint mark on its base: the way it must face
+      const mark = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.6), new THREE.MeshBasicMaterial({ color: 0xb090ff, transparent: true, opacity: 0.45 })); mark.position.set(Math.sin(bis) * 0.5, 0.03, Math.cos(bis) * 0.5); mark.rotation.y = bis; g.add(mark);
+      const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.14, 8), M.stoneDark); plinth.position.y = 0.07; g.add(plinth);
+      w.add(g); w.ob(p.x, p.z, 0.5);
+      pivot.rotation.y = base + notch * Math.PI / 4;
+      return { x: p.x, z: p.z, base, want, notch, pivot, prog: 0, inA, outA };
+    });
+    return { prism: { src: { x: src.x, z: src.z, y: 2.1 }, mirrors, chain, beams: [] } };
   }
 
   // three spots round a shrine, d m out and about a third of a turn apart, that can be walked to

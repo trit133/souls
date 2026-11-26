@@ -162,6 +162,7 @@ export class Boss extends Actor {
     if (this.rig.bladeMat) this.rig.bladeMat.emissive.setRGB(0, 0, 0);
     this.rig.setGlow(0);
     this.trail.setColor(0xd8d8e8);
+    this.cfg.reset?.(this);
     this.setState('dormant');
   }
 
@@ -235,7 +236,7 @@ export class Boss extends Actor {
       }
       case 'neutral': {
         if (!p.alive) { pose = loco(0); break; }
-        if (this.cfg.phase2 && !this.phase2 && this.hp <= this.maxHp * 0.55) {
+        if (this.cfg.phase2 && !this.phase2 && this.hp <= this.maxHp * (this.cfg.phase2At ?? 0.55)) {
           this.phase2 = true; this.atkSpeed = 1.12; this.trackMul = 1.2;
           this.lastMove = 'roar';
           this.startAttack(this.moves.roar);
@@ -361,6 +362,7 @@ export class Boss extends Actor {
       }
     }
 
+    this.cfg.tick?.(this, dt); // (a boss's own mechanics: the Sunless Deep's, deepbosses.js)
     if (this.state !== 'attack') this.trailOn = false;
     if (this.state !== 'dead') this.regenPoise(dt);
     this.applyKnockback(dt);
@@ -382,6 +384,8 @@ export class Boss extends Actor {
     if (!this.alive || this.state === 'dormant') return 'none';
     if (this.puppet) return this.puppetHit(info);
     if (this.state === 'attack' && this.atk.def.evade && this.atk.t < 0.4) return 'none'; // sidestepped
+    if (this.cfg.immune?.(this, info)) return 'none'; // (under the floor, inside a mirror: deepbosses.js)
+    if (this.cfg.onReceive) info = this.cfg.onReceive(this, info);
     this.hp -= info.dmg;
     this.rig.flash(1, 0.85, 0.7);
     if (this.hp <= 0) {
@@ -431,6 +435,7 @@ export class Boss extends Actor {
     this.atk = null; this.y = 0;
     this.setState('dead');
     if (this.game.player.lock === this) this.game.player.lock = null;
+    this.cfg.onDie?.(this);
     this.game.onBossDeath(this);
   }
 }

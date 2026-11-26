@@ -29,6 +29,17 @@ const GROUND = {
   proving: { walk: [0x8a8a8a, 0x787878], out: [0x404040, 0x585858], tex: { walk: [0, 1, 0, 0], out: [0, 0.55, 0.45, 0] } },
   // Ashfall Ward (ward.js): the same, a shade darker (a burned ward under smoke)
   ward: { walk: [0x7e7c78, 0x6c6a66], out: [0x3a3836, 0x4e4c48], tsub: 2, tex: { walk: [0, 1, 0, 0], out: [0, 0.5, 0.5, 0] } },
+  // the Sunless Deep (region 2): cave rock, ore gravel, moss and plank walkways (ground.js TEXSETS.cave); dim, lit by
+  // lamps. Lanternhold, the Wormways (darker), Glasshallow (carved flagstones, gravel, moss, seer-glass), each one's
+  // cellars, and its bosses' arenas (bare: no moss or weeds where the fight is)
+  lantern: { walk: [0x8a847c, 0x76706a], out: [0x3a3430, 0x4e4842], tsub: 2, dressed: true, tex: { set: 'cave', walk: [0.5, 0.5, 0, 0], out: [0.6, 0.15, 0.25, 0] } },
+  worm: { walk: [0x7a7a74, 0x666660], out: [0x2a2a28, 0x3a3a36], tsub: 2, dressed: true, tex: { set: 'cave', walk: [0.6, 0.4, 0, 0], out: [0.55, 0.1, 0.35, 0] } },
+  glass: { walk: [0x9a96a8, 0x86829a], out: [0x34304a, 0x48445a], tsub: 2, dressed: true, tex: { set: 'glass', walk: [0.7, 0.3, 0, 0], out: [0.3, 0.3, 0.3, 0.1] } },
+  deepUnder: { walk: [0x847e78, 0x746e68], out: [0x1e1c1a, 0x2e2a26], wall: true, tsub: 2, tex: { set: 'under', walk: [0, 0.5, 0, 0.5], out: [0, 0.6, 0.4, 0] } },
+  deepArena: { walk: [0x8a847c, 0x76706a], out: [0x2a2622, 0x3a3430], bare: true, dressed: true, tex: { set: 'cave', walk: [0.7, 0.3, 0, 0], out: [0.7, 0.3, 0, 0] } },
+  glassArena: { walk: [0x9a96a8, 0x86829a], out: [0x2a2640, 0x3a3650], bare: true, dressed: true, tex: { set: 'glass', walk: [0.6, 0.1, 0, 0.3], out: [0.6, 0.1, 0, 0.3] } },
+  kiln: { walk: [0x8a7a72, 0x76665e], out: [0x2a1a14, 0x3a241c], tsub: 2, bare: true, dressed: true, tex: { set: 'deep', walk: [0.6, 0.15, 0.25, 0], out: [0.3, 0.6, 0.1, 0] } },
+  kilnArena: { walk: [0x8a7a72, 0x76665e], out: [0x2a1a14, 0x3a241c], bare: true, dressed: true, tex: { set: 'deep', walk: [0.3, 0, 0, 0.7], out: [0.2, 0.8, 0, 0] } },
   // the Sentinel's Bastion (modules.js FINAL_MODULES): dirt and setts on the walk, grass coming back off it; Varek's
   // arena: flagstones and cobbles, bare (no grass or weeds on the fighting floor)
   bastion: { walk: [0x7a7874, 0x686662], out: [0x34322f, 0x48463f], tsub: 2, dressed: true, tex: { walk: [0, 0.5, 0, 0.5], out: [0, 0.5, 0.5, 0] } },

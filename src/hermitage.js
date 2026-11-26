@@ -1033,17 +1033,31 @@ export class Hermitage {
       el.addEventListener('click', (e) => { e.stopPropagation(); show(id, n, owned); });
       slots.append(el);
     };
+    const section = (R) => { const h = document.createElement('div'); h.className = 'hm-sect'; h.style.color = R.color; h.textContent = R.name; slots.append(h); };
     if (tab === 'items') {
       $('hm-stash-note').textContent = 'Materials from your raids, shared by all your characters. The Bazaar\'s traders buy and sell them.';
       const have = Object.entries(d.items || {}).filter(([id, n]) => n > 0 && (ITEMS[id]?.kind === 'mat' || ITEMS[id]?.kind === 'relic'))
         .sort((a, b) => TIERS.indexOf(ITEMS[b[0]].rarity) - TIERS.indexOf(ITEMS[a[0]].rarity) || ITEMS[a[0]].region.localeCompare(ITEMS[b[0]].region));
-      for (const [id, n] of have) slot(id, n);
-      for (let k = have.length; k < STASH_SLOTS; k++) { const el = document.createElement('div'); el.className = 'hm-slot'; slots.append(el); }
+      // a section for each region, its materials rarest first (a region you have nothing from yet shows no section)
+      const used = REGIONS.filter((R) => have.some(([id]) => ITEMS[id].region === R.id));
+      for (const R of used) {
+        section(R);
+        const mine = have.filter(([id]) => ITEMS[id].region === R.id);
+        for (const [id, n] of mine) slot(id, n);
+        for (let k = mine.length; k < (used.length > 1 ? Math.ceil(mine.length / 6) * 6 : STASH_SLOTS); k++) { const el = document.createElement('div'); el.className = 'hm-slot'; slots.append(el); }
+      }
+      if (!used.length) for (let k = 0; k < STASH_SLOTS; k++) { const el = document.createElement('div'); el.className = 'hm-slot'; slots.append(el); }
       const worth = have.reduce((s2, [id, n]) => s2 + itemValue(id) * n, 0);
       $('hm-worth').textContent = have.length ? `Worth ◆ ${worth} in all` : 'Nothing yet: smash supply drums and open chests in a raid.';
     } else if (tab === 'gems') {
       $('hm-stash-note').textContent = 'Each mini boss drops a gem in the shape of its head, every time you beat it. Carry all of a region\'s to pass its gatekeeper (they\'re never used up); Brother Vesk buys the spares.';
-      for (const id of Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem')) slot(id, d.gems?.[id] || 0, (d.gems?.[id] || 0) > 0); // (how many you carry)
+      // each region's gems under its name (a region that's still sealed on the map: not shown yet)
+      for (const R of REGIONS.filter((q) => q.open)) {
+        const ids = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem' && ITEMS[k].region === R.id);
+        if (!ids.length) continue;
+        section(R);
+        for (const id of ids) slot(id, d.gems?.[id] || 0, (d.gems?.[id] || 0) > 0); // (how many you carry)
+      }
     } else {
       $('hm-stash-note').textContent = 'Runes, shared by all your characters. Forge them at the workbench; socket them in a skill tree.';
       const have = RUNE_ORDER.filter((id) => ownsRune(d, id));

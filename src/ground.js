@@ -11,7 +11,10 @@ const PX = 64, TILE = 4; // each texture is 64 px over 4 m (16 px to the metre, 
 export const SURFACES = ['flag', 'dirt', 'grass', 'cobble'];
 // the sets of four a ground can blend (a style picks one: GROUND[...].tex.set): out in the open, and underground
 // (no grass down there: old tiles, brick paving, wet grime, flagstones)
-export const TEXSETS = { surface: SURFACES, under: ['tile', 'grime', 'brick', 'flag'] };
+// and below the Glass Wastes (region 2, the Sunless Deep): cave rock, ore gravel, cave moss and plank walkways in the
+// upper caves; carved flagstones, gravel, moss and seer-glass crystal in Glasshallow; basalt, cooled lava crust, ash
+// gravel and obsidian at the bottom
+export const TEXSETS = { surface: SURFACES, under: ['tile', 'grime', 'brick', 'flag'], cave: ['rock', 'gravel', 'moss', 'boards'], glass: ['flag', 'gravel', 'moss', 'crystal'], deep: ['basalt', 'crust', 'gravel', 'obsidian'] };
 
 // ---------- drawing the textures (seeded, so they're the same every time) ----------
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
@@ -141,7 +144,93 @@ function drawGrime() {
   for (let i = 0; i < 60; i++) { const x = Math.floor(r() * PX), y = Math.floor(r() * PX); put(img, x, y, hex(r() < 0.5 ? 0x5a554c : 0x1a1816), 150); }
   c.putImageData(img, 0, 0); return cv;
 }
-const DRAW = { flag: drawFlag, dirt: drawDirt, grass: drawGrass, cobble: drawCobble, tile: drawTile, brick: drawBrick, grime: drawGrime };
+// ---------- the Sunless Deep's (region 2) ----------
+// cave rock: a floor of the living rock, worn smooth in places, strata and cracks, darker hollows
+function drawRock() {
+  const r = rng(0x70c1), { cv, c, img } = canvas(), n = tileNoise(r, 5), m = tileNoise(r, 13);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) {
+    const a = n(x, y), b = m(x, y), strata = Math.sin((y + a * 14) * 0.45) > 0.86;
+    put(img, x, y, hex(0x4a4540), 110 + Math.floor(b * 120), (0.86 + a * 0.16 + b * 0.12) * (strata ? 0.82 : 1));
+  }
+  for (let k = 0; k < 7; k++) { let x = Math.floor(r() * PX), y = Math.floor(r() * PX); for (let s = 0; s < 10 + r() * 10; s++) { put(img, x, y, hex(0x221e1a), 50); x += r() < 0.5 ? 1 : 0; y += r() < 0.6 ? 1 : -1; } }
+  c.putImageData(img, 0, 0); return cv;
+}
+// ore gravel: loose grit and chippings, rust and slate, the odd glint of seer-glass
+function drawGravel() {
+  const r = rng(0x9a7e), { cv, c, img } = canvas(), n = tileNoise(r, 9);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) put(img, x, y, hex(0x3a3430), 60, 0.85 + n(x, y) * 0.25);
+  const cols = [0x5a524a, 0x6a6058, 0x4a4440, 0x6e4e36, 0x544c46, 0x7a7068];
+  for (let i = 0; i < 520; i++) {
+    const x = Math.floor(r() * PX), y = Math.floor(r() * PX), col = hex(cols[Math.floor(r() * cols.length)]), big = r() < 0.3;
+    put(img, x, y, col, 170 + Math.floor(r() * 80), 1.1); if (big) { put(img, x + 1, y, col, 190, 0.95); put(img, x, y + 1, col, 160, 0.8); }
+  }
+  for (let i = 0; i < 10; i++) put(img, Math.floor(r() * PX), Math.floor(r() * PX), hex(0x9ad8e8), 255, 1); // (seer-glass glints)
+  c.putImageData(img, 0, 0); return cv;
+}
+// cave moss: pale grey-green cushions on black soil, a few tiny pale caps
+function drawMoss() {
+  const r = rng(0x3055), { cv, c, img } = canvas(), n = tileNoise(r, 6), m = tileNoise(r, 16);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) {
+    const a = n(x, y), b = m(x, y);
+    put(img, x, y, hex(a > 0.45 ? (b > 0.5 ? 0x5a6a52 : 0x4a5a46) : 0x22241e), a > 0.45 ? 170 + Math.floor(b * 85) : 90, 0.85 + b * 0.3);
+  }
+  for (let i = 0; i < 26; i++) { const x = Math.floor(r() * PX), y = Math.floor(r() * PX); put(img, x, y, hex(r() < 0.5 ? 0xb8d0b0 : 0x8adcd0), 240); }
+  c.putImageData(img, 0, 0); return cv;
+}
+// plank walkways: boards laid across, gaps between, nail heads, a rotten one here and there
+function drawBoards() {
+  const r = rng(0xb0a7), { cv, c, img } = canvas(), n = tileNoise(r, 4);
+  for (let row = 0; row < 8; row++) {
+    const col = hex([0x5a4434, 0x4e3a2c, 0x624a38, 0x463428][Math.floor(r() * 4)]), rot = r() < 0.1, k0 = 0.85 + r() * 0.2;
+    for (let y = 0; y < 8; y++) for (let x = 0; x < PX; x++) {
+      const py = row * 8 + y, gap = y === 0, nn = n(x, py);
+      put(img, x, py, gap ? hex(0x1a1612) : rot ? hex(0x2e2620) : col, gap ? 30 : 190 + Math.floor(nn * 60), gap ? 1 : k0 * (0.85 + nn * 0.2 + Math.sin((x + row * 17) * 0.35) * 0.05));
+    }
+    for (const x of [6, 38]) put(img, x + (row % 2) * 12, row * 8 + 4, hex(0x8a8a90), 255);
+  }
+  c.putImageData(img, 0, 0); return cv;
+}
+// seer-glass crystal: a floor grown through with faceted crystal, violet and cyan, bright edges
+function drawCrystal() {
+  const r = rng(0xc275), { cv, c, img } = canvas(), n = tileNoise(r, 5);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) put(img, x, y, hex(0x2a2636), 80, 0.8 + n(x, y) * 0.3);
+  for (let i = 0; i < 22; i++) {
+    const cx = Math.floor(r() * PX), cy = Math.floor(r() * PX), s = 3 + Math.floor(r() * 5), col = hex(r() < 0.5 ? 0x8a6ad8 : 0x5ab8d8);
+    for (let y = -s; y <= s; y++) for (let x = -s; x <= s; x++) {
+      if (Math.abs(x) + Math.abs(y) > s) continue;
+      const edge = Math.abs(x) + Math.abs(y) === s, lit = x + y < 0;
+      put(img, cx + x, cy + y, edge ? hex(0x1a1624) : col, edge ? 120 : 200 + (s - Math.abs(x) - Math.abs(y)) * 8, edge ? 1 : lit ? 1.35 : 0.85);
+    }
+  }
+  c.putImageData(img, 0, 0); return cv;
+}
+// basalt: black columnar rock in rough hexes, grey dust in the joints
+function drawBasalt() {
+  const r = rng(0xba5a), { cv, c, img } = canvas(), n = tileNoise(r, 8);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) {
+    const gx = x + (Math.floor(y / 10) % 2) * 6, joint = gx % 12 === 0 || y % 10 === 0;
+    put(img, x, y, hex(joint ? 0x4a4642 : 0x26221f), joint ? 50 : 160 + Math.floor(n(x, y) * 90), joint ? 1 : 0.85 + n(x, y) * 0.3);
+  }
+  c.putImageData(img, 0, 0); return cv;
+}
+// cooled lava crust: black wrinkled rock split by thin cracks still glowing orange
+function drawCrust() {
+  const r = rng(0xc705), { cv, c, img } = canvas(), n = tileNoise(r, 6), m = tileNoise(r, 14);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) {
+    const a = n(x, y), b = m(x, y), crack = Math.abs(a - 0.5) < 0.03 || Math.abs(b - 0.55) < 0.02;
+    put(img, x, y, hex(crack ? 0xff6a1a : 0x2a1e1a), crack ? 40 : 150 + Math.floor(b * 100), crack ? 1.6 : 0.8 + Math.sin(x * 0.7 + a * 9) * 0.12);
+  }
+  c.putImageData(img, 0, 0); return cv;
+}
+// obsidian: glassy black slabs with sharp pale glints
+function drawObsidian() {
+  const r = rng(0x0b51), { cv, c, img } = canvas(), n = tileNoise(r, 4);
+  for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) put(img, x, y, hex(0x16141a), 170 + Math.floor(n(x, y) * 80), 0.8 + n(x, y) * 0.5);
+  for (let i = 0; i < 16; i++) { let x = Math.floor(r() * PX), y = Math.floor(r() * PX); for (let s = 0; s < 6; s++) { put(img, x, y, hex(0x8a90a8), 230, 1); x++; y--; } }
+  c.putImageData(img, 0, 0); return cv;
+}
+const DRAW = { flag: drawFlag, dirt: drawDirt, grass: drawGrass, cobble: drawCobble, tile: drawTile, brick: drawBrick, grime: drawGrime,
+  rock: drawRock, gravel: drawGravel, moss: drawMoss, boards: drawBoards, crystal: drawCrystal, basalt: drawBasalt, crust: drawCrust, obsidian: drawObsidian };
 const TEXS = {};
 function tex(name) {
   if (TEXS[name]) return TEXS[name];
@@ -214,6 +303,10 @@ const WALLS = {
   metal() { const r = rng(0x3e7a), G = grey(), n = tileNoise(r, 6); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) { const rib = Math.sin(x * Math.PI / 2) * 22; G.set(x, y, 175 + rib + (n(x, y) > 0.66 ? -55 : 0) + (y === 31 ? -60 : 0)); } for (let x = 2; x < PX; x += 8) G.set(x, 33, 230); G.c.putImageData(G.img, 0, 0); return G.cv; },
   // rough rock: crags and strata
   rock() { const r = rng(0x70c4), G = grey(), n = tileNoise(r, 5), m = tileNoise(r, 12); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) { const a = n(x, y), b = m(x, y); G.set(x, y, 120 + a * 90 + (b - 0.5) * 50 + (Math.sin(y * 0.5 + a * 4) > 0.85 ? -40 : 0)); } G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // seer-glass: long faceted crystals growing up through it, bright on one face
+  crystal() { const r = rng(0xc2a1), G = grey(), n = tileNoise(r, 5); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) G.set(x, y, 110 + n(x, y) * 60); for (let k = 0; k < 9; k++) { const x0 = Math.floor(r() * PX), w = 4 + Math.floor(r() * 5); for (let y = 0; y < PX; y++) for (let x = x0; x < x0 + w; x++) G.set(x, y, x === x0 ? 70 : x < x0 + w / 2 ? 235 : 160); } G.c.putImageData(G.img, 0, 0); return G.cv; },
+  // obsidian: glassy black blocks with pale conchoidal glints
+  obsidian() { const r = rng(0x0b5d), G = grey(), n = tileNoise(r, 4); for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) G.set(x, y, 90 + n(x, y) * 70 + ((x + y) % 21 === 0 ? 120 : 0)); for (let row = 0; row < 4; row++) for (let x = 0; x < PX; x++) G.set(x, row * 16, 50); G.c.putImageData(G.img, 0, 0); return G.cv; },
 };
 const WTEX = {};
 function wallTexture(kind) {

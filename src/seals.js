@@ -21,6 +21,10 @@ import { SEALS_NEEDED } from './dungeon.js';
 const HOLD_TIME = 30, WAVES = [0, 7, 14, 21], ALTAR_EVERY = 5;
 const VALVE_TIME = 5, VALVE_REACH = 1.7, VALVE_EVERY = 7, BELL_EVERY = 7, NOTE = 0.85, BELL_TRICKLE = 14;
 const BELL_COLORS = [0xff4a2a, 0xffd050, 0xb070ff]; // each bell its own colour, so the hymn can be read
+// the Sunless Deep's: the Ore Cart (push it home: faster with more pushing), the Lantern Run (carry the light home;
+// struck, you drop it; left on the floor it gutters out and goes back to its hook), the Prism (turn three mirrors a
+// notch a second until the beam runs home)
+const CART_REACH = 2.3, CART_SPEED = 1.5, CART_EVERY = 6, LANTERN_REACH = 1.4, LANTERN_HOME = 2.6, LANTERN_OUT = 8, LANTERN_EVERY = 7, MIRROR_REACH = 1.8, MIRROR_TURN = 1.0, PRISM_EVERY = 8;
 
 const rgb = (hex) => [(hex >> 16 & 255) / 255, (hex >> 8 & 255) / 255, (hex & 255) / 255];
 
@@ -47,6 +51,9 @@ export class Seals {
     for (const s of this.list) {
       if (s.def.valves) this.drawValves(s, dt);
       if (s.def.song) this.drawBells(s, dt);
+      if (s.def.cart) this.drawCart(s, dt);
+      if (s.def.lantern) this.drawLantern(s, dt);
+      if (s.def.prism) this.drawPrism(s, dt);
       if (s.def.ring) {
         // the ring brightens while the circle is being held
         s.def.ring.material.opacity = s.state === 'active' ? 0.55 + Math.sin(g.time * 8) * 0.2 : s.state === 'broken' ? 0 : 0.3;
@@ -84,6 +91,40 @@ export class Seals {
         if ((s.spawnT -= dt) <= 0) { s.spawnT = VALVE_EVERY; this.callIn(s, 1 + this.world.dungeon.players, false); }
         if (d.valves.every((v) => v.done)) this.breakSeal(s);
         else if (this.sendT <= 0 && g.mp.active) g.mp.sendAll({ t: 'seal', i: d.i, s: 'p', v: d.valves.map((v) => Math.round(v.prog * 10) / 10) });
+      } else if (d.kind === 'cart') {
+        const C = d.cart, at = this.cartPos(d);
+        const pushers = g.allPlayers().filter((p) => p.alive && Math.hypot(p.pos.x - at.x, p.pos.z - at.z) < CART_REACH).length;
+        if (s.state === 'idle' && pushers) this.start(s);
+        if (s.state !== 'active') continue;
+        if (pushers) C.prog = Math.min(C.len, C.prog + dt * CART_SPEED * (1 + (pushers - 1) * 0.4));
+        if ((s.spawnT = (s.spawnT ?? 2) - dt) <= 0) { s.spawnT = CART_EVERY; this.callIn(s, 1 + this.world.dungeon.players, false); }
+        if (C.prog >= C.len) this.breakSeal(s);
+        else if (this.sendT <= 0 && g.mp.active) g.mp.sendAll({ t: 'seal', i: d.i, s: 'p', c: Math.round(C.prog * 10) / 10 });
+      } else if (d.kind === 'lantern') {
+        const L = d.lantern, ps = g.allPlayers().filter((p) => p.alive);
+        if (L.state === 'hook' || L.state === 'floor') {
+          const p = ps.find((q) => Math.hypot(q.pos.x - L.x, q.pos.z - L.z) < LANTERN_REACH);
+          if (p) { if (s.state === 'idle') this.start(s); L.state = 'carried'; L.who = p; L.hp = p.hp; g.audio.play('ping', 0.6); g.ui.toastSmall?.('CARRY THE LANTERN TO THE SHRINE'); }
+          else if (L.state === 'floor' && (L.t -= dt) <= 0) { L.state = 'hook'; L.x = L.hook.x; L.z = L.hook.z; g.ui.toastSmall?.('THE LANTERN GUTTERS OUT · BACK TO ITS HOOK'); }
+        }
+        if (L.state === 'carried') {
+          const p = L.who;
+          if (!p?.alive || p.hp < L.hp - 0.5) { L.state = 'floor'; L.t = LANTERN_OUT; L.x = p.pos.x; L.z = p.pos.z; g.audio.play('clang', 0.5); g.ui.toastSmall?.('THE LANTERN FALLS · PICK IT UP'); }
+          else { L.hp = p.hp; L.x = p.pos.x; L.z = p.pos.z; if (Math.hypot(p.pos.x - d.x, p.pos.z - d.z) < LANTERN_HOME) this.breakSeal(s); }
+        }
+        if (s.state === 'active' && (s.spawnT = (s.spawnT ?? 3) - dt) <= 0) { s.spawnT = LANTERN_EVERY; this.callIn(s, 1 + this.world.dungeon.players, false); }
+        if (s.state === 'active' && this.sendT <= 0 && g.mp.active) g.mp.sendAll({ t: 'seal', i: d.i, s: 'p', L: [L.state, Math.round(L.x * 10) / 10, Math.round(L.z * 10) / 10] });
+      } else if (d.kind === 'prism') {
+        const P = d.prism;
+        if (s.state === 'idle' && this.playersNear(d.x, d.z, 11)) this.start(s);
+        if (s.state !== 'active') continue;
+        for (const m of P.mirrors) {
+          if (!this.playersNear(m.x, m.z, MIRROR_REACH)) { m.prog = 0; continue; }
+          if ((m.prog += dt) >= MIRROR_TURN) { m.prog = 0; m.notch = (m.notch + 1) % 8; g.audio.play('clang', 0.3); }
+        }
+        if ((s.spawnT = (s.spawnT ?? 3) - dt) <= 0) { s.spawnT = PRISM_EVERY; this.callIn(s, 1 + this.world.dungeon.players, false); }
+        if (P.mirrors.every((m) => m.notch === m.want)) this.breakSeal(s);
+        else if (this.sendT <= 0 && g.mp.active) g.mp.sendAll({ t: 'seal', i: d.i, s: 'p', m: P.mirrors.map((m) => m.notch) });
       } else if (d.kind === 'bells') {
         if (s.state === 'idle' && this.playersNear(d.x, d.z, 12)) this.start(s);
         if (s.state === 'active' && (s.spawnT = (s.spawnT ?? BELL_TRICKLE) - dt) <= 0) { s.spawnT = BELL_TRICKLE; this.callIn(s, 1, false); }
@@ -119,7 +160,7 @@ export class Seals {
     s.state = 'active';
     const g = this.game;
     g.audio.play('fog');
-    g.ui.toast({ circle: 'HOLD THE UPLINK', valve: 'OPEN THE FLOOD VALVES', bells: 'RING THE BELLS AS THE CHOIR SINGS' }[s.def.kind] || 'DESTROY THE HERETIC IDOLS', 2.2);
+    g.ui.toast({ circle: 'HOLD THE UPLINK', valve: 'OPEN THE FLOOD VALVES', bells: 'RING THE BELLS AS THE CHOIR SINGS', cart: 'PUSH THE ORE CART HOME', lantern: 'BRING THE LIGHT TO THE SHRINE', prism: 'TURN THE MIRRORS · BEND THE LIGHT HOME' }[s.def.kind] || 'DESTROY THE HERETIC IDOLS', 2.2);
     if (s.def.song) { s.step = 0; s.playT = BELL_EVERY - 1.2; } // (the choir starts at once)
     if (!net && g.mp.active && !g.isGuest) g.mp.sendAll({ t: 'seal', i: s.def.i, s: 'a' });
   }
@@ -174,7 +215,11 @@ export class Seals {
     if (d.s === 'a') this.start(s, true);
     else if (d.s === 'p') {
       if (s.state === 'idle') this.start(s, true);
-      if (d.v) d.v.forEach((p, k) => { const v = s.def.valves?.[k]; if (v && !v.done) v.prog = p; }); else s.prog = d.p;
+      if (d.v) d.v.forEach((p, k) => { const v = s.def.valves?.[k]; if (v && !v.done) v.prog = p; });
+      else if (d.c != null) s.def.cart.prog = d.c;
+      else if (d.L) { const L = s.def.lantern; [L.state, L.x, L.z] = d.L; }
+      else if (d.m) d.m.forEach((n, k) => { if (s.def.prism.mirrors[k]) s.def.prism.mirrors[k].notch = n; });
+      else s.prog = d.p;
     }
     else if (d.s === 'vo') { const v = s.def.valves?.[d.k]; if (v && !v.done) { v.done = true; v.prog = VALVE_TIME; this.valveOpened(s, v, true); } }
     else if (d.s === 'bell') { if (s.state === 'idle') this.start(s, true); this.ring(s, d.b, !!d.ok, d.step, true); }
@@ -286,6 +331,50 @@ export class Seals {
     });
   }
 
+  // ---------- the Sunless Deep's ----------
+  cartPos(d) { const C = d.cart; return { x: C.from.x + Math.sin(C.ang) * C.prog, z: C.from.z + Math.cos(C.ang) * C.prog }; }
+  // the cart rolls along its rails (on every screen), its wheels turning, dust off them while it moves
+  drawCart(s, dt) {
+    const d = s.def, C = d.cart, at = this.cartPos(d), w = this.world, g = this.game;
+    const moving = C.prog > (C.last ?? 0) + 1e-4; C.last = C.prog;
+    C.g.position.set(at.x, w.floorAt(at.x, at.z), at.z); C.light.x = at.x; C.light.z = at.z; C.light.y = w.floorAt(at.x, at.z) + 1.8;
+    if (moving && Math.random() < dt * 14) g.fx.dust({ x: at.x, z: at.z }, 2, 0.6);
+    if (s.state === 'broken' && !C.spilled) { C.spilled = true; g.fx.burst({ x: at.x, y: 1.2 + w.floorAt(at.x, at.z), z: at.z }, 30, [1, 0.7, 0.3], 4, 0.8, 0.3); }
+  }
+  // the lantern: on its hook, in the carrier's hand (its light going with them), or guttering on the floor
+  drawLantern(s, dt) {
+    const L = s.def.lantern, w = this.world, g = this.game;
+    if (s.state === 'broken') { L.mesh.visible = false; L.light.power = 0; return; }
+    let x = L.x, z = L.z, y;
+    if (L.state === 'carried' && L.who?.pos) { const p = L.who; x = p.pos.x + Math.sin(p.yaw + 1.2) * 0.5; z = p.pos.z + Math.cos(p.yaw + 1.2) * 0.5; y = (p.pos.y || 0) + 1.0; }
+    else if (L.state === 'hook') { x = L.hook.x; z = L.hook.z; y = L.hook.y; }
+    else y = w.floorAt(x, z) + 0.18 + Math.abs(Math.sin(g.time * 3)) * 0.02;
+    L.mesh.position.set(x, y, z); L.mesh.rotation.y += dt;
+    const flick = L.state === 'floor' ? 0.4 + Math.random() * 0.5 * Math.min(1, L.t / LANTERN_OUT) : 1;
+    L.light.x = x; L.light.z = z; L.light.y = y + 0.3; L.light.power = 7 * flick; L.light.range = L.state === 'carried' ? 10 : 8;
+    if (Math.random() < dt * 8) g.fx.add.spawn({ x, y: y + 0.2, z, vy: 0.6, life: 0.5, size: 0.08, size1: 0.02, r: 1, g: 0.8, b: 0.4 });
+  }
+  // the beam: from the wall crystal to the first mirror, and on from each mirror that faces right; a wrong one throws
+  // it off into the dark
+  drawPrism(s, dt) {
+    const P = s.def.prism, g = this.game, w = this.world;
+    for (const m of P.mirrors) { const want = m.base + m.notch * Math.PI / 4; m.pivot.rotation.y += (want - m.pivot.rotation.y) * Math.min(1, dt * 8); }
+    if ((P.drawT = (P.drawT ?? 0) - dt) > 0) return;
+    P.drawT = 0.1;
+    for (const b of P.beams) g.scene.remove(b);
+    P.beams = [];
+    if (s.state === 'broken') return;
+    const mat = (P.mat ||= new THREE.MeshBasicMaterial({ color: 0xd8c8ff, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const seg = (a, b) => { const len = Math.hypot(b.x - a.x, b.z - a.z), y = 1.6 + w.floorAt(a.x, a.z); const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, len), mat); m.position.set((a.x + b.x) / 2, y, (a.z + b.z) / 2); m.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); g.scene.add(m); P.beams.push(m); };
+    let from = P.src;
+    for (let k = 0; k < P.mirrors.length; k++) {
+      const m = P.mirrors[k]; seg(from, m);
+      if (m.notch !== m.want) { const off = m.base + m.notch * Math.PI / 4 + (m.base + m.notch * Math.PI / 4 - m.inA); seg(m, { x: m.x + Math.sin(off) * 4, z: m.z + Math.cos(off) * 4 }); return; }
+      from = m;
+    }
+    seg(from, { x: s.def.x, z: s.def.z });
+  }
+
   // a line for the HUD while you stand in a seal's chamber during its event
   promptFor(p) {
     for (const s of this.list) {
@@ -302,6 +391,9 @@ export class Seals {
         return `OPEN THE FLOOD VALVES · ${d.valves.filter((v) => v.done).length}/3${at ? ` · TURNING ${Math.round(at.prog / VALVE_TIME * 100)}%` : ' · STAND AT A VALVE'}`;
       }
       if (d.kind === 'bells') return `STRIKE THE BELLS AS THE CHOIR SINGS · ${s.step || 0}/${d.song.length}`;
+      if (d.kind === 'cart') return `PUSH THE ORE CART HOME · ${Math.round(d.cart.prog / d.cart.len * 100)}%`;
+      if (d.kind === 'lantern') return d.lantern.state === 'carried' ? (d.lantern.who === p ? 'CARRY THE LANTERN TO THE SHRINE · DON\'T GET HIT' : 'GUARD THE LANTERN-BEARER') : d.lantern.state === 'floor' ? `PICK UP THE LANTERN · ${Math.ceil(d.lantern.t)}s` : 'FETCH THE LANTERN FROM ITS HOOK';
+      if (d.kind === 'prism') { const at = d.prism.mirrors.find((m) => Math.hypot(p.pos.x - m.x, p.pos.z - m.z) < MIRROR_REACH); return `TURN THE MIRRORS · ${d.prism.mirrors.filter((m) => m.notch === m.want).length}/3 RIGHT${at ? ' · TURNING' : ' · STAND AT A MIRROR'}`; }
     }
     return null;
   }

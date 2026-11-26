@@ -512,7 +512,58 @@ const STRUCT = {
   },
 };
 
+// the Sunless Deep (region 2): a cutaway of the earth under the Glass Wastes, its places stacked top to bottom: the
+// glass desert's crust at the top, then strata going down to black, a cavern hollowed round each place (Lanternhold's
+// lamps, the Wormways' tangle, Glasshallow's crystal and its black lake, the Crucible's fire), the shafts between
+function drawDeep(canvas, region, areas) {
+  cached(canvas, 'region:' + region.id + ':' + areas.map((a) => a.id).join(), (c) => {
+    const W = MAP_W, H = MAP_H, r = rand(4242), N = noise(733);
+    const A = areas.map((a) => [a.x * W, a.y * H]);
+    // the strata: pale glass crust over sand, then rock darkening with depth, red heat at the bottom
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x += 2) {
+      const v = y / H + (N.fbm(x / W * 4, y / H * 4) - 0.5) * 0.06;
+      let col;
+      if (v < 0.07) col = [120 + N.fbm(x / 60, 1) * 60, 170, 180];
+      else if (v < 0.12) col = [150, 128, 96];
+      else { const d = Math.min(1, (v - 0.12) / 0.8), band = Math.sin(v * 70 + N.fbm(x / W * 6, v * 3) * 4) > 0.75 ? 0.82 : 1; col = [(78 - d * 52) * band, (64 - d * 50) * band, (54 - d * 44) * band]; }
+      const heat = Math.max(0, (v - 0.78) / 0.22); col = [col[0] + heat * 120, col[1] + heat * 20, col[2]];
+      c.fillStyle = `rgb(${col.map((k) => Math.max(0, Math.min(255, k | 0))).join(',')})`; c.fillRect(x, y, 2, 1);
+    }
+    // glints on the glass crust
+    for (let k = 0; k < 80; k++) { c.fillStyle = r() < 0.5 ? '#e8fcff' : '#9ad8e8'; c.fillRect(r() * W, r() * H * 0.065, 2, 2); }
+    // the shafts: from the surface down to each place, then place to place
+    const shaft = (a, b, w) => { c.strokeStyle = '#0c0a09'; c.lineWidth = w; c.beginPath(); c.moveTo(a[0], a[1]); const mx = (a[0] + b[0]) / 2 + (r() - 0.5) * 60, my = (a[1] + b[1]) / 2; c.quadraticCurveTo(mx, my, b[0], b[1]); c.stroke(); c.strokeStyle = '#3a2e24'; c.lineWidth = 1; c.stroke(); };
+    shaft([A[0][0] + 10, 0], A[0], 10);
+    for (let k = 0; k < A.length - 1; k++) shaft(A[k], A[k + 1], 7);
+    // a cavern round each place
+    const cave = (x, y, rx, ry, glow) => {
+      c.save(); c.translate(x, y);
+      c.beginPath(); for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2, j = 0.8 + N.fbm(Math.cos(a) * 2 + x, Math.sin(a) * 2 + y) * 0.45; c.lineTo(Math.cos(a) * rx * j, Math.sin(a) * ry * j); }
+      c.fillStyle = '#0a0807'; c.fill(); c.strokeStyle = '#2a2420'; c.lineWidth = 2; c.stroke();
+      const g = c.createRadialGradient(0, ry * 0.3, 2, 0, ry * 0.3, rx); g.addColorStop(0, glow); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fill();
+      c.restore();
+    };
+    cave(A[0][0], A[0][1], 120, 58, 'rgba(255,170,70,0.45)');
+    cave(A[1][0], A[1][1], 130, 50, 'rgba(70,220,200,0.22)');
+    cave(A[2][0], A[2][1], 150, 70, 'rgba(170,120,255,0.4)');
+    cave(A[3][0], A[3][1], 170, 64, 'rgba(255,80,20,0.6)');
+    // Lanternhold: scaffold ledges stepping down the shaft, lamps on them
+    for (let k = 0; k < 5; k++) { const y = A[0][1] - 30 + k * 13, x0 = A[0][0] - 80 + k * 10; c.fillStyle = '#5a4030'; c.fillRect(x0, y, 70 - k * 6, 3); for (let q = 0; q < 4; q++) { c.fillStyle = '#ffc860'; c.fillRect(x0 + 6 + q * 15, y - 4, 3, 3); } }
+    // the Wormways: round tunnels winding over and under each other
+    for (let k = 0; k < 7; k++) { c.strokeStyle = k % 2 ? '#1c1814' : '#241e18'; c.lineWidth = 6; c.beginPath(); const y0 = A[1][1] - 30 + r() * 60; c.moveTo(A[1][0] - 120, y0); c.bezierCurveTo(A[1][0] - 40, y0 - 50 + r() * 100, A[1][0] + 40, y0 - 50 + r() * 100, A[1][0] + 120, A[1][1] - 30 + r() * 60); c.stroke(); }
+    for (let k = 0; k < 16; k++) { c.fillStyle = '#5af0e0'; c.fillRect(A[1][0] - 110 + r() * 220, A[1][1] - 35 + r() * 70, 2, 2); }
+    // Glasshallow: the black lake, spires, crystal points round the cavern
+    c.fillStyle = '#06080e'; c.beginPath(); c.ellipse(A[2][0] + 30, A[2][1] + 30, 80, 14, 0, 0, Math.PI * 2); c.fill();
+    for (let k = 0; k < 6; k++) { const x = A[2][0] - 70 + k * 22, h = 18 + r() * 24; c.fillStyle = '#c8c0d8'; c.fillRect(x, A[2][1] + 10 - h, 6, h); c.beginPath(); c.moveTo(x - 1, A[2][1] + 10 - h); c.lineTo(x + 3, A[2][1] + 10 - h - 10); c.lineTo(x + 7, A[2][1] + 10 - h); c.fill(); }
+    for (let k = 0; k < 30; k++) { const a = r() * Math.PI * 2; c.fillStyle = r() < 0.5 ? '#b090ff' : '#8ae0f0'; c.fillRect(A[2][0] + Math.cos(a) * 130, A[2][1] + Math.sin(a) * 60, 3, 5); }
+    // the Crucible: rivers of fire across its floor
+    for (let k = 0; k < 5; k++) { c.strokeStyle = k % 2 ? '#ff7a20' : '#ffc040'; c.lineWidth = 3 - k * 0.4; c.beginPath(); c.moveTo(A[3][0] - 150, A[3][1] + 20 + k * 6); for (let q = 0; q < 10; q++) c.lineTo(A[3][0] - 150 + q * 33, A[3][1] + 18 + k * 6 + Math.sin(q + k) * 8); c.stroke(); }
+    for (let k = 0; k < 40; k++) { c.fillStyle = r() < 0.5 ? '#ffb040' : '#ff5a1a'; c.fillRect(A[3][0] - 150 + r() * 300, A[3][1] - 60 + r() * 80, 2, 2); }
+  });
+}
+
 export function drawRegion(canvas, region, areas, opened = {}) {
+  if (region.id === 'r2') return drawDeep(canvas, region, areas);
   cached(canvas, 'region:' + region.id + ':' + areas.map((a) => a.id + (opened[a.id] ? 1 : 0)).join(), (c) => {
     const N = noise(region.id.charCodeAt(1) * 977 + 5), r = rand(region.id.charCodeAt(1) * 31 + 7);
     const A = areas.map((a) => [a.x, a.y]);

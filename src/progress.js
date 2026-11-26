@@ -7,7 +7,11 @@ export const enemyGold = (type) => (type === 'brute' ? 3 : 1) * NUM;
 // player gets further and kills more, which is the growth), a brute twice that, an elite three times. Tuned so a run
 // buys about one skill tree node (scripts/income.mjs).
 export const KILL_GOLD = [1.5, 1.5, 1.5, 1.5].map((g) => g * NUM);
-export const killGold = (e) => (e.effigy ? 0 : Math.round(KILL_GOLD[Math.min(3, e.tier || 0)] * (e.elite ? 3 : e.heavy ? 2 : 1)));
+// each region pays more than the last (the Sunless Deep about 30% more): kills, chests (worth their guards' kills) and
+// bosses, at the current raid's rate (main.js buildRun sets it)
+export const REGION_GOLD = { r1: 1, r2: 1.3, r3: 1.7, r4: 2.2, r5: 2.8 };
+export const GOLD_RATE = { k: 1 };
+export const killGold = (e) => (e.effigy || e.T?.noGold ? 0 : Math.round(KILL_GOLD[Math.min(3, e.tier || 0)] * (e.elite ? 3 : e.heavy ? 2 : 1) * GOLD_RATE.k));
 // In a party every kill pays everyone a share: a party fights 30% / 60% more enemies, so clearing an area leaves each
 // player about what they'd earn clearing it alone (2 players 87% each, 3 players 77%)
 export const partyShare = (players) => 1 / (1 + extraEnemyShare(players));

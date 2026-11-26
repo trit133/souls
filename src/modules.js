@@ -188,7 +188,7 @@ export function arenaFurnish(w, theme, cx, cz, enc) {
     w.cyl(1.6, 1.8, 0.6, w.mats.stone, cx, 0.3, cz - 6); w.ob(cx, cz - 6, 1.8);
     w.cyl(0.25, 0.3, 1.6, w.mats.stone, cx, 0.8, cz - 6);
     for (const [x, z] of [[-10.5, 4], [10.5, 4], [-10.5, -4], [10.5, -4]]) w.box(0.9, 0.8, 3, w.mats.leaf, cx + x, 0.4, cz + z);
-  } else {
+  } else if (theme === 'forge') {
     // forge: anvils, slag heaps, glowing coals
     for (const [x, z] of [[-6, -7], [6, 7]]) { w.box(1.2, 0.7, 0.6, w.mats.metal, cx + x, 0.35, cz + z); w.ob(cx + x, cz + z, 0.7); }
     for (const [x, z] of [[-10.5, 2], [10.5, -3], [5, -9]]) { w.rock(cx + x, cz + z, 0.9, true, true); w.fires.push({ x: cx + x, z: cz + z, y: 0.4, scale: 0.5 }); }
