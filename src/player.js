@@ -10,7 +10,7 @@ import { gaitPose, hasClips, CARRIAGE } from './clips.js';
 import { Trail } from './fx.js';
 import { knightArc } from './fx3d.js';
 import { EMOTES } from './pings.js';
-import { WEAPON_SETS, QUAKE, DASH, VEIL, SIGIL } from './weaponmoves.js';
+import { WEAPON_SETS, QUAKE, DASH, VEIL, SIGIL, PISTON, CHAKRAM, FLARE } from './weaponmoves.js';
 import { COMBOS } from './combos.js';
 import { bazaarPerks } from './traders.js';
 import { runeLoadout } from './runes.js';
@@ -406,10 +406,11 @@ export class Player extends Actor {
     this.speed = 0;
     this.sprinting = false;
     this.rollDir = new THREE.Vector3();
-    this.trail = kind === 'knight' ? knightArc(game.scene, c.style) : new Trail(game.scene, c.trail); // (the Templar's swing: fx3d.js)
+    const trailHex = c.trail === 'glow' ? (rig.chestGlow ?? 0xff8a3a) : c.trail; // (a Sunless Deep weapon's trail: your chest glow's colour)
+    this.trail = kind === 'knight' ? knightArc(game.scene, c.style, trailHex) : new Trail(game.scene, trailHex); // (the Templar's swing: fx3d.js)
     this.swingHead = kind === 'knight'; // (his head moves with his swings: actor.js swingPose)
     this.canFall = true; this.gy = game.world?.floorAt?.(x, z) || 0; // (off an edge he falls: groundStep)
-    if (c.dual) this.trailL = new Trail(game.scene, c.trail);
+    if (c.dual) this.trailL = new Trail(game.scene, trailHex);
     this.healDone = false;
     this.stepT = 0;
     this.fatigue = 0; // 0..1, builds with consecutive attacks
@@ -442,7 +443,7 @@ export class Player extends Actor {
     this.evo = L.evo || null; // (one evolution, its weapon's own: 'aegisRam', 'redRiposte', 'twinPlasma', 'berserk' (Pyresunder; the id is older than the name), 'ghostVeil', 'stormSigil')
     this.evolved = !!this.evo;
     this.ripRate = 1;
-    this.dashCd = 0; this.veilT = 0; this.quakeCd = 0;
+    this.dashCd = 0; this.veilT = 0; this.quakeCd = 0; this.pistonCd = 0; this.orbitCd = 0; this.flareCd = 0; this.pressure = 0; this.vented = false;
     if (this.evo === 'aegisRam') this.buildSpectralShield();
     this.fatigueT = 0;
     this.setState('move');
@@ -537,6 +538,7 @@ export class Player extends Actor {
     }
     this.parryCd = Math.max(0, (this.parryCd || 0) - dt);
     this.dashCd = Math.max(0, this.dashCd - dt); this.quakeCd = Math.max(0, this.quakeCd - dt); this.sigilCd = Math.max(0, (this.sigilCd || 0) - dt);
+    this.pistonCd = Math.max(0, this.pistonCd - dt); this.orbitCd = Math.max(0, this.orbitCd - dt); this.flareCd = Math.max(0, this.flareCd - dt); // (the Sunless Deep's weapons: deepweapons.js)
     this.updateVeil(dt);
     this.chargeCd = Math.max(0, (this.chargeCd || 0) - dt);
     this.rhythmTick(dt);
@@ -613,7 +615,7 @@ export class Player extends Actor {
         if (this.buf && (this.buf.a === 'attack' || this.buf.a === 'heavy') && d.combo && t >= d.combo[0]) {
           const b0 = this.buf, heavy = b0.a === 'heavy';
           this.buf = null;
-          if (heavy && this.c.caster) { this.castBolt(dir, mag); break; }
+          if (heavy && this.c.caster && this.c.boltHeavy !== false) { this.castBolt(dir, mag); break; } // (the Psy-Staff's and the Censer's heavies are their own)
           const nm = heavy ? 'heavy' : (d.next || this.c.light);
           if (!this.affords(nm)) break; // (LOW STAMINA: the press is spent)
           if (!this.tryRiposte(dir, mag)) this.doAttack(nm, dir, mag);
@@ -865,6 +867,7 @@ export class Player extends Actor {
     if (pose) this.syncRig(dt, pose, rate);
     const hand = this.atk?.def?.hand || (this.state === 'parry' ? 'L' : 'R');
     this.trail.update(dt, this.trailOn && hand !== 'L', this.rig.base, this.rig.tip);
+    this.rig.swinging = this.state === 'attack'; // (the Censer's chain: playerkits.js)
     this.trailL?.update(dt, this.trailOn && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
     if (this.rig.wpnR && !this.rig.fx && !this.rig.noReverse) this.rig.wpnR.rotation.x = this.rig.reverse ? Math.PI : 0;
   }
@@ -943,6 +946,32 @@ export class Player extends Actor {
       if (this.lock) this.yaw = this.yawTo(this.lock.pos);
       this.doAttack('quake', dir, mag);
       return true;
+    }
+    // the Sunless Deep's weapons (deepweapons.js): the Pit-Breaker's Piston Slam, the Chakrams' Shard Orbit, the
+    // Censer's Blinding Flare
+    if (a === 'special' && this.c.special === 'piston') {
+      if (this.pistonCd > 0) { this.buf = null; return false; }
+      if (!this.canSpend()) return false;
+      this.buf = null;
+      this.pistonCd = PISTON.cd;
+      if (this.lock) this.yaw = this.yawTo(this.lock.pos);
+      this.doAttack('piston', dir, mag);
+      return true;
+    }
+    if (a === 'special' && this.c.special === 'orbit') {
+      if (this.orbitCd > 0) { this.buf = null; return false; }
+      if (!this.canSpend()) return false;
+      this.buf = null;
+      this.orbitCd = CHAKRAM.orbit.cd; this.spend(CHAKRAM.orbit.cost);
+      this.game.deepw?.startOrbit(this);
+      return true;
+    }
+    if (a === 'special' && this.c.special === 'flare') {
+      this.buf = null;
+      if (this.flareCd > 0) return false;
+      const ok = this.startCast(FLARE.mana - (this.tree.fireCost || 0) * 0.4, 0.75, FLARE.at, () => this.game.deepw?.blindingFlare(this), dir, mag);
+      if (ok) { this.flareCd = FLARE.cd; this.game.deepw?.lanternFlare(this, FLARE.at + 0.05); }
+      return ok;
     }
     if (a === 'special' && this.c.special === 'dash') {
       if (this.dashCd > 0) { this.buf = null; return false; }

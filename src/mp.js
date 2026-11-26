@@ -26,9 +26,10 @@ class RemotePlayer extends Actor {
     this.pid = m.id; this.uid = 'R' + m.id; this.name = m.name; this.kind = m.kind; this.c = c;
     this.isPlayer = true; this.dmgMul = 1; this.phase = 0; this.s = { st: 'move' }; this.net = null;
     this.play = null; // attack playing out from an instant event, not from snapshots
-    this.trail = m.kind === 'knight' ? knightArc(game.scene, c.style) : new Trail(game.scene, c.trail);
+    const trailHex = c.trail === 'glow' ? (this.rig.chestGlow ?? 0xff8a3a) : c.trail; // (a Sunless Deep weapon's: their chest glow's colour)
+    this.trail = m.kind === 'knight' ? knightArc(game.scene, c.style, trailHex) : new Trail(game.scene, trailHex);
     this.swingHead = m.kind === 'knight';
-    if (c.dual) this.trailL = new Trail(game.scene, c.trail);
+    if (c.dual) this.trailL = new Trail(game.scene, trailHex);
   }
 
   remove() { super.remove(); this.trailL?.dispose(this.game.scene); }
@@ -92,7 +93,7 @@ class RemotePlayer extends Actor {
       if (this.spectral.visible) this.spectral.material.opacity = 0.45 + Math.sin(this.game.time * 30) * 0.1;
     }
     const hand = P0?.def.hand || 'R';
-    this.trail.update(dt, trail && hand !== 'L', this.rig.base, this.rig.tip); this.trailOn = trail; // (trailOn: the weapon's elements leave their trail: weaponfx.js)
+    this.trail.update(dt, trail && hand !== 'L', this.rig.base, this.rig.tip); this.trailOn = trail; this.rig.swinging = !!this.play || !!trail; // (trailOn: the weapon's elements leave their trail: weaponfx.js)
     this.trailL?.update(dt, trail && (hand === 'L' || hand === 'B'), this.rig.baseL, this.rig.tipL);
     this.rig.stow(st === 'climb'); // (his weapons put away on a ladder, as on his own screen)
     if (this.play) { /* the swing already set the pose */ }
@@ -254,7 +255,7 @@ export class Multiplayer {
         const dir = p ? new THREE.Vector3(e.pos.x - p.pos.x, 0, e.pos.z - p.pos.z).normalize() : null;
         g.gore.spray(c, dir, d.k === 'rip' ? 30 : d.b ? (d.heavy ? 22 : 16) : d.heavy ? 8 : 5, e, d.b || d.k === 'rip' ? 1 : 0.6); g.fx.sparks(c, dir, 5, [1, 0.6, 0.3]); // (gore.js)
         if (d.k === 'rip') { g.pfx.play('crit', c); g.fx.burst(c, 20, [1, 0.3, 0.2], 5, 0.6, 0.25); }
-        else if (p?.kind === 'knight') g.fx3d.impact(c, dir, { heavy: d.heavy || p.c.style === 'slab', color: knightHitColor(p.c.style) }); // (a Templar's blow: fx3d.js)
+        else if (p?.kind === 'knight') g.fx3d.impact(c, dir, { heavy: d.heavy || p.c.style === 'slab' || p.c.style === 'piston', color: knightHitColor(p.c.style, p.rig.chestGlow) }); // (a Templar's blow: fx3d.js)
         else g.pfx.play(d.heavy ? 'heavyHit' : 'hit', c, { dir });
         if (d.d) g.dmgPops(e, d.d, d.k === 'rip' ? 'teamcrit' : 'team');
       }

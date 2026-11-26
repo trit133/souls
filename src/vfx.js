@@ -98,6 +98,7 @@ export const VFX = {
     const p = g.playerRef(who);
     if (!p) return;
     // (in the casting hand; with the Psy-Staff, in its focus, and violet)
+    if (p.c?.weapon === 'censer') return; // (the Censer's lantern flares by itself: deepweapons.js)
     const staff = p.c?.weapon === 'psystaff', hand = { pos: new THREE.Vector3() }, from = staff ? p.rig.tip : p.rig.j.handR;
     const follow = { get pos() { from.getWorldPosition(hand.pos); return hand.pos; } };
     const e = g.pfx.play(staff ? 'psyCharge' : big ? 'plasmaCharge' : 'chargeIce', follow.pos.clone(), { follow, life });

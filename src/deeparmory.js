@@ -254,3 +254,98 @@ export function armorFx(rig, fx, dt) {
     else if (E.kind === 'dust') { const d = Math.random() * 0.5; fx.add.spawn({ x: _v.x + j() * 0.3 * d, y: _v.y + j() * 0.2, z: _v.z + j() * 0.3, vy: 0.05, vx: j() * 0.1, life: 1.2, size: 0.035, size1: 0.02, r: c.r, g: c.g, b: c.b, alpha: 0.7 }); }
   }
 }
+
+// ================= the Sunless Deep's weapons (weapons.js), two skins each =================
+// Their light is the wearer's chest glow's colour (r.chestGlow; or the skin's own glow, if one's been picked), and
+// what burns on them gives off embers in it. Each builds into a group in the right hand along +z, returning [tip, base]
+// (the Censer: [tip, base, the chain's pivot], the tip and base going on the chain)
+const B = (p, w, h, d, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const k = rbox(w, h, d, m, x, y, z, rx, ry, rz); p.add(k); return k; };
+const C = (p, rt, rb, h, m, x, y, z, rx = 0, seg = 8) => { const k = cyl(rt, rb, h, m, seg); k.position.set(x, y, z); k.rotation.x = rx; p.add(k); return k; };
+const fire = (r, M) => (M.glowId && M.glowId !== 'default' ? M.glow : basic(r.chestGlow ?? M.glowHex ?? 0xff8a3a));
+const fireHex = (r, M) => (M.glowId && M.glowId !== 'default' ? M.glowHex : r.chestGlow ?? M.glowHex ?? 0xff8a3a);
+const PI = Math.PI;
+export const DEEP_WEAPONS = {
+  knight: {
+    pitbreaker: {
+      // Pit-Breaker: a mine's rock-breaker on an iron-shod timber haft: a banded iron head with the piston's cylinder
+      // run through it, its slag-glow showing at the seams, a gauge, steam pipes down the haft
+      piston(r, M, g) {
+        C(g, 0.045, 0.05, 1.5, M.detail, 0, 0, 0.42, PI / 2); // the haft
+        for (const z of [-0.28, 0.05, 0.6]) C(g, 0.058, 0.058, 0.06, M.trim, 0, 0, z, PI / 2);
+        B(g, 0.12, 0.12, 0.1, M.trim, 0, 0, -0.36);
+        const z0 = 1.3;
+        B(g, 0.4, 0.34, 0.42, M.main, 0, 0, z0); // the head
+        for (const s of [-1, 1]) { B(g, 0.44, 0.06, 0.46, M.trim, 0, s * 0.15, z0); C(g, 0.1, 0.12, 0.16, M.main, 0, s * 0.27, z0); C(g, 0.12, 0.12, 0.04, M.trim, 0, s * 0.35, z0); } // the cylinder's two faces
+        B(g, 0.42, 0.04, 0.3, fire(r, M), 0, 0, z0); // the slag-glow at the seam
+        C(g, 0.05, 0.05, 0.03, r.m(0xd8d0b8), 0.21, 0.05, z0 - 0.05, 0); // a gauge
+        B(g, 0.02, 0.02, 0.5, r.m(0x6a5a3a), 0.07, 0.05, 0.9); B(g, 0.02, 0.02, 0.5, r.m(0x6a5a3a), -0.07, 0.05, 0.9); // steam pipes
+        emitter(r, g, 0, 0.2, z0, 'ember', 3, fireHex(r, M)); emitter(r, g, 0, 0.36, z0, 'steam', 1.2, 0xd8d8dc);
+        return [z0 + 0.25, 0.3];
+      },
+      // Glass Ram: the same breaker with its head cast in black seer-glass, the light caught in it
+      glass(r, M, g) {
+        C(g, 0.045, 0.05, 1.5, M.detail, 0, 0, 0.42, PI / 2);
+        for (const z of [-0.28, 0.6]) C(g, 0.058, 0.058, 0.06, M.trim, 0, 0, z, PI / 2);
+        const z0 = 1.3, glass = new THREE.MeshLambertMaterial({ color: 0x2a2a3a, emissive: 0x0a0a14, flatShading: true });
+        const h = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), glass); h.position.set(0, 0, z0); h.scale.set(1.1, 1.3, 0.9); g.add(h);
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), fire(r, M)); core.position.set(0, 0, z0); g.add(core);
+        for (const s of [-1, 1]) { C(g, 0.08, 0.1, 0.2, M.trim, 0, s * 0.3, z0); B(g, 0.05, 0.12, 0.05, fire(r, M), 0, s * 0.42, z0); }
+        emitter(r, g, 0, 0, z0, 'sparkle', 4, fireHex(r, M)); emitter(r, g, 0, 0.3, z0, 'ember', 2, fireHex(r, M));
+        return [z0 + 0.25, 0.3];
+      },
+    },
+  },
+  rogue: {
+    chakrams: {
+      // Seer-Glass Rings: a ring of pale glass, a band of brass where he grips it, a thread of light in the glass
+      ring(r, M, g) {
+        const glass = new THREE.MeshLambertMaterial({ color: M.mainHex ?? 0xc8e0f0, transparent: true, opacity: 0.75, emissive: 0x1a2a38 });
+        const o = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.032, 4, 16), glass); o.position.set(0, 0, 0.2); o.rotation.y = PI / 2; g.add(o);
+        const t = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.012, 4, 16), fire(r, M)); t.position.copy(o.position); t.rotation.y = PI / 2; g.add(t);
+        B(g, 0.06, 0.06, 0.08, M.trim, 0, 0, 0.01); // the grip band
+        for (let k = 0; k < 6; k++) { const a = k / 6 * PI * 2 + 0.5; B(g, 0.02, 0.05, 0.02, glass, 0, Math.sin(a) * 0.235, 0.2 + Math.cos(a) * 0.235, a); } // teeth round the edge
+        emitter(r, g, 0, 0, 0.4, 'glint', 1.5, fireHex(r, M));
+        return [0.42, 0.02];
+      },
+      // Mirror Moons: two crescent blades of mirror-glass, a gap where the hand goes through
+      mirror(r, M, g) {
+        const mir = new THREE.MeshLambertMaterial({ color: 0xd8dce8, emissive: 0x282c38, flatShading: true });
+        for (let k = 0; k < 9; k++) { const a = -2.4 + k * 0.6; B(g, 0.025, 0.09, 0.1 - Math.abs(k - 4) * 0.008, mir, 0, Math.sin(a) * 0.2, 0.2 + Math.cos(a) * 0.2, a); }
+        for (let k = 0; k < 9; k++) { const a = -2.4 + k * 0.6; B(g, 0.027, 0.02, 0.07, fire(r, M), 0, Math.sin(a) * 0.15, 0.2 + Math.cos(a) * 0.15, a); }
+        B(g, 0.05, 0.05, 0.1, M.trim, 0, 0, 0.02);
+        emitter(r, g, 0, 0, 0.4, 'glint', 2, fireHex(r, M));
+        return [0.42, 0.02];
+      },
+    },
+  },
+  mage: {
+    censer: {
+      // Miner's Censer: a black iron lantern on a chain, its panes glowing, a wooden grip with a hook
+      miner(r, M, g) {
+        C(g, 0.03, 0.035, 0.22, M.detail, 0, 0, 0, PI / 2); C(g, 0.04, 0.04, 0.03, M.trim, 0, 0, 0.1, PI / 2);
+        const cp = new THREE.Group(); cp.position.z = 0.12; g.add(cp);
+        for (let k = 0; k < 8; k++) { const l = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 3, 6), M.trim); l.position.z = 0.04 + k * 0.075; l.rotation.y = k % 2 ? PI / 2 : 0; cp.add(l); }
+        const z0 = 0.8;
+        B(cp, 0.18, 0.18, 0.04, M.main, 0, 0, z0 - 0.1); B(cp, 0.18, 0.18, 0.04, M.main, 0, 0, z0 + 0.14);
+        for (const [x, y] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) B(cp, 0.025, 0.025, 0.24, M.main, x * 0.08, y * 0.08, z0 + 0.02);
+        B(cp, 0.13, 0.13, 0.2, fire(r, M), 0, 0, z0 + 0.02); // the fire behind the panes
+        B(cp, 0.06, 0.06, 0.06, M.main, 0, 0, z0 - 0.15);
+        emitter(r, cp, 0, 0, z0 + 0.02, 'ember', 7, fireHex(r, M)); emitter(r, cp, 0, 0, z0 - 0.15, 'smoke', 1, 0x3a3634);
+        return [z0 + 0.16, 0.1, cp];
+      },
+      // Glass Thurible: a globe of seer-glass in a brass cage, the fire drifting in it
+      thurible(r, M, g) {
+        C(g, 0.03, 0.035, 0.22, M.detail, 0, 0, 0, PI / 2); C(g, 0.04, 0.04, 0.03, M.trim, 0, 0, 0.1, PI / 2);
+        const cp = new THREE.Group(); cp.position.z = 0.12; g.add(cp);
+        for (let k = 0; k < 8; k++) { const l = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 3, 6), M.trim); l.position.z = 0.04 + k * 0.075; l.rotation.y = k % 2 ? PI / 2 : 0; cp.add(l); }
+        const z0 = 0.82;
+        const glb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), new THREE.MeshLambertMaterial({ color: 0xb8d0e0, transparent: true, opacity: 0.45, emissive: 0x18202a })); glb.position.z = z0; cp.add(glb);
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), fire(r, M)); core.position.z = z0; cp.add(core);
+        for (let k = 0; k < 4; k++) { const a = k / 4 * PI * 2; const b = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.01, 3, 12, PI), M.trim); b.position.z = z0; b.rotation.set(0, PI / 2, a); cp.add(b); }
+        B(cp, 0.08, 0.08, 0.05, M.trim, 0, 0, z0 - 0.15); B(cp, 0.06, 0.06, 0.04, M.trim, 0, 0, z0 + 0.15);
+        emitter(r, cp, 0, 0, z0, 'ember', 6, fireHex(r, M)); emitter(r, cp, 0, 0, z0, 'sparkle', 2, fireHex(r, M));
+        return [z0 + 0.15, 0.1, cp];
+      },
+    },
+  },
+};

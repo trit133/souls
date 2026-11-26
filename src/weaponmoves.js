@@ -383,9 +383,349 @@ const STAFF_COMBOS = [
 // frozen solid. A boss or mini boss isn't frozen: it's chilled for bossChill s, moving and swinging at chill speed
 export const SIGIL = { mana: 35, dur: 6, r: 5.5, slow: 0.5, zapEvery: 0.6, cd: 10, freeze: 5, bossChill: 4, chill: 0.3 };
 
-// a region weapon's class overrides (player.js weaponChar adds the combos)
+// ================= THE PIT-BREAKER (Templar, the Sunless Deep) =================
+// a steam-piston maul, carried low in both hands with the head down by his feet (anims.js piston). Its swings are
+// hauls: wrenched up from the floor, dropped from over the shoulder, dragged flat round. The piston in the head fires
+// as it lands (a puff of steam and sparks in your chest glow's colour: deepweapons.js). The left hand closes on the
+// haft by itself (models.js FEEL pitbreaker)
+const PB_LOW = { armR: [-0.02, 0.29, 0.98], foreR: [-1.74, 0, 0], handR: [1.41, 0, -0.84] }; // (= GS_LOW_MID: the head down before him)
+const pbFire = (p, g, d = 2.0) => g.deepw?.piston(p, front(p, d));
+export const PIT_ATTACKS = {
+  // the upswing: wrenched up off the floor from low by his left hip, over and up past his right shoulder
+  p1: {
+    dur: 0.86, cost: 22, next: 'p2', combo: [0.4, 0.86], cancel: 0.52, track: 0.2, trail: [0.2, 0.4], sfx: [0.2, 'heavySwing'], hand: 'R',
+    keys: [
+      [0.14, { torso: [0.55, 0.7, 0], head: [0, -0.4, 0], ...GS_LOW_LEFT, ...crouch(1.2), by: -0.34 }], // (dragged back by the left hip)
+      [0.32, { torso: [-0.25, -0.55, 0], head: [-0.1, 0.3, 0], ...GS_HI_RIGHT, ...lunge(1.1), by: -0.06 }], // (up past the right shoulder)
+      [0.66, { torso: [-0.2, -0.45, 0], ...GS_HI_RIGHT, ...lunge(0.9) }],
+    ],
+    hits: [{ t0: 0.22, t1: 0.38, range: 2.9, arc: 2.2, dmg: 32, poise: 30 }],
+    move: [[0.12, 0.34, 0.8]], onHitShake: 0.3,
+  },
+  // the drop: from over the right shoulder straight down in front, and the piston fires as it lands
+  p2: {
+    dur: 1.0, cost: 24, next: 'p3', combo: [0.5, 1.0], cancel: 0.62, track: 0.3, trail: [0.32, 0.46], sfx: [0.32, 'heavySwing'], hand: 'R', armor: [0.15, 0.45],
+    keys: [
+      [0.06, { torso: [-0.2, -0.5, 0], ...GS_HI_RIGHT, legL: [-0.3, 0, 0], legR: [0.3, 0, 0] }],
+      [0.26, { torso: [-0.45, -0.1, 0], head: [-0.15, 0, 0], ...GS_OVERHEAD, legL: [-0.45, 0, 0], legR: [0.35, 0, 0], shinR: [0.3, 0, 0], by: -0.04 }],
+      [0.42, { torso: [0.9, 0.05, 0], head: [0.2, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.2), by: -0.32 }],
+      [0.8, { torso: [0.75, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.0), by: -0.26 }],
+    ],
+    hits: [{ t0: 0.36, t1: 0.48, range: 3.0, arc: 1.4, dmg: 42, poise: 40 }],
+    move: [[0.24, 0.44, 1.0]], onHitShake: 0.45, heavyHit: true,
+    onTime: [{ t: 0.43, fn: (p, g) => pbFire(p, g, 2.2) }],
+  },
+  // the drag: hauled up off the floor and dragged flat round from right to left, stumbling after it
+  p3: {
+    dur: 1.2, cost: 26, next: 'p1', combo: [0.66, 1.2], cancel: 0.8, track: 0.35, trail: [0.46, 0.7], sfx: [0.46, 'heavySwing'], hand: 'R', armor: [0.3, 0.65],
+    keys: [
+      [0.06, { torso: [0.85, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.1), by: -0.28 }],
+      [0.3, { torso: [0.3, -0.85, 0], head: [0, 0.45, 0], ...GS_FLAT_RIGHT, legL: [-0.4, 0, 0.1], legR: [0.5, 0, -0.1], shinR: [0.45, 0, 0], by: -0.2 }],
+      [0.5, { torso: [0.3, 0, 0], ...GS_FLAT_FRONT, ...lunge(1.3), by: -0.24 }],
+      [0.68, { torso: [0.5, 0.85, 0], head: [0, -0.45, 0], ...GS_LOW_LEFT, ...lunge(1.4), by: -0.3 }],
+      [1.0, { torso: [0.45, 0.6, 0], ...GS_LOW_LEFT, ...lunge(1.0), by: -0.22 }],
+    ],
+    hits: [{ t0: 0.48, t1: 0.7, range: 3.0, arc: 3.6, dmg: 48, poise: 42 }],
+    move: [[0.4, 0.7, 1.1]], onHitShake: 0.45, heavyHit: true,
+  },
+  // heavy: the ram. Cocked back by the right hip, then run straight out like a battering ram, and the piston kicks
+  // the head out a foot further as it hits: whatever it hits is thrown back
+  heavy: {
+    dur: 1.15, cost: 34, next: 'p1', combo: [0.66, 1.15], cancel: 0.72, track: 0.45, trail: [0.4, 0.56], sfx: [0.4, 'heavySwing'], hand: 'R', armor: [0.2, 0.6],
+    keys: [
+      [0.3, { grip: 1, torso: [-0.15, -0.85, 0], head: [0, 0.55, 0], ...GS_COCK, legL: [-0.3, 0, 0.05], legR: [0.6, 0, -0.05], shinL: [0.25, 0, 0], shinR: [0.6, 0, 0], by: -0.2 }],
+      [0.46, { grip: 1, torso: [0.5, 0.05, 0], ...GS_THRUST, ...lunge(1.6) }],
+      [0.86, { grip: 1, torso: [0.4, 0, 0], ...GS_THRUST, ...lunge(1.2) }],
+    ],
+    hits: [{ t0: 0.42, t1: 0.56, range: 3.2, arc: 1.2, dmg: 58, poise: 60 }],
+    move: [[0.34, 0.5, 1.8]], onHitShake: 0.55, heavyHit: true,
+    onTime: [{ t: 0.47, fn: (p, g) => { pbFire(p, g, 2.4); g.deepw?.shove(p, 3.4, 1.3, 30); } }],
+  },
+  // the special (Piston Slam): hauled up over the head and slammed into the floor, the piston firing down through
+  // it: the floor splits in a straight line ahead (deepweapons.js pistonLine; Overpressure: rocks burst up along it)
+  piston: {
+    dur: 1.05, cost: 26, cancel: 0.82, track: 0.3, trail: [0.36, 0.5], sfx: [0.36, 'heavySwing'], hand: 'R', armor: [0.12, 0.7],
+    keys: [
+      [0.24, { torso: [-0.45, 0, 0], head: [-0.15, 0, 0], ...GS_OVERHEAD, legL: [-0.5, 0, 0], legR: [0.4, 0, 0], shinR: [0.3, 0, 0], by: -0.02 }],
+      [0.42, { torso: [1.0, 0, 0], head: [0.25, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.35), by: -0.4 }],
+      [0.8, { torso: [0.9, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.2), by: -0.34 }],
+    ],
+    hits: [{ t0: 0.38, t1: 0.48, range: 2.8, arc: 1.2, dmg: 30, poise: 30 }],
+    move: [[0.2, 0.42, 0.6]], onHitShake: 0.6, heavyHit: true,
+    onTime: [{ t: 0.43, fn: (p, g) => g.deepw?.pistonLine(p) }],
+  },
+};
+// Piston Slam: the split's length and width (m), its damage (as a weapon hit's), poise, how hard it throws enemies
+// along it; the cooldown (s). Overpressure (the evolution): every third swing that lands vents the boiler (a burst of
+// fire round the head), and the next Piston Slam bursts rocks up all along a longer split
+export const PISTON = { len: 7, w: 1.5, dmg: 34, poise: 45, push: 16, cd: 9,
+  over: { len: 9.5, w: 2.0, dmg: 64, poise: 80, push: 22 }, ventEvery: 3, vent: { r: 2.4, dmg: 16, poise: 14 } };
+
+function pitCombos(P) {
+  return {
+    pc2: withDmg(P.p2, [46], { cost: 26 }),
+    // Boiler Burst: (an upswing, a drop) the maul swung all the way round on its full weight, twice, and the boiler
+    // bursts: a ring of fire round him in his chest glow's colour
+    pBoil: {
+      dur: 1.15, cost: 32, comboMove: true, track: 0.1, trail: [0.12, 0.7], hand: 'R', sfx: [0.12, 'heavySwing'], cancel: 0.82, armor: [0, 0.75],
+      keys: [
+        [0.12, { hips: [0, -1.6, 0], torso: [0.25, -0.4, 0], ...GS_SWEEP_R, ...crouch(0.7) }],
+        [0.34, { hips: [0, 1.6, 0], torso: [0.3, 0.4, 0], ...GS_SWEEP_L, ...crouch(0.8) }],
+        [0.56, { hips: [0, 4.7, 0], torso: [0.3, 0.4, 0], ...GS_SWEEP_L, ...crouch(0.8) }],
+        [0.74, { hips: [0, 6.28, 0], torso: [0.6, 0.2, 0], ...PB_LOW, ...crouch(1.2) }],
+        [1.0, { hips: [0, 6.28, 0], torso: [0.5, 0.1, 0], ...PB_LOW, ...crouch(1.0) }],
+      ],
+      hits: [{ t0: 0.14, t1: 0.36, range: 3.1, arc: 6.3, dmg: 32, poise: 16 }, { t0: 0.4, t1: 0.62, range: 3.1, arc: 6.3, dmg: 52, poise: 30 }],
+      move: [[0.05, 0.6, 1.2]],
+      onTime: [{ t: 0.74, fn: (p, g) => g.deepw?.boilerBurst(p, 3.4, 34) }],
+      onHitShake: 0.5, heavyHit: true, finisher: 'Boiler Burst',
+    },
+    // Pile Driver: (the ram, an upswing) a leap, and the maul driven down head first with the piston firing: the
+    // floor bursts in a ring of rock
+    pUp: withDmg(P.p1, [34], { cost: 22 }),
+    pDrive: {
+      dur: 1.25, cost: 36, comboMove: true, track: 0.3, trail: [0.42, 0.6], hand: 'R', sfx: [0.42, 'heavySwing'], cancel: 0.9, armor: [0, 0.7],
+      keys: [
+        [0.42, { torso: [-0.55, 0, 0], ...GS_OVERHEAD, legL: [-1.1, 0, 0], shinL: [1.3, 0, 0], legR: [-0.3, 0, 0], shinR: [1.1, 0, 0] }],
+        [0.58, { torso: [1.1, 0, 0], head: [0.25, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.4) }],
+        [1.0, { torso: [0.95, 0, 0], ...GS_CHOP_DOWN, ...crouch(1.15) }],
+      ],
+      hits: [{ t0: 0.52, t1: 0.64, range: 3.2, arc: 1.6, dmg: 84, poise: 60 }],
+      move: [[0.1, 0.54, 2.0]], jump: [0.1, 0.54, 1.4],
+      onTime: [{ t: 0.58, fn: (p, g) => g.deepw?.rockRing(p, front(p, 2.2), 3.4, 30) }],
+      onHitShake: 0.7, heavyHit: true, finisher: 'Pile Driver',
+    },
+    // Shunt: (an upswing, a roll in) the maul levelled and run in like a battering ram a long way, everything in
+    // front shoved aside, then the piston kicks the last one off its feet
+    pShunt: {
+      dur: 1.05, cost: 30, comboMove: true, track: 0.3, trail: [0.26, 0.62], hand: 'R', sfx: [0.24, 'heavySwing'], cancel: 0.74, armor: [0, 0.6],
+      keys: [
+        [0.16, { grip: 1, torso: [-0.1, -0.8, 0], head: [0, 0.5, 0], ...GS_COCK, ...crouch(0.9) }],
+        [0.3, { grip: 1, torso: [0.55, 0, 0], ...GS_THRUST, ...lunge(1.5) }],
+        [0.58, { grip: 1, torso: [0.6, 0, 0], ...GS_THRUST, ...lunge(1.6) }],
+        [0.86, { grip: 1, torso: [0.4, 0, 0], ...GS_THRUST, ...lunge(1.1) }],
+      ],
+      hits: [{ t0: 0.24, t1: 0.5, range: 2.6, arc: 1.6, dmg: 30, poise: 30 }, { t0: 0.52, t1: 0.64, range: 3.2, arc: 1.2, dmg: 62, poise: 55 }],
+      move: [[0.2, 0.56, 4.6]], stopAt: 1.2,
+      onTime: [{ t: 0.4, fn: (p, g) => g.deepw?.shove(p, 2.6, 1.8, 18, true) }, { t: 0.56, fn: (p, g) => { pbFire(p, g, 2.4); g.deepw?.shove(p, 3.4, 1.2, 34); } }],
+      onHitShake: 0.6, heavyHit: true, finisher: 'Shunt',
+    },
+  };
+}
+const PIT_COMBOS = [
+  { id: 'boiler', name: 'Boiler Burst', desc: 'An upswing, a drop, then the maul carried all the way round twice, and the boiler bursts in a ring of fire.', steps: [[A, 'p1', 0.4], [A, 'pc2', 0.48], [A, 'pBoil']] },
+  { id: 'pile', name: 'Pile Driver', desc: 'The ram, an upswing, then a leap and the maul driven down head first: the floor bursts in a ring of rock.', steps: [[H, 'heavy', 0.56], [A, 'pUp', 0.4], [H, 'pDrive']] },
+  { id: 'shunt', name: 'Shunt', desc: 'An upswing, a roll in, then the maul run in like a battering ram, shoving everything aside. Plays faster.', steps: [[A, 'p1', 0.4], [R, 'roll', 0.42], [A, 'pShunt']] },
+];
+
+// ================= THE GLASS CHAKRAMS (Shrike, the Sunless Deep) =================
+// a ring of seer-glass in each hand, held by the inner edge, the outer edge sharp: quick slashes with one and the
+// other, both crossing; the heavy throws the right one, which cuts its way from one enemy to the next and comes back
+// (deepweapons.js throwChakram). Its glints are your chest glow's colour
+const CK_GUARD_L = { armL: [-0.6, 0, 0.45], foreL: [-1.1, 0, 0], handL: [0.3, 0, 0] };
+const CK_GUARD_R = { armR: [-0.6, 0, -0.45], foreR: [-1.1, 0, 0], handR: [0.3, 0, 0] };
+const CK_WIND_R = { armR: [-1.1, 0, -1.3], foreR: [-0.7, 0, 0], handR: [0.4, 0, 0] };  // the right ring out wide
+const CK_CUT_R = { armR: [-1.4, 0, 0.8], foreR: [-0.3, 0, 0], handR: [0.1, 0, 0] };    // carried across to the left
+const CK_WIND_L = { armL: [-1.1, 0, 1.3], foreL: [-0.7, 0, 0], handL: [0.4, 0, 0] };
+const CK_CUT_L = { armL: [-1.4, 0, -0.8], foreL: [-0.3, 0, 0], handL: [0.1, 0, 0] };
+const CK_THROW_BACK = { armR: [0.5, 0, -1.2], foreR: [-1.3, 0, 0], handR: [0.6, 0, 0] }; // drawn back behind him, low
+const CK_THROW_OUT = { armR: [-1.55, 0, 0.35], foreR: [-0.1, 0, 0], handR: [-0.2, 0, 0] }; // flung out across
+export const CHAKRAM_ATTACKS = {
+  c1: {
+    dur: 0.44, cost: 10, next: 'c2', combo: [0.17, 0.44], cancel: 0.24, track: 0.08, trail: [0.08, 0.18], sfx: [0.08, 'swing'], hand: 'R',
+    keys: [[0.07, { torso: [0.1, -0.5, 0], ...CK_WIND_R, ...CK_GUARD_L, legL: [-0.3, 0, 0], legR: [0.25, 0, 0], by: -0.06 }],
+      [0.16, { torso: [0.25, 0.55, 0], ...CK_CUT_R, ...CK_GUARD_L, ...lunge(1.1) }],
+      [0.32, { torso: [0.2, 0.4, 0], ...CK_CUT_R, foreR: [-0.7, 0, 0], ...CK_GUARD_L, ...lunge(0.8) }]],
+    hits: [{ t0: 0.1, t1: 0.18, range: 1.9, arc: 2.0, dmg: 11, poise: 6, cut: 'slash' }], move: [[0.05, 0.16, 0.5]],
+  },
+  c2: {
+    dur: 0.46, cost: 10, next: 'c3', combo: [0.18, 0.46], cancel: 0.25, track: 0.08, trail: [0.09, 0.19], sfx: [0.09, 'swing'], hand: 'L',
+    keys: [[0.08, { torso: [0.1, 0.5, 0], ...CK_WIND_L, ...CK_GUARD_R, legL: [0.25, 0, 0], legR: [-0.2, 0, 0] }],
+      [0.17, { torso: [0.25, -0.55, 0], ...CK_CUT_L, ...CK_GUARD_R, legL: [0.35, 0, 0], legR: [-0.45, 0, 0], shinL: [0.35, 0, 0], by: -0.1 }],
+      [0.34, { torso: [0.2, -0.4, 0], ...CK_CUT_L, foreL: [-0.6, 0, 0], ...CK_GUARD_R, by: -0.08 }]],
+    hits: [{ t0: 0.11, t1: 0.19, range: 1.9, arc: 2.0, dmg: 12, poise: 7, cut: 'slash' }], move: [[0.05, 0.18, 0.5]],
+  },
+  // both rings flung wide, then crossed down in an X in front of him
+  c3: {
+    dur: 0.58, cost: 13, next: 'c1', combo: [0.24, 0.58], cancel: 0.32, track: 0.1, trail: [0.13, 0.24], sfx: [0.13, 'heavySwing'], hand: 'B',
+    keys: [[0.11, { torso: [-0.25, 0, 0], armR: [-2.4, 0, -0.9], foreR: [-0.3, 0, 0], armL: [-2.4, 0, 0.9], foreL: [-0.3, 0, 0], legL: [-0.3, 0, 0], legR: [0.3, 0, 0] }],
+      [0.22, { torso: [0.55, 0, 0], armR: [-0.9, 0, 0.55], foreR: [-0.2, 0, 0], armL: [-0.9, 0, -0.55], foreL: [-0.2, 0, 0], ...crouch(0.9) }],
+      [0.42, { torso: [0.45, 0, 0], armR: [-0.8, 0, 0.5], foreR: [-0.3, 0, 0], armL: [-0.8, 0, -0.5], foreL: [-0.3, 0, 0], ...crouch(0.7) }]],
+    hits: [{ t0: 0.15, t1: 0.25, range: 2.0, arc: 1.8, dmg: 17, poise: 11, cut: 'slash' }], move: [[0.08, 0.22, 0.6]],
+  },
+  // heavy: the throw. The right ring drawn back low behind him and flung out flat; it cuts the first enemy, leaps to
+  // the next nearest (three in all) and comes back to his hand. With it still out, a slash with the left
+  heavy: {
+    dur: 0.52, cost: 14, next: 'c2', combo: [0.24, 0.52], cancel: 0.3, track: 0.18, trail: [0.12, 0.22], sfx: [0.14, 'heavySwing'], hand: 'L',
+    keys: [[0.12, { torso: [0.1, -0.85, 0], head: [0, 0.6, 0], ...CK_THROW_BACK, ...CK_GUARD_L, legL: [0.3, 0, 0], legR: [-0.3, 0, 0], by: -0.12 }],
+      [0.2, { torso: [0.35, 0.6, 0], head: [0, -0.3, 0], ...CK_THROW_OUT, armL: [-1.2, 0, -0.4], foreL: [-0.4, 0, 0], ...lunge(1.3) }],
+      [0.38, { torso: [0.3, 0.45, 0], ...CK_THROW_OUT, ...CK_GUARD_L, ...lunge(1.0) }]],
+    hits: [{ t0: 0.14, t1: 0.22, range: 1.8, arc: 1.6, dmg: 10, poise: 6, cut: 'slash' }], move: [[0.08, 0.2, 0.6]],
+    onTime: [{ t: 0.19, fn: (p, g) => g.deepw?.throwChakram(p) }],
+  },
+};
+// the thrown ring: its reach to the first enemy, the leap to each next (m), how many it cuts, its speed (m/s) and each
+// cut's damage. Prism Split (the evolution): two shards of light split off each throw, flying straight on either side.
+// Shard Orbit (the special): both rings set spinning round him for orbit.dur s, cutting what they pass every tick s
+export const CHAKRAM = { reach: 9, leap: 5, cuts: 3, speed: 18, dmg: 21, poise: 10,
+  prism: { n: 2, spread: 0.32, dmg: 14, len: 8 }, orbit: { dur: 3.5, r: 1.7, tick: 0.35, dmg: 6, poise: 4, cd: 10, cost: 10 } };
+
+function chakramCombos(C) {
+  return {
+    cc2: withDmg(C.c2, [14], { cost: 11 }),
+    // Glass Storm: (two slashes) both arms out wide and the body turned round twice, the rings a blur round him
+    cStorm: {
+      dur: 0.8, cost: 20, comboMove: true, track: 0.06, trail: [0.06, 0.56], hand: 'B', sfx: [0.06, 'heavySwing'], cancel: 0.58,
+      keys: [[0.08, { hips: [0, -1.5, 0], torso: [0.1, -0.2, 0], armR: [-1.5, 0, -1.3], foreR: [-0.1, 0, 0], armL: [-1.5, 0, 1.3], foreL: [-0.1, 0, 0], by: -0.1 }],
+        [0.28, { hips: [0, 3.1, 0], torso: [0.1, 0, 0], armR: [-1.5, 0, -1.4], foreR: [-0.1, 0, 0], armL: [-1.5, 0, 1.4], foreL: [-0.1, 0, 0], by: -0.12 }],
+        [0.5, { hips: [0, 9.42, 0], torso: [0.15, 0, 0], armR: [-1.5, 0, -1.4], armL: [-1.5, 0, 1.4], by: -0.14 }],
+        [0.66, { hips: [0, 12.57, 0], torso: [0.3, 0, 0], ...CK_GUARD_R, ...CK_GUARD_L, ...crouch(0.8) }]],
+      hits: [{ t0: 0.08, t1: 0.3, range: 2.3, arc: 6.3, dmg: 20, poise: 10, cut: 'slash' }, { t0: 0.32, t1: 0.56, range: 2.3, arc: 6.3, dmg: 34, poise: 18, cut: 'slash' }],
+      move: [[0.05, 0.5, 1.0]],
+      onTime: [{ t: 0.3, fn: (p, g) => g.deepw?.glassBurst(p, p.pos.clone().setY(1.0 + (p.pos.y || 0)), 0.8) }],
+      onHitShake: 0.35, finisher: 'Glass Storm',
+    },
+    // Ricochet: (the throw, a slash) a pair of glass rings cut from nothing and flung out together, each cutting its
+    // way from enemy to enemy before it shatters
+    cc1: withDmg(C.c1, [13], { cost: 11 }),
+    cTwin: {
+      dur: 0.62, cost: 22, comboMove: true, track: 0.2, trail: [0.16, 0.28], hand: 'B', sfx: [0.18, 'heavySwing'], cancel: 0.44,
+      keys: [[0.14, { torso: [-0.2, 0, 0], armR: [0.4, 0, -1.2], foreR: [-1.2, 0, 0], armL: [0.4, 0, 1.2], foreL: [-1.2, 0, 0], ...crouch(0.9) }],
+        [0.24, { torso: [0.5, 0, 0], armR: [-1.5, 0, 0.3], foreR: [-0.1, 0, 0], armL: [-1.5, 0, -0.3], foreL: [-0.1, 0, 0], ...lunge(1.3) }],
+        [0.46, { torso: [0.4, 0, 0], armR: [-1.4, 0, 0.3], armL: [-1.4, 0, -0.3], ...lunge(1.0) }]],
+      hits: [],
+      onTime: [{ t: 0.23, fn: (p, g) => { g.deepw?.throwChakram(p, { ghost: true, spread: -0.25, dmg: 26, finisher: true }); g.deepw?.throwChakram(p, { ghost: true, spread: 0.25, dmg: 26, finisher: true }); } }],
+      finisher: 'Ricochet',
+    },
+    // Shatterstep: (a slash, a roll) a flip up and over, both rings brought down as he lands, and the glass bursts
+    cFlip: {
+      dur: 0.84, cost: 24, comboMove: true, track: 0.25, trail: [0.3, 0.46], hand: 'B', sfx: [0.3, 'heavySwing'], cancel: 0.62,
+      keys: [[0.12, { torso: [0.6, 0, 0], armR: [-2.6, 0, -0.5], armL: [-2.6, 0, 0.5], legL: [-1.4, 0, 0], shinL: [1.8, 0, 0], legR: [-1.3, 0, 0], shinR: [1.8, 0, 0] }],
+        [0.24, { hips: [3.14, 0, 0], torso: [0.8, 0, 0], armR: [-0.4, 0, -0.6], armL: [-0.4, 0, 0.6], legL: [-1.6, 0, 0], shinL: [2.0, 0, 0], legR: [-1.6, 0, 0], shinR: [2.0, 0, 0] }],
+        [0.38, { hips: [6.28, 0, 0], torso: [0.9, 0, 0], armR: [-0.85, 0, 0.5], foreR: [-0.2, 0, 0], armL: [-0.85, 0, -0.5], foreL: [-0.2, 0, 0], ...crouch(1.3) }],
+        [0.66, { hips: [6.28, 0, 0], torso: [0.7, 0, 0], armR: [-0.85, 0, 0.5], armL: [-0.85, 0, -0.5], ...crouch(1.0) }]],
+      hits: [{ t0: 0.34, t1: 0.46, range: 2.3, arc: 1.8, dmg: 56, poise: 30, cut: 'slash' }], move: [[0.04, 0.38, 2.4]], jump: [0.04, 0.38, 1.4],
+      onTime: [{ t: 0.39, fn: (p, g) => g.deepw?.glassBurst(p, front(p, 1.2, 0.4), 1.2, true) }],
+      onHitShake: 0.5, heavyHit: true, finisher: 'Shatterstep',
+    },
+  };
+}
+const CHAKRAM_COMBOS = [
+  { id: 'storm', name: 'Glass Storm', desc: 'Two slashes, then both arms out and the body turned round twice, the rings a blur.', steps: [[A, 'c1', 0.18], [A, 'cc2', 0.19], [A, 'cStorm']] },
+  { id: 'ricochet', name: 'Ricochet', desc: 'The throw, a slash, then two rings of glass from nothing flung out together, each cutting from one enemy to the next.', steps: [[H, 'heavy', 0.24], [A, 'cc1', 0.18], [H, 'cTwin']] },
+  { id: 'shatter', name: 'Shatterstep', desc: 'A slash, a roll, then a flip up and over and both rings brought down as you land, the glass bursting. Plays faster.', steps: [[A, 'c1', 0.18], [R, 'roll', 0.32], [A, 'cFlip']] },
+];
+
+// ================= THE LANTERN CENSER (Adept, the Sunless Deep) =================
+// a lantern on a chain, swung from the right hand (it swings for real: playerkits.js), the fire in it your chest
+// glow's colour. Its swings trail fire, its hits burn (part of each is fire), its slams leave the floor burning
+// (deepweapons.js fireFloor). Her heavy lets the chain out to its full length. The hits charge mana, like the knife's
+const CN_LOW_BACK = { armR: [0.55, 0, -0.25], foreR: [-0.2, 0, 0], handR: [0.3, 0, 0] };   // swung back low behind her
+const CN_HIGH_FRONT = { armR: [-2.3, 0, -0.15], foreR: [-0.2, 0, 0], handR: [0.2, 0, 0] }; // up over in front
+const CN_WIDE_R = { armR: [-1.45, 0, -1.25], foreR: [-0.15, 0, 0], handR: [0.2, 0, 0] };   // out wide right
+const CN_WIDE_L = { armR: [-1.45, 0, 1.0], foreR: [-0.15, 0, 0], handR: [0.2, 0, 0] };     // carried across left
+const CN_OVER = { armR: [-3.0, 0, -0.25], foreR: [-0.3, 0, 0], handR: [0.3, 0, 0] };       // straight up over the head
+const CN_DOWN = { armR: [-0.9, 0, 0.05], foreR: [-0.1, 0, 0], handR: [0.4, 0, 0] };        // brought down in front
+const CN_OFF = { armL: [-0.7, 0, 0.35], foreL: [-1.0, 0, 0], handL: [0.3, 0, 0] };         // the left hand open, warding
+const UP = { x: 0, y: 1, z: 0 }; // (the axis the arcs of fire turn about)
+const cnFloor = (p, g, d, r, dur) => g.deepw?.fireFloor(p, front(p, d), r, dur);
+export const CENSER_ATTACKS = {
+  // the underswing: from low behind her, up and over in front
+  e1: {
+    dur: 0.6, cost: 14, next: 'e2', combo: [0.25, 0.6], cancel: 0.34, track: 0.12, trail: [0.1, 0.28], sfx: [0.12, 'swing'], hand: 'R', convert: { fire: 0.35 },
+    keys: [[0.1, { torso: [-0.05, -0.4, 0], ...CN_LOW_BACK, ...CN_OFF, legL: [-0.3, 0, 0], legR: [0.35, 0, 0], by: -0.06 }],
+      [0.24, { torso: [0.3, 0.2, 0], ...CN_HIGH_FRONT, ...CN_OFF, ...lunge(1.1) }],
+      [0.44, { torso: [0.25, 0.15, 0], ...CN_HIGH_FRONT, armR: [-1.9, 0, -0.1], ...CN_OFF, ...lunge(0.9) }]],
+    hits: [{ t0: 0.15, t1: 0.28, range: 2.7, arc: 1.6, dmg: 13, poise: 9 }], move: [[0.06, 0.24, 0.6]],
+  },
+  // the whirl: flat round from right to left on a long chain
+  e2: {
+    dur: 0.64, cost: 15, next: 'e3', combo: [0.26, 0.64], cancel: 0.36, track: 0.12, trail: [0.12, 0.3], sfx: [0.13, 'swing'], hand: 'R', convert: { fire: 0.35 },
+    keys: [[0.1, { torso: [0.1, -0.7, 0], head: [0, 0.35, 0], ...CN_WIDE_R, ...CN_OFF, legL: [0.3, 0, 0], legR: [-0.3, 0, 0], by: -0.06 }],
+      [0.26, { torso: [0.2, 0.75, 0], head: [0, -0.3, 0], ...CN_WIDE_L, ...CN_OFF, ...lunge(1.1), by: -0.1 }],
+      [0.48, { torso: [0.15, 0.6, 0], ...CN_WIDE_L, ...CN_OFF, ...lunge(0.9) }]],
+    hits: [{ t0: 0.15, t1: 0.3, range: 2.9, arc: 3.0, dmg: 14, poise: 9 }], move: [[0.06, 0.24, 0.6]],
+  },
+  // the fall: up over her head and brought down on the floor in front, and the oil catches where it lands
+  e3: {
+    dur: 0.7, cost: 16, next: 'e1', combo: [0.3, 0.7], cancel: 0.4, track: 0.16, trail: [0.16, 0.32], sfx: [0.16, 'heavySwing'], hand: 'R', convert: { fire: 0.5 },
+    keys: [[0.14, { torso: [-0.35, 0, 0], head: [-0.15, 0, 0], ...CN_OVER, armL: [-1.4, 0, 0.3], foreL: [-0.5, 0, 0], legL: [-0.35, 0, 0], legR: [0.3, 0, 0] }],
+      [0.28, { torso: [0.75, 0, 0], ...CN_DOWN, ...CN_OFF, ...crouch(1.0) }],
+      [0.52, { torso: [0.6, 0, 0], ...CN_DOWN, ...CN_OFF, ...crouch(0.8) }]],
+    hits: [{ t0: 0.2, t1: 0.32, range: 2.7, arc: 1.1, dmg: 19, poise: 13 }], move: [[0.1, 0.28, 0.8]],
+    onTime: [{ t: 0.29, fn: (p, g) => cnFloor(p, g, 2.2, 1.1, 2.5) }],
+  },
+  // heavy: the long arc (8 mana): the chain let all the way out and swung in a wide flat arc, the floor catching
+  // along it
+  heavy: {
+    dur: 0.86, cost: 14, mana: 8, next: 'e1', combo: [0.42, 0.86], cancel: 0.5, track: 0.2, trail: [0.22, 0.44], sfx: [0.22, 'heavySwing'], hand: 'R', convert: { fire: 0.6 },
+    keys: [[0.16, { torso: [-0.1, -0.85, 0], head: [0, 0.5, 0], armR: [-1.0, 0, -1.5], foreR: [0, 0, 0], handR: [0.1, 0, 0], ...CN_OFF, legL: [0.35, 0, 0], legR: [-0.35, 0, 0], by: -0.1 }],
+      [0.36, { torso: [0.3, 0.9, 0], head: [0, -0.4, 0], armR: [-1.4, 0, 1.2], foreR: [0, 0, 0], handR: [0.1, 0, 0], ...CN_OFF, ...lunge(1.3), by: -0.16 }],
+      [0.66, { torso: [0.25, 0.7, 0], armR: [-1.2, 0, 1.0], foreR: [-0.2, 0, 0], ...CN_OFF, ...lunge(1.0) }]],
+    hits: [{ t0: 0.24, t1: 0.44, range: 3.8, arc: 2.7, dmg: 24, poise: 16 }], move: [[0.12, 0.36, 0.7]],
+    onTime: [{ t: 0.04, fn: (p, g) => g.deepw?.lanternFlare(p, 0.3) }, { t: 0.4, fn: (p, g) => { for (const a of [-0.7, 0, 0.7]) { const f = p.fwd().clone().applyAxisAngle(UP, a); g.deepw?.fireFloor(p, p.pos.clone().addScaledVector(f, 3.0).setY(p.pos.y || 0), 0.9, 2.2); } } }],
+  },
+};
+// Blinding Flare (the special): mana, how long the lantern is held up before it flares, reach (m), how long a boss is
+// slowed, the fire it does, the cooldown. Wildfire (the evolution): every jump s, the fire leaps from each burning
+// enemy to the nearest that isn't, within leap m, up to max a time
+export const FLARE = { mana: 30, at: 0.42, r: 6, bossSlow: 2.5, dmg: 12, cd: 12, wild: { every: 0.8, leap: 4.5, max: 3 } };
+
+function censerCombos(E) {
+  return {
+    ec2: withDmg(E.e2, [16], { cost: 16 }),
+    // Pyre Dance: (an underswing, a whirl) the chain let out and the lantern swung round her twice, and the fire
+    // goes out of it in a ring
+    eSpin: {
+      dur: 0.9, cost: 20, mana: 8, comboMove: true, track: 0.08, trail: [0.08, 0.6], hand: 'R', sfx: [0.08, 'heavySwing'], cancel: 0.62, convert: { fire: 0.5 },
+      keys: [[0.08, { hips: [0, -1.4, 0], torso: [0.15, -0.3, 0], ...CN_WIDE_R, ...CN_OFF, by: -0.12 }],
+        [0.3, { hips: [0, 3.1, 0], torso: [0.2, 0.3, 0], ...CN_WIDE_R, ...CN_OFF, by: -0.14 }],
+        [0.52, { hips: [0, 9.42, 0], torso: [0.25, 0.3, 0], ...CN_WIDE_R, ...CN_OFF, by: -0.14 }],
+        [0.7, { hips: [0, 12.57, 0], torso: [0.3, 0.2, 0], ...CN_DOWN, ...CN_OFF, ...crouch(0.9) }]],
+      hits: [{ t0: 0.1, t1: 0.32, range: 3.2, arc: 6.3, dmg: 18, poise: 10 }, { t0: 0.34, t1: 0.58, range: 3.2, arc: 6.3, dmg: 28, poise: 16 }],
+      move: [[0.05, 0.5, 0.6]],
+      onTime: [{ t: 0.6, fn: (p, g) => g.deepw?.boilerBurst(p, 3.6, 34) }],
+      finisher: 'Pyre Dance',
+    },
+    // Beacon: (the long arc, an underswing) the lantern swung up high and brought down, and a pillar of fire goes up
+    // where it lands (14 mana)
+    ec1: withDmg(E.e1, [14], { cost: 14 }),
+    eBeacon: {
+      dur: 0.9, cost: 20, mana: 14, comboMove: true, track: 0.2, trail: [0.26, 0.42], hand: 'R', sfx: [0.26, 'heavySwing'], cancel: 0.62, convert: { fire: 0.6 },
+      keys: [[0.22, { torso: [-0.4, 0, 0], head: [-0.2, 0, 0], ...CN_OVER, armL: [-2.8, 0, 0.2], foreL: [-0.3, 0, 0], ...lunge(0.5) }],
+        [0.36, { torso: [0.85, 0, 0], ...CN_DOWN, armL: [-0.6, 0, 0.5], foreL: [-0.5, 0, 0], ...crouch(1.2) }],
+        [0.66, { torso: [0.7, 0, 0], ...CN_DOWN, armL: [-0.6, 0, 0.5], ...crouch(1.0) }]],
+      hits: [{ t0: 0.3, t1: 0.42, range: 2.8, arc: 1.2, dmg: 24, poise: 18 }], move: [[0.1, 0.34, 0.6]],
+      onTime: [{ t: 0.37, fn: (p, g) => g.deepw?.pillar(p, front(p, 2.3), 2.6, 42) }],
+      onHitShake: 0.45, finisher: 'Beacon',
+    },
+    // Ember Step: (an underswing, a roll) the lantern dragged round low at ankle height, the floor catching in an arc
+    eSweep: {
+      dur: 0.74, cost: 18, comboMove: true, track: 0.1, trail: [0.14, 0.42], hand: 'R', sfx: [0.14, 'heavySwing'], cancel: 0.52, convert: { fire: 0.5 },
+      keys: [[0.12, { torso: [0.6, -0.8, 0], armR: [-0.4, 0, -1.4], foreR: [0, 0, 0], ...CN_OFF, ...crouch(1.4) }],
+        [0.3, { torso: [0.7, 0.2, 0], armR: [-0.5, 0, 0.2], foreR: [0, 0, 0], ...CN_OFF, ...crouch(1.5) }],
+        [0.46, { torso: [0.6, 0.9, 0], armR: [-0.5, 0, 1.3], foreR: [0, 0, 0], ...CN_OFF, ...crouch(1.3) }],
+        [0.62, { torso: [0.4, 0.6, 0], armR: [-0.6, 0, 1.0], ...CN_OFF, ...crouch(0.9) }]],
+      hits: [{ t0: 0.16, t1: 0.44, range: 3.0, arc: 3.4, dmg: 34, poise: 20 }], move: [[0.05, 0.4, 0.8]],
+      onTime: [{ t: 0.44, fn: (p, g) => { for (const a of [-1.1, -0.55, 0, 0.55, 1.1]) { const f = p.fwd().clone().applyAxisAngle(UP, a); g.deepw?.fireFloor(p, p.pos.clone().addScaledVector(f, 2.4).setY(p.pos.y || 0), 0.85, 3.0); } } }],
+      finisher: 'Ember Step',
+    },
+  };
+}
+const CENSER_COMBOS = [
+  { id: 'pyre', name: 'Pyre Dance', desc: 'An underswing, a whirl, then the lantern swung round you twice on its full chain and the fire bursts out of it in a ring (8 mana).', steps: [[A, 'e1', 0.25], [A, 'ec2', 0.26], [A, 'eSpin']] },
+  { id: 'beacon', name: 'Beacon', desc: 'The long arc, an underswing, then the lantern brought down from high and a pillar of fire goes up where it lands (14 mana).', steps: [[H, 'heavy', 0.42], [A, 'ec1', 0.25], [H, 'eBeacon']] },
+  { id: 'ember', name: 'Ember Step', desc: 'An underswing, a roll, then the lantern dragged round at ankle height, the floor catching fire in an arc.', steps: [[A, 'e1', 0.25], [R, 'roll', 0.38], [A, 'eSweep']] },
+];
+
+// a region weapon's class overrides (player.js weaponChar adds the combos). trail 'glow': the swing trail takes the
+// wearer's chest glow colour
 export const WEAPON_SETS = {
   greatsword: { style: 'slab', attacks: GREAT_ATTACKS, extra: greatCombos, light: 'g1', combos: GREAT_COMBOS, special: 'quake', dual: false, trail: 0xcfd4dc, model: { weapon: 'greatsword', shield: false } },
   wristblade: { style: 'rknife', attacks: WRIST_ATTACKS, extra: wristCombos, light: 'w1', combos: WRIST_COMBOS, special: 'dash', dual: false, trail: 0xff7a5a, model: { weapon: 'wristblade' } },
   psystaff: { style: 'staff', attacks: STAFF_ATTACKS, extra: staffCombos, light: 't1', combos: STAFF_COMBOS, special: 'sigil', dual: false, boltHeavy: false, trail: 0xc890ff, model: { weapon: 'psystaff' } },
+  // the Sunless Deep's
+  pitbreaker: { style: 'piston', attacks: PIT_ATTACKS, extra: pitCombos, light: 'p1', combos: PIT_COMBOS, special: 'piston', dual: false, trail: 'glow', model: { weapon: 'pitbreaker', shield: false } },
+  chakrams: { style: 'chakram', attacks: CHAKRAM_ATTACKS, extra: chakramCombos, light: 'c1', combos: CHAKRAM_COMBOS, special: 'orbit', dual: true, trail: 'glow', model: { weapon: 'chakrams' } },
+  censer: { style: 'censer', attacks: CENSER_ATTACKS, extra: censerCombos, light: 'e1', combos: CENSER_COMBOS, special: 'flare', dual: false, boltHeavy: false, trail: 'glow', model: { weapon: 'censer' } },
 };

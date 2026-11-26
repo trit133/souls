@@ -15,7 +15,7 @@ const errs = []; page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(url); await page.waitForTimeout(700);
 await page.evaluate(([ls, zm]) => { document.getElementById('hud').style.display = 'none'; if (ls) globalThis.__leadScale = ls; if (zm) window.__zoom = zm; }, [+process.env.LEAD || 0, +process.env.ZOOM || 0]);
 
-const SETS = [['knight', 'sword'], ['rogue', 'daggers'], ['mage', 'daggers'], ['knight', 'greatsword'], ['rogue', 'wristblade'], ['mage', 'psystaff']];
+const SETS = [['knight', 'sword'], ['rogue', 'daggers'], ['mage', 'daggers'], ['knight', 'greatsword'], ['rogue', 'wristblade'], ['mage', 'psystaff'], ['knight', 'pitbreaker'], ['rogue', 'chakrams'], ['mage', 'censer']];
 const report = {};
 for (const [kind, weapon] of SETS) {
   const moves = await page.evaluate(({ kind, weapon }) => {

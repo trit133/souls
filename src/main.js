@@ -17,6 +17,7 @@ import './lanternhold.js'; import './wormways.js'; import './glasshallow.js'; //
 import { AREAS, areaOpen } from './regions.js';
 import { needsPick, showPick } from './regionbuffs.js';
 import { armorFx } from './deeparmory.js';
+import { DeepWeapons } from './deepweapons.js';
 import { DEEP_PIECES, pieceKey } from './outfits.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
@@ -299,6 +300,7 @@ class Game {
     this.projectiles.forEach((p) => this.scene.remove(p.mesh)); this.projectiles = []; this.pfx?.clear(); this.rings = [];
     this.clearRelics();
     for (const S of this.sigils || []) this.scene.remove(S.g); this.sigils = []; // (a sigil or a laser left from the last run)
+    this.deepw?.clear();
     for (const B of this.beams || []) B.t = B.dur; this.updateBeams(0);
     this.clearHearts();
     this.layout = layout;
@@ -494,6 +496,7 @@ class Game {
     this.hermitage = new Hermitage(this);
     this.bazaar = new Bazaar(this);
     this.runes = new RuneRuntime(this);
+    this.deepw = new DeepWeapons(this); // (the Sunless Deep's weapons at work: thrown rings, burning floors, the piston)
     this.ragdolls = new Ragdolls(this); // (the dead go limp: ragdoll.js)
     this.gore = new Gore(this); // (blood, oil, the neck: gore.js)
     this.trainPads = new TrainPads(this); // (the training ring's summoning pads: trainpads.js)
@@ -1696,6 +1699,7 @@ class Game {
     if (r === 'stagger' && att === this.player && (def.comboMove || att.cmb)) att.cmbStag?.add(tg);
     if (att === this.player && att.cmbDepth && (def.comboMove || att.cmb)) att.cmbHit?.add(att.cmbDepth); // (a combo move that landed)
     const heavy = def.heavyHit, dealt = tg.puppet ? info.dmg : Math.max(0, hp0 - tg.hp);
+    if (att === this.player) this.deepw?.landed(att, tg, def); // (the Pit-Breaker's Overpressure counts its swings that land)
     const shown = scaleParts(info.parts || { phys: info.dmg }, info.dmg > 0 ? dealt / info.dmg : 0);
     this.dmgPops(tg, shown, info.crit ? 'critical' : heavy ? 'heavy' : 'me');
     if (info.crit) { this.audio.play('bigHit', 0.7); this.fx.addShake(0.2); }
@@ -1710,7 +1714,7 @@ class Game {
     // the last blow of a slashing combo can take a piece off (gore.js)
     if (att === this.player && def.finisher && h === def.hits[def.hits.length - 1]) this.gore.tryMaim(att, tg, def, h, dealt, dir);
     // the Templar's blows: a flash, streaking sparks, a shock ring (fx3d.js); everyone else's: the pixel spark
-    if (att === this.player && att.kind === 'knight') this.fx3d.impact(hp, dir, { heavy: heavy || att.c.style === 'slab', color: knightHitColor(att.c.style) });
+    if (att === this.player && att.kind === 'knight') this.fx3d.impact(hp, dir, { heavy: heavy || att.c.style === 'slab' || att.c.style === 'piston', color: knightHitColor(att.c.style, att.rig.chestGlow) });
     else { this.fx.sparks(hp, dir, 5, [1, 0.6, 0.3]); this.pfx.play(heavy ? 'heavyHit' : 'hit', hp, { dir }); }
     this.hitstop(r === 'kill' ? 0.11 : heavy ? 0.09 : 0.055);
     this.fx.addShake(def.onHitShake || (r === 'kill' ? 0.35 : 0.15));
@@ -2374,6 +2378,7 @@ class Game {
         this.separate();
         this.updateProjectiles(dt);
         this.updateSigils(dt);
+        this.deepw.update(dt);
         this.updateBeams(dt);
         this.updateVeils(dt);
         this.updateHearts(dt);

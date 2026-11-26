@@ -21,7 +21,7 @@ const LOOK = {
 };
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 // the blades: their hits spray (the staff is blunt: a little only)
-export const BLADES = new Set(['sword', 'greatsword', 'daggers', 'wristblade', 'spellknife']);
+export const BLADES = new Set(['sword', 'greatsword', 'daggers', 'wristblade', 'spellknife', 'chakrams']);
 // the combo finishers that cut, by name: k (their knack for it) and behead (how far they can take a head: 0 never)
 export const CUTS = {
   'Crown Cleave': { k: 1.0, behead: 0 }, 'Thousand Cuts': { k: 0.8, behead: 0 }, "Viper's Dance": { k: 1.0, behead: 1 },

@@ -85,8 +85,9 @@ export class BladeArc {
 }
 
 // the Templar's blade arc for his weapon's stance: the Power Sword's blue-white, the Penitent Slab's molten amber
-export const knightArc = (scene, style) => new BladeArc(scene, style === 'slab' ? 0xffa860 : 0x8ad0ff, { heavy: style === 'slab' });
-export const knightHitColor = (style) => (style === 'slab' ? 0xffb070 : 0x9ad8ff);
+// (the Pit-Breaker's arc and sparks are the wearer's chest glow's colour: hex)
+export const knightArc = (scene, style, hex) => new BladeArc(scene, style === 'piston' && typeof hex === 'number' ? hex : style === 'slab' ? 0xffa860 : 0x8ad0ff, { heavy: style === 'slab' || style === 'piston' });
+export const knightHitColor = (style, hex) => (style === 'piston' ? hex ?? 0xffb070 : style === 'slab' ? 0xffb070 : 0x9ad8ff);
 
 // ---------- one-shot bursts ----------
 const MAX_SPARKS = 600;

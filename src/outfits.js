@@ -39,17 +39,17 @@ export const SLOTS = {
   knight: [
     { id: 'helmet', name: 'Helmet' }, { id: 'pauldronL', name: 'L Shoulder' }, { id: 'pauldronR', name: 'R Shoulder' },
     { id: 'chest', name: 'Chest' }, { id: 'legs', name: 'Legs' }, { id: 'sword', name: 'Sword', weapon: 'sword' }, { id: 'shield', name: 'Shield', weapon: 'sword' },
-    { id: 'greatsword', name: 'Greatsword', weapon: 'greatsword' },
+    { id: 'greatsword', name: 'Greatsword', weapon: 'greatsword' }, { id: 'pitbreaker', name: 'Pit-Breaker', weapon: 'pitbreaker' },
   ],
   rogue: [
     { id: 'mask', name: 'Mask' }, { id: 'cloak', name: 'Cloak' }, { id: 'shirt', name: 'Shirt' },
     { id: 'bandL', name: 'L Arm Band' }, { id: 'bandR', name: 'R Arm Band' }, { id: 'knives', name: 'Knives', weapon: 'daggers' },
-    { id: 'wristblade', name: 'Wrist Blade', weapon: 'wristblade' },
+    { id: 'wristblade', name: 'Wrist Blade', weapon: 'wristblade' }, { id: 'chakrams', name: 'Chakrams', weapon: 'chakrams' },
   ],
   mage: [
     { id: 'shoulder', name: 'Shoulder' }, { id: 'shirt', name: 'Shirt' }, { id: 'pants', name: 'Pants' },
     { id: 'wand', name: 'Wand', weapon: 'spellknife' }, { id: 'sword', name: 'Sword', weapon: 'spellknife' },
-    { id: 'staff', name: 'Staff', weapon: 'psystaff' },
+    { id: 'staff', name: 'Staff', weapon: 'psystaff' }, { id: 'censer', name: 'Censer', weapon: 'censer' },
   ],
 };
 // the slots the wardrobe shows with a weapon in hand: the body, and that weapon's own (a weapon slot only with it)
@@ -103,6 +103,10 @@ const DEEP = {
     pants: [{ id: 'kiln', name: 'Kiln Leggings', desc: 'Heat-scarred leathers, embers falling from the knees.' }, { id: 'spore', name: 'Spore Leggings', desc: 'Moss wraps and a ring of tiny caps round each knee.' }],
   },
 };
+// (and their weapons' skins: the first is the one it comes with)
+DEEP.knight.pitbreaker = [{ id: 'piston', name: 'Pit-Breaker', desc: 'A banded iron head round the piston, its slag-glow at the seams, steam pipes down the haft.' }, { id: 'glass', name: 'Glass Ram', desc: 'The head cast in black seer-glass, the fire caught inside it.', special: true }];
+DEEP.rogue.chakrams = [{ id: 'ring', name: 'Seer-Glass Rings', desc: 'Pale glass rings with toothed edges and a thread of light.' }, { id: 'mirror', name: 'Mirror Moons', desc: 'Crescents of mirror-glass, an edge of light inside each.', special: true }];
+DEEP.mage.censer = [{ id: 'miner', name: "Miner's Censer", desc: 'A black iron lantern on a chain, its panes aglow.' }, { id: 'thurible', name: 'Glass Thurible', desc: 'A globe of seer-glass in a brass cage, the fire drifting in it.', special: true }];
 for (const [kind, slots] of Object.entries(DEEP)) for (const [slot, list] of Object.entries(slots)) {
   const into = slot === 'pauldron' ? ['pauldronL', 'pauldronR'] : slot === 'band' ? ['bandL', 'bandR'] : [slot];
   for (const sl of into) { PIECES[kind][sl] ||= []; for (const p of list) if (!PIECES[kind][sl].some((q) => q.id === p.id)) PIECES[kind][sl].push({ ...p, deep: true }); }

@@ -7,7 +7,7 @@ import { KITS, strip, plate, basic, add, easeOut, CLOTH, RIBBON } from './kits.j
 import { colorMat, colorHex, colorById } from './outfits.js';
 import { armorTex, shade } from './armortex.js';
 import { KNIGHT_ARMORY, ROGUE_ARMORY, MAGE_ARMORY } from './armory.js';
-import { deepKnight, deepRogue, deepMage } from './deeparmory.js';
+import { deepKnight, deepRogue, deepMage, DEEP_WEAPONS } from './deeparmory.js';
 
 const lighten = (hex, f) => { const c = new THREE.Color(hex); c.lerp(new THREE.Color(0xffffff), f); return c.getHex(); };
 const darken = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(1 - f); return c.getHex(); };
@@ -328,6 +328,14 @@ KITS.knight = {
       r.edges = [{ g, tip: r.tip }]; // (it cuts with the edge: models.js Rig.edgeLead)
       return;
     }
+    if (o.arm === 'pitbreaker') {
+      // the Pit-Breaker in both hands, no shield (weapons.js; the skins: deeparmory.js)
+      const pbM = S('pitbreaker', 0x4a4846, 0x6a6c72, 0x4a3626, 0xff6a1a);
+      const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
+      const [len, baseZ] = (DEEP_WEAPONS.knight.pitbreaker[pbM.piece] || DEEP_WEAPONS.knight.pitbreaker.piston)(r, pbM, g);
+      r.base.position.set(0, 0, baseZ); g.add(r.base); r.tip.position.set(0, 0, len); g.add(r.tip);
+      return;
+    }
     const shM = S('shield', 0x5a1412, 0x8a6a34, 0x2a2a30, 0x8ad8ff); const sh = (KNIGHT.shield[shM.piece] || KNIGHT.shield.heater)(r, shM, T); T.add(sh); r.shield = sh;
     const swM = S('sword', 0x8c929c, 0x8a6a34, 0x2a2a30, 0x8ad8ff);
     const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
@@ -561,6 +569,16 @@ KITS.rogue = {
       r.edges = [{ g, tip: t0 }];
       r.wpnR = w; r.base = b0; r.tip = t0;
       r.noReverse = true;
+    } else if (o.arm === 'chakrams') {
+      // the Glass Chakrams: a ring in each hand (weapons.js; the skins: deeparmory.js)
+      const ck = S('chakrams', 0xc8e0f0, 0x8a6a34, 0x2a1c14, 0x8ad8ff), make = DEEP_WEAPONS.rogue.chakrams[ck.piece] || DEEP_WEAPONS.rogue.chakrams.ring;
+      const gR = new THREE.Group(), gL = new THREE.Group(); r.j.handR.add(gR); r.j.handL.add(gL);
+      const [tip, base] = make(r, ck, gR); make(r, ck, gL);
+      r.base.position.set(0, 0, base); gR.add(r.base); r.tip.position.set(0, 0, tip); gR.add(r.tip);
+      r.tipL = new THREE.Object3D(); r.tipL.position.z = tip; gL.add(r.tipL);
+      r.baseL = new THREE.Object3D(); r.baseL.position.z = base; gL.add(r.baseL);
+      r.wpnR = gR; r.wpnL = gL; r.noReverse = true;
+      r.edges = [{ g: gR, tip: r.tip }, { g: gL, tip: r.tipL }];
     } else {
     const kn = S('knives', 0xc4cad3, 0x2a1c14, 0x1e1e22, 0xff4a3a);
     const dagger = (ROGUE.knives[kn.piece] || ROGUE.knives.curved)(r, kn);
@@ -804,7 +822,27 @@ KITS.mage = {
     H.add(box(0.02, 0.05, 0.015, rune, -0.065, 0.14, 0.128));
     const hp = pivot(H, 0, 0.3, -0.15);
     strip(r, hp, 0, 0, 0, 0.08, [0.14, 0.14, 0.12], hair, { rx: 0.35, bend: 0.15, taper: 0.8, th: 0.07, lx: [-0.3, 1.2] });
-    if (o.arm === 'psystaff') {
+    if (o.arm === 'censer') {
+      // the Lantern Censer: a lantern on a chain in her right hand that swings for real (a pendulum on the chain's
+      // pivot, pulled along the hand's line while she swings, so the swings carry it), the left hand empty (weapons.js)
+      const cM = S('censer', 0x2e2e32, 0x8a6a34, 0x4a3626, 0xff8a3a);
+      const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;
+      const [tip, base, cp] = (DEEP_WEAPONS.mage.censer[cM.piece] || DEEP_WEAPONS.mage.censer.miner)(r, cM, g);
+      r.base.position.set(0, 0, base); cp.add(r.base); r.tip.position.set(0, 0, tip); cp.add(r.tip);
+      const hw = new THREE.Vector3(), lan = new THREE.Vector3(), prev = new THREE.Vector3(), ax = new THREE.Vector3(), d = new THREE.Vector3(), q = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1);
+      let init = false;
+      r.fx = (dt0) => {
+        const dt = Math.min(dt0, 1 / 30), L = tip * (r.root.scale.y || 1);
+        g.updateWorldMatrix(true, false); cp.getWorldPosition(hw);
+        ax.set(0, 0, 1).transformDirection(g.matrixWorld);
+        if (!init || lan.distanceTo(hw) > L * 3) { lan.copy(hw).addScaledVector(ax, L * 0.3).add(d.set(0, -L, 0)); prev.copy(lan); init = true; }
+        d.copy(lan).sub(prev).multiplyScalar(0.95); prev.copy(lan); lan.add(d); lan.y -= 9.8 * dt * dt;
+        if (r.swinging) lan.lerp(d.copy(hw).addScaledVector(ax, L), 1 - Math.exp(-dt * 10)); // (a swing carries it; at rest it hangs)
+        d.copy(lan).sub(hw).setLength(L); lan.copy(hw).add(d);
+        g.getWorldQuaternion(q).invert();
+        cp.quaternion.setFromUnitVectors(Z, d.normalize().applyQuaternion(q));
+      };
+    } else if (o.arm === 'psystaff') {
       // the Psy-Staff in both hands (weapons.js)
       const stM = S('staff', 0x3a2a20, 0xb89a4a, 0x1e1e22, 0xc890ff);
       const g = new THREE.Group(); r.j.handR.add(g); r.wpnR = g;

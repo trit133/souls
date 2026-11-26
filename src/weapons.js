@@ -44,10 +44,31 @@ export const WEAPONS = {
     special: { name: 'Warding Sigil', desc: 'A wide circle at your feet for 6 s (35 mana): everything inside when you lay it freezes solid for 5 s (a boss or mini boss is not frozen but chilled: it moves and swings at a crawl for 4 s); 10 s before you can lay another; enemies in it are slowed and their shots break on its edge.' },
     evo: { id: 'stormSigil', name: 'Storm Sigil', desc: 'Your sigil calls lightning down on an enemy inside it every 0.6 s.',
       recipe: { copper_coil: 6, scrap_iron: 6, cracked_lens: 4, servo_motor: 3, augury_shard: 1 } } },
+
+  // ---- The Sunless Deep (2026-11-26): no stronger than the March's, just stranger. Anything of theirs that burns
+  // or glows takes your chest glow's colour ----
+  pitbreaker: { kind: 'knight', region: 'r2', name: 'Pit-Breaker', short: 'Piston Maul', icon: 'w_pitbreaker', slots: ['pitbreaker'],
+    desc: 'A mine\'s rock-breaking piston, hafted and swung as a maul. Carried low; hauled up off the floor, dropped from over the shoulder, dragged flat round. The piston fires as it lands. Its heavy is a battering ram that throws them back.',
+    recipe: { ore_chunk: 14, rivet_spool: 6, pit_timber: 6, lamp_oil: 4, borer_tooth: 3, glowcap: 2, geode_heart: 2, kiln_ember: 1 },
+    special: { name: 'Piston Slam', desc: 'Slam the maul into the floor and fire the piston through it: the floor splits in a straight line ahead, hurting and throwing back everything along it. Ready again after 9 s.' },
+    evo: { id: 'overpressure', name: 'Overpressure', desc: 'Every third swing that lands vents the boiler in a burst of fire round the head, and the next Piston Slam splits the floor further and wider and bursts rock up all along it, hitting far harder.',
+      recipe: { ore_chunk: 8, rivet_spool: 6, lamp_oil: 4, borer_tooth: 3, geode_heart: 1 } } },
+  chakrams: { kind: 'rogue', region: 'r2', name: 'Glass Chakrams', short: 'Chakrams', icon: 'w_chakrams', slots: ['chakrams'],
+    desc: 'A ring of seer-glass in each hand, the outer edge sharp. Quick cuts with one and the other; the heavy throws one, which cuts its way from enemy to enemy (three in all) and comes back to your hand.',
+    recipe: { raw_seerglass: 10, ore_chunk: 8, lamp_oil: 6, glowcap: 4, prism_lens: 3, rivet_spool: 2, geode_heart: 2, kiln_ember: 1 },
+    special: { name: 'Shard Orbit', desc: 'Set both rings spinning round you for 3.5 s, cutting everything they pass. Ready again after 10 s.' },
+    evo: { id: 'prismSplit', name: 'Prism Split', desc: 'Every throw splits two shards of light off the ring, flying straight out on either side and cutting all they pass.',
+      recipe: { raw_seerglass: 8, prism_lens: 4, glowcap: 4, lamp_oil: 3, geode_heart: 1 } } },
+  censer: { kind: 'mage', region: 'r2', name: 'Lantern Censer', short: 'Censer', icon: 'w_censer', slots: ['censer'],
+    desc: 'A lantern on a chain, swung. Its swings trail fire and its hits burn; the slams leave the floor burning; the heavy lets the chain out to its full length (8 mana). Its hits charge your mana.',
+    recipe: { lamp_oil: 12, pit_timber: 8, ore_chunk: 6, glowcap: 4, raw_seerglass: 3, prism_lens: 2, geode_heart: 2, kiln_ember: 1 },
+    special: { name: 'Blinding Flare', desc: 'Hold the lantern up and it flares white-hot (30 mana): everything within 6 m reels, blinded, and burns a little; a boss only falters, slowed for 2.5 s. Ready again after 12 s.' },
+    evo: { id: 'wildfire', name: 'Wildfire', desc: 'Fire spreads: every 0.8 s the flames leap from each burning enemy to the nearest one not yet burning (up to three at a time).',
+      recipe: { lamp_oil: 8, glowcap: 6, pit_timber: 4, borer_tooth: 3, geode_heart: 1 } } },
 };
 export const BASE_WEAPON = { knight: 'sword', rogue: 'daggers', mage: 'spellknife' };
 // the regions, in order (the crafting menu shows a slot for each, empty until the region is in the game)
-export const WEAPON_REGIONS = [{ id: 'r1', name: 'The Shattered March' }, { id: 'r2', name: 'The Glass Wastes' }, { id: 'r3', name: 'The Forge Reaches' }];
+export const WEAPON_REGIONS = [{ id: 'r1', name: 'The Shattered March' }, { id: 'r2', name: 'The Sunless Deep' }, { id: 'r3', name: 'The Forge Reaches' }];
 export const weaponsOf = (kind) => Object.keys(WEAPONS).filter((id) => WEAPONS[id].kind === kind);
 export const weaponFor = (kind, region) => weaponsOf(kind).find((id) => WEAPONS[id].region === region) || null;
 export const evoOf = (weaponId) => WEAPONS[weaponId]?.evo || null;
@@ -101,6 +122,16 @@ export const WEAPON_ICONS = {
   w_psystaff: { pal: { o: O, w: '#4a3a2a', W: '#6a5038', g: '#b89a4a', c: '#c890ff', C: '#f0e0ff' }, rows: [
     '...........oo...', '..........occo..', '.........ocCco..', '.........occco..', '........ogooo...', '.......owgo.....', '......owWo......',
     '.....owWo.......', '....owWo........', '...owWo.........', '..ogWo..........', '.owWo...........', 'owWo............', 'ogo.............', 'oo..............', '................'] },
+  // the Sunless Deep's: a piston maul (an iron head, its slag core lit), two glass rings, a lantern on a chain
+  w_pitbreaker: { pal: { o: O, i: '#4a4846', I: '#7a7874', d: '#2a2a2a', c: '#ff6a1a', h: '#3a2616', g: '#8a6a34' }, rows: [
+    '.....oooooo.....', '....oIIIIIIo....', '....oddddddo....', '....oiccccio....', '....oiccccio....', '....oddddddo....', '....oIIIIIIo....',
+    '.....oooooo.....', '.......oho......', '.......oho......', '.......ogo......', '.......oho......', '.......oho......', '.......oho......', '.......ogo......', '........o.......'] },
+  w_chakrams: { pal: { o: O, w: '#d8ecf8', b: '#8ac8e8', B: '#4a7a9a', c: '#b090ff' }, rows: [
+    '................', '...oooo.........', '..owbbwo........', '.owo..owo.......', '.obo..obo.......', '.owo..owo.......', '..owbbwo..oooo..',
+    '...oooo..owbbwo.', '.........owo..ow', '..c.....obo..ob.', '.........owo..ow', '..........owbbwo', '...........oooo.', '................', '................', '................'] },
+  w_censer: { pal: { o: O, h: '#3a2616', s: '#8a8e96', g: '#b89a4a', f: '#ff8a2a', F: '#ffd060', d: '#2a2a2e' }, rows: [
+    '...oo...........', '..ohho..........', '..ohho..........', '...oso..........', '....oso.........', '.....oso........', '......oso.......',
+    '.......oso......', '........ogo.....', '.......ogggo....', '......odfFfdo...', '......ofFFFfo...', '......odfFfdo...', '.......ogggo....', '........ooo.....', '................'] },
 };
 const iconCache = new Map();
 // the weapon's icon (shade: 'dark' draws it as a black silhouette with a faint edge, for one not yet made)

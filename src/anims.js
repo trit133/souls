@@ -119,6 +119,23 @@ const STYLE = {
     p.armL = [-0.85, 0, -0.05]; p.foreL = [-1.15, 0, 0]; p.handL = [0.9, 0, 0];
     if (sprint) { p.armR[0] -= sw * 0.3; p.armL[0] += sw * 0.3; }
   },
+  // the Pit-Breaker: carried low before him in both hands, the head down by his feet, leaning into its weight
+  piston(p, s, sw, sprint) {
+    p.armR = [-0.02 - (sprint ? sw * 0.2 : 0), 0.29, 0.98]; p.foreR = [-1.74, 0, 0]; p.handR = [1.41, 0, -0.84];
+    p.armL = [-0.6, 0, -0.2]; p.foreL = [-0.9, 0, 0];
+    p.torso[0] += 0.14; p.by -= 0.05;
+  },
+  // the Glass Chakrams: a ring in each hand, held low and out from the hips, ready to cut either way
+  chakram(p, s, sw, sprint) {
+    p.armR = [-0.35 - sw * 0.5, 0, -0.4]; p.foreR = [-1.0, 0, 0]; p.handR = [0.3, 0, 0];
+    p.armL = [-0.35 + sw * 0.5, 0, 0.4]; p.foreL = [-1.0, 0, 0]; p.handL = [0.3, 0, 0];
+    p.torso[0] += 0.1; p.by -= 0.04;
+  },
+  // the Lantern Censer: the chain let down from the right hand, the lantern hanging by her knee; the left hand open
+  censer(p, s, sw, sprint) {
+    p.armR = [-0.35 - (sprint ? sw * 0.5 : 0), 0, -0.2]; p.foreR = [-0.5, 0, 0]; p.handR = [0.3, 0, 0];
+    p.armL = [-0.45 + (sprint ? sw * 0.5 : 0), 0, 0.3]; p.foreL = [-1.0, 0, 0]; p.handL = [0.3, 0, 0];
+  },
   spear(p) {
     p.armR = [-0.15, 0, -0.1]; p.foreR = [-1.35, 0, 0]; p.handR = [1.3, 0, 0];
     p.armL = [-0.7, 0, -0.1]; p.foreL = [-0.8, 0, 0];
