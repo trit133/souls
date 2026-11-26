@@ -103,13 +103,19 @@ export class Seals {
       } else if (d.kind === 'lantern') {
         const L = d.lantern, ps = g.allPlayers().filter((p) => p.alive);
         if (L.state === 'hook' || L.state === 'floor') {
-          const p = ps.find((q) => Math.hypot(q.pos.x - L.x, q.pos.z - L.z) < LANTERN_REACH);
+          L.lock = Math.max(0, (L.lock || 0) - dt);
+          const p = L.lock > 0 ? null : ps.find((q) => Math.hypot(q.pos.x - L.x, q.pos.z - L.z) < LANTERN_REACH);
           if (p) { if (s.state === 'idle') this.start(s); L.state = 'carried'; L.who = p; L.hp = p.hp; g.audio.play('ping', 0.6); g.ui.toastSmall?.('CARRY THE LANTERN TO THE SHRINE'); }
           else if (L.state === 'floor' && (L.t -= dt) <= 0) { L.state = 'hook'; L.x = L.hook.x; L.z = L.hook.z; g.ui.toastSmall?.('THE LANTERN GUTTERS OUT · BACK TO ITS HOOK'); }
         }
         if (L.state === 'carried') {
           const p = L.who;
-          if (!p?.alive || p.hp < L.hp - 0.5) { L.state = 'floor'; L.t = LANTERN_OUT; L.x = p.pos.x; L.z = p.pos.z; g.audio.play('clang', 0.5); g.ui.toastSmall?.('THE LANTERN FALLS · PICK IT UP'); }
+          if (!p?.alive || p.hp < L.hp - 0.5) {
+            // knocked out of their hands: it rolls a step away and can't be snatched up for a moment
+            const a = Math.random() * Math.PI * 2; let x = p.pos.x + Math.cos(a) * 1.8, z = p.pos.z + Math.sin(a) * 1.8;
+            if (!this.world.walkable(x, z, 0.3)) { x = p.pos.x; z = p.pos.z; }
+            L.state = 'floor'; L.t = LANTERN_OUT; L.lock = 1.2; L.x = x; L.z = z; g.audio.play('clang', 0.5); g.ui.toastSmall?.('THE LANTERN FALLS · PICK IT UP');
+          }
           else { L.hp = p.hp; L.x = p.pos.x; L.z = p.pos.z; if (Math.hypot(p.pos.x - d.x, p.pos.z - d.z) < LANTERN_HOME) this.breakSeal(s); }
         }
         if (s.state === 'active' && (s.spawnT = (s.spawnT ?? 3) - dt) <= 0) { s.spawnT = LANTERN_EVERY; this.callIn(s, 1 + this.world.dungeon.players, false); }
@@ -348,7 +354,7 @@ export class Seals {
     let x = L.x, z = L.z, y;
     if (L.state === 'carried' && L.who?.pos) { const p = L.who; x = p.pos.x + Math.sin(p.yaw + 1.2) * 0.5; z = p.pos.z + Math.cos(p.yaw + 1.2) * 0.5; y = (p.pos.y || 0) + 1.0; }
     else if (L.state === 'hook') { x = L.hook.x; z = L.hook.z; y = L.hook.y; }
-    else y = w.floorAt(x, z) + 0.18 + Math.abs(Math.sin(g.time * 3)) * 0.02;
+    else y = w.floorAt(x, z) + (L.state === 'carried' ? 1.0 : 0.18); // (carried by someone this screen only hears of: at their height)
     L.mesh.position.set(x, y, z); L.mesh.rotation.y += dt;
     const flick = L.state === 'floor' ? 0.4 + Math.random() * 0.5 * Math.min(1, L.t / LANTERN_OUT) : 1;
     L.light.x = x; L.light.z = z; L.light.y = y + 0.3; L.light.power = 7 * flick; L.light.range = L.state === 'carried' ? 10 : 8;

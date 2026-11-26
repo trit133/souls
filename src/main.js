@@ -13,7 +13,7 @@ import { World } from './world.js';
 import { Dungeon, mix } from './dungeon.js';
 import { City } from './city.js';
 import './sump.js'; import './spire.js'; import './ward.js'; import './cut.js'; import './hill.js'; // (the areas' maps: Ashfall Ward, the Drained Cut, the Spire's hill) // (the deeper areas' own maps, registered on City.MAPS)
-import './lanternhold.js'; // (the Sunless Deep's maps register themselves too: City.MAPS)
+import './lanternhold.js'; import './wormways.js'; import './glasshallow.js'; // (the Sunless Deep's maps register themselves too: City.MAPS)
 import { AREAS, areaOpen } from './regions.js';
 import { WorldMap } from './worldmap.js';
 import { gemFor, ITEMS, addItems, countItems, itemsText } from './items.js';
@@ -111,7 +111,7 @@ class Game {
     this.pfx = new PFX(this);
     this.fx3d = new Fx3D(this.scene); // (the Templar's effects in 3D: fx3d.js)
     this.weaponFx = new WeaponFx(this);
-    this.world = new World(this.scene);
+    this.world = new World(this.scene); this.world.game = this; // (a map's own hazards reach the players: modules.js lava)
     this.lighting = new Lighting(this); // (the enhanced lighting: the Proving Ring for now)
     this.ui = new UI();
 

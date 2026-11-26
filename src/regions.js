@@ -62,20 +62,20 @@ Object.assign(AREAS, {
     loot: { drum: { common: 80, uncommon: 18, rare: 2 }, chest: { common: 32, uncommon: 42, rare: 26 }, hoard: { rare: 100 } },
   },
   r2a2: {
-    id: 'r2a2', region: 'r2', name: 'The Wormways', kind: 'city', map: 'wormways', boss: 'borer', open: false, needs: ['gem_lampking'],
+    id: 'r2a2', region: 'r2', name: 'The Wormways', kind: 'city', map: 'wormways', boss: 'borer', open: true, needs: ['gem_lampking'],
     blurb: 'Below the town the regime\'s borers went down, drilling engines the size of chapels, half machine and half grown. Some never stopped. Their tunnels cross over and under each other, round as a gun barrel.',
-    mix: { grub: 3, lobber: 2, burrower: 1.5, thrall: 0.5 }, look: {}, heavy: 'thrall', melee: ['burrower', 'grub'],
+    mix: { grub: 3, lobber: 2, burrower: 1.2, thrall: 0.5 }, look: {}, heavy: 'thrall', melee: ['grub'],
     loot: { drum: { common: 70, uncommon: 24, rare: 5, epic: 1 }, chest: { common: 18, uncommon: 40, rare: 32, epic: 10 }, hoard: { rare: 60, epic: 40 } },
   },
   r2a3: {
-    id: 'r2a3', region: 'r2', name: 'Glasshallow', kind: 'city', map: 'glasshallow', boss: 'hierophant', open: false, needs: ['gem_borer'],
+    id: 'r2a3', region: 'r2', name: 'Glasshallow', kind: 'city', map: 'glasshallow', boss: 'hierophant', open: true, needs: ['gem_borer'],
     blurb: 'A cavern so big it has weather. The Glass-Wrights built their city round the greatest vein of seer-glass ever found, and they stare into it until they see what is coming. Then they never look away.',
-    mix: { acolyte: 3, lancer: 2, shade: 1.5, shardback: 0.5 }, look: {}, heavy: 'shardback', melee: ['acolyte', 'shade'],
+    mix: { acolyte: 3, lancer: 2, shade: 1, shardback: 0.5 }, look: {}, heavy: 'shardback', melee: ['acolyte'],
     loot: { drum: { common: 58, uncommon: 30, rare: 9, epic: 3 }, chest: { common: 8, uncommon: 32, rare: 38, epic: 18, legendary: 4 }, hoard: { epic: 70, legendary: 30 } },
   },
   // the region's master: down through the Crucible to the Kiln (modules.js FINAL_MODULES crucible, kiln)
   r2f: {
-    id: 'r2f', region: 'r2', name: 'The Crucible', kind: 'final', boss: 'kilnfather', chain: ['crucible', 'kiln'], open: false, needs: ['gem_lampking', 'gem_borer', 'gem_hierophant'],
+    id: 'r2f', region: 'r2', name: 'The Crucible', kind: 'final', boss: 'kilnfather', chain: ['crucible', 'kiln'], open: true, needs: ['gem_lampking', 'gem_borer', 'gem_hierophant'],
     blurb: 'At the bottom of every shaft the earth opens into a cavern too big to see the roof of, red with rivers of fire. Seer-glass is born here. The regime\'s first glassmaker came down to see the future first, and never went back up.',
   },
 });

@@ -172,7 +172,7 @@ function drawMoss() {
   const r = rng(0x3055), { cv, c, img } = canvas(), n = tileNoise(r, 6), m = tileNoise(r, 16);
   for (let y = 0; y < PX; y++) for (let x = 0; x < PX; x++) {
     const a = n(x, y), b = m(x, y);
-    put(img, x, y, hex(a > 0.45 ? (b > 0.5 ? 0x5a6a52 : 0x4a5a46) : 0x22241e), a > 0.45 ? 170 + Math.floor(b * 85) : 90, 0.85 + b * 0.3);
+    put(img, x, y, hex(a > 0.3 ? (b > 0.5 ? 0x56624e : 0x4a5646) : 0x3a3c34), a > 0.3 ? 170 + Math.floor(b * 85) : 110, 0.9 + b * 0.18);
   }
   for (let i = 0; i < 26; i++) { const x = Math.floor(r() * PX), y = Math.floor(r() * PX); put(img, x, y, hex(r() < 0.5 ? 0xb8d0b0 : 0x8adcd0), 240); }
   c.putImageData(img, 0, 0); return cv;

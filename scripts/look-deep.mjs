@@ -9,6 +9,12 @@ const SPOTS = {
   r2a1: { heights: { landing: [0, 40], ledges: [0, 20], market: [0, 0], workings: [0, -22], pit: [0, -42] },
     shots: [['landing', 0, 40], ['ledges', -10, 20], ['market', 0, 2], ['chapel', -24, -1], ['workings', 0, -22], ['hall', 14, -24], ['pit', 0, -38], ['winding', 10, 38]],
     walk: [[0, 40], [0, 31], [0, 25], [1, 13], [1, 4], [-3, -11], [-3, -26], [0, -31], [0, -40]] },
+  r2a2: { heights: { camp: [0, 40], longbore: [0, 30], trunk: [0, 10], junction: [0, -8], farm: [-35, 12], graveyard: [36, 2], nest: [-36, -33] },
+    shots: [['camp', 0, 40], ['longbore', -10, 30], ['trunk', 0, 12], ['junction', 0, -8], ['farm', -34, 12], ['graveyard', 36, 4], ['spiral', 30, -16], ['nest', -36, -22], ['grind', -6, -38]],
+    walk: [[0, 40], [10, 38], [10, 31], [0, 30], [0, 10], [0, -8], [-34, -8], [-34, -16], [-34, 4], [0, -8], [22, -8], [22, -20], [30, -20]] },
+  r2a3: { heights: { lake: [0, 40], streets: [0, 10], terrace: [0, -12], upper: [0, -30], lakewater: [-34, 38] },
+    shots: [['lake', -12, 34], ['quarter', 6, 40], ['gardens', 0, 10], ['streets', -28, 18], ['terrace', 0, -12], ['hallm', -24, -12], ['upper', 0, -28], ['lens', 0, -36], ['altar', 30, -30]],
+    walk: [[0, 40], [0, 24], [0, 20], [0, 10], [16, 2], [16, -2], [0, -10], [0, -22], [0, -27], [0, -30], [30, -30]] },
 }[area] || { heights: {}, shots: [['start', 0, 40]], walk: [[0, 40]] };
 const b = await chromium.launch({ executablePath: '/home/h-e-r-b-i-e/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await b.newContext({ viewport: { width: 960, height: 540 } })).newPage();

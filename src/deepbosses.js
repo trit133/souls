@@ -392,7 +392,7 @@ const kilnTick = (b, dt) => {
     g.fx.burst({ x: b.pos.x, y: 3, z: b.pos.z }, 60, [0.6, 0.85, 1], 8, 0.8, 0.35); g.audio.play('clang', 1); g.audio.play('roar', 1); g.fx.addShake(1);
     g.ui.toastSmall?.('HIS SHELL SHATTERS · HE SEES WHERE YOU WILL BE');
   }
-  if (b.rig.core) b.rig.core.color.setHex(b.shell === false ? 0xffd040 : b.phase2 ? 0xff7a20 : 0xff4a10);
+  if (b.rig.core) b.rig.core.setHex(b.shell === false ? 0xffd040 : b.phase2 ? 0xff7a20 : 0xff4a10);
   if (b.alive && Math.random() < dt * (b.shell === false ? 40 : 12)) g.fx.ember({ x: b.pos.x + (Math.random() - 0.5), y: 1 + Math.random() * 3, z: b.pos.z + (Math.random() - 0.5) }, 0.3, 1.5);
   // his pillars stand 20 s, then crumble
   for (const e of g.enemies) if (e.type === 'kilnpillar' && e.alive && e.bornAt != null && g.time - e.bornAt > 20) e.die(true);
@@ -509,7 +509,7 @@ Object.assign(KITS, {
   // him, the long iron blowpipe
   kilnfather: { weapon: true, build(r) {
     const { bulk: b } = r.dims;
-    const glass = new THREE.MeshLambertMaterial({ color: 0x5ab8d8, emissive: 0x103040, flatShading: true, transparent: true, opacity: 0.8 }), core = new THREE.MeshBasicMaterial({ color: 0xff4a10 }), iron = r.m(0x3a3a3e), H = r.j.head, T = r.j.torso;
+    const glass = new THREE.MeshLambertMaterial({ color: 0x2a4a58, emissive: 0x0a1820, flatShading: true, transparent: true, opacity: 0.55 }), core = new THREE.MeshBasicMaterial({ color: 0xff4a10 }), iron = r.m(0x3a3a3e), H = r.j.head, T = r.j.torso;
     r.core = core.color;
     T.add(box(0.36 * b, 0.5, 0.26, core, 0, 0.36, 0)); H.add(box(0.24, 0.26, 0.24, core, 0, 0.16, 0));
     const shell = [];

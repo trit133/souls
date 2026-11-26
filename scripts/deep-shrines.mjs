@@ -22,7 +22,7 @@ for (const [area, kind] of [['r2a1', 'cart'], ['r2a2', 'lantern'], ['r2a3', 'pri
       out.frames = run(60 * 40, () => { const c = g.seals.cartPos(d); go(c.x + 1.2, c.z + 0.6); for (const e of g.enemies) if (e.alive && !e.T.still && e.distTo(p) < 6) e.die(true); });
     } else if (kind === 'lantern') {
       const L = d.lantern; go(L.hook.x, L.hook.z); run(30); out.picked = L.state;
-      p.hp -= 10; run(5); out.dropped = L.state; p.hp = p.maxHp; run(5); out.again = L.state;
+      p.hp -= 10; run(5); out.dropped = L.state; run(90, () => go(L.x, L.z)); out.again = L.state;
       out.frames = run(60 * 40, () => { const dx = d.x - p.pos.x, dz = d.z - p.pos.z, dd = Math.hypot(dx, dz); g.input.move = () => ({ x: dx / dd, y: -dz / dd }); for (const e of g.enemies) if (e.alive && !e.T.still && e.distTo(p) < 8) e.die(true); });
       g.input.move = () => ({ x: 0, y: 0 });
     } else {

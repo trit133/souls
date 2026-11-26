@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { NUM } from './scale.js';
 import { decorateArena, cage } from './decor.js';
 import { buildStands } from './crowd.js';
 
@@ -378,6 +379,134 @@ export const FINAL_MODULES = {
       w.box(0.3, 7, 0.8, w.mats.stone, 0, 4.5, Z(56.2));
       decorateArena(w, 'throne', 0, Z(CD), R, enc, { stands: true });
       buildStands(w, 0, Z(CD), R, enc);
+    },
+  },
+  // ---------- the Sunless Deep's master (regions.js r2f): down through the Crucible to the Kiln ----------
+  // The Crucible: a descent down basalt ledges into the red. A landing with the beacon (8 m); stairs down to the
+  // ledge (5.5 m) and a channel of lava across it, a chained bridge over; down again into the ruined Kiln-Works (3 m),
+  // the first seer-glass poured here, lava pooled among the furnaces (it burns: keep out of it); the last stair down
+  // to the Gem Door's hall (0 m), its gate of black glass set with the three gems. The region's hardest stand along
+  // the way; the door fogs until they're dead. The Kiln follows
+  crucible: {
+    name: 'The Crucible', len: 78, ground: 'kiln',
+    build(w, Z, mod) {
+      const M = w.mats, T = w.terrain, L = 78;
+      const band = (x0, x1, d0, d1, h, o) => T.flat(x0, x1, Z(d1), Z(d0), h, o);
+      const down = (x0, x1, d0, d1, h0, h1, o) => T.stairs(x0, x1, Z(d1), Z(d0), h1, h0, 'z', o); // (h0 at d0, h1 at d1: descending north)
+      band(-40, 40, -2, 12, 8, { look: 'basalt', ivy: 0.1 });
+      down(-4, 4, 12, 16, 8, 5.5, { look: 'basalt' });
+      band(-40, 40, 16, 30, 5.5, { look: 'basalt' });
+      band(-40, 40, 24, 27, 2.0, { look: 'basalt', cap: false }); // the lava channel
+      band(-2, 2, 23.5, 27.5, 5.5, { look: 'iron' });              // the chained bridge over it
+      band(-40, 40, 33, 52, 3, { look: 'basalt' });
+      band(-40, 40, 30, 33, 3, { look: 'basalt' }); down(-4, 4, 29.5, 33, 5.5, 3, { look: 'basalt' });
+      down(-4, 4, 52, 56, 3, 0, { look: 'basalt' });
+      ends(w, mod, L);
+      w.rect(-8, 8, 0, 13);
+      w.rect(-10, 10, 12, 24.4); w.rect(-2, 2, 23, 28.5); w.rect(-10, 10, 26.6, 31);
+      w.rect(-14, 14, 29, 54); w.rect(-4.5, 4.5, 50, L);
+      // the ground: basalt worn smooth on the way, cooled crust and ash gravel off it, obsidian in the hall
+      const P = (sf, x0, x1, d0, d1, o) => w.paint({ x0, x1, z0: Z(d1), z1: Z(d0) }, sf, o), C = (sf, x, d, r, o) => w.paint({ cx: x, cz: Z(d), r }, sf, o);
+      P('crust', -40, 40, -2, L, { amount: 0.35, edge: 3 });
+      P('basalt', -3, 3, 0, L, { edge: 0.6 });
+      P('gravel', -14, 14, 33, 52, { amount: 0.5, edge: 2 });
+      P('obsidian', -4.5, 4.5, 56, L, { edge: 0.4 });
+      for (const [x, d, r] of [[-6, 6, 2], [6, 20, 2.4], [-8, 40, 2.6], [9, 46, 2]]) C('crust', x, d, r, { edge: 1.2 });
+      // lava: the channel under the bridge, pools among the furnaces (they burn whoever stands in them)
+      const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff5a10 });
+      const lava = (x0, x1, d0, d1, y, hurt) => {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, d1 - d0), lavaMat); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, Z((d0 + d1) / 2)); m.userData.noMerge = true; m.userData.noSettle = true; w.add(m);
+        const cx = (x0 + x1) / 2, cz = Z((d0 + d1) / 2);
+        w.lights.push({ x: cx, y: y + 1.5, z: cz, color: 0xff5a10, power: 8, range: 10, src: {} });
+        w.ambient.push({ x: cx, z: cz, update: (dt, t, fx) => {
+          lavaMat.color.setRGB(1, 0.32 + Math.sin(t * 2.2) * 0.06, 0.06);
+          if (Math.random() < dt * 8) fx.add.spawn({ x: x0 + Math.random() * (x1 - x0), y: y + 0.1, z: Z(d0 + Math.random() * (d1 - d0)), vy: 1.5 + Math.random(), life: 1.2, size: 0.12, size1: 0.02, r: 1, g: 0.6, b: 0.2 });
+        } });
+        if (hurt) (w.lavaPools ||= []).push({ x0, x1, z0: Z(d1), z1: Z(d0), y });
+      };
+      // whoever stands in a pool burns (every 0.4 s): the host's or solo player's world sees to its own players
+      let burnT = 0;
+      w.ambient.push({ x: 0, z: Z(40), update: (dt) => {
+        if ((burnT -= dt) > 0) return; burnT = 0.4;
+        const g = w.game; if (!g || !w.lavaPools) return;
+        for (const p of g.allPlayers()) for (const L of w.lavaPools) if (p.alive && p.pos.x > L.x0 && p.pos.x < L.x1 && p.pos.z > L.z0 && p.pos.z < L.z1 && (p.pos.y || 0) < L.y + 0.6) { g.projectileHit(p, { dmg: 10 * NUM, knock: 'none', src: [p.pos.x, p.pos.z + 1], elems: { fire: 0.6 } }); break; }
+      } });
+      lava(-40, -2.2, 24, 27, 2.3, false); lava(2.2, 40, 24, 27, 2.3, false);
+      // the furnaces' pools: round, a rim of cooling crust
+      for (const [x, d, r] of [[-10.5, 39, 2.6], [10.5, 46, 2.2]]) {
+        const m = new THREE.Mesh(new THREE.CircleGeometry(r, 16), lavaMat); m.rotation.x = -Math.PI / 2; m.position.set(x, 3.05, Z(d)); m.userData.noMerge = true; m.userData.noSettle = true; w.add(m);
+        w.paint({ cx: x, cz: Z(d), r: r + 1 }, 'crust', { edge: 0.6 });
+        w.lights.push({ x, y: 4.5, z: Z(d), color: 0xff5a10, power: 8, range: 9, src: {} });
+        w.lavaPools.push({ x0: x - r * 0.8, x1: x + r * 0.8, z0: Z(d) - r * 0.8, z1: Z(d) + r * 0.8, y: 3.05 });
+        w.ambient.push({ x, z: Z(d), update: (dt, t, fx) => { if (Math.random() < dt * 6) fx.add.spawn({ x: x + (Math.random() - 0.5) * r, y: 3.15, z: Z(d) + (Math.random() - 0.5) * r, vy: 1.4 + Math.random(), life: 1.1, size: 0.12, size1: 0.02, r: 1, g: 0.6, b: 0.2 }); } });
+      }
+      // the landing: the beacon, chains hanging from nowhere, a broken winch
+      const fire = w.bonfire(0, Z(5)); fire.lit = true;
+      for (const [x, d] of [[-6, 3], [6, 8], [-7, 18], [8, 28], [-12, 46], [12, 36]]) w.box(0.08, 12, 0.08, M.metal, x, 9, Z(d));
+      for (const s2 of [-1, 1]) w.torch(s2 * 5, Z(9), 0xff8a3a);
+      // the bridge's chains and posts
+      for (const s2 of [-1, 1]) { for (const d of [23.4, 27.6]) w.box(0.3, 1.6, 0.3, M.metal, s2 * 2.1, 0.8, Z(d)); w.box(0.06, 0.06, 4.2, M.metal, s2 * 2.1, 1.3, Z(25.5)); w.solid(s2 * 2.1 - 0.1, s2 * 2.1 + 0.1, 23.4, 27.6); }
+      // the Kiln-Works: furnaces, crucibles on chains, moulds, slag heaps
+      for (const [x, d] of [[-11, 34], [11, 39], [-11, 49], [11, 51]]) {
+        w.box(2.6, 3.2, 2.4, M.stoneDark, x, 1.6, Z(d)); w.box(1.2, 1.0, 0.2, new THREE.MeshBasicMaterial({ color: 0xff7a20 }), x, 1.0, Z(d) + 1.22);
+        w.lights.push({ x, y: 1.4, z: Z(d) + 1.8, color: 0xff7a20, power: 7, range: 8, src: {} }); w.solid(x - 1.3, x + 1.3, d - 1.2, d + 1.2);
+      }
+      for (const [x, d] of [[-4, 38], [5, 45], [-6, 48]]) { w.cyl(0.8, 0.6, 1.0, M.metal, x, 0.5, Z(d), 8); w.ob(x, Z(d), 0.9); }
+      for (const [x, d] of [[3, 35], [-2, 44]]) w.rock(x, Z(d), 0.9, true, true);
+      // the Gem Door: a gate of black glass at the hall's end, the three gems burning over it
+      const G = L - 2, obs = new THREE.MeshLambertMaterial({ color: 0x16141a, flatShading: true });
+      for (const s2 of [-1, 1]) { w.box(1.4, 7, 1.4, obs, s2 * 3.5, 3.5, Z(G)); w.box(0.7, 4, 16, M.stoneDark, s2 * 4.85, 2, Z(G - 9)); w.torch(s2 * 3.8, Z(G - 6), 0xff8a3a); }
+      w.box(8.4, 1.6, 1.4, obs, 0, 7.6, Z(G));
+      [0xffb040, 0x9af050, 0xb090ff].forEach((col, k) => {
+        const x = (k - 1) * 2.2, z = Z(G) + 0.75;
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), new THREE.MeshBasicMaterial({ color: col })); gem.position.set(x, 7.6, z + 0.1); gem.userData.noMerge = true; w.add(gem);
+        w.ambient.push({ x, z, update: (dt, t) => { gem.rotation.y = t * 1.5 + k; } });
+        w.lights.push({ x, y: 6.8, z: z + 1.2, color: col, power: 5, range: 8, src: {} });
+      });
+      // the Deep's hardest, one of each kind from all three areas (two of them elites), the Shardback at the door
+      w.spawn('rivet', -5, 19, 0);
+      w.spawn('creeper', 5, 21, 0);
+      w.spawn('lobber', -6, 35, 0);
+      w.spawn('thrall', 0, 41, 0, { elite: 'blazing' });
+      w.spawn('acolyte', 6, 37, 0);
+      w.spawn('lancer', -8, 46, 0);
+      w.spawn('shade', 7, 44, 0);
+      w.spawn('burrower', 2, 49, 0, { elite: 'frenzied' });
+      w.spawn('shardback', 0, 64, 0);
+    },
+  },
+  // the Kiln: a round floor of black glass in a lake of lava, the ceiling lost in the dark; the Kilnfather waits at
+  // its heart. His glass pillars wait off stage until his globes call them (deepbosses.js)
+  kiln: {
+    name: 'The Kiln', len: 60, ground: 'kilnArena',
+    build(w, Z, mod) {
+      const R = 17, CD = 30, M = w.mats;
+      w.rect(-3, 3, 0, 8);
+      w.rect(-3, 3, 5, 14, { gate: 'boss_in' });
+      w.circle(0, CD, R);
+      w.gate('boss_in', 8.5, 6, true);
+      const enc = { id: 'boss', kind: 'boss', bossId: 'kilnfather', arena: { x: 0, z: Z(CD), r: R }, gateIn: 'boss_in', gateOut: null, mod: mod.i, active: false, defeated: false };
+      w.encounters.push(enc);
+      w.lights.push({ x: 0, y: 7, z: Z(CD), color: 0xff7a3a, power: 22, range: 30, src: {} });
+      // the floor: obsidian, crust round the edge
+      w.paint({ cx: 0, cz: Z(CD), r: R + 0.5 }, 'crust', { edge: 1 });
+      w.paint({ cx: 0, cz: Z(CD), r: R - 2.5 }, 'basalt', { edge: 1.4 });
+      w.paint({ cx: 0, cz: Z(CD), r: 6 }, 'obsidian', { edge: 1.2 }); // (black glass at the heart, where he stands)
+      // the lava all round it (below the edge: the ground falls away into it)
+      const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff5a10 });
+      const sea = new THREE.Mesh(new THREE.PlaneGeometry(76, 60), lavaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(0, -1.2, Z(30)); sea.userData.noMerge = true; w.add(sea);
+      w.ambient.push({ x: 0, z: Z(CD), update: (dt, t, fx) => {
+        lavaMat.color.setRGB(1, 0.32 + Math.sin(t * 1.7) * 0.06, 0.05);
+        for (let k = 0; k < 2; k++) if (Math.random() < dt * 14) { const a = Math.random() * Math.PI * 2, d = R + 2 + Math.random() * 14; fx.add.spawn({ x: Math.cos(a) * d, y: -1, z: Z(CD) + Math.sin(a) * d, vy: 2 + Math.random() * 3, life: 2.5, size: 0.14, size1: 0.02, r: 1, g: 0.55, b: 0.15 }); }
+      } });
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; w.lights.push({ x: Math.cos(a) * (R + 4), y: 0.5, z: Z(CD) + Math.sin(a) * (R + 4), color: 0xff5a10, power: 8, range: 12, src: {} }); }
+      // chains down from the dark, the great kiln's mouth glowing behind him
+      for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + 0.2, d = R - 1.5; w.box(0.08, 14, 0.08, M.metal, Math.cos(a) * d, 9, Z(CD) + Math.sin(a) * d); }
+      const kiln = new THREE.MeshLambertMaterial({ color: 0x241a16, flatShading: true });
+      w.box(10, 9, 5, kiln, 0, 3.5, Z(CD + R + 5)); w.box(4, 3.4, 0.3, new THREE.MeshBasicMaterial({ color: 0xff7a20 }), 0, 2.2, Z(CD + R + 2.4));
+      w.lights.push({ x: 0, y: 2.5, z: Z(CD + R + 1), color: 0xff7a20, power: 14, range: 16, src: {} });
+      // his pillars, waiting
+      for (let k = 0; k < 10; k++) w.spawn('kilnpillar', 0, CD, 0, { reserve: true, effigy: true });
     },
   },
 };

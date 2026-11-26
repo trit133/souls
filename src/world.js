@@ -39,7 +39,7 @@ const GROUND = {
   deepArena: { walk: [0x8a847c, 0x76706a], out: [0x2a2622, 0x3a3430], bare: true, dressed: true, tex: { set: 'cave', walk: [0.7, 0.3, 0, 0], out: [0.7, 0.3, 0, 0] } },
   glassArena: { walk: [0x9a96a8, 0x86829a], out: [0x2a2640, 0x3a3650], bare: true, dressed: true, tex: { set: 'glass', walk: [0.6, 0.1, 0, 0.3], out: [0.6, 0.1, 0, 0.3] } },
   kiln: { walk: [0x8a7a72, 0x76665e], out: [0x2a1a14, 0x3a241c], tsub: 2, bare: true, dressed: true, tex: { set: 'deep', walk: [0.6, 0.15, 0.25, 0], out: [0.3, 0.6, 0.1, 0] } },
-  kilnArena: { walk: [0x8a7a72, 0x76665e], out: [0x2a1a14, 0x3a241c], bare: true, dressed: true, tex: { set: 'deep', walk: [0.3, 0, 0, 0.7], out: [0.2, 0.8, 0, 0] } },
+  kilnArena: { walk: [0xa8968a, 0x948276], out: [0x2a1a14, 0x3a241c], bare: true, dressed: true, void: true, tex: { set: 'deep', walk: [0.75, 0.25, 0, 0], out: [0.2, 0.8, 0, 0] } },
   // the Sentinel's Bastion (modules.js FINAL_MODULES): dirt and setts on the walk, grass coming back off it; Varek's
   // arena: flagstones and cobbles, bare (no grass or weeds on the fighting floor)
   bastion: { walk: [0x7a7874, 0x686662], out: [0x34322f, 0x48463f], tsub: 2, dressed: true, tex: { walk: [0, 0.5, 0, 0.5], out: [0, 0.5, 0.5, 0] } },
@@ -189,6 +189,7 @@ export class World {
     this.terrain = new Terrain(); // (walkable height: terrain.js; flat until a map lays some)
     this.paints = []; // (where each surface of a textured ground goes: ground.js)
     this.flora = []; // (bushes, trees, leaves, puddles a map asks for: flora.js)
+    this.lavaPools = []; this.prisms = []; // (the Crucible's burning pools; Glasshallow's crystal pillars)
   }
 
   // ---------- shape lookup ----------

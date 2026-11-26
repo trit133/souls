@@ -1,6 +1,6 @@
-# Region 2: The Glass Wastes (and what lies under them)
+# Region 2: The Sunless Deep (under the Glass Wastes)
 
-Design draft, 2026-11-26. Nothing here is built yet. The rules carry over from region 1:
+Designed and built 2026-11-26 (the Status section at the end lists what's in and what's left). The rules carry over from region 1:
 - each raid area is a hand-built map of about 95 m on walkable heights (`src/terrain.js`);
 - three shrines a raid open the hidden boss room, and each area needs the gem of the boss before it;
 - all three gems open the final area, and enemy positions change every raid;
@@ -347,3 +347,56 @@ All three new shrines need to work in a party. Anyone can push, carry or turn, t
 4. Glasshallow with its enemies, the Prism shrine and the Hierophant.
 5. The Crucible and the Kilnfather.
 6. Gold ×1.3, materials, the traders, the region map.
+
+---
+
+## Status (built 2026-11-26)
+
+Jonah's answers:
+- The region has a new name: **the Sunless Deep**.
+- It has its own set of materials, worth 1.3× region 1's (not 2×). The stash shows a section per region.
+- The lava cavern is the final area, with a short approach and then a separate, more lava-filled arena for the boss.
+- He approved the lineup.
+
+**What's in:**
+- **The region:** region 2 opens on the world map. Its first area opens once Varek has fallen (joeandre has everything
+  open, through `regionKeys`).
+- **Region map:** drawn in code (`mapart.js drawDeep`) as a cutaway: the glass crust at the top, strata going down,
+  a cavern round each place, the shafts between them, and the fire at the bottom.
+- **The three raid areas:**
+  - **Lanternhold** (`lanternhold.js`): five ledges stepping down the shaft, lanterns, light shafts. Its own shrine
+    is the Ore Cart.
+  - **The Wormways** (`wormways.js`): trenches bored through the rock under arches, galleries above them that you
+    can drop from, the fungus farm, the borer graveyard. Its own shrine is the Lantern Run.
+  - **Glasshallow** (`glasshallow.js`): four terraces out of a black lake, crystal pillars that the Lancers bank
+    their beams off, the Lens Cathedral, the Vein. Its own shrine is the Prism.
+  - All three are built on `deep.js`: dim everywhere, so the vision cone is always on, with cave walls, a lift cage
+    at the way in, and lamps.
+- **The final area** (`modules.js FINAL_MODULES`):
+  - **The Crucible:** a descent from 8 m to 0 m over a chained bridge across a lava channel and through the
+    Kiln-Works, where the lava pools burn you. The Deep's hardest enemies stand along the way, two of them elites,
+    and the Gem Door of black glass is at the end.
+  - **The Kiln:** a basalt island in a lake of lava.
+- **12 enemies** (`deepfoes.js`) and **4 bosses** (`deepbosses.js`), as designed above. The bosses have their own
+  arenas and use music from region 1 for now (the Lamp-King Hask's, the Borer Gorrath's, the Hierophant Vael's,
+  the Kilnfather Varek's).
+- **Shrines:** the Ore Cart, the Lantern Run and the Prism (`city.js`, `seals.js`). Each area also draws two of
+  region 1's shrines.
+- **Materials and traders:** 10 materials, 3 gems and 2 relics, each with its own icon. Old Kettle and Mama Sorrow
+  trade only the Deep's goods and have 8 quests each. Gold is ×1.3 (`progress.js GOLD_RATE`).
+- **Textures and lighting:** the cave texture sets (cave, glass, deep), moss, glowing mushrooms and crystals, and a
+  sky for each area (`lighting.js`).
+- **Tests:**
+  - `scripts/look-deep.mjs r2a1|r2a2|r2a3`: shots, reach and a walk.
+  - `scripts/deep-foes.mjs <area>`: each enemy type fought alone.
+  - `scripts/deep-boss.mjs <area>`: a boss fought through both phases, then its gem.
+  - `scripts/deep-shrines.mjs`: the three new shrines.
+  - `scripts/look-crucible.mjs`: the approach, the walk down and the lava.
+  - Region 1 is unchanged (`raid-fingerprint`, `layout-fingerprint`).
+
+**Not done yet:**
+- region 2's crafted weapons and runes;
+- its own boss music;
+- its own chest and drum looks (the default ones are used);
+- party testing of the new shrines and of the Shade's copies;
+- a painted region map (the code-drawn one stands in).
