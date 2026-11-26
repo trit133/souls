@@ -119,11 +119,11 @@ const STYLE = {
     p.armL = [-0.85, 0, -0.05]; p.foreL = [-1.15, 0, 0]; p.handL = [0.9, 0, 0];
     if (sprint) { p.armR[0] -= sw * 0.3; p.armL[0] += sw * 0.3; }
   },
-  // the Pit-Breaker: carried low before him in both hands, the head down by his feet, leaning into its weight
+  // the Pit-Breaker: shouldered, the haft over the right shoulder and the head hanging behind it, one hand on it
   piston(p, s, sw, sprint) {
-    p.armR = [-0.02 - (sprint ? sw * 0.2 : 0), 0.29, 0.98]; p.foreR = [-1.74, 0, 0]; p.handR = [1.41, 0, -0.84];
-    p.armL = [-0.6, 0, -0.2]; p.foreL = [-0.9, 0, 0];
-    p.torso[0] += 0.14; p.by -= 0.05;
+    p.armR = [-0.9, 0, -0.35]; p.foreR = [-1.9, 0, 0]; p.handR = [0.3, 0, 0];
+    p.armL = [-0.15 - sw * 0.4, 0, 0.1]; p.foreL = [-0.45, 0, 0];
+    p.torso[0] += 0.08; p.torso[1] -= 0.1; p.by -= 0.03;
   },
   // the Glass Chakrams: a ring in each hand, held low and out from the hips, ready to cut either way
   chakram(p, s, sw, sprint) {

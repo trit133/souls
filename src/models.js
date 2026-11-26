@@ -34,7 +34,7 @@ export const FEEL = {
   spear: { heft: 0.4, fk: 300, fd: 18, grip: { z: 0.55, always: true } },
   maul: { heft: 1, fk: 190, fd: 13, grip: { z: 0.45, swing: true } },
   // the Sunless Deep's (weapons.js)
-  pitbreaker: { heft: 0.9, fk: 205, fd: 13, lead: 0.42, grip: { z: -0.24, always: true } },
+  pitbreaker: { heft: 0.9, fk: 205, fd: 13, lead: 0.42, grip: { z: -0.24, swing: true } },
   chakrams: { heft: 0.15, fk: 420, fd: 23, lead: 0.4 },
   censer: { heft: 0.5, fk: 300, fd: 17, lead: 0.4 },
   club: { heft: 0.9, fk: 200, fd: 13 },
